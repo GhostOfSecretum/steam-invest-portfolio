@@ -1,0 +1,18 @@
+{
+  "name": "steam-invest-portfolio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local MVP for CS2 skin portfolio tracking with Steam login and real market data.",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "node --watch server/index.js",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "fast-xml-parser": "^5.7.2",
+    "node-steam-openid": "^2.0.0"
+  }
+}

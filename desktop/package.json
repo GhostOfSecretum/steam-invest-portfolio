@@ -1,0 +1,17 @@
+{
+  "name": "steam-invest-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop client for Steam Invest Portfolio. Reads full owner inventory via Steam WebView login.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
