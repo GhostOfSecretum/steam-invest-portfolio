@@ -38,19 +38,11 @@
       "lang": "ru",
       "currency": "usd"
     }/*EDITMODE-END*/;
-    const CURSOR_STORAGE_KEY = 'steam-invest-portfolio.cursor-style';
-
     function App() {
       const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
       const [screen, setScreen] = useState(window.location.hash === '#dashboard' ? 'dashboard' : 'home');
       const [activeItem, setActiveItem] = useState(null);
-      const [cursorStyle, setCursorStyle] = useState(() => {
-        try {
-          return localStorage.getItem(CURSOR_STORAGE_KEY) || 'classic';
-        } catch {
-          return 'classic';
-        }
-      });
+      const [cursorStyle, setCursorStyle] = useState('classic');
       const auth = useAuth();
 
       // Set lang/currency globally so child components without prop access can read it
@@ -62,12 +54,6 @@
         document.body.dataset.skin = t.skin;
         document.body.dataset.glass = String(t.glass);
       }, [t.skin, t.glass]);
-      useEffect(() => {
-        try {
-          localStorage.setItem(CURSOR_STORAGE_KEY, cursorStyle);
-        } catch {}
-      }, [cursorStyle]);
-
       const i18n = useT(t.lang);
       window.__lang = t.lang;
       window.__currency = t.currency || 'usd';
@@ -87,12 +73,6 @@
             t={i18n}
             auth={auth}
           />
-
-          <div className="top-dock">
-            <div className="top-dock-inner">
-              <CursorSwitcher lang={t.lang} value={cursorStyle} onChange={setCursorStyle} />
-            </div>
-          </div>
 
           {screen === 'home' && (
             <>
