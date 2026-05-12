@@ -153,10 +153,29 @@ function aggregatePortfolioItems(items) {
 async function readBasis() {
   try {
     const raw = await fs.readFile(BASIS_FILE, 'utf8');
-    return JSON.parse(raw);
+    if (!raw.trim()) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return parsed;
   } catch (error) {
     if (error.code === 'ENOENT') return {};
+    if (error instanceof SyntaxError) {
+      console.error('[portfolio] corrupt portfolio.json (basis), using empty basis:', error.message);
+      await backupCorruptBasisFile();
+      return {};
+    }
     throw error;
+  }
+}
+
+async function backupCorruptBasisFile() {
+  try {
+    const backupFile = `${BASIS_FILE}.corrupt-${Date.now()}`;
+    await fs.rename(BASIS_FILE, backupFile);
+  } catch (renameError) {
+    if (renameError.code !== 'ENOENT') {
+      console.error('[portfolio] could not backup corrupt basis file:', renameError.message);
+    }
   }
 }
 
