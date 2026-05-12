@@ -367,18 +367,9 @@ function HeroConcept_Vault({ portfolio, loading, auth, lang }) {
 
 /* Concept 5: Operators squad readout */
 function HeroConcept_Operators({ portfolio, loading, lang }) {
-  const [imageSrc, setImageSrc] = useState('/assets/hero-operators-user.png');
-  const [showFallback, setShowFallback] = useState(false);
+  const [imageMissing, setImageMissing] = useState(false);
   const totalValue = Number.isFinite(portfolio?.totalValue) ? compactUsd(portfolio.totalValue) : '...';
   const readoutLabel = lang === 'ru' ? '// СТОИМОСТЬ ПОРТФЕЛЯ' : '// PORTFOLIO VALUE';
-
-  const handleImageError = () => {
-    if (imageSrc !== '/assets/operators-cutout.png') {
-      setImageSrc('/assets/operators-cutout.png');
-      return;
-    }
-    setShowFallback(true);
-  };
 
   return (
     <div className="hero-3d-stage" style={{ perspective: 1400 }}>
@@ -388,12 +379,12 @@ function HeroConcept_Operators({ portfolio, loading, lang }) {
       <div className="hero-operators-shadow"></div>
 
       <div className="hero-operators-image-wrap">
-        {!showFallback ? (
+        {!imageMissing ? (
           <img
-            src={imageSrc}
-            alt="Operators"
+            src="/assets/hero-agents.png"
+            alt="Featured CS2 operators"
             className="hero-operators-image"
-            onError={handleImageError}
+            onError={() => setImageMissing(true)}
           />
         ) : (
           <div className="hero-operators-fallback" aria-hidden="true">
@@ -416,20 +407,22 @@ function HeroConcept_Operators({ portfolio, loading, lang }) {
 function Hero({ lang, onLink, auth }) {
   const t = useT(lang);
   const portfolio = usePortfolio(auth);
+  const heroCopy = [
+    { key: 'stat-1', v: '482K', l: t.hero.stat1 },
+    { key: 'stat-2', v: compactUsd(31200000, { digits: 1, compact: true }), l: t.hero.stat2 },
+    { key: 'stat-3', v: '12ms', l: t.hero.stat3 },
+  ];
   const stage = useMemo(
     () => <HeroConcept_Operators portfolio={portfolio.data} loading={portfolio.loading} auth={auth} lang={lang} />,
     [auth, lang, portfolio.data, portfolio.loading]
   );
 
   return (
-    <section className="hero scanlines" style={{
-      position: 'relative', minHeight: 'calc(100vh - 64px)', padding: '64px 64px 96px',
-      overflow: 'hidden',
-    }}>
-      <div className="container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center', minHeight: 720 }}>
+    <section className="hero scanlines hero-shell">
+      <div className="container hero-layout">
         {/* Left: copy */}
-        <div className="fade-up">
-          <h1 className="display" style={{ fontSize: 'clamp(56px, 6vw, 88px)', lineHeight: 0.95, fontWeight: 500, letterSpacing: '-0.04em' }}>
+        <div className="fade-up hero-copy">
+          <h1 className="display hero-title" style={{ fontWeight: 500, letterSpacing: '-0.04em' }}>
             {t.hero.title1}<br />
             {t.hero.title2}{' '}
             <span style={{
@@ -437,23 +430,19 @@ function Hero({ lang, onLink, auth }) {
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>{t.hero.title3}</span>
           </h1>
-          <p style={{ marginTop: 24, fontSize: 16, lineHeight: 1.6, color: 'var(--fg-1)', maxWidth: 520 }}>
+          <p className="hero-sub">
             {t.hero.sub}
           </p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
+          <div className="hero-actions">
             <button className="btn btn-primary" onClick={onLink}>
               <SteamGlyph /> {t.hero.cta1}
             </button>
             <button className="btn btn-ghost">{t.hero.cta2} →</button>
           </div>
 
-          <div style={{ marginTop: 56, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, maxWidth: 520 }}>
-            {[
-              { v: '482K', l: t.hero.stat1 },
-              { v: compactUsd(31200000, { digits: 1, compact: true }), l: t.hero.stat2 },
-              { v: '12ms', l: t.hero.stat3 },
-            ].map((s, i) => (
-              <div key={i}>
+          <div className="hero-stats">
+            {heroCopy.map((s) => (
+              <div key={s.key}>
                 <div className="display" style={{ fontSize: 28, fontWeight: 500 }}>{s.v}</div>
                 <div className="eyebrow" style={{ marginTop: 6 }}>{s.l}</div>
               </div>
@@ -462,7 +451,7 @@ function Hero({ lang, onLink, auth }) {
         </div>
 
         {/* Right: 3D stage */}
-        <div style={{ position: 'relative', height: 640, display: 'grid', placeItems: 'center' }}>
+        <div className="hero-stage-wrap">
           {stage}
         </div>
       </div>

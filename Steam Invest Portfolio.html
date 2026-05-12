@@ -42,7 +42,7 @@
       const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
       const [screen, setScreen] = useState(window.location.hash === '#dashboard' ? 'dashboard' : 'home');
       const [activeItem, setActiveItem] = useState(null);
-      const [cursorStyle, setCursorStyle] = useState('classic');
+      const [cursorStyle, setCursorStyle] = useState('default');
       const auth = useAuth();
 
       // Set lang/currency globally so child components without prop access can read it

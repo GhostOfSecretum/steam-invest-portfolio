@@ -273,10 +273,10 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
   const profile = auth?.profile;
   return (
     <header className="nav">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+      <div className="nav-main">
         <Logo />
-        <div style={{ width: 1, height: 18, background: 'var(--line)' }}></div>
-        <nav style={{ display: 'flex', gap: 4 }}>
+        <div className="nav-divider"></div>
+        <nav className="nav-links">
           {[
             { k: 'home', label: t.nav.home },
             { k: 'dashboard', label: t.nav.dashboard },
@@ -285,9 +285,9 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
           ))}
         </nav>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className="chip"><span className="live-dot"></span> API · {connected ? 'connected' : 'local'}</span>
-        <div style={{ display: 'flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+      <div className="nav-controls">
+        <span className="chip nav-status"><span className="live-dot"></span> API · {connected ? 'connected' : 'local'}</span>
+        <div className="nav-segment">
           {['en', 'ru'].map(l => (
             <button key={l} onClick={() => onLang(l)} style={{
               padding: '6px 10px', fontFamily: 'var(--f-mono)', fontSize: 11, letterSpacing: '0.06em',
@@ -298,7 +298,7 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
         </div>
         <div
           title={t.nav.currency}
-          style={{ display: 'flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}
+          className="nav-segment"
         >
           {[
             { key: 'usd', label: 'USD' },

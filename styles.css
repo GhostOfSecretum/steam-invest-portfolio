@@ -166,6 +166,61 @@ a { color: inherit; text-decoration: none; }
 .section-tight { padding: 64px 64px; }
 .container { max-width: 1320px; margin: 0 auto; }
 
+.hero-shell {
+  position: relative;
+  min-height: calc(100vh - 64px);
+  padding: 64px 64px 96px;
+  overflow: hidden;
+}
+
+.hero-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+  min-height: 720px;
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
+.hero-title {
+  font-size: clamp(56px, 6vw, 88px);
+  line-height: 0.95;
+}
+
+.hero-sub {
+  margin-top: 24px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--fg-1);
+  max-width: 520px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.hero-stats {
+  margin-top: 56px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 520px;
+}
+
+.hero-stage-wrap {
+  position: relative;
+  min-width: 0;
+  height: 640px;
+  display: grid;
+  place-items: center;
+}
+
 /* Numbers ticking */
 .num-tick { font-family: var(--f-display); font-weight: 500; font-variant-numeric: tabular-nums; }
 
@@ -640,6 +695,23 @@ button:disabled,
 }
 .nav-link:hover { color: var(--fg-0); background: rgba(255,255,255,0.04); }
 .nav-link[data-active="true"] { color: var(--fg-0); background: rgba(255,255,255,0.05); }
+.nav-main,
+.nav-controls,
+.nav-links,
+.nav-segment {
+  display: flex;
+  align-items: center;
+}
+
+.nav-main { gap: 24px; min-width: 0; }
+.nav-divider { width: 1px; height: 18px; background: var(--line); flex: 0 0 auto; }
+.nav-links { gap: 4px; }
+.nav-controls { gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.nav-segment {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
 
 /* Visual direction skins */
 [data-skin="cyber"] {
@@ -685,8 +757,49 @@ button:disabled,
 [data-skin="luxe"] .tab[data-active="true"] { border-color: oklch(0.82 0.13 80); }
 
 @media (max-width: 1100px) {
+  .hero-shell,
+  .section,
+  .section-tight {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+
+  .hero-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    gap: 32px;
+  }
+
+  .hero-copy {
+    max-width: 680px;
+  }
+
+  .hero-stage-wrap {
+    height: auto;
+    min-height: 520px;
+  }
+
   .hero-3d-stage {
     height: 560px;
+  }
+
+  .nav {
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .nav-main,
+  .nav-controls {
+    flex: 1 1 0;
+  }
+
+  .nav-main {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .nav-controls {
+    justify-content: flex-end;
   }
 
   .market-toolbar-top,
@@ -711,8 +824,95 @@ button:disabled,
 }
 
 @media (max-width: 760px) {
+  .hero-shell,
+  .section,
+  .section-tight {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .hero-shell {
+    padding-top: 40px;
+    padding-bottom: 64px;
+  }
+
+  .hero-title {
+    font-size: clamp(38px, 13vw, 56px);
+  }
+
+  .hero-sub {
+    margin-top: 18px;
+    font-size: 15px;
+  }
+
+  .hero-actions {
+    margin-top: 24px;
+    flex-direction: column;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hero-stats {
+    margin-top: 36px;
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .hero-stage-wrap {
+    min-height: 380px;
+  }
+
   .hero-3d-stage {
-    height: 500px;
+    height: 380px;
+  }
+
+  .hero-operators-image-wrap,
+  .hero-operators-fallback {
+    width: min(100%, 360px);
+    height: min(100%, 360px);
+  }
+
+  .hero-operators-readout {
+    bottom: 10px;
+    width: calc(100% - 24px);
+    max-width: 280px;
+    padding: 8px 12px;
+  }
+
+  .nav {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nav-main,
+  .nav-controls {
+    width: 100%;
+  }
+
+  .nav-main {
+    justify-content: space-between;
+  }
+
+  .nav-divider,
+  .nav-status {
+    display: none;
+  }
+
+  .nav-links,
+  .nav-controls {
+    flex-wrap: wrap;
+  }
+
+  .nav-controls {
+    justify-content: flex-start;
+  }
+
+  .nav-segment {
+    max-width: 100%;
   }
 
   .hero-operators-badge[data-badge="left"] {
