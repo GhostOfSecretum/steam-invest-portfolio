@@ -444,7 +444,7 @@ function InventoryTable({ items, onItemClick, lang, onBasisSaved }) {
 }
 
 function DashboardState({ lang, title, auth, message, error, onRetry }) {
-  const loginMissingKey = error?.code === 'missing_steam_api_key' || auth?.steamApiKeyConfigured === false;
+  const suggestSteamApiKey = auth?.steamApiKeyConfigured === false;
   const text = error
     ? errorMessage(error, lang)
     : message || (lang === 'ru'
@@ -458,9 +458,11 @@ function DashboardState({ lang, title, auth, message, error, onRetry }) {
           <div className="eyebrow" style={{ color: 'var(--accent)' }}>// REAL DATA MVP</div>
           <h1 className="display" style={{ fontSize: 44, fontWeight: 500, marginTop: 12 }}>{title}</h1>
           <p style={{ marginTop: 14, color: 'var(--fg-1)', lineHeight: 1.6 }}>{text}</p>
-          {loginMissingKey && (
+          {suggestSteamApiKey && (
             <p style={{ marginTop: 12, color: 'var(--amber)', fontFamily: 'var(--f-mono)', fontSize: 12 }}>
-              Add STEAM_API_KEY to .env and restart the server before Steam login.
+              {lang === 'ru'
+                ? 'Для ника и аватара в Steam добавь STEAM_API_KEY в .env и перезапусти сервер (вход без ключа уже работает).'
+                : 'Add STEAM_API_KEY to .env and restart the server for Steam display names and avatars (login works without it).'}
             </p>
           )}
           <div style={{ marginTop: 24, display: 'flex', gap: 10 }}>

@@ -37,10 +37,6 @@ function useAuth() {
   return {
     ...state,
     login: () => {
-      if (state.steamApiKeyConfigured === false) {
-        window.alert('Add STEAM_API_KEY to .env and restart the server before linking Steam.');
-        return;
-      }
       window.location.href = '/api/auth/steam';
     },
     logout: async () => {
