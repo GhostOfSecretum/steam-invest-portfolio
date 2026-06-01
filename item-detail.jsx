@@ -1,5 +1,31 @@
 /* global React */
-const { useState: detailUseState, useRef: detailUseRef, useCallback: detailUseCallback } = React;
+const { useState: detailUseState, useRef: detailUseRef, useCallback: detailUseCallback, useEffect: detailUseEffect, useMemo: detailUseMemo } = React;
+
+// Wear colors shared between the quality selector and the multi-line chart.
+const WEAR_COLORS = {
+  FN: '#4ade80',
+  MW: '#22d3ee',
+  FT: '#facc15',
+  WW: '#fb923c',
+  BS: '#f87171',
+};
+
+const MARKETPLACE_META = {
+  steam:      { label: 'Steam Market', color: '#66c0f4' },
+  skinport:   { label: 'Skinport',     color: '#fa490a' },
+  csgomarket: { label: 'Market.CSGO',  color: '#f7b500' },
+  lisskins:   { label: 'LIS-Skins',    color: '#8b5cf6' },
+  csfloat:    { label: 'CSFloat',      color: '#16c79a' },
+  csmoney:    { label: 'CS.Money',     color: '#fdd835' },
+  buff163:    { label: 'Buff163',      color: '#0fb9b1' },
+};
+
+// Build a market_hash_name for a given base / wear / StatTrak flavor on the client,
+// so the quality + StatTrak toggles can switch the active listing without a round-trip.
+function buildVariantHashName(base, wearLabel, { stattrak = false, souvenir = false } = {}) {
+  const prefix = stattrak ? 'StatTrak™ ' : souvenir ? 'Souvenir ' : '';
+  return `${prefix}${base} (${wearLabel})`;
+}
 
 /* ───────────────────────────────────────────────────
    ITEM DETAIL — API backed
@@ -11,13 +37,55 @@ function ItemDetail({ lang, item, onBack }) {
     { key: '1d',  days: 1,   label: lang === 'ru' ? 'День' : '1D' },
     { key: '7d',  days: 7,   label: lang === 'ru' ? 'Неделя' : '7D' },
     { key: '30d', days: 30,  label: '30D' },
-    { key: 'all', days: 365, label: lang === 'ru' ? 'Всё время' : 'All' },
+    { key: '1y',  days: 365, label: lang === 'ru' ? 'Год' : '1Y' },
+    { key: 'all', days: 'all', label: lang === 'ru' ? 'Всё время' : 'All' },
   ];
+  const activeCurrency = getActiveCurrency();
+  const baseName = item?.marketHashName || null;
+  const parsedBase = parseClientName(baseName);
+
   const [period, setPeriod] = detailUseState('30d');
-  const activePeriod = PERIOD_OPTIONS.find(p => p.key === period) || PERIOD_OPTIONS[2];
-  const historyState = useItemHistory(item?.marketHashName, 365);
   const [chartHover, setChartHover] = detailUseState(null);
   const chartRef = detailUseRef(null);
+  const [activeName, setActiveName] = detailUseState(baseName);
+  const [stattrak, setStattrak] = detailUseState(parsedBase.isStatTrak);
+  const [selectedWears, setSelectedWears] = detailUseState(null);
+
+  const activePeriod = PERIOD_OPTIONS.find(p => p.key === period) || PERIOD_OPTIONS[2];
+  const fetchDays = period === 'all' ? 'all' : 365;
+
+  // Variants are fetched per (skin, StatTrak flavor) — not per active wear — so clicking a
+  // wear chip doesn't re-request the whole set. We probe with a fixed wear label.
+  const probeName = parsedBase.hasWear
+    ? buildVariantHashName(parsedBase.core, parsedBase.wearLabel || 'Field-Tested', { stattrak, souvenir: parsedBase.isSouvenir })
+    : baseName;
+  const variantsState = useItemVariants(probeName, activeCurrency);
+  const offersState = useItemOffers(activeName, activeCurrency);
+
+  const variants = variantsState.data?.variants || [];
+  const hasWear = Boolean(variantsState.data?.hasWear);
+
+  // Reset local selection whenever the user opens a different item.
+  detailUseEffect(() => {
+    setActiveName(baseName);
+    setStattrak(parsedBase.isStatTrak);
+    setSelectedWears(null);
+    setChartHover(null);
+  }, [baseName]);
+
+  // Default the chart to every existing quality (Steam shows them overlaid) — re-runs when the
+  // StatTrak flavor changes because that re-fetches the variant set.
+  detailUseEffect(() => {
+    if (!variantsState.data) return;
+    if (variantsState.data.hasWear) {
+      setSelectedWears(variantsState.data.variants.filter(v => v.exists).map(v => v.marketHashName));
+    } else {
+      setSelectedWears([activeName].filter(Boolean));
+    }
+  }, [variantsState.data]);
+
+  const chartNames = (selectedWears && selectedWears.length) ? selectedWears : [activeName].filter(Boolean);
+  const multiState = useMultiWearHistory(chartNames, fetchDays, activeCurrency);
 
   if (!item) {
     return (
@@ -35,15 +103,68 @@ function ItemDetail({ lang, item, onBack }) {
     );
   }
 
-  const rawHistory = historyState.data?.data || [];
-  const cutoff = activePeriod.days < 365 ? Date.now() - activePeriod.days * 86400000 : 0;
-  const filteredHistory = rawHistory
-    .filter(p => !cutoff || (new Date(p.date).getTime() >= cutoff))
-    .map(p => p.price)
-    .filter(Number.isFinite);
-  const history = filteredHistory.length ? filteredHistory : null;
-  const chartData = history?.length > 1 ? history : item.spark || [item.value || 0, item.value || 0];
-  const chart = buildChart(chartData);
+  const rawSeries = multiState.data?.series || [];
+  const historyCurrency = (rawSeries.find(s => s.currency)?.currency || (activeCurrency === 'rub' ? 'RUB' : 'USD')).toLowerCase();
+  const periodDays = typeof activePeriod.days === 'number' ? activePeriod.days : null;
+  const cutoffTs = periodDays == null ? 0 : Date.now() - periodDays * 86400000;
+
+  // Each visible quality becomes a colored line on a shared time/price axis (Steam-style).
+  const chartSeries = rawSeries
+    .map(s => {
+      let pts = (s.data || [])
+        .map(p => ({ ...p, t: new Date(p.date).getTime() }))
+        .filter(p => Number.isFinite(p.price) && !Number.isNaN(p.t))
+        .sort((a, b) => a.t - b.t);
+      let view = cutoffTs ? pts.filter(p => p.t >= cutoffTs) : pts;
+      if (view.length < 2 && pts.length >= 2) view = pts.slice(-Math.max(2, periodDays || 30));
+      return {
+        marketHashName: s.marketHashName,
+        wear: s.wear,
+        wearLabel: s.wearLabel,
+        color: WEAR_COLORS[s.wear] || 'var(--accent)',
+        points: view,
+      };
+    })
+    .filter(s => s.points.length >= 2);
+
+  const formatChartMoney = (value) => formatMoney(value, { digits: 2, currency: historyCurrency });
+  const chart = chartSeries.length ? buildMultiChart(chartSeries, historyCurrency) : null;
+  const hasHistory = Boolean(chart);
+
+  const activeVariant = variants.find(v => v.marketHashName === activeName) || null;
+  const parsedActive = parseClientName(activeName);
+  const activePriceUsd = Number.isFinite(activeVariant?.price) ? activeVariant.price
+    : Number.isFinite(item.price) ? item.price : item.value;
+  const activePriceRub = Number.isFinite(activeVariant?.priceRub) ? activeVariant.priceRub
+    : Number.isFinite(item.priceRub) ? item.priceRub : null;
+  const headerPrice = activeCurrency === 'rub' && Number.isFinite(activePriceRub)
+    ? formatMoney(activePriceRub, { digits: 2, currency: 'rub' })
+    : formatMoney(activePriceUsd, { digits: 2 });
+
+  const toggleStattrak = () => {
+    const next = !stattrak;
+    const wearLabel = parsedActive.wearLabel || parsedBase.wearLabel;
+    setStattrak(next);
+    if (wearLabel) {
+      setActiveName(buildVariantHashName(parsedBase.core, wearLabel, { stattrak: next, souvenir: parsedBase.isSouvenir }));
+    }
+    setChartHover(null);
+  };
+
+  const toggleWearLine = (mhn) => {
+    setSelectedWears((prev) => {
+      const current = prev && prev.length ? prev : chartNames;
+      if (current.includes(mhn)) {
+        const next = current.filter(n => n !== mhn);
+        return next.length ? next : current; // never hide the last line
+      }
+      // Preserve wear order (FN→BS) when re-adding.
+      const order = variants.map(v => v.marketHashName);
+      return [...current, mhn].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    });
+    setChartHover(null);
+  };
+
   const pnlColor = item.pnl >= 0 ? 'var(--green)' : 'var(--red)';
   const totalValue = item.totalValue ?? (item.value != null ? item.value * item.qty : null);
   const totalBasis = item.totalBasis ?? (item.basis * item.qty);
@@ -54,11 +175,22 @@ function ItemDetail({ lang, item, onBack }) {
     : `asset ${item.assetid}`;
 
   const onMove = (e) => {
-    if (!chartRef.current) return;
+    if (!chartRef.current || !chart) return;
     const r = chartRef.current.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width * chart.w;
-    const idx = Math.min(chartData.length - 1, Math.max(0, Math.round((x / chart.w) * (chartData.length - 1))));
-    setChartHover({ idx, x: chart.pts[idx][0], y: chart.pts[idx][1], v: chartData[idx] });
+    const px = (e.clientX - r.left) / r.width * chart.w;
+    const t = chart.xToTime(px);
+    // Snap to the nearest sample of each visible series at that time.
+    const rows = chart.series.map((s) => {
+      let nearest = s.pts[0];
+      let best = Infinity;
+      for (const p of s.pts) {
+        const d = Math.abs(p.point.t - t);
+        if (d < best) { best = d; nearest = p; }
+      }
+      return { wear: s.wear, wearLabel: s.wearLabel, color: s.color, x: nearest.x, y: nearest.y, point: nearest.point };
+    });
+    const guideX = rows.length ? rows[0].x : px;
+    setChartHover({ x: guideX, date: rows[0]?.point.date, rows });
   };
 
   return (
@@ -81,10 +213,10 @@ function ItemDetail({ lang, item, onBack }) {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div className="eyebrow">VALUE</div>
-                <div className="display" style={{ fontSize: 32, fontWeight: 500, marginTop: 4 }}>{formatUsd(totalValue)}</div>
-                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: pnlColor, marginTop: 4 }}>
-                  {item.pnl >= 0 ? '+' : ''}{formatUsd(item.pnl)} ({item.pnlPct >= 0 ? '+' : ''}{item.pnlPct.toFixed(2)}%) · {item.qty} pcs
+                <div className="eyebrow">{lang === 'ru' ? 'ЦЕНА STEAM' : 'STEAM PRICE'}</div>
+                <div className="display" style={{ fontSize: 32, fontWeight: 500, marginTop: 4 }}>{headerPrice}</div>
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)', marginTop: 4 }}>
+                  {parsedActive.wearLabel || (lang === 'ru' ? 'без качества' : 'no exterior')}{stattrak ? ' · StatTrak™' : ''}
                 </div>
               </div>
             </div>
@@ -107,6 +239,65 @@ function ItemDetail({ lang, item, onBack }) {
               : <ItemArt label={item.name} tier={item.tier} style={{ aspectRatio: '16/9' }} />}
 
             <WearBar wear={item.wear} floatValue={item.floatValue} />
+
+            {hasWear && (
+              <div style={{ marginTop: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div className="eyebrow">{lang === 'ru' ? 'Качество' : 'Exterior'}</div>
+                  {!parsedBase.isSouvenir && (
+                    <button
+                      onClick={toggleStattrak}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                        background: 'transparent', border: 'none', padding: 0,
+                        fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 600,
+                        color: stattrak ? '#cf6a32' : 'var(--fg-3)',
+                      }}
+                    >
+                      StatTrak™
+                      <span style={{
+                        width: 30, height: 16, borderRadius: 9, padding: 2, transition: 'all .15s ease',
+                        background: stattrak ? '#cf6a32' : 'rgba(255,255,255,0.12)',
+                        display: 'inline-flex', justifyContent: stattrak ? 'flex-end' : 'flex-start',
+                      }}>
+                        <span style={{ width: 12, height: 12, borderRadius: 6, background: '#fff' }} />
+                      </span>
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${variants.length}, 1fr)`, gap: 8 }}>
+                  {variants.map((v) => {
+                    const isActive = v.marketHashName === activeName;
+                    const priceText = activeCurrency === 'rub' && Number.isFinite(v.priceRub)
+                      ? formatMoney(v.priceRub, { digits: v.priceRub >= 1000 ? 0 : 2, currency: 'rub' })
+                      : Number.isFinite(v.price) ? formatMoney(v.price, { digits: 2 })
+                      : '—';
+                    return (
+                      <button
+                        key={v.wear}
+                        onClick={() => v.exists && setActiveName(v.marketHashName)}
+                        disabled={!v.exists}
+                        title={v.wearLabel}
+                        style={{
+                          textAlign: 'center', padding: '8px 4px', borderRadius: 8, cursor: v.exists ? 'pointer' : 'default',
+                          background: isActive ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                          border: `1px solid ${isActive ? (WEAR_COLORS[v.wear] || 'var(--accent)') : 'var(--line)'}`,
+                          opacity: v.exists ? 1 : 0.4, transition: 'all .15s ease',
+                        }}
+                      >
+                        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 700, color: WEAR_COLORS[v.wear] || 'var(--fg-2)' }}>{v.wear}</div>
+                        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-1)', marginTop: 4 }}>{priceText}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {variantsState.loading && (
+                  <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                    {lang === 'ru' ? 'обновляю цены качеств…' : 'refreshing exterior prices…'}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -138,79 +329,212 @@ function ItemDetail({ lang, item, onBack }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
-              <a className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} href={item.marketUrl || '#'} target="_blank" rel="noreferrer">Open Steam Market</a>
-              <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }}>Add to watchlist</button>
+            <div className="glass" style={{ padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div className="eyebrow">{lang === 'ru' ? 'Цены на площадках' : 'Marketplace prices'}</div>
+                {offersState.loading && (
+                  <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                    {lang === 'ru' ? 'загрузка…' : 'loading…'}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(offersState.data?.offers || []).map((offer) => {
+                  const meta = MARKETPLACE_META[offer.provider] || { label: offer.label, color: 'var(--accent)' };
+                  const priceText = offer.hasPrice
+                    ? (activeCurrency === 'rub' && Number.isFinite(offer.priceRub)
+                        ? formatMoney(offer.priceRub, { digits: 2, currency: 'rub' })
+                        : formatMoney(offer.price, { digits: 2 }))
+                    : (lang === 'ru' ? 'смотреть →' : 'view →');
+                  return (
+                    <a
+                      key={offer.provider}
+                      href={offer.url || '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="offer-row"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 12px', borderRadius: 10, textDecoration: 'none',
+                        background: 'rgba(255,255,255,0.02)',
+                        border: `1px solid var(--line)`, borderLeft: `3px solid ${meta.color}`,
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 4, background: meta.color }} />
+                        <span style={{ color: 'var(--fg-1)', fontSize: 13, fontWeight: 500 }}>{meta.label}</span>
+                      </span>
+                      <span style={{
+                        fontFamily: 'var(--f-mono)', fontSize: 14, fontWeight: 600,
+                        color: offer.hasPrice ? 'var(--fg-0)' : 'var(--fg-3)',
+                      }}>
+                        {priceText}
+                      </span>
+                    </a>
+                  );
+                })}
+                {!offersState.loading && !(offersState.data?.offers || []).length && (
+                  <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
+                    {lang === 'ru' ? 'Нет данных по площадкам.' : 'No marketplace data.'}
+                  </div>
+                )}
+              </div>
+              <div style={{ marginTop: 10, fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>
+                {lang === 'ru'
+                  ? 'RUB пересчитан по курсу Steam · нажми, чтобы открыть площадку'
+                  : 'RUB at Steam FX rate · click to open the marketplace'}
+              </div>
             </div>
           </div>
         </div>
 
         <div className="glass" style={{ padding: 24, marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <div className="eyebrow">{t.item.history}</div>
+              <div className="eyebrow">{lang === 'ru' ? 'Медиана цен' : 'Price history'}</div>
               <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
-                {historyState.data?.provider === 'take.skin'
-                  ? `${activePeriod.days}${lang === 'ru' ? 'д' : 'd'} · Take.Skin · USD`
-                  : (lang === 'ru' ? 'локальный спарклайн' : 'local sparkline fallback')}
-                {historyState.loading && (lang === 'ru' ? ' · загрузка…' : ' · loading…')}
+                {multiState.loading
+                  ? (lang === 'ru' ? 'загрузка…' : 'loading…')
+                  : (lang === 'ru'
+                      ? `${chartSeries.length} кач. · реальные данные + модель`
+                      : `${chartSeries.length} exterior(s) · real + modeled`)}
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3 }}>
-                {PERIOD_OPTIONS.map(p => (
-                  <button
-                    key={p.key}
-                    onClick={() => setPeriod(p.key)}
-                    style={{
-                      padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                      fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 600,
-                      background: period === p.key ? 'var(--accent)' : 'transparent',
-                      color: period === p.key ? '#000' : 'var(--fg-2)',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <Legend dot="var(--accent)" label={lang === 'ru' ? 'Медиана' : 'Median listing'} />
-              <Legend dot="var(--cyan)" label={lang === 'ru' ? 'Базис' : 'Cost basis'} />
+            <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3 }}>
+              {PERIOD_OPTIONS.map(p => (
+                <button
+                  key={p.key}
+                  onClick={() => {
+                    setChartHover(null);
+                    setPeriod(p.key);
+                  }}
+                  style={{
+                    padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 600,
+                    background: period === p.key ? 'var(--accent)' : 'transparent',
+                    color: period === p.key ? '#000' : 'var(--fg-2)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
           </div>
-          <div ref={chartRef} style={{ position: 'relative', width: '100%', height: 280 }}
+
+          {hasWear && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {variants.filter(v => v.exists).map((v) => {
+                const shown = chartNames.includes(v.marketHashName);
+                const color = WEAR_COLORS[v.wear] || 'var(--accent)';
+                return (
+                  <button
+                    key={v.wear}
+                    onClick={() => toggleWearLine(v.marketHashName)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                      padding: '4px 10px', borderRadius: 999, border: `1px solid ${shown ? color : 'var(--line)'}`,
+                      background: shown ? 'rgba(255,255,255,0.04)' : 'transparent',
+                      opacity: shown ? 1 : 0.5, transition: 'all .15s ease',
+                    }}
+                  >
+                    <span style={{ width: 10, height: 3, borderRadius: 2, background: color }} />
+                    <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 600, color: shown ? 'var(--fg-1)' : 'var(--fg-3)' }}>{v.wearLabel}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div ref={chartRef} style={{ position: 'relative', width: '100%', height: 300 }}
                onMouseMove={onMove} onMouseLeave={() => setChartHover(null)}>
-            <svg viewBox={`0 0 ${chart.w} ${chart.h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
-              <defs>
-                <linearGradient id="itemFill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {[0.25, 0.5, 0.75].map((p, i) => (
-                <line key={i} x1="0" x2={chart.w} y1={p * chart.h} y2={p * chart.h} stroke="rgba(255,255,255,0.04)" strokeDasharray="2 4" />
-              ))}
-              <path d={chart.area} fill="url(#itemFill)" />
-              <path d={chart.d} stroke="oklch(0.78 0.18 5)" strokeWidth="2" fill="none" strokeLinejoin="round" />
-              {Number.isFinite(item.basis) && chart.range > 0 && (
-                <line x1="0" x2={chart.w} y1={chart.h - ((item.basis - chart.min) / chart.range) * (chart.h - 40) - 20} y2={chart.h - ((item.basis - chart.min) / chart.range) * (chart.h - 40) - 20}
-                      stroke="oklch(0.78 0.14 210)" strokeWidth="1" strokeDasharray="4 4" opacity="0.6" />
-              )}
-              {chartHover && (
-                <g>
-                  <line x1={chartHover.x} x2={chartHover.x} y1="0" y2={chart.h} stroke="rgba(255,255,255,0.2)" strokeDasharray="2 3" />
-                  <circle cx={chartHover.x} cy={chartHover.y} r="5" fill="oklch(0.68 0.22 5)" stroke="#fff" strokeWidth="1.5" />
-                </g>
-              )}
-            </svg>
-            {chartHover && (
+            {hasHistory ? (
+              <svg viewBox={`0 0 ${chart.w} ${chart.h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
+                {/* horizontal grid + Y axis labels */}
+                {chart.yTicks.map((tick, i) => (
+                  <g key={`y-${i}`}>
+                    <line x1={chart.padX} x2={chart.w - chart.padXRight} y1={tick.y} y2={tick.y}
+                          stroke="rgba(255,255,255,0.05)" strokeDasharray="2 4" />
+                    <text x={chart.w - chart.padXRight + 8} y={tick.y + 3}
+                          fill="var(--fg-3)" fontFamily="var(--f-mono)" fontSize="10">
+                      {tick.label}
+                    </text>
+                  </g>
+                ))}
+
+                {/* X axis labels */}
+                {chart.xTicks.map((tick, i) => (
+                  <text key={`x-${i}`} x={tick.x} y={chart.h - 6}
+                        textAnchor="middle"
+                        fill="var(--fg-3)" fontFamily="var(--f-mono)" fontSize="10">
+                    {tick.label}
+                  </text>
+                ))}
+
+                {/* one line per visible quality */}
+                {chart.series.map((s) => (
+                  <path key={s.wear || s.marketHashName} d={s.d}
+                        stroke={s.color}
+                        strokeWidth="2"
+                        fill="none"
+                        strokeLinejoin="round"
+                        strokeLinecap="round" />
+                ))}
+
+                {chartHover && (
+                  <g>
+                    <line x1={chartHover.x} x2={chartHover.x}
+                          y1={chart.padY} y2={chart.h - chart.padYBottom}
+                          stroke="rgba(255,255,255,0.2)" strokeDasharray="2 3" />
+                    {chartHover.rows.map((row, i) => (
+                      <circle key={i} cx={row.x} cy={row.y} r="4"
+                              fill={row.color} stroke="#fff" strokeWidth="1.5" />
+                    ))}
+                  </g>
+                )}
+              </svg>
+            ) : (
               <div style={{
-                position: 'absolute', left: `${(chartHover.x / chart.w) * 100}%`, top: 12, transform: 'translateX(-50%)',
-                padding: '8px 12px', borderRadius: 8, background: 'rgba(0,0,0,0.85)',
-                border: '1px solid var(--line-strong)', fontFamily: 'var(--f-mono)', fontSize: 12, whiteSpace: 'nowrap',
+                height: '100%',
+                display: 'grid',
+                placeItems: 'center',
+                border: '1px dashed var(--line)',
+                borderRadius: 12,
+                color: 'var(--fg-2)',
+                textAlign: 'center',
+                padding: 24,
               }}>
-                <div style={{ color: 'var(--fg-3)', fontSize: 10 }}>point {chartHover.idx + 1}</div>
-                <div style={{ color: 'var(--fg-0)', marginTop: 2 }}>{formatUsd(chartHover.v)}</div>
+                <div>
+                  <div className="display" style={{ fontSize: 18, fontWeight: 500 }}>
+                    {multiState.loading
+                      ? (lang === 'ru' ? 'Загружаю историю...' : 'Loading history...')
+                      : (lang === 'ru' ? 'Нет данных для графика' : 'No chart data')}
+                  </div>
+                  <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
+                    {lang === 'ru'
+                      ? 'Ни провайдер, ни цена не дали достаточно точек.'
+                      : 'Neither the provider nor the live price returned enough points.'}
+                  </div>
+                </div>
+              </div>
+            )}
+            {chartHover && chart && (
+              <div style={{
+                position: 'absolute',
+                left: `${(chartHover.x / chart.w) * 100}%`,
+                top: 8,
+                transform: 'translateX(-50%)',
+                padding: '8px 12px', borderRadius: 8, background: 'rgba(0,0,0,0.88)',
+                border: '1px solid var(--line-strong)', fontFamily: 'var(--f-mono)', fontSize: 12, whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+              }}>
+                <div style={{ color: 'var(--fg-3)', fontSize: 10 }}>{formatHistoryDate(chartHover.date, lang)}</div>
+                {chartHover.rows.map((row, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                    <span style={{ width: 8, height: 3, borderRadius: 2, background: row.color }} />
+                    {row.wear && <span style={{ color: row.color, fontSize: 11 }}>{row.wear}</span>}
+                    <span style={{ color: 'var(--fg-0)' }}>{formatChartMoney(row.point.price)}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -221,15 +545,103 @@ function ItemDetail({ lang, item, onBack }) {
   );
 }
 
-function buildChart(data) {
-  const safeData = Array.isArray(data) && data.length > 1 ? data : [0, 0];
-  const w = 1000, h = 280;
-  const min = Math.min(...safeData) * 0.99;
-  const max = Math.max(...safeData) * 1.01;
+// Mirror of the server-side splitter so the UI can build/identify wear variants.
+function parseClientName(marketHashName) {
+  const name = String(marketHashName || '');
+  const isStatTrak = /^StatTrak™\s/.test(name);
+  const isSouvenir = /^Souvenir\s/.test(name);
+  const wearMatch = name.match(/\s\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i);
+  const wearLabel = wearMatch ? wearMatch[1] : null;
+  const core = name
+    .replace(/^StatTrak™\s/, '')
+    .replace(/^Souvenir\s/, '')
+    .replace(/\s\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i, '');
+  return { core, wearLabel, isStatTrak, isSouvenir, hasWear: Boolean(wearLabel) };
+}
+
+// Overlay several quality series on a shared time/price axis (Steam-style multi-line chart).
+function buildMultiChart(seriesList, currency = 'usd') {
+  const w = 1000, h = 300;
+  const padX = 16, padXRight = 56, padY = 18, padYBottom = 26;
+  const plotW = w - padX - padXRight;
+  const plotH = h - padY - padYBottom;
+
+  const allPoints = seriesList.flatMap(s => s.points);
+  const prices = allPoints.map(p => p.price);
+  const times = allPoints.map(p => p.t);
+  const rawMin = Math.min(...prices);
+  const rawMax = Math.max(...prices);
+  const span = rawMax - rawMin || Math.max(0.01, rawMax * 0.05);
+  const min = Math.max(0, rawMin - span * 0.1);
+  const max = rawMax + span * 0.1;
   const range = max - min || 1;
-  const pts = safeData.map((v, i) => [(i / (safeData.length - 1)) * w, h - ((v - min) / range) * (h - 40) - 20]);
-  const d = pts.map((p, i) => i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`).join(' ');
-  return { w, h, min, max, range, pts, d, area: `${d} L ${w} ${h} L 0 ${h} Z` };
+  const tMin = Math.min(...times);
+  const tMax = Math.max(...times);
+  const tRange = tMax - tMin || 1;
+
+  const priceToY = (price) => padY + (1 - (price - min) / range) * plotH;
+  const timeToX = (t) => padX + ((t - tMin) / tRange) * plotW;
+  const xToTime = (x) => tMin + ((x - padX) / plotW) * tRange;
+
+  const series = seriesList.map((s) => {
+    const pts = s.points.map((p) => ({ x: timeToX(p.t), y: priceToY(p.price), point: p }));
+    const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+    return { wear: s.wear, wearLabel: s.wearLabel, marketHashName: s.marketHashName, color: s.color, pts, d };
+  });
+
+  const yTickCount = 4;
+  const yTicks = Array.from({ length: yTickCount + 1 }, (_, i) => {
+    const value = min + (range * i) / yTickCount;
+    return { y: priceToY(value), label: formatTickPrice(value, currency) };
+  });
+
+  const spanDays = Math.max(1, tRange / 86400000);
+  const xTickCount = 5;
+  const xTicks = Array.from({ length: xTickCount }, (_, i) => {
+    const t = tMin + (i / (xTickCount - 1)) * tRange;
+    return { x: timeToX(t), label: formatTickDate(new Date(t).toISOString().slice(0, 10), spanDays) };
+  });
+
+  return {
+    w, h, padX, padXRight, padY, padYBottom, plotW, plotH,
+    min, max, range, series, yTicks, xTicks,
+    priceToY, timeToX, xToTime,
+  };
+}
+
+function formatTickPrice(value, currency = 'usd') {
+  if (!Number.isFinite(value)) return '';
+  const cur = String(currency).toLowerCase();
+  if (cur === 'rub') {
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}k ₽`;
+    if (value >= 10) return `${value.toFixed(0)} ₽`;
+    return `${value.toFixed(2)} ₽`;
+  }
+  if (value >= 1000) return `$${(value / 1000).toFixed(1)}k`;
+  if (value >= 10) return `$${value.toFixed(0)}`;
+  return `$${value.toFixed(2)}`;
+}
+
+function formatTickDate(value, spanDays = 30) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  if (spanDays > 365) {
+    return new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' }).format(date);
+  }
+  if (spanDays > 60) {
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
+  }
+  return new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short' }).format(date);
+}
+
+function formatHistoryDate(value, lang) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value || '');
+  return new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
 }
 
 const WEAR_RANGES = [
@@ -321,15 +733,6 @@ function Meta({ label, value }) {
     <div>
       <div style={{ color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 10 }}>{label}</div>
       <div style={{ color: 'var(--fg-1)', marginTop: 4 }}>{value}</div>
-    </div>
-  );
-}
-
-function Legend({ dot, label }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <span style={{ width: 8, height: 8, borderRadius: 4, background: dot }}></span>
-      <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-2)' }}>{label}</span>
     </div>
   );
 }

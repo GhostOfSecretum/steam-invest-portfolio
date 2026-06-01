@@ -6,8 +6,9 @@ const session = require('express-session');
 const { getSteamRedirectUrl, authenticateSteam } = require('./services/auth');
 const { getSteamProfile } = require('./services/steam');
 const { getPortfolio, setBasisPerUnitByMarketHashName } = require('./services/portfolio');
-const { getMarketSnapshot, getMarketCatalog, getPriceHistory } = require('./services/market');
+const { getMarketSnapshot, getMarketCatalog, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
+const { getTelegramPostMedia } = require('./services/telegram');
 const { createPairingCode, redeemPairingCode, validateDeviceToken, saveDesktopInventory } = require('./services/desktop');
 
 const app = express();
@@ -103,13 +104,68 @@ app.get('/api/market/history', asyncRoute(async (req, res) => {
     return;
   }
 
-  const history = await getPriceHistory(marketHashName, req.query.days || 30);
+  const anchorPrice = Number(req.query.anchor);
+  const history = await getPriceHistory(marketHashName, req.query.days || 30, {
+    anchorPrice: Number.isFinite(anchorPrice) && anchorPrice > 0 ? anchorPrice : null,
+    currency: String(req.query.currency || 'usd'),
+  });
+  res.json(history);
+}));
+
+app.get('/api/market/offers', asyncRoute(async (req, res) => {
+  const marketHashName = String(req.query.marketHashName || '');
+  if (!marketHashName) {
+    res.status(400).json({ error: 'marketHashName is required', code: 'missing_market_hash_name' });
+    return;
+  }
+  const offers = await getItemOffers(marketHashName, String(req.query.currency || 'usd'));
+  res.json(offers);
+}));
+
+app.get('/api/market/variants', asyncRoute(async (req, res) => {
+  const marketHashName = String(req.query.marketHashName || '');
+  if (!marketHashName) {
+    res.status(400).json({ error: 'marketHashName is required', code: 'missing_market_hash_name' });
+    return;
+  }
+  const variants = await getItemVariants(marketHashName, String(req.query.currency || 'usd'));
+  res.json(variants);
+}));
+
+app.get('/api/market/history-multi', asyncRoute(async (req, res) => {
+  const raw = req.query.names;
+  const names = (Array.isArray(raw) ? raw : raw != null ? [raw] : [])
+    .map((n) => String(n || '').trim())
+    .filter(Boolean);
+  if (!names.length) {
+    res.status(400).json({ error: 'names is required', code: 'missing_names' });
+    return;
+  }
+  const anchorPrice = Number(req.query.anchor);
+  const history = await getMultiWearHistory(names, req.query.days || 30, {
+    anchorPrice: Number.isFinite(anchorPrice) && anchorPrice > 0 ? anchorPrice : null,
+    currency: String(req.query.currency || 'usd'),
+  });
   res.json(history);
 }));
 
 app.get('/api/news/cs2', asyncRoute(async (req, res) => {
   const news = await getCsNews();
   res.json(news);
+}));
+
+app.get('/api/news/telegram-media/:sourceId/:messageId', asyncRoute(async (req, res) => {
+  const media = await getTelegramPostMedia(req.params.sourceId, req.params.messageId);
+  if (!media) {
+    res.status(404).json({ error: 'Telegram media not found.', code: 'telegram_media_not_found' });
+    return;
+  }
+
+  res.set({
+    'Content-Type': media.contentType,
+    'Cache-Control': 'public, max-age=1800',
+  });
+  res.send(media.buffer);
 }));
 
 // --- Desktop client pairing & sync ---

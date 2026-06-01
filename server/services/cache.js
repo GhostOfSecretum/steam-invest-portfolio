@@ -39,6 +39,13 @@ async function getCached(key, maxAgeMs) {
   return entry.value;
 }
 
+async function getCachedEntry(key) {
+  const cache = await readCache();
+  const entry = cache[key];
+  if (!entry) return null;
+  return { value: entry.value, updatedAt: entry.updatedAt };
+}
+
 async function setCached(key, value) {
   await enqueueWrite(async () => {
     const cache = await readCache();
@@ -72,6 +79,7 @@ async function backupCorruptCache() {
 
 module.exports = {
   getCached,
+  getCachedEntry,
   setCached,
   remember,
 };

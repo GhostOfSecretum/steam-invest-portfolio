@@ -505,7 +505,7 @@ function MarketCatalog({ onItemClick }) {
                       <div className="market-card-footer">
                         <div>
                           <div className="eyebrow">PRICE</div>
-                          <div className="display market-card-price">{formatUsd(item.price)}</div>
+                          <div className="display market-card-price">{formatItemPrice(item, item.price)}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div className="eyebrow">{marketT.listings}</div>
@@ -539,40 +539,7 @@ function MarketCatalog({ onItemClick }) {
   );
 }
 
-/* CS2 news radar */
-const NEWS_FALLBACK = [
-  {
-    id: 'steam-fallback-1',
-    source: 'steam',
-    sourceName: 'Steam',
-    sourceKind: 'official',
-    title: 'Counter-Strike 2 updates land here first',
-    summary: 'Official CS2 release notes, map changes, gameplay tweaks, event announcements, and matchmaking updates from Valve.',
-    url: 'https://store.steampowered.com/news/app/730',
-    publishedAt: '2026-05-01T08:00:00.000Z',
-  },
-  {
-    id: 'hltv-fallback-1',
-    source: 'hltv',
-    sourceName: 'HLTV',
-    sourceKind: 'esports',
-    title: 'HLTV tracks the competitive layer around CS2',
-    summary: 'Roster moves, tournament coverage, interviews, and daily results all flow into this section as soon as the feed refreshes.',
-    url: 'https://www.hltv.org/news',
-    publishedAt: '2026-05-01T07:00:00.000Z',
-  },
-  {
-    id: 'steam-fallback-2',
-    source: 'steam',
-    sourceName: 'Steam',
-    sourceKind: 'official',
-    title: 'The block now aggregates fresh stories instead of static ROI rows',
-    summary: 'The server caches upstream feeds and the landing page renders a magazine-style stream that stays useful even during upstream outages.',
-    url: 'https://store.steampowered.com/news/app/730',
-    publishedAt: '2026-05-01T06:00:00.000Z',
-  },
-];
-
+/* CS2 news feed */
 function formatNewsTime(iso, lang) {
   const timestamp = Date.parse(String(iso || ''));
   if (Number.isNaN(timestamp)) return '--';
@@ -585,27 +552,47 @@ function formatNewsTime(iso, lang) {
   }).format(new Date(timestamp));
 }
 
+function newsInitial(name) {
+  const clean = String(name || 'TG').trim();
+  return (clean.charAt(0) || 'T').toUpperCase();
+}
+
+function newsAvatarStyle(name) {
+  const value = String(name || 'tg');
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  const hue = hash % 360;
+  return { background: `linear-gradient(135deg, hsl(${hue} 64% 52%), hsl(${(hue + 38) % 360} 58% 42%))` };
+}
+
 function CaseROI() {
   const lang = window.__lang || 'en';
   const t = useT(lang);
   const newsFeed = useCsNews();
-  const news = newsFeed.data?.items?.length ? newsFeed.data.items : NEWS_FALLBACK;
+  const news = newsFeed.data?.items || [];
   const featured = news[0] || null;
   const sideItems = news.slice(1, 5);
-  const hasUnavailableSource = Array.isArray(newsFeed.data?.sources) && newsFeed.data.sources.some((source) => source.ok === false);
   const updatedLabel = newsFeed.data?.updatedAt ? formatNewsTime(newsFeed.data.updatedAt, lang) : '--';
+  const sources = Array.isArray(newsFeed.data?.sources) ? newsFeed.data.sources : [];
+  const connectedSources = sources.filter((source) => source.ok !== false);
+  const failedSources = sources.filter((source) => source.ok === false);
+  const sourceSummary = connectedSources.length
+    ? `${connectedSources.length} ${lang === 'ru' ? 'кан.' : 'ch.'} · ${connectedSources.reduce((total, source) => total + (source.count || 0), 0)} ${lang === 'ru' ? 'постов' : 'posts'}`
+    : (failedSources[0]?.message || newsFeed.data?.message || t.news.telegramPending);
+  const feedError = newsFeed.error?.message
+    || (!featured && (newsFeed.data?.message || failedSources.map((source) => source.message).filter(Boolean).join(' · ')))
+    || null;
 
   return (
     <section className="section">
       <div className="container">
         <SectionHeader title={t.sections.news} sub={t.sections.newsSub} num="03" />
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
-          <div className="glass" style={{ padding: 24, minHeight: 420, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 22 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div className="news-grid">
+          <div className="glass news-main">
+            <div className="news-toolbar">
+              <div className="news-toolbar-chips">
                 <span className="chip chip-accent"><span className="live-dot"></span>{t.news.live}</span>
-                <span className="chip">{newsFeed.data?.cached ? t.news.cached : 'API'}</span>
-                {newsFeed.data?.fallback ? <span className="chip chip-down">{t.news.fallback}</span> : null}
+                <span className="chip">{newsFeed.data?.stale ? t.news.fallback : (newsFeed.data?.cached ? t.news.cached : 'API')}</span>
               </div>
               <button
                 type="button"
@@ -614,181 +601,115 @@ function CaseROI() {
                 disabled={newsFeed.loading}
                 style={{ cursor: 'pointer' }}
               >
-                {t.news.refresh}
+                {newsFeed.loading ? (lang === 'ru' ? 'Обновляем…' : 'Refreshing…') : t.news.refresh}
               </button>
             </div>
 
             {featured ? (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1.15fr 0.85fr',
-                  gap: 18,
-                  minHeight: 300,
-                }}
-              >
-                <a
-                  href={featured.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                  padding: 24,
-                  borderRadius: 18,
-                  border: '1px solid var(--line)',
-                  background: featured.image
-                    ? `linear-gradient(180deg, rgba(8,10,15,0.36), rgba(8,10,15,0.94)), url(${featured.image}) center/cover`
-                    : 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
-                }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                    <span className={`chip ${featured.sourceKind === 'official' ? 'chip-up' : 'chip-accent'}`}>
-                      {featured.sourceKind === 'official' ? t.news.official : t.news.esports}
-                    </span>
-                    <span className="eyebrow">{featured.sourceName}</span>
+              <>
+                <a href={featured.url} target="_blank" rel="noreferrer" className="news-featured">
+                  <div
+                    className="news-featured-media"
+                    style={featured.image
+                      ? { backgroundImage: `url(${featured.image})` }
+                      : { background: 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))' }}
+                  >
+                    <span className="chip chip-accent">{featured.sourceName || t.news.telegram}</span>
+                    <span className="news-time">{formatNewsTime(featured.publishedAt, lang)}</span>
+                    {featured.image ? null : (
+                      <div className="news-featured-glyph">{newsInitial(featured.sourceName)}</div>
+                    )}
                   </div>
-
-                  <div>
-                    <div style={{
-                      fontFamily: 'var(--f-display)',
-                      fontSize: 28,
-                      lineHeight: 1.1,
-                      fontWeight: 500,
-                      maxWidth: 620,
-                    }}>
-                      {featured.title}
+                  <div className="news-featured-body">
+                    <div className="news-featured-title news-clamp-2">{featured.title}</div>
+                    <div className="news-featured-summary news-clamp-3">
+                      {featured.summary || (lang === 'ru' ? 'Открыть пост в Telegram.' : 'Open the post in Telegram.')}
                     </div>
-                    <div style={{
-                      marginTop: 14,
-                      maxWidth: 620,
-                      color: 'var(--fg-1)',
-                      fontSize: 14.5,
-                      lineHeight: 1.65,
-                    }}>
-                      {featured.summary || (lang === 'ru'
-                        ? 'Открыть первоисточник и прочитать полную новость.'
-                        : 'Open the source to read the full story.')}
+                    <div className="news-featured-foot">
+                      <span className="eyebrow">{t.news.updated} · {formatNewsTime(featured.publishedAt, lang)}</span>
+                      <span className="news-open">{lang === 'ru' ? 'Открыть в TG →' : 'Open in TG →'}</span>
                     </div>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                    <div className="eyebrow">{t.news.updated} · {formatNewsTime(featured.publishedAt, lang)}</div>
-                    <span className="chip">{t.news.open}</span>
                   </div>
                 </a>
 
-                <div style={{ display: 'grid', gap: 12 }}>
-                  {(sideItems.length ? sideItems : news.slice(0, 4)).map((item) => (
-                    <a
-                      key={item.id}
-                      href={item.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="item-card"
-                      style={{ padding: 18, display: 'grid', gap: 10, minHeight: 0 }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-                        <span className={`chip ${item.sourceKind === 'official' ? 'chip-up' : ''}`}>{item.sourceName}</span>
-                        <span className="eyebrow">{formatNewsTime(item.publishedAt, lang)}</span>
+                <div className="news-list">
+                  {sideItems.map((item) => (
+                    <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="news-row">
+                      <div
+                        className={`news-thumb ${item.image ? '' : 'news-thumb-fallback'}`}
+                        style={item.image ? { backgroundImage: `url(${item.image})` } : newsAvatarStyle(item.sourceName)}
+                      >
+                        {item.image ? null : newsInitial(item.sourceName)}
                       </div>
-                      <div style={{ fontFamily: 'var(--f-display)', fontSize: 14, lineHeight: 1.35, fontWeight: 500 }}>
-                        {item.title}
-                      </div>
-                      <div style={{ color: 'var(--fg-2)', fontSize: 13.5, lineHeight: 1.5 }}>
-                        {item.summary || (lang === 'ru' ? 'Открыть материал' : 'Open story')}
+                      <div style={{ minWidth: 0 }}>
+                        <div className="news-row-title news-clamp-2">{item.title}</div>
+                        <div className="news-row-meta">
+                          <span className="news-row-source">{item.sourceName || t.news.telegram}</span>
+                          <span className="news-time">· {formatNewsTime(item.publishedAt, lang)}</span>
+                        </div>
+                        <div className="news-row-summary news-clamp-3">
+                          {item.summary || (lang === 'ru' ? 'Открыть пост в Telegram.' : 'Open the post in Telegram.')}
+                        </div>
                       </div>
                     </a>
                   ))}
                 </div>
-              </div>
+              </>
             ) : (
-              <div className="glass" style={{ padding: 18, color: 'var(--fg-2)', fontSize: 14 }}>
-                {t.news.empty}
+              <div className="news-empty">
+                <div>{newsFeed.loading ? (lang === 'ru' ? 'Загружаем посты из Telegram…' : 'Loading Telegram posts…') : t.news.empty}</div>
+                {feedError ? (
+                  <div style={{ marginTop: 10, color: 'var(--fg-1)' }}>{feedError}</div>
+                ) : null}
               </div>
             )}
           </div>
 
-          <div style={{ display: 'grid', gap: 20 }}>
-            <div className="glass" style={{ padding: 22 }}>
-              <div className="eyebrow">{lang === 'ru' ? 'ИСТОЧНИКИ' : 'SOURCES'}</div>
-              <div style={{ display: 'grid', gap: 12, marginTop: 18 }}>
-                {(newsFeed.data?.sources?.length ? newsFeed.data.sources : [
-                  { source: 'steam', name: 'Steam', kind: 'official', ok: true, count: 0 },
-                  { source: 'hltv', name: 'HLTV', kind: 'esports', ok: true, count: 0 },
-                ]).map((source) => (
-                  <div key={source.source} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '12px 14px',
-                    borderRadius: 12,
-                    border: '1px solid var(--line)',
-                    background: 'rgba(255,255,255,0.02)',
-                  }}>
-                    <div>
-                      <div style={{ fontFamily: 'var(--f-display)', fontSize: 13.5 }}>{source.name}</div>
-                      <div className="eyebrow" style={{ marginTop: 4 }}>
-                        {source.kind === 'official' ? t.news.official : t.news.esports}
-                      </div>
-                    </div>
-                    <span className={`chip ${source.ok === false ? 'chip-down' : 'chip-up'}`}>
-                      {source.ok === false
-                        ? (lang === 'ru' ? 'offline' : 'offline')
-                        : `${source.count || 0} ${lang === 'ru' ? 'мат.' : 'stories'}`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {hasUnavailableSource ? (
-                <div style={{ marginTop: 14, color: 'var(--fg-2)', fontSize: 13.5, lineHeight: 1.5 }}>
-                  {t.news.unavailable}
+          <div className="glass news-side">
+            <div className="news-side-head">
+              <div>
+                <div className="eyebrow">{t.news.telegram}</div>
+                <div className="news-side-total">{`${news.length}`.padStart(2, '0')}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--fg-2)', marginTop: 2 }}>
+                  {lang === 'ru' ? 'постов в ленте' : 'posts in feed'}
                 </div>
-              ) : null}
+              </div>
+              <span className={`chip ${connectedSources.length ? 'chip-up' : 'chip-down'}`}>
+                {connectedSources.length
+                  ? (lang === 'ru' ? `${connectedSources.length} онлайн` : `${connectedSources.length} live`)
+                  : 'offline'}
+              </span>
             </div>
 
-            <div className="glass" style={{ padding: 22 }}>
-              <div className="eyebrow">{lang === 'ru' ? 'РИТМ ЛЕНТЫ' : 'FEED RHYTHM'}</div>
-              <div style={{ marginTop: 18, display: 'grid', gap: 14 }}>
-                {[
-                  {
-                    label: lang === 'ru' ? 'Официальные патчи' : 'Official patches',
-                    value: `${news.filter((item) => item.sourceKind === 'official').length}`.padStart(2, '0'),
-                    color: 'var(--green)',
-                  },
-                  {
-                    label: lang === 'ru' ? 'Киберспорт / сцена' : 'Esports / scene',
-                    value: `${news.filter((item) => item.sourceKind !== 'official').length}`.padStart(2, '0'),
-                    color: 'var(--accent)',
-                  },
-                  {
-                    label: lang === 'ru' ? 'Последнее обновление' : 'Last refresh',
-                    value: updatedLabel,
-                    color: 'var(--cyan)',
-                  },
-                ].map((stat) => (
-                  <div key={stat.label} style={{
-                    display: 'grid',
-                    gridTemplateColumns: '90px 1fr',
-                    gap: 14,
-                    alignItems: 'center',
-                  }}>
-                    <div style={{
-                      fontFamily: 'var(--f-display)',
-                      fontSize: 24,
-                      color: stat.color,
-                      letterSpacing: '-0.03em',
-                    }}>
-                      {stat.value}
-                    </div>
-                    <div style={{ color: 'var(--fg-2)', fontSize: 13.5, lineHeight: 1.45 }}>
-                      {stat.label}
+            <div className="news-channels">
+              {sources.length ? sources.map((source) => (
+                <div key={source.source} className="news-channel">
+                  <div className="news-avatar" style={newsAvatarStyle(source.name)}>{newsInitial(source.name)}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="news-channel-name">{source.name}</div>
+                    <div className="news-channel-sub">
+                      {source.ok === false
+                        ? (lang === 'ru' ? 'недоступен' : 'unavailable')
+                        : `${source.count || 0} ${lang === 'ru' ? 'постов' : 'posts'}`}
                     </div>
                   </div>
-                ))}
+                  <span className={`chip ${source.ok === false ? 'chip-down' : 'chip-up'}`} title={source.message || ''}>
+                    {source.ok === false ? 'offline' : `${source.count || 0}`}
+                  </span>
+                </div>
+              )) : (
+                <div style={{ color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.55 }}>{sourceSummary}</div>
+              )}
+            </div>
+
+            <div className="news-side-foot">
+              <div className="news-stat">
+                <span className="eyebrow">{lang === 'ru' ? 'Обновлено' : 'Last refresh'}</span>
+                <span className="news-stat-val">{updatedLabel}</span>
+              </div>
+              <div className="news-stat">
+                <span className="eyebrow">{lang === 'ru' ? 'Протокол' : 'Source'}</span>
+                <span className="news-stat-val">Telegram MTProto</span>
               </div>
             </div>
           </div>

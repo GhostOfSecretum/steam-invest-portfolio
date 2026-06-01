@@ -6,13 +6,14 @@
   "main": "server/index.js",
   "scripts": {
     "dev": "node --watch server/index.js",
+    "telegram:session": "node scripts/create-telegram-session.js",
     "start": "node server/index.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "fast-xml-parser": "^5.7.2",
-    "openid": "^2.0.15"
+    "openid": "^2.0.15",
+    "telegram": "^2.26.22"
   }
 }

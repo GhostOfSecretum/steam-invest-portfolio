@@ -125,18 +125,87 @@ function useMarketCatalog(params) {
   return state;
 }
 
-function useItemHistory(marketHashName, days = 30) {
+function useItemHistory(marketHashName, days = 30, anchorPrice = null, currency = null) {
   const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+  const resolvedCurrency = currency || getActiveCurrency();
 
   apiUseEffect(() => {
     if (!marketHashName) return;
     let active = true;
     setState((prev) => ({ loading: true, data: prev.data, error: null }));
-    apiFetch(`/api/market/history?days=${days}&marketHashName=${encodeURIComponent(marketHashName)}`)
+    const params = new URLSearchParams({
+      days: String(days),
+      marketHashName,
+      currency: resolvedCurrency,
+    });
+    if (Number.isFinite(anchorPrice) && anchorPrice > 0) {
+      params.set('anchor', String(anchorPrice));
+    }
+    apiFetch(`/api/market/history?${params.toString()}`)
       .then((data) => { if (active) setState({ loading: false, data, error: null }); })
       .catch((error) => { if (active) setState({ loading: false, data: null, error }); });
     return () => { active = false; };
-  }, [marketHashName, days]);
+  }, [marketHashName, days, anchorPrice, resolvedCurrency]);
+
+  return state;
+}
+
+function useItemOffers(marketHashName, currency = null) {
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+  const resolvedCurrency = currency || getActiveCurrency();
+
+  apiUseEffect(() => {
+    if (!marketHashName) return;
+    let active = true;
+    setState((prev) => ({ loading: true, data: prev.data, error: null }));
+    const params = new URLSearchParams({ marketHashName, currency: resolvedCurrency });
+    apiFetch(`/api/market/offers?${params.toString()}`)
+      .then((data) => { if (active) setState({ loading: false, data, error: null }); })
+      .catch((error) => { if (active) setState({ loading: false, data: null, error }); });
+    return () => { active = false; };
+  }, [marketHashName, resolvedCurrency]);
+
+  return state;
+}
+
+function useItemVariants(marketHashName, currency = null) {
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+  const resolvedCurrency = currency || getActiveCurrency();
+
+  apiUseEffect(() => {
+    if (!marketHashName) return;
+    let active = true;
+    setState((prev) => ({ loading: true, data: prev.data, error: null }));
+    const params = new URLSearchParams({ marketHashName, currency: resolvedCurrency });
+    apiFetch(`/api/market/variants?${params.toString()}`)
+      .then((data) => { if (active) setState({ loading: false, data, error: null }); })
+      .catch((error) => { if (active) setState({ loading: false, data: null, error }); });
+    return () => { active = false; };
+  }, [marketHashName, resolvedCurrency]);
+
+  return state;
+}
+
+function useMultiWearHistory(names, days = 30, currency = null) {
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+  const resolvedCurrency = currency || getActiveCurrency();
+  const list = Array.isArray(names) ? names.filter(Boolean) : [];
+  const depKey = list.join('||');
+
+  apiUseEffect(() => {
+    if (!list.length) {
+      setState({ loading: false, data: null, error: null });
+      return;
+    }
+    let active = true;
+    setState((prev) => ({ loading: true, data: prev.data, error: null }));
+    const params = new URLSearchParams({ days: String(days), currency: resolvedCurrency });
+    for (const name of list) params.append('names', name);
+    apiFetch(`/api/market/history-multi?${params.toString()}`)
+      .then((data) => { if (active) setState({ loading: false, data, error: null }); })
+      .catch((error) => { if (active) setState({ loading: false, data: null, error }); });
+    return () => { active = false; };
+  }, [depKey, days, resolvedCurrency]);
 
   return state;
 }
@@ -215,6 +284,17 @@ function formatItemMoney(value, currencyCode, digits = 2) {
   return formatMoney(value, { digits, currency: currencyCode });
 }
 
+// Prefer Steam's native price for the active currency when available, so we don't
+// drift from steamcommunity.com due to FX conversion. Falls back to USD * rate.
+function formatItemPrice(item, fallbackUsd, { digits = 2 } = {}) {
+  const currencyKey = getActiveCurrency();
+  if (currencyKey === 'rub' && Number.isFinite(item?.priceRub)) {
+    return formatMoney(item.priceRub, { digits, currency: 'rub' });
+  }
+  const usdValue = Number.isFinite(fallbackUsd) ? fallbackUsd : item?.value ?? item?.price;
+  return formatMoney(usdValue, { digits });
+}
+
 function compactUsd(value, options = {}) {
   if (!Number.isFinite(value)) return formatMoney(0, { digits: 0, compact: Boolean(options.compact) });
   return formatMoney(value, {
@@ -236,9 +316,14 @@ Object.assign(window, {
   useMarketSnapshot,
   useMarketCatalog,
   useItemHistory,
+  useItemOffers,
+  useItemVariants,
+  useMultiWearHistory,
   useCsNews,
+  formatMoney,
   formatUsd,
   formatItemMoney,
+  formatItemPrice,
   compactUsd,
   getActiveCurrency,
   getRubPerUsdRate,
