@@ -1386,6 +1386,8 @@ module.exports = {
   getTopMovers,
   getCases,
   getMarketCatalog,
+  getSteamMarketPrice,
+  getSteamMarketIcon,
   getSteamRubRate,
   getSteamCurrencyRatio,
   getItemOffers,

@@ -210,6 +210,28 @@ function useMultiWearHistory(names, days = 30, currency = null) {
   return state;
 }
 
+function useArmoryRoi(currency = null) {
+  const [state, setState] = apiUseState({ loading: true, data: null, error: null });
+  const resolvedCurrency = currency || getActiveCurrency();
+
+  const load = apiUseCallback(async () => {
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const data = await apiFetch(`/api/armory/roi?currency=${encodeURIComponent(resolvedCurrency)}`);
+      if (Number.isFinite(data.rubPerUsd) && data.rubPerUsd > 0) {
+        FX_RATES.rub = data.rubPerUsd;
+      }
+      setState({ loading: false, data, error: null });
+    } catch (error) {
+      setState({ loading: false, data: null, error });
+    }
+  }, [resolvedCurrency]);
+
+  apiUseEffect(() => { load(); }, [load]);
+
+  return { ...state, reload: load };
+}
+
 function useCsNews() {
   const [state, setState] = apiUseState({ loading: true, data: null, error: null });
 
@@ -319,6 +341,7 @@ Object.assign(window, {
   useItemOffers,
   useItemVariants,
   useMultiWearHistory,
+  useArmoryRoi,
   useCsNews,
   formatMoney,
   formatUsd,

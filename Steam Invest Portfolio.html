@@ -47,7 +47,10 @@
 
       // Set lang/currency globally so child components without prop access can read it
       useEffect(() => { window.__lang = t.lang; }, [t.lang]);
-      useEffect(() => { window.__currency = t.currency || 'usd'; }, [t.currency]);
+      useEffect(() => {
+        window.__currency = t.currency || 'usd';
+        window.dispatchEvent(new Event('currency-change'));
+      }, [t.currency]);
 
       // Apply data-attrs to body for skin / glass
       useEffect(() => {
@@ -85,7 +88,7 @@
               <TopMovers onItemClick={goItem} auth={auth} />
               <MarketCatalog onItemClick={goItem} />
               <CaseROI />
-              <FloatExplainer />
+              <ArmoryROI />
               <StatsBand />
               <FAQ lang={t.lang} />
               <Footer lang={t.lang} />

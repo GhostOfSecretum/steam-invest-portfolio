@@ -719,79 +719,161 @@ function CaseROI() {
   );
 }
 
-/* Float / Wear explainer */
-function FloatExplainer() {
-  const t = useT(window.__lang || 'en');
-  const [hover, setHover] = useState(0.18);
-  const detailCards = t === I18N.ru
-    ? [
-        { k: 'PAINT SEED', v: 'Целое число, которое определяет расположение паттерна. Для `Case Hardened` или `Fade` отдельные seed могут давать премию в 50-500x.' },
-        { k: 'STICKER CRAFT', v: 'Позиция, сочетание и процент скрейпа наклеек. Крафт с `4x holo Katowice 2014` иногда стоит дороже самого скина.' },
-        { k: 'PATTERN INDEX', v: 'Вместе с float и seed определяет легендарные паттерны `1-of-N` вроде `Blue Gem`, `Fire & Ice` или `Emerald`.' },
-        { k: 'FADE PERCENTAGE', v: 'Для линейки `Fade` это видимая доля цветового градиента. `100% Fade` может стоить в 2-8 раз выше нижней границы рынка.' },
-      ]
-    : [
-        { k: 'PAINT SEED', v: 'The integer that determines pattern placement. For Case Hardened or Fade, certain seeds command 50-500x premiums.' },
-        { k: 'STICKER CRAFT', v: 'Position, layering, and scrape % of applied stickers. A 4x holo Katowice 2014 craft can outvalue the host skin.' },
-        { k: 'PATTERN INDEX', v: 'Combined with float and seed, identifies legendary 1-of-N patterns (Blue Gem, Fire & Ice, Emerald).' },
-        { k: 'FADE PERCENTAGE', v: 'For Fade-line skins, the visible color spread. 100% fades can be priced at 2-8x the floor.' },
-      ];
+function armoryRoiTone(roi) {
+  if (!Number.isFinite(roi)) return 'muted';
+  if (roi >= 100) return 'good';
+  if (roi >= 80) return 'mid';
+  return 'low';
+}
+
+function formatArmoryMoney(value, currency) {
+  if (!Number.isFinite(value)) return '—';
+  return formatMoney(value, { digits: 2, currency });
+}
+
+function ArmoryROI() {
+  const lang = window.__lang || 'en';
+  const t = useT(lang);
+  const [currency, setCurrency] = useState(() => getActiveCurrency());
+
+  useEffect(() => {
+    const sync = () => setCurrency(getActiveCurrency());
+    window.addEventListener('currency-change', sync);
+    return () => window.removeEventListener('currency-change', sync);
+  }, []);
+
+  const feed = useArmoryRoi(currency);
+  const items = feed.data?.items || [];
+  const updatedLabel = feed.data?.updatedAt
+    ? new Date(feed.data.updatedAt).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    })
+    : '—';
+
+  const copy = lang === 'ru'
+    ? {
+      pricing: 'Источник цен',
+      currency: 'Валюта',
+      updated: 'Обновлено',
+      starRoi: 'ROI звёзд',
+      profit: 'Профит',
+      avg: 'СР.',
+      days: 'дней осталось',
+      loading: 'Загружаем Armory…',
+      empty: 'Нет данных Armory.',
+    }
+    : {
+      pricing: 'Pricing Source',
+      currency: 'Currency',
+      updated: 'Updated',
+      starRoi: 'Star ROI',
+      profit: 'Profit',
+      avg: 'AVG',
+      days: 'days remaining',
+      loading: 'Loading Armory…',
+      empty: 'No Armory data.',
+    };
+
   return (
-    <section className="section">
+    <section className="section armory-section">
       <div className="container">
-        <SectionHeader title={t.sections.float} sub={t.sections.floatSub} num="04" />
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 24 }}>
-          <div className="glass" style={{ padding: 32 }}>
-            <div className="eyebrow">FLOAT VALUE · 0.000 → 1.000</div>
-            <div style={{ marginTop: 24, position: 'relative', height: 60 }}>
-              <div className="float-bar" style={{ height: 14, borderRadius: 7 }}></div>
-              {[
-                { val: 0.035, label: 'FN' }, { val: 0.11, label: 'MW' }, { val: 0.265, label: 'FT' },
-                { val: 0.415, label: 'WW' }, { val: 0.725, label: 'BS' },
-              ].map((m, i) => (
-                <div key={i} style={{
-                  position: 'absolute', left: `${m.val * 100}%`, top: 22,
-                  fontFamily: 'var(--f-mono)', fontSize: 11, letterSpacing: '0.1em',
-                  color: 'var(--fg-2)', transform: 'translateX(-50%)',
-                }}>{m.label}</div>
-              ))}
-              {/* hover marker */}
-              <div style={{
-                position: 'absolute', left: `${hover * 100}%`, top: -10, transform: 'translateX(-50%)',
-                width: 2, height: 34, background: 'var(--fg-0)',
-                boxShadow: '0 0 12px var(--accent-glow)',
-              }}></div>
-              <div style={{
-                position: 'absolute', left: `${hover * 100}%`, bottom: -4, transform: 'translateX(-50%)',
-                fontFamily: 'var(--f-mono)', fontSize: 11.5, color: 'var(--accent)',
-              }}>{hover.toFixed(4)}</div>
+        <SectionHeader title={t.sections.armory} sub={t.sections.armorySub} num="04" />
+
+        <div className="armory-shell">
+          <div className="armory-toolbar">
+            <div className="armory-toolbar-group">
+              <span className="armory-toolbar-label">{copy.pricing}</span>
+              <span className="armory-source-pill">Steam</span>
             </div>
-            <input type="range" min={0} max={1} step={0.001} value={hover}
-                   onChange={(e) => setHover(parseFloat(e.target.value))}
-                   style={{ width: '100%', marginTop: 32, accentColor: 'oklch(0.68 0.22 5)' }} />
-            <div style={{ marginTop: 24, padding: 16, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                {[
-                  { l: 'AK-47 Asiimov', f: 0.18, p: 84.20 },
-                  { l: 'AK-47 Asiimov', f: 0.45, p: 31.10 },
-                  { l: 'AK-47 Asiimov', f: 0.78, p: 22.40 },
-                ].map((s, i) => (
-                  <div key={i}>
-                    <div className="eyebrow">SAMPLE {i + 1}</div>
-                    <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-1)', marginTop: 4 }}>float {s.f.toFixed(3)}</div>
-                    <div style={{ fontFamily: 'var(--f-display)', fontSize: 22, fontWeight: 500, marginTop: 6 }}>{formatUsd(s.p)}</div>
-                  </div>
+            <div className="armory-toolbar-group">
+              <span className="armory-toolbar-label">{copy.currency}</span>
+              <div className="armory-currency-row">
+                {['usd', 'rub'].map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`armory-currency-btn ${currency === key ? 'is-active' : ''}`}
+                    onClick={() => {
+                      window.__currency = key;
+                      setCurrency(key);
+                      window.dispatchEvent(new Event('currency-change'));
+                    }}
+                  >
+                    {key.toUpperCase()}
+                  </button>
                 ))}
               </div>
             </div>
+            <div className="armory-toolbar-group armory-toolbar-updated">
+              <span className="armory-toolbar-label">{copy.updated}</span>
+              <span className="armory-updated-val">{updatedLabel}</span>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {detailCards.map((d, i) => (
-              <div key={i} className="glass" style={{ padding: 16 }}>
-                <div className="eyebrow" style={{ color: 'var(--accent)' }}>{d.k}</div>
-                <div style={{ marginTop: 8, fontSize: 13.5, lineHeight: 1.55, color: 'var(--fg-1)' }}>{d.v}</div>
-              </div>
+          {feed.loading && !items.length ? (
+            <div className="armory-empty">{copy.loading}</div>
+          ) : null}
+          {!feed.loading && !items.length ? (
+            <div className="armory-empty">{feed.error?.message || copy.empty}</div>
+          ) : null}
+
+          <div className="armory-grid">
+            {items.map((item) => (
+              <article key={item.id} className={`armory-tile tone-${armoryRoiTone(item.roi)}`}>
+                <div className="armory-tile-head">
+                  <h3 className="armory-tile-title">{item.name}</h3>
+                  <span className="armory-tile-rank">#{item.rank}</span>
+                </div>
+
+                <div className="armory-tile-body">
+                  <div className="armory-tile-stats">
+                    <div className="armory-stat">
+                      <span className="armory-stat-icon" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 8h16v10H4z" stroke="currentColor" strokeWidth="1.5"/><path d="M8 8V6h8v2" stroke="currentColor" strokeWidth="1.5"/></svg>
+                      </span>
+                      <span className="armory-stat-label">{copy.starRoi}</span>
+                      <span className="armory-stat-val">{Number.isFinite(item.roi) ? `${item.roi}%` : '—'}</span>
+                    </div>
+                    {Number.isFinite(item.profitChance) ? (
+                      <div className="armory-stat">
+                        <span className="armory-stat-icon" aria-hidden="true">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M8 7h8M7 12h10M8 17h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                        </span>
+                        <span className="armory-stat-label">{copy.profit}</span>
+                        <span className="armory-stat-val">{item.profitChance}%</span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="armory-tile-art">
+                    {item.imageUrl ? (
+                      <img src={withSteamImageSize(item.imageUrl, 360, 270)} alt="" loading="lazy" />
+                    ) : (
+                      <div className="armory-tile-art-fallback" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="armory-tile-foot">
+                  <div className="armory-tile-cost">
+                    <span className="armory-tile-stars">{item.stars} ★</span>
+                    <span className="armory-tile-slash">/</span>
+                    <span>{formatArmoryMoney(item.starCost, currency)}</span>
+                    <span className="armory-tile-arrow">→</span>
+                    <span className="armory-tile-ev">{formatArmoryMoney(item.ev, currency)} {copy.avg}</span>
+                  </div>
+                  {Number.isFinite(item.daysRemaining) ? (
+                    <div className="armory-tile-days">
+                      <span aria-hidden="true">⏱</span>
+                      {item.daysRemaining} {copy.days}
+                    </div>
+                  ) : null}
+                  {item.volumeLabel ? (
+                    <span className="armory-tile-volume">{item.volumeLabel}</span>
+                  ) : null}
+                </div>
+                <div className="armory-tile-accent" aria-hidden="true" />
+              </article>
             ))}
           </div>
         </div>
@@ -979,4 +1061,4 @@ function Footer({ lang }) {
   );
 }
 
-Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, FloatExplainer, StatsBand, FAQ, Footer, SectionHeader });
+Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, StatsBand, FAQ, Footer, SectionHeader });

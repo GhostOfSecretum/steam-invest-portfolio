@@ -8,6 +8,7 @@ const { getSteamProfile } = require('./services/steam');
 const { getPortfolio, setBasisPerUnitByMarketHashName } = require('./services/portfolio');
 const { getMarketSnapshot, getMarketCatalog, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
+const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
 const { createPairingCode, redeemPairingCode, validateDeviceToken, saveDesktopInventory } = require('./services/desktop');
 
@@ -152,6 +153,16 @@ app.get('/api/market/history-multi', asyncRoute(async (req, res) => {
 app.get('/api/news/cs2', asyncRoute(async (req, res) => {
   const news = await getCsNews();
   res.json(news);
+}));
+
+app.get('/api/armory/roi', asyncRoute(async (req, res) => {
+  const roi = await getArmoryRoi({
+    currency: req.query.currency,
+    starPreset: req.query.starPreset,
+    customUsdPerStar: req.query.customUsdPerStar,
+    steamFees: req.query.steamFees,
+  });
+  res.json(roi);
 }));
 
 app.get('/api/news/telegram-media/:sourceId/:messageId', asyncRoute(async (req, res) => {
