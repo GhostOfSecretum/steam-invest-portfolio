@@ -214,12 +214,15 @@ app.post('/api/desktop/inventory-sync', asyncRoute(async (req, res) => {
     return;
   }
 
+  const storageItemCount = Number(req.body?.storageItemCount) || items.filter((item) => item.inStorage).length;
+
   await saveDesktopInventory(device.steamId, {
     totalItemCount: items.reduce((sum, item) => sum + Number(item.amount || 1), 0),
+    storageItemCount,
     items,
   });
 
-  res.json({ ok: true, steamId: device.steamId, itemCount: items.length });
+  res.json({ ok: true, steamId: device.steamId, itemCount: items.length, storageItemCount });
 }));
 
 app.get('/api/desktop/login', asyncRoute(async (req, res) => {
@@ -244,6 +247,7 @@ app.get('/api/desktop/status', requireAuth, asyncRoute(async (req, res) => {
     connected: Boolean(inventory),
     syncedAt: inventory?.syncedAt || null,
     totalItemCount: inventory?.totalItemCount || 0,
+    storageItemCount: inventory?.storageItemCount || 0,
   });
 }));
 

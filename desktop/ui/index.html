@@ -47,6 +47,16 @@
     .status { font-family: var(--f-mono); font-size: 12px; color: var(--fg-2); margin-top: 12px; }
     .status.ok { color: var(--green); }
     .status.err { color: var(--red); }
+    .notice {
+      margin: 10px 0 12px; padding: 12px; border-radius: 10px;
+      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.18);
+      color: var(--fg-1); font-size: 12px; line-height: 1.5;
+    }
+    .check {
+      display: flex; align-items: flex-start; gap: 8px; margin-top: 8px;
+      color: var(--fg-0); font-size: 12px; line-height: 1.4;
+    }
+    .check input { width: auto; margin: 2px 0 0; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
     .dot.green { background: var(--green); }
     .dot.amber { background: var(--amber); }
@@ -72,9 +82,23 @@
       <h1><span class="dot green"></span>Desktop linked</h1>
       <p id="connected-info">Ready to sync your full CS2 inventory.</p>
 
-      <button class="btn btn-ghost" id="btn-steam-login">Log in to Steam</button>
-      <button class="btn btn-primary" id="btn-sync">Sync inventory now</button>
-      <button class="btn btn-danger" id="btn-disconnect">Disconnect</button>
+      <button class="btn btn-ghost" id="btn-steam-login">1. Войти в Steam (инвентарь)</button>
+      <div id="gc-consent" class="notice">
+        <strong>Storage Units — опционально и только просмотр.</strong><br>
+        Для содержимого хранилищ Steam нужен локальный вход в CS2 Game Coordinator.
+        Токен хранится только на этом компьютере через защищённое хранилище ОС; на сервер отправляется только список предметов.
+        Перемещение, трейды, продажа, удаление и переименование не поддерживаются.
+        <label class="check">
+          <input type="checkbox" id="gc-consent-check">
+          <span>Я понимаю, что это read-only подключение к GC, и хочу включить отображение содержимого хранилищ.</span>
+        </label>
+      </div>
+      <button class="btn btn-ghost" id="btn-gc-connect">2. Подключить хранилища (только просмотр, QR)</button>
+      <button class="btn btn-ghost hidden" id="btn-gc-disconnect">Отключить хранилища</button>
+      <button class="btn btn-primary" id="btn-sync">3. Синхронизировать инвентарь</button>
+      <button class="btn btn-ghost" id="btn-dashboard">Открыть дашборд в браузере</button>
+      <button class="btn btn-danger" id="btn-disconnect">Отключить desktop</button>
+      <div id="gc-status" class="status"></div>
       <div id="sync-status" class="status"></div>
     </div>
   </div>
@@ -101,6 +125,28 @@
       $('step-connected').classList.remove('hidden');
       const last = state.lastSync ? `Last sync: ${new Date(state.lastSync).toLocaleString()}` : 'Not synced yet';
       $('connected-info').textContent = `Steam ID: ${state.steamId} · ${last}`;
+      updateGcUi(state);
+    }
+
+    function updateGcUi(state) {
+      const gcOn = Boolean(state.gcConnected);
+      $('btn-gc-connect').classList.toggle('hidden', gcOn);
+      $('btn-gc-disconnect').classList.toggle('hidden', !gcOn);
+      $('gc-consent').classList.toggle('hidden', gcOn);
+      if (state.steamLoggedIn) {
+        $('sync-status').className = 'status ok';
+        $('sync-status').textContent = 'Steam-сессия активна на этом компьютере.';
+      }
+      if (gcOn) {
+        const storageLast = state.lastStorageSync
+          ? `Склады синхронизированы: ${new Date(state.lastStorageSync).toLocaleString()}`
+          : 'Склады подключены — нажмите «3. Синхронизировать»';
+        $('gc-status').className = 'status ok';
+        $('gc-status').textContent = `${state.gcAccountName || 'Steam'} · ${storageLast}`;
+      } else {
+        $('gc-status').className = 'status';
+        $('gc-status').textContent = 'Хранилища не подключены — нажмите кнопку 2 (QR в Steam Mobile).';
+      }
     }
 
     $('btn-pair').addEventListener('click', async () => {
@@ -122,26 +168,79 @@
 
     $('btn-steam-login').addEventListener('click', async () => {
       $('sync-status').className = 'status';
-      $('sync-status').textContent = 'Opening Steam login...';
+      $('sync-status').textContent = 'Открываем вход Steam…';
       try {
-        await window.desktop.openSteamLogin();
+        const result = await window.desktop.openSteamLogin();
         $('sync-status').className = 'status ok';
-        $('sync-status').textContent = 'Steam session ready. Click "Sync inventory now".';
+        $('sync-status').textContent = result.alreadyLoggedIn
+          ? 'Steam уже подключён — можно сразу синхронизировать.'
+          : 'Steam-сессия сохранена. Нажмите «Синхронизировать инвентарь».';
+        const state = await window.desktop.getState();
+        showConnected(state);
       } catch (err) {
         $('sync-status').className = 'status err';
         $('sync-status').textContent = err.message;
       }
     });
 
-    $('btn-sync').addEventListener('click', async () => {
-      $('sync-status').className = 'status';
-      $('sync-status').textContent = 'Syncing inventory...';
+    $('btn-gc-connect').addEventListener('click', async () => {
+      if (!$('gc-consent-check').checked) {
+        $('gc-status').className = 'status err';
+        $('gc-status').textContent = 'Подтвердите read-only подключение Storage Units галочкой выше.';
+        return;
+      }
+      $('gc-status').className = 'status';
+      $('gc-status').textContent = 'Opening Steam QR login…';
       try {
-        const result = await window.desktop.syncInventory();
-        $('sync-status').className = 'status ok';
-        $('sync-status').textContent = `Synced ${result.itemCount} rows (${result.totalPieces} items total)`;
+        await window.desktop.gcStartQrLogin();
         const state = await window.desktop.getState();
         showConnected(state);
+      } catch (err) {
+        $('gc-status').className = 'status err';
+        $('gc-status').textContent = err.message;
+      }
+    });
+
+    $('btn-gc-disconnect').addEventListener('click', async () => {
+      await window.desktop.gcDisconnect();
+      const state = await window.desktop.getState();
+      showConnected(state);
+    });
+
+    $('btn-sync').addEventListener('click', async () => {
+      $('sync-status').className = 'status';
+      $('sync-status').textContent = 'Синхронизация… (склады могут занять 1–2 мин)';
+      $('btn-sync').disabled = true;
+      try {
+        const result = await window.desktop.syncInventory();
+        const state = await window.desktop.getState();
+        showConnected(state);
+
+        if (result.gcConnected && result.gcStorageError) {
+          $('gc-status').className = 'status err';
+          $('gc-status').textContent = `Ошибка складов: ${result.gcStorageError}. Закройте клиент Steam на ПК и повторите.`;
+        }
+
+        $('sync-status').className = 'status ok';
+        const storageNote = result.storageItemCount
+          ? `, из складов: ${result.storageItemCount}`
+          : (result.gcConnected ? ', склады: 0 (пусто или ошибка GC)' : '');
+        $('sync-status').textContent = `Готово: ${result.itemCount} строк, ${result.totalPieces} предметов${storageNote}. Открываем дашборд…`;
+
+        await window.desktop.openDashboard();
+      } catch (err) {
+        $('sync-status').className = 'status err';
+        $('sync-status').textContent = err.message;
+      } finally {
+        $('btn-sync').disabled = false;
+      }
+    });
+
+    $('btn-dashboard').addEventListener('click', async () => {
+      $('sync-status').className = 'status';
+      $('sync-status').textContent = 'Открываем дашборд…';
+      try {
+        await window.desktop.openDashboard();
       } catch (err) {
         $('sync-status').className = 'status err';
         $('sync-status').textContent = err.message;

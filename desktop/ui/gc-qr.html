@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Storage Units · Read-only</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0c11; color: #e8e6e3; font-family: -apple-system, sans-serif;
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 24px; text-align: center;
+    }
+    h1 { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+    p { font-size: 13px; color: #7a7874; line-height: 1.5; max-width: 320px; margin-bottom: 16px; }
+    #qr { width: 280px; height: 280px; background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+    #qr img { width: 260px; height: 260px; }
+    .ok { color: #34d399; margin-top: 16px; font-size: 13px; }
+    .err { color: #ef4444; margin-top: 16px; font-size: 13px; }
+    .loading { color: #f59e0b; font-size: 12px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>Scan with Steam Mobile</h1>
+  <p>Read-only access to Storage Unit contents. We never move or trade items. Token stays on this computer only.</p>
+  <div id="qr"><span class="loading">Loading QR…</span></div>
+  <div id="status"></div>
+  <script>
+    window.gcQr.onQrImage((dataUrl) => {
+      document.getElementById('qr').innerHTML = `<img src="${dataUrl}" alt="Steam QR">`;
+    });
+    window.gcQr.onLoginSuccess(({ accountName }) => {
+      document.getElementById('status').className = 'ok';
+      document.getElementById('status').textContent = `Подключено: ${accountName}. Окно закроется автоматически.`;
+    });
+    window.gcQr.onLoginError((message) => {
+      document.getElementById('status').className = 'err';
+      document.getElementById('status').textContent = message;
+    });
+  </script>
+</body>
+</html>

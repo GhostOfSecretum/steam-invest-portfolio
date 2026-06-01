@@ -49,6 +49,7 @@ async function saveDesktopInventory(steamId, inventory) {
     steamId,
     syncedAt: new Date().toISOString(),
     totalItemCount: inventory.totalItemCount,
+    storageItemCount: inventory.storageItemCount || 0,
     items: inventory.items,
   });
 }

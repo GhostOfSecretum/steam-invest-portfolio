@@ -146,6 +146,9 @@ function Dashboard({ lang, onItemClick, auth }) {
             <h1 className="display" style={{ fontSize: 44, fontWeight: 500, letterSpacing: '-0.02em' }}>{t.dash.title}</h1>
             <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
               {data.profile?.personaname || data.profile?.steamId} · synced {new Date(data.syncedAt).toLocaleString()} · {data.assetEntriesCount} Steam stacks · {inventorySourceLabel(data.inventoryProvider, lang)} · {data.cached ? 'cache' : 'live'}
+              {data.storageItemCount > 0 && (
+                <span> · {lang === 'ru' ? `в хранилищах: ${data.storageItemCount}` : `in storage: ${data.storageItemCount}`}</span>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -415,6 +418,11 @@ function InventoryTable({ items, onItemClick, lang, onBasisSaved }) {
               <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center' }}>
                 {h.marketableQty > 0 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--green)' }}>marketable</span>}
                 {h.assetIds?.length > 1 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>{h.assetIds.length} stacks merged</span>}
+                {(h.inStorage || h.storageQty > 0) && (
+                  <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--cyan)' }} title={h.storageUnitName || ''}>
+                    {lang === 'ru' ? 'хранилище' : 'storage'}{h.storageUnitName ? ` · ${h.storageUnitName}` : ''}
+                  </span>
+                )}
                 {lockLabel && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--amber)' }}>{lockLabel}</span>}
               </div>
             </div>

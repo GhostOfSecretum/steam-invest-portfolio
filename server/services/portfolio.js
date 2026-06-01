@@ -15,6 +15,7 @@ async function getPortfolio(steamId, options = {}) {
   ]);
 
   const useDesktop = desktopInventory && Array.isArray(desktopInventory.items) && desktopInventory.items.length > 0;
+  const storageItemCount = useDesktop ? Number(desktopInventory.storageItemCount || 0) : 0;
   const inventory = useDesktop
     ? {
       syncedAt: desktopInventory.syncedAt,
@@ -22,6 +23,7 @@ async function getPortfolio(steamId, options = {}) {
       inventoryProvider: 'desktop',
       totalInventoryCount: desktopInventory.totalItemCount,
       assetEntriesCount: desktopInventory.items.length,
+      storageItemCount,
       items: desktopInventory.items,
     }
     : steamInventory;
@@ -44,6 +46,7 @@ async function getPortfolio(steamId, options = {}) {
     cached: inventory.cached,
     inventoryProvider: providerLabel,
     desktopConnected: useDesktop,
+    storageItemCount: useDesktop ? storageItemCount : 0,
     totalInventoryCount: inventory.totalInventoryCount,
     assetEntriesCount: inventory.assetEntriesCount,
     uniqueInventoryCount: items.length,
@@ -61,6 +64,7 @@ async function getPortfolio(steamId, options = {}) {
       { t: 'now', a: `Inventory sync · ${inventory.totalInventoryCount} items across ${items.length} unique rows`, c: 'var(--fg-2)' },
       { t: 'now', a: `Price refresh · ${pricedCount}/${inventory.totalInventoryCount} priced`, c: pricedCount ? 'var(--green)' : 'var(--amber)' },
       { t: useDesktop ? 'desktop' : (inventory.cached ? 'cache' : 'live'), a: useDesktop ? 'Full inventory from desktop client' : (inventory.cached ? 'Loaded from local cache' : 'Fetched from Steam'), c: useDesktop ? 'var(--green)' : 'var(--cyan)' },
+      ...(storageItemCount > 0 ? [{ t: 'storage', a: `Storage units · ${storageItemCount} items included (read-only GC sync)`, c: 'var(--cyan)' }] : []),
     ],
   };
 }
@@ -96,7 +100,8 @@ function aggregatePortfolioItems(items) {
   const grouped = new Map();
 
   for (const item of items) {
-    const key = item.marketHashName || item.name || item.assetid;
+    const location = item.inStorage ? `storage:${item.storageUnitId || 'unit'}` : 'inventory';
+    const key = `${item.marketHashName || item.name || item.assetid}::${location}`;
     const current = grouped.get(key);
 
     if (!current) {
@@ -104,6 +109,7 @@ function aggregatePortfolioItems(items) {
         ...item,
         assetIds: [item.assetid],
         stackCount: 1,
+        storageQty: item.inStorage ? item.qty : 0,
         tradableQty: item.tradable ? item.qty : 0,
         marketableQty: item.marketable ? item.qty : 0,
         totalBasis: item.basis * item.qty,
@@ -117,6 +123,7 @@ function aggregatePortfolioItems(items) {
     current.pnl += item.pnl;
     current.stickers += item.stickers;
     current.totalBasis += item.basis * item.qty;
+    current.storageQty = (current.storageQty || 0) + (item.inStorage ? item.qty : 0);
     current.tradableQty += item.tradable ? item.qty : 0;
     current.marketableQty += item.marketable ? item.qty : 0;
     current.value = current.value ?? item.value;

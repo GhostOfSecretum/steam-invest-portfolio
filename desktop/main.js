@@ -1,15 +1,123 @@
-const { app, BrowserWindow, ipcMain, session } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, safeStorage, session } = require('electron');
 const path = require('path');
+const QRCode = require('qrcode');
 const Store = require('electron-store');
+const { fetchStorageContents, startQrLogin } = require('./gc-storage-sync');
+const { mergeInventoryItems } = require('./inventory-merge');
 
 const store = new Store({ encryptionKey: 'steam-invest-local-only' });
 
 const SERVER_URL = store.get('serverUrl', 'http://localhost:3000');
 const STEAM_COMMUNITY = 'https://steamcommunity.com';
 const INVENTORY_URL_PATTERN = /\/inventory\/(\d{17})\/730\/2/;
+const GC_REFRESH_TOKEN_KEY = 'gcRefreshTokenProtected';
+const LEGACY_GC_REFRESH_TOKEN_KEY = 'gcRefreshToken';
+
+function ensureSecretStorageAvailable() {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('Защищённое хранилище macOS недоступно. Подключение складов отключено для безопасности.');
+  }
+}
+
+function setGcRefreshToken(refreshToken) {
+  ensureSecretStorageAvailable();
+  store.set(GC_REFRESH_TOKEN_KEY, safeStorage.encryptString(refreshToken).toString('base64'));
+  store.delete(LEGACY_GC_REFRESH_TOKEN_KEY);
+}
+
+function getGcRefreshToken() {
+  const protectedToken = store.get(GC_REFRESH_TOKEN_KEY);
+  if (protectedToken) {
+    ensureSecretStorageAvailable();
+    return safeStorage.decryptString(Buffer.from(protectedToken, 'base64'));
+  }
+
+  const legacyToken = store.get(LEGACY_GC_REFRESH_TOKEN_KEY);
+  if (!legacyToken) return null;
+
+  if (!safeStorage.isEncryptionAvailable()) {
+    store.delete(LEGACY_GC_REFRESH_TOKEN_KEY);
+    return null;
+  }
+
+  setGcRefreshToken(legacyToken);
+  return legacyToken;
+}
+
+function clearGcState() {
+  store.delete(GC_REFRESH_TOKEN_KEY);
+  store.delete(LEGACY_GC_REFRESH_TOKEN_KEY);
+  store.delete('gcAccountName');
+  store.delete('lastStorageSync');
+}
+
+function hasGcRefreshToken() {
+  try {
+    return Boolean(getGcRefreshToken());
+  } catch (err) {
+    console.warn('[gc-storage] protected token unavailable:', err.message);
+    return false;
+  }
+}
+
+async function hasSteamWebSession() {
+  const cookies = await session.fromPartition('persist:steam').cookies.get({ url: STEAM_COMMUNITY });
+  return cookies.some((c) => c.name === 'steamLoginSecure');
+}
+
+async function openSteamLoginWindow() {
+  if (await hasSteamWebSession()) {
+    return { ok: true, alreadyLoggedIn: true };
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearInterval(cookiePoll);
+      fn(value);
+    };
+
+    const loginWin = new BrowserWindow({
+      width: 900,
+      height: 720,
+      title: 'Вход в Steam',
+      modal: false,
+      show: false,
+      backgroundColor: '#1b2838',
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        partition: 'persist:steam',
+      },
+    });
+
+    loginWin.once('ready-to-show', () => loginWin.show());
+    loginWin.loadURL(`${STEAM_COMMUNITY}/login/home/?redir=&redir_ssl=1`);
+
+    const cookiePoll = setInterval(async () => {
+      if (loginWin.isDestroyed()) return;
+      if (await hasSteamWebSession()) {
+        loginWin.close();
+        finish(resolve, { ok: true });
+      }
+    }, 800);
+
+    loginWin.on('closed', async () => {
+      if (settled) return;
+      if (await hasSteamWebSession()) {
+        finish(resolve, { ok: true });
+      } else {
+        finish(reject, new Error('Вход не завершён. Войдите в Steam в открывшемся окне и дождитесь автоматического закрытия.'));
+      }
+    });
+  });
+}
 
 let mainWindow = null;
 let setupWindow = null;
+let qrLoginWindow = null;
 
 function createWindow() {
   const deviceToken = store.get('deviceToken');
@@ -26,17 +134,9 @@ function createWindow() {
     },
   });
 
+  mainWindow.loadFile(path.join(__dirname, 'ui', 'index.html'));
   if (isPaired) {
-    openDesktopApp().catch((error) => {
-      console.warn('[desktop] failed to open paired session:', error.message);
-      resetDesktopState();
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.loadFile(path.join(__dirname, 'ui', 'index.html'));
-      }
-    });
     autoSyncIfNeeded();
-  } else {
-    mainWindow.loadFile(path.join(__dirname, 'ui', 'index.html'));
   }
 
   mainWindow.on('closed', () => { mainWindow = null; });
@@ -60,21 +160,9 @@ async function autoSyncIfNeeded() {
       return;
     }
 
-    const items = await fetchFullInventory(steamId, steamSession);
-    const serverUrl = store.get('serverUrl', SERVER_URL);
-    await fetch(`${serverUrl}/api/desktop/inventory-sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Device-Token': deviceToken },
-      body: JSON.stringify({ items }),
-    });
-    store.set('lastSync', new Date().toISOString());
-    console.log(`[auto-sync] done: ${items.length} items`);
+    const result = await runInventorySync(steamId, steamSession, deviceToken, { includeStorage: false });
+    console.log(`[auto-sync] done: ${result.itemCount} rows (${result.storageItemCount} in storage)`);
 
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      openDesktopApp().catch((error) => {
-        console.warn('[desktop] failed to refresh paired session:', error.message);
-      });
-    }
   } catch (err) {
     console.warn('[auto-sync] failed:', err.message);
   }
@@ -110,6 +198,47 @@ function resetDesktopState() {
   store.delete('deviceToken');
   store.delete('steamId');
   store.delete('lastSync');
+  clearGcState();
+}
+
+async function runInventorySync(steamId, steamSession, deviceToken, { includeStorage = true } = {}) {
+  const serverUrl = store.get('serverUrl', SERVER_URL);
+  let storageItems = [];
+  let gcStorageError = null;
+  const refreshToken = includeStorage ? getGcRefreshToken() : null;
+
+  if (refreshToken) {
+    try {
+      const gcResult = await fetchStorageContents(refreshToken, steamId);
+      storageItems = gcResult.items || [];
+      if (gcResult.refreshToken) {
+        setGcRefreshToken(gcResult.refreshToken);
+      }
+      store.set('lastStorageSync', new Date().toISOString());
+      console.log(`[gc-storage] synced ${storageItems.length} items from storage units`);
+    } catch (err) {
+      gcStorageError = err.message || String(err);
+      console.warn('[gc-storage] sync skipped:', gcStorageError);
+    }
+  }
+
+  const webItems = await fetchFullInventory(steamId, steamSession);
+  const items = mergeInventoryItems(webItems, storageItems);
+  const response = await fetch(`${serverUrl}/api/desktop/inventory-sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Device-Token': deviceToken },
+    body: JSON.stringify({ items, storageItemCount: storageItems.length }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Sync failed');
+  store.set('lastSync', new Date().toISOString());
+  return {
+    itemCount: items.length,
+    storageItemCount: storageItems.length,
+    totalPieces: items.reduce((s, i) => s + Number(i.amount || 1), 0),
+    gcStorageError,
+    gcConnected: includeStorage && Boolean(refreshToken),
+  };
 }
 
 app.whenReady().then(() => {
@@ -129,6 +258,17 @@ function buildAppMenu() {
       label: 'Inventory',
       submenu: [
         {
+          label: 'Desktop Settings',
+          accelerator: 'CmdOrCtrl+,',
+          click: () => showDesktopSettings(),
+        },
+        {
+          label: 'Open Portfolio Dashboard',
+          accelerator: 'CmdOrCtrl+D',
+          click: () => openDesktopApp().catch((e) => console.error('[menu] dashboard:', e.message)),
+        },
+        { type: 'separator' },
+        {
           label: 'Steam Login',
           click: async () => {
             try { await handleSteamLogin(); } catch (e) { console.error('[menu] steam login error:', e.message); }
@@ -141,15 +281,25 @@ function buildAppMenu() {
             try { await handleManualSync(); } catch (e) { console.error('[menu] sync error:', e.message); }
           },
         },
+        {
+          label: 'Connect Storage Units (Read-Only)',
+          click: async () => {
+            try { await openGcQrLoginWindow({ skipConsent: false }); } catch (e) { console.error('[menu] gc login error:', e.message); }
+          },
+        },
+        {
+          label: 'Disconnect Storage Units',
+          click: () => {
+            clearGcState();
+          },
+        },
         { type: 'separator' },
         {
           label: 'Disconnect Desktop',
           click: async () => {
-            store.delete('deviceToken');
-            store.delete('steamId');
-            store.delete('lastSync');
+            resetDesktopState();
             session.fromPartition('persist:steam').clearStorageData();
-            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadFile(path.join(__dirname, 'ui', 'index.html'));
+            showDesktopSettings();
           },
         },
       ],
@@ -160,20 +310,7 @@ function buildAppMenu() {
 }
 
 async function handleSteamLogin() {
-  return new Promise((resolve) => {
-    const loginWin = new BrowserWindow({
-      width: 800, height: 650, title: 'Steam Login',
-      parent: mainWindow, modal: true,
-      webPreferences: { contextIsolation: true, nodeIntegration: false, partition: 'persist:steam' },
-    });
-    loginWin.loadURL(`${STEAM_COMMUNITY}/login/home/`);
-    loginWin.webContents.on('did-navigate', (_e, url) => {
-      if (url.includes('steamcommunity.com/id/') || url.includes('steamcommunity.com/profiles/')) {
-        loginWin.close();
-      }
-    });
-    loginWin.on('closed', () => resolve());
-  });
+  return openSteamLoginWindow();
 }
 
 async function handleManualSync() {
@@ -187,26 +324,28 @@ async function handleManualSync() {
 
   console.log('[sync] starting manual sync...');
   const steamSession = session.fromPartition('persist:steam');
-  const items = await fetchFullInventory(steamId, steamSession);
+  const result = await runInventorySync(steamId, steamSession, deviceToken, { includeStorage: true });
+  console.log(`[sync] done: ${result.itemCount} rows (${result.storageItemCount} in storage)`);
 
-  await fetch(`${serverUrl}/api/desktop/inventory-sync`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Device-Token': deviceToken },
-    body: JSON.stringify({ items }),
-  });
-  store.set('lastSync', new Date().toISOString());
-  console.log(`[sync] done: ${items.length} items`);
+}
 
-  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(buildDesktopAppUrl());
+function showDesktopSettings() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.loadFile(path.join(__dirname, 'ui', 'index.html'));
+  }
 }
 
 // --- IPC handlers ---
 
-ipcMain.handle('get-state', () => ({
+ipcMain.handle('get-state', async () => ({
   deviceToken: store.get('deviceToken', null),
   steamId: store.get('steamId', null),
-  serverUrl: SERVER_URL,
+  serverUrl: store.get('serverUrl', SERVER_URL),
   lastSync: store.get('lastSync', null),
+  gcConnected: hasGcRefreshToken(),
+  gcAccountName: store.get('gcAccountName', null),
+  lastStorageSync: store.get('lastStorageSync', null),
+  steamLoggedIn: await hasSteamWebSession(),
 }));
 
 ipcMain.handle('pair-device', async (_event, { serverUrl, code }) => {
@@ -222,11 +361,7 @@ ipcMain.handle('pair-device', async (_event, { serverUrl, code }) => {
   store.set('steamId', data.steamId);
   store.set('serverUrl', serverUrl);
 
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    openDesktopApp().catch((error) => {
-      console.warn('[desktop] failed after pairing:', error.message);
-    });
-  }
+  showDesktopSettings();
 
   return { steamId: data.steamId };
 });
@@ -234,63 +369,140 @@ ipcMain.handle('pair-device', async (_event, { serverUrl, code }) => {
 ipcMain.handle('open-steam-login', async () => {
   const steamId = store.get('steamId');
   if (!steamId) throw new Error('Not paired yet');
-
-  return new Promise((resolve, reject) => {
-    const loginWin = new BrowserWindow({
-      width: 800,
-      height: 650,
-      title: 'Steam Login',
-      parent: mainWindow,
-      modal: true,
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        partition: 'persist:steam',
-      },
-    });
-
-    loginWin.loadURL(`${STEAM_COMMUNITY}/login/home/`);
-
-    loginWin.webContents.on('did-navigate', (_event, url) => {
-      if (url.includes('steamcommunity.com/id/') || url.includes('steamcommunity.com/profiles/')) {
-        loginWin.close();
-        resolve({ ok: true });
-      }
-    });
-
-    loginWin.on('closed', () => resolve({ ok: true }));
-  });
+  return openSteamLoginWindow();
 });
 
 ipcMain.handle('sync-inventory', async () => {
   const steamId = store.get('steamId');
   const deviceToken = store.get('deviceToken');
-  const serverUrl = store.get('serverUrl', SERVER_URL);
   if (!steamId || !deviceToken) throw new Error('Not paired');
 
   const steamSession = session.fromPartition('persist:steam');
-  const items = await fetchFullInventory(steamId, steamSession);
+  const result = await runInventorySync(steamId, steamSession, deviceToken, { includeStorage: true });
 
-  const response = await fetch(`${serverUrl}/api/desktop/inventory-sync`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Device-Token': deviceToken,
-    },
-    body: JSON.stringify({ items }),
+  return result;
+});
+
+ipcMain.handle('open-dashboard', async () => {
+  await openDesktopApp();
+  return { ok: true };
+});
+
+ipcMain.handle('gc-get-status', () => ({
+  connected: hasGcRefreshToken(),
+  accountName: store.get('gcAccountName', null),
+  lastStorageSync: store.get('lastStorageSync', null),
+}));
+
+ipcMain.handle('gc-disconnect', () => {
+  clearGcState();
+  return { ok: true };
+});
+
+ipcMain.handle('gc-start-qr-login', async () => {
+  if (qrLoginWindow && !qrLoginWindow.isDestroyed()) {
+    qrLoginWindow.focus();
+    return { ok: true, alreadyOpen: true };
+  }
+  return openGcQrLoginWindow({ skipConsent: true });
+});
+
+async function confirmStorageSyncConsent() {
+  ensureSecretStorageAvailable();
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    buttons: ['Подключить только просмотр', 'Отмена'],
+    cancelId: 1,
+    defaultId: 1,
+    title: 'Подключение Storage Units',
+    message: 'Storage Units требуют локального подключения к CS2 Game Coordinator.',
+    detail: [
+      'Это опциональная read-only функция.',
+      'Мы не запрашиваем пароль Steam.',
+      'Steam-токен хранится только на этом компьютере через защищённое хранилище ОС.',
+      'На сервер отправляется только список предметов, без токенов.',
+      'Приложение не умеет перемещать, продавать, трейдить, удалять или переименовывать предметы.',
+    ].join('\n'),
   });
 
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Sync failed');
+  return result.response === 0;
+}
 
-  store.set('lastSync', new Date().toISOString());
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    openDesktopApp().catch((error) => {
-      console.warn('[desktop] failed after manual sync:', error.message);
-    });
+async function openGcQrLoginWindow({ skipConsent = false } = {}) {
+  if (!skipConsent) {
+    const approved = await confirmStorageSyncConsent();
+    if (!approved) return { ok: false, cancelled: true };
+  } else {
+    ensureSecretStorageAvailable();
   }
-  return { itemCount: items.length, totalPieces: items.reduce((s, i) => s + Number(i.amount || 1), 0) };
-});
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      fn(value);
+    };
+
+    qrLoginWindow = new BrowserWindow({
+      width: 440,
+      height: 560,
+      title: 'Хранилища · только просмотр',
+      modal: false,
+      show: false,
+      backgroundColor: '#0a0c11',
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: path.join(__dirname, 'preload-gc-qr.js'),
+      },
+    });
+
+    qrLoginWindow.once('ready-to-show', () => {
+      if (qrLoginWindow && !qrLoginWindow.isDestroyed()) qrLoginWindow.show();
+    });
+
+    qrLoginWindow.loadFile(path.join(__dirname, 'ui', 'gc-qr.html'));
+
+    qrLoginWindow.webContents.once('did-finish-load', () => {
+      startQrLogin({
+        onQrUrl: async (url) => {
+          if (!qrLoginWindow || qrLoginWindow.isDestroyed()) return;
+          try {
+            const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 280 });
+            qrLoginWindow.webContents.send('gc-qr-image', dataUrl);
+          } catch (err) {
+            qrLoginWindow.webContents.send('gc-login-error', err.message);
+          }
+        },
+        onAuthenticated: ({ accountName }) => {
+          if (qrLoginWindow && !qrLoginWindow.isDestroyed()) {
+            qrLoginWindow.webContents.send('gc-login-success', { accountName });
+          }
+        },
+      })
+        .then(({ refreshToken, accountName }) => {
+          setGcRefreshToken(refreshToken);
+          store.set('gcAccountName', accountName);
+          setTimeout(() => {
+            if (qrLoginWindow && !qrLoginWindow.isDestroyed()) qrLoginWindow.close();
+          }, 1500);
+          finish(resolve, { accountName });
+        })
+        .catch((err) => {
+          if (qrLoginWindow && !qrLoginWindow.isDestroyed()) {
+            qrLoginWindow.webContents.send('gc-login-error', err.message || String(err));
+          }
+          finish(reject, err);
+        });
+    });
+
+    qrLoginWindow.on('closed', () => {
+      qrLoginWindow = null;
+      finish(reject, new Error('Окно закрыто до завершения входа. Отсканируйте QR в Steam Mobile.'));
+    });
+  });
+}
 
 ipcMain.handle('disconnect', () => {
   resetDesktopState();
