@@ -31,10 +31,9 @@ History lookup:
 
 The item card shows a price-per-marketplace list with deep buy-links:
 
-- Live prices (no key needed): `steam-market`, `skinport` (full `/v1/items` dump), `csgomarket` (market.csgo.com `/api/v2/prices/USD.json` dump).
-- Live prices (key needed): `csfloat` when `CSFLOAT_API_KEY` is set.
-- Link-only (no practical public price API): `lisskins`, `csmoney`, `buff163`.
-  - LIS-Skins only publishes a ~114 MB full dump (`market_export_json/api_csgo_full.json`) which is too large to fetch per request, so it stays a buy-link until a partner API token is wired.
+- Live prices (no key needed): `steam-market`, `skinport` (full `/v1/items` dump), `csgomarket` (market.csgo.com `/api/v2/prices/USD.json` dump), `lisskins` (short `market_export_json/csgo.json` dump, ~3.5 MB).
+- Live prices (key needed): `csfloat` when `CSFLOAT_API_KEY` is set; `lisskins` per-item search via `/v1/market/search` when `LISSKINS_API_KEY` is set (preferred over the short dump).
+- Link-only (no practical public price API): `csmoney`, `buff163`.
   - CS.Money sits behind a Cloudflare bot challenge ("Just a moment…"), so its market API can't be read server-side without a browser/cookie bypass; kept as a buy-link.
 
 All third-party USD prices are converted to RUB with the live Steam FX rate (`getSteamRubRate`), so roubles match steamcommunity.com instead of a fixed multiplier.

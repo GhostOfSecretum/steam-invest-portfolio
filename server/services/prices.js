@@ -8,6 +8,7 @@ const TOP_MOVERS_MAX_AGE_MS = 30 * 60 * 1000;
 const FX_RATE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const SKINPORT_MAX_AGE_MS = 5 * 60 * 1000;
 const CSFLOAT_MAX_AGE_MS = 2 * 60 * 1000;
+const LISSKINS_MAX_AGE_MS = 2 * 60 * 1000;
 
 const FX_PROBE_ITEM = 'Revolution Case';
 
@@ -240,6 +241,49 @@ async function getCSFloatPrice(marketHashName) {
     medianPrice: Math.round(median * 100) / 100,
     volume24h: prices.length,
     provider: 'csfloat',
+    currencyCode: 'USD',
+    updatedAt: new Date().toISOString(),
+  };
+
+  await setCached(key, result);
+  return result;
+}
+
+async function getLisSkinsPrice(marketHashName) {
+  if (!process.env.LISSKINS_API_KEY) return null;
+
+  const key = `lisskins:price:${marketHashName}`;
+  const cached = await getCached(key, LISSKINS_MAX_AGE_MS);
+  if (cached) return cached;
+
+  const params = new URLSearchParams({
+    game: 'csgo',
+    sort_by: 'lowest_price',
+    only_unlocked: '1',
+  });
+  params.append('names[]', marketHashName);
+
+  const json = await fetchJson(`https://api.lis-skins.com/v1/market/search?${params}`, {
+    timeoutMs: 8000,
+    headers: { Authorization: `Bearer ${process.env.LISSKINS_API_KEY}` },
+  }).catch(() => null);
+
+  const rows = Array.isArray(json?.data) ? json.data : [];
+  const exact = rows.filter((entry) => entry?.name === marketHashName);
+  const source = exact.length ? exact : rows;
+  const prices = source
+    .map((entry) => Number(entry?.price))
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .sort((a, b) => a - b);
+
+  if (!prices.length) return null;
+
+  const result = {
+    marketHashName,
+    price: Math.round(prices[0] * 100) / 100,
+    medianPrice: Math.round(prices[Math.floor(prices.length / 2)] * 100) / 100,
+    volume24h: prices.length,
+    provider: 'lisskins',
     currencyCode: 'USD',
     updatedAt: new Date().toISOString(),
   };
@@ -1241,6 +1285,24 @@ async function getSkinportPriceList() {
   return map;
 }
 
+async function getLisSkinsPriceList() {
+  const key = 'pricelist:lisskins';
+  const cached = await getCached(key, BULK_PRICELIST_MAX_AGE_MS);
+  if (cached) return cached;
+
+  const rows = await fetchJson('https://lis-skins.com/market_export_json/csgo.json', { timeoutMs: 15000 }).catch(() => null);
+  const list = Array.isArray(rows) ? rows : [];
+  const map = {};
+  for (const row of list) {
+    const price = Number(row.unlocked_price ?? row.price);
+    if (row.name && Number.isFinite(price)) {
+      map[row.name] = { price, volume: Number(row.count) || null };
+    }
+  }
+  if (Object.keys(map).length) await setCached(key, map);
+  return map;
+}
+
 function buildMarketplaceUrl(provider, marketHashName) {
   const enc = encodeURIComponent(marketHashName);
   switch (provider) {
@@ -1257,17 +1319,22 @@ function buildMarketplaceUrl(provider, marketHashName) {
 
 // All live prices arrive in USD; convert to roubles using the same rate Steam uses.
 async function getItemOffers(marketHashName, currency = 'usd') {
-  const [steamUsd, steamRub, skinportList, csgomarketList, csfloat, rate] = await Promise.all([
+  const [steamUsd, steamRub, skinportList, csgomarketList, lisskinsList, csfloat, lisskinsApi, rate] = await Promise.all([
     getSteamMarketPrice(marketHashName, 'usd').catch(() => null),
     getSteamMarketPrice(marketHashName, 'rub').catch(() => null),
     getSkinportPriceList().catch(() => ({})),
     getMarketCsgoPriceList().catch(() => ({})),
+    getLisSkinsPriceList().catch(() => ({})),
     getCSFloatPrice(marketHashName).catch(() => null),
+    getLisSkinsPrice(marketHashName).catch(() => null),
     getSteamRubRate().catch(() => null),
   ]);
 
   const rubPerUsd = Number.isFinite(rate) && rate > 0 ? rate : null;
   const toRub = (usd) => Number.isFinite(usd) && rubPerUsd ? Math.round(usd * rubPerUsd * 100) / 100 : null;
+  const lisskinsPrice = Number.isFinite(lisskinsApi?.price)
+    ? lisskinsApi.price
+    : (lisskinsList[marketHashName]?.price ?? null);
 
   const offers = [
     {
@@ -1291,8 +1358,8 @@ async function getItemOffers(marketHashName, currency = 'usd') {
     {
       provider: 'lisskins',
       label: 'LIS-Skins',
-      price: null,
-      priceRub: null,
+      price: lisskinsPrice,
+      priceRub: toRub(lisskinsPrice),
     },
     {
       provider: 'csfloat',

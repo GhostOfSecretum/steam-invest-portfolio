@@ -14,6 +14,10 @@ const { createPairingCode, redeemPairingCode, validateDeviceToken, saveDesktopIn
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
+
+if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
 const rootDir = path.join(__dirname, '..');
 const appFile = 'Steam Invest Portfolio.html';
 
@@ -41,7 +45,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/auth/steam', asyncRoute(async (req, res) => {
-  const redirectUrl = await getSteamRedirectUrl();
+  const redirectUrl = await getSteamRedirectUrl(req);
   res.redirect(redirectUrl);
 }));
 

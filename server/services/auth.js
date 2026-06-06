@@ -8,29 +8,37 @@ const OPENID_CHECK = {
   identity: 'https://steamcommunity.com/openid/id/',
 };
 
-let relyingParty;
+function resolveBaseUrl(req) {
+  const configured = String(process.env.APP_BASE_URL || '').trim().replace(/\/+$/, '');
+  if (configured) return configured;
 
-function getBaseUrl() {
-  return String(process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, '');
-}
-
-function getRelyingParty() {
-  if (!relyingParty) {
-    const baseUrl = getBaseUrl();
-    relyingParty = new openid.RelyingParty(
-      `${baseUrl}/api/auth/steam/callback`,
-      baseUrl,
-      true,
-      true,
-      [],
-    );
+  if (!req) {
+    return `http://localhost:${process.env.PORT || 3000}`;
   }
-  return relyingParty;
+
+  const proto = String(req.get('x-forwarded-proto') || req.protocol || 'http').split(',')[0].trim();
+  const host = String(req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
+  if (!host) {
+    return `http://localhost:${process.env.PORT || 3000}`;
+  }
+
+  return `${proto}://${host}`;
 }
 
-async function getSteamRedirectUrl() {
+function createRelyingParty(baseUrl) {
+  return new openid.RelyingParty(
+    `${baseUrl}/api/auth/steam/callback`,
+    baseUrl,
+    true,
+    true,
+    [],
+  );
+}
+
+async function getSteamRedirectUrl(req) {
+  const relyingParty = createRelyingParty(resolveBaseUrl(req));
   return new Promise((resolve, reject) => {
-    getRelyingParty().authenticate('https://steamcommunity.com/openid', false, (error, authUrl) => {
+    relyingParty.authenticate('https://steamcommunity.com/openid', false, (error, authUrl) => {
       if (error) {
         const err = new Error((error && error.message) || String(error) || 'Steam OpenID failed to start.');
         err.status = 502;
@@ -78,8 +86,9 @@ async function authenticateSteam(req) {
     throw err;
   }
 
+  const relyingParty = createRelyingParty(resolveBaseUrl(req));
   return new Promise((resolve, reject) => {
-    getRelyingParty().verifyAssertion(req, (error, result) => {
+    relyingParty.verifyAssertion(req, (error, result) => {
       if (error) {
         const err = new Error((error && error.message) || String(error) || 'Steam OpenID verification failed.');
         err.status = 401;
