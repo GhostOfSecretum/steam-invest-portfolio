@@ -360,9 +360,57 @@ async function getSteamCurrencyRatio(marketHashName, fromCurrency = 'rub', toCur
   };
 }
 
+async function getCSMarketAPIHistory(marketHashName, currency = 'usd') {
+  if (!process.env.CSMARKET_API_KEY) return null;
+
+  const params = new URLSearchParams({
+    market_hash_name: marketHashName,
+    currency: normalizeCurrency(currency).toUpperCase(),
+  });
+  const json = await fetchJson(`https://api.csmarketapi.com/v1/sales/history/aggregate?${params}`, {
+    timeoutMs: 8000,
+    headers: { 'x-api-key': process.env.CSMARKET_API_KEY },
+  }).catch(() => null);
+
+  const rows = Array.isArray(json) ? json
+    : Array.isArray(json?.data) ? json.data
+    : Array.isArray(json?.items) ? json.items
+    : Array.isArray(json?.history) ? json.history
+    : [];
+
+  const data = rows
+    .map((point) => {
+      const date = point.date || point.day
+        || (point.timestamp ? new Date(point.timestamp * 1000).toISOString().slice(0, 10) : null);
+      const rawPrice = point.avg_price ?? point.median_price ?? point.price ?? point.avg ?? point.median;
+      const price = parseMoney(rawPrice);
+      return {
+        date,
+        price,
+        volume: Number.isFinite(point.volume) ? point.volume : null,
+      };
+    })
+    .filter((point) => point.date && Number.isFinite(point.price) && !Number.isNaN(new Date(point.date).getTime()))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  if (!data.length) return null;
+
+  return {
+    marketHashName,
+    currency: normalizeCurrency(currency).toUpperCase(),
+    data,
+    provider: 'csmarketapi',
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 async function getOptionalProviderHistory(marketHashName, currency = 'usd') {
   if (process.env.PRICEMPIRE_API_KEY) {
     const history = await getPriceEmpireHistory(marketHashName, currency).catch(() => null);
+    if (history?.data?.length) return history;
+  }
+  if (process.env.CSMARKET_API_KEY) {
+    const history = await getCSMarketAPIHistory(marketHashName, currency).catch(() => null);
     if (history?.data?.length) return history;
   }
   return null;
