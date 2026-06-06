@@ -104,6 +104,7 @@ function ItemDetail({ lang, item, onBack }) {
   }
 
   const rawSeries = multiState.data?.series || [];
+  const historyProviders = [...new Set(rawSeries.map((s) => s.provider).filter((p) => p && p !== 'none'))];
   const historyCurrency = (rawSeries.find(s => s.currency)?.currency || (activeCurrency === 'rub' ? 'RUB' : 'USD')).toLowerCase();
   const periodDays = typeof activePeriod.days === 'number' ? activePeriod.days : null;
   const cutoffTs = periodDays == null ? 0 : Date.now() - periodDays * 86400000;
@@ -396,8 +397,8 @@ function ItemDetail({ lang, item, onBack }) {
                 {multiState.loading
                   ? (lang === 'ru' ? 'загрузка…' : 'loading…')
                   : (lang === 'ru'
-                      ? `${chartSeries.length} кач. · реальные данные + модель`
-                      : `${chartSeries.length} exterior(s) · real + modeled`)}
+                      ? `${chartSeries.length} кач. · ${historyProviders[0] || 'нет данных'}`
+                      : `${chartSeries.length} exterior(s) · ${historyProviders[0] || 'no data'}`)}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3 }}>

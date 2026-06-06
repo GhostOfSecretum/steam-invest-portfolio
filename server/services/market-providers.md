@@ -22,10 +22,11 @@ Price lookup for a single item:
 
 History lookup:
 
-1. `pricempire` if `PRICEMPIRE_API_KEY` exists
-2. `skinport`
-3. `take.skin`
-4. synthetic fallback
+1. `csmarketapi` if `CSMARKET_API_KEY` exists (`/v1/sales/history/aggregate`, daily sales grouped by `day`)
+2. `pricempire` if `PRICEMPIRE_API_KEY` exists
+3. `skinport`
+4. `take.skin`
+5. synthetic fallback
 
 ### Item-detail marketplace offers (`getItemOffers`)
 

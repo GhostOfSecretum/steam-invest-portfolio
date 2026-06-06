@@ -419,57 +419,98 @@ async function getSteamCurrencyRatio(marketHashName, fromCurrency = 'rub', toCur
   };
 }
 
-async function getCSMarketAPIHistory(marketHashName, currency = 'usd') {
-  if (!process.env.CSMARKET_API_KEY) return null;
+function pickCSMarketDayPrice(sales) {
+  const rows = Array.isArray(sales) ? sales : [];
+  if (!rows.length) return null;
 
-  const params = new URLSearchParams({
-    market_hash_name: marketHashName,
-    currency: normalizeCurrency(currency).toUpperCase(),
-  });
-  const json = await fetchJson(`https://api.csmarketapi.com/v1/sales/history/aggregate?${params}`, {
-    timeoutMs: 8000,
-    headers: { 'x-api-key': process.env.CSMARKET_API_KEY },
-  }).catch(() => null);
+  const steam = rows.find((row) => row?.market === 'STEAMCOMMUNITY');
+  const source = steam ? [steam] : rows;
+  const prices = source
+    .map((row) => row?.median_price ?? row?.mean_price ?? row?.min_price ?? row?.max_price)
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .sort((a, b) => a - b);
 
+  if (!prices.length) return null;
+
+  const volume = source.reduce((sum, row) => sum + (Number(row?.volume) || 0), 0);
+  return {
+    price: Math.round(prices[Math.floor(prices.length / 2)] * 100) / 100,
+    volume: volume > 0 ? volume : null,
+  };
+}
+
+function normalizeCSMarketAPIHistory(json) {
   const rows = Array.isArray(json) ? json
     : Array.isArray(json?.data) ? json.data
     : Array.isArray(json?.items) ? json.items
     : Array.isArray(json?.history) ? json.history
     : [];
 
-  const data = rows
-    .map((point) => {
-      const date = point.date || point.day
-        || (point.timestamp ? new Date(point.timestamp * 1000).toISOString().slice(0, 10) : null);
-      const rawPrice = point.avg_price ?? point.median_price ?? point.price ?? point.avg ?? point.median;
+  return rows
+    .map((bucket) => {
+      const nested = pickCSMarketDayPrice(bucket?.sales);
+      if (nested) {
+        return {
+          date: bucket.day || bucket.date,
+          price: nested.price,
+          volume: nested.volume,
+        };
+      }
+
+      const date = bucket.date || bucket.day
+        || (bucket.timestamp ? new Date(bucket.timestamp * 1000).toISOString().slice(0, 10) : null);
+      const rawPrice = bucket.avg_price ?? bucket.median_price ?? bucket.price ?? bucket.avg ?? bucket.median;
       const price = parseMoney(rawPrice);
       return {
         date,
         price,
-        volume: Number.isFinite(point.volume) ? point.volume : null,
+        volume: Number.isFinite(bucket.volume) ? bucket.volume : null,
       };
     })
     .filter((point) => point.date && Number.isFinite(point.price) && !Number.isNaN(new Date(point.date).getTime()))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
 
+async function getCSMarketAPIHistory(marketHashName, currency = 'usd') {
+  if (!process.env.CSMARKET_API_KEY) return null;
+
+  const normalizedCurrency = normalizeCurrency(currency).toUpperCase();
+  const cacheKey = `csmarketapi:history:${marketHashName}:${normalizedCurrency}`;
+  const cached = await getCached(cacheKey, HISTORY_MAX_AGE_MS);
+  if (cached?.data?.length) return { ...cached, cached: true };
+
+  const params = new URLSearchParams({
+    market_hash_name: marketHashName,
+    currency: normalizedCurrency,
+    key: process.env.CSMARKET_API_KEY,
+  });
+  const json = await fetchJson(`https://api.csmarketapi.com/v1/sales/history/aggregate?${params}`, {
+    timeoutMs: 12000,
+  }).catch(() => null);
+
+  const data = normalizeCSMarketAPIHistory(json);
   if (!data.length) return null;
 
-  return {
+  const result = {
     marketHashName,
-    currency: normalizeCurrency(currency).toUpperCase(),
+    currency: normalizedCurrency,
     data,
     provider: 'csmarketapi',
     updatedAt: new Date().toISOString(),
   };
+
+  await setCached(cacheKey, result);
+  return { ...result, cached: false };
 }
 
 async function getOptionalProviderHistory(marketHashName, currency = 'usd') {
-  if (process.env.PRICEMPIRE_API_KEY) {
-    const history = await getPriceEmpireHistory(marketHashName, currency).catch(() => null);
-    if (history?.data?.length) return history;
-  }
   if (process.env.CSMARKET_API_KEY) {
     const history = await getCSMarketAPIHistory(marketHashName, currency).catch(() => null);
+    if (history?.data?.length) return history;
+  }
+  if (process.env.PRICEMPIRE_API_KEY) {
+    const history = await getPriceEmpireHistory(marketHashName, currency).catch(() => null);
     if (history?.data?.length) return history;
   }
   return null;
