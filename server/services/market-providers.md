@@ -36,7 +36,7 @@ The item card shows a price-per-marketplace list with deep buy-links:
 - Link-only (no practical public price API): `csmoney`, `buff163`.
   - CS.Money sits behind a Cloudflare bot challenge ("Just a moment…"), so its market API can't be read server-side without a browser/cookie bypass; kept as a buy-link.
 
-All third-party USD prices are converted to RUB with the live Steam FX rate (`getSteamRubRate`), so roubles match steamcommunity.com instead of a fixed multiplier.
+Steam uses native RUB from `steamcommunity.com`. Other marketplace USD quotes are converted with the CBR USD/RUB rate (`getMarketUsdRubRate`), not the inflated Steam FX rate, so LIS-Skins/Skinport rows are closer to what those sites charge in roubles.
 
 ### Per-quality variants (`getItemVariants`) & multi-wear history (`getMultiWearHistory`)
 

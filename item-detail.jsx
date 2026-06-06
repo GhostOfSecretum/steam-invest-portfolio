@@ -381,8 +381,8 @@ function ItemDetail({ lang, item, onBack }) {
               </div>
               <div style={{ marginTop: 10, fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>
                 {lang === 'ru'
-                  ? 'RUB пересчитан по курсу Steam · нажми, чтобы открыть площадку'
-                  : 'RUB at Steam FX rate · click to open the marketplace'}
+                  ? 'Steam — нативная цена; остальные площадки — USD × курс ЦБ · нажми, чтобы открыть'
+                  : 'Steam — native RUB; other marketplaces — USD × CBR rate · click to open'}
               </div>
             </div>
           </div>

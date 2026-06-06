@@ -259,7 +259,6 @@ async function getLisSkinsPrice(marketHashName) {
   const params = new URLSearchParams({
     game: 'csgo',
     sort_by: 'lowest_price',
-    only_unlocked: '1',
   });
   params.append('names[]', marketHashName);
 
@@ -385,6 +384,22 @@ async function inferRubRateFromBasis() {
     }
   } catch { /* no basis file */ }
   return null;
+}
+
+async function getMarketUsdRubRate() {
+  const key = 'fx:market-rub-per-usd';
+  const cached = await getCached(key, FX_RATE_MAX_AGE_MS);
+  if (Number.isFinite(cached)) return cached;
+
+  const staleCached = await getCached(key, 30 * 24 * 60 * 60 * 1000);
+  const json = await fetchJson('https://www.cbr-xml-daily.ru/daily_json.js', { timeoutMs: 5000 }).catch(() => null);
+  const rate = Number(json?.Valute?.USD?.Value);
+  if (Number.isFinite(rate) && rate > 0) {
+    await setCached(key, rate);
+    return rate;
+  }
+
+  return Number.isFinite(staleCached) ? staleCached : null;
 }
 
 async function getSteamCurrencyRatio(marketHashName, fromCurrency = 'rub', toCurrency = 'usd') {
@@ -1294,9 +1309,9 @@ async function getLisSkinsPriceList() {
   const list = Array.isArray(rows) ? rows : [];
   const map = {};
   for (const row of list) {
-    const price = Number(row.unlocked_price ?? row.price);
+    const price = Number(row.price ?? row.unlocked_price);
     if (row.name && Number.isFinite(price)) {
-      map[row.name] = { price, volume: Number(row.count) || null };
+      map[row.name] = { price, volume: Number(row.count) || null, url: row.url || null };
     }
   }
   if (Object.keys(map).length) await setCached(key, map);
@@ -1317,9 +1332,9 @@ function buildMarketplaceUrl(provider, marketHashName) {
   }
 }
 
-// All live prices arrive in USD; convert to roubles using the same rate Steam uses.
+// Third-party marketplaces quote USD; Steam has native RUB. Use CBR for non-Steam RUB display.
 async function getItemOffers(marketHashName, currency = 'usd') {
-  const [steamUsd, steamRub, skinportList, csgomarketList, lisskinsList, csfloat, lisskinsApi, rate] = await Promise.all([
+  const [steamUsd, steamRub, skinportList, csgomarketList, lisskinsList, csfloat, lisskinsApi, steamRate, marketRate] = await Promise.all([
     getSteamMarketPrice(marketHashName, 'usd').catch(() => null),
     getSteamMarketPrice(marketHashName, 'rub').catch(() => null),
     getSkinportPriceList().catch(() => ({})),
@@ -1328,44 +1343,54 @@ async function getItemOffers(marketHashName, currency = 'usd') {
     getCSFloatPrice(marketHashName).catch(() => null),
     getLisSkinsPrice(marketHashName).catch(() => null),
     getSteamRubRate().catch(() => null),
+    getMarketUsdRubRate().catch(() => null),
   ]);
 
-  const rubPerUsd = Number.isFinite(rate) && rate > 0 ? rate : null;
-  const toRub = (usd) => Number.isFinite(usd) && rubPerUsd ? Math.round(usd * rubPerUsd * 100) / 100 : null;
+  const steamRubPerUsd = Number.isFinite(steamRate) && steamRate > 0 ? steamRate : null;
+  const marketRubPerUsd = Number.isFinite(marketRate) && marketRate > 0 ? marketRate : steamRubPerUsd;
+  const toSteamRub = (usd) => Number.isFinite(usd) && steamRubPerUsd
+    ? Math.round(usd * steamRubPerUsd * 100) / 100
+    : null;
+  const toMarketRub = (usd) => Number.isFinite(usd) && marketRubPerUsd
+    ? Math.round(usd * marketRubPerUsd * 100) / 100
+    : null;
+  const lisskinsEntry = lisskinsList[marketHashName];
   const lisskinsPrice = Number.isFinite(lisskinsApi?.price)
     ? lisskinsApi.price
-    : (lisskinsList[marketHashName]?.price ?? null);
+    : (lisskinsEntry?.price ?? null);
+  const lisskinsUrl = lisskinsEntry?.url || buildMarketplaceUrl('lisskins', marketHashName);
 
   const offers = [
     {
       provider: 'steam',
       label: 'Steam Market',
       price: Number.isFinite(steamUsd?.price) ? steamUsd.price : null,
-      priceRub: Number.isFinite(steamRub?.price) ? steamRub.price : toRub(steamUsd?.price),
+      priceRub: Number.isFinite(steamRub?.price) ? steamRub.price : toSteamRub(steamUsd?.price),
     },
     {
       provider: 'skinport',
       label: 'Skinport',
       price: skinportList[marketHashName]?.price ?? null,
-      priceRub: toRub(skinportList[marketHashName]?.price),
+      priceRub: toMarketRub(skinportList[marketHashName]?.price),
     },
     {
       provider: 'csgomarket',
       label: 'Market.CSGO',
       price: csgomarketList[marketHashName]?.price ?? null,
-      priceRub: toRub(csgomarketList[marketHashName]?.price),
+      priceRub: toMarketRub(csgomarketList[marketHashName]?.price),
     },
     {
       provider: 'lisskins',
       label: 'LIS-Skins',
       price: lisskinsPrice,
-      priceRub: toRub(lisskinsPrice),
+      priceRub: toMarketRub(lisskinsPrice),
+      url: lisskinsUrl,
     },
     {
       provider: 'csfloat',
       label: 'CSFloat',
       price: Number.isFinite(csfloat?.price) ? csfloat.price : null,
-      priceRub: toRub(csfloat?.price),
+      priceRub: toMarketRub(csfloat?.price),
     },
     {
       provider: 'csmoney',
@@ -1382,7 +1407,7 @@ async function getItemOffers(marketHashName, currency = 'usd') {
   ].map((offer) => ({
     ...offer,
     currencyCode: 'USD',
-    url: buildMarketplaceUrl(offer.provider, marketHashName),
+    url: offer.url || buildMarketplaceUrl(offer.provider, marketHashName),
     hasPrice: Number.isFinite(offer.price),
   }));
 
@@ -1392,7 +1417,13 @@ async function getItemOffers(marketHashName, currency = 'usd') {
     return a.hasPrice ? -1 : b.hasPrice ? 1 : 0;
   });
 
-  return { marketHashName, offers, steamRubRate: rubPerUsd, updatedAt: new Date().toISOString() };
+  return {
+    marketHashName,
+    offers,
+    steamRubRate: steamRubPerUsd,
+    marketRubRate: marketRubPerUsd,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 // ───────────────────────────────────────────────────
