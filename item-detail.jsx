@@ -382,8 +382,8 @@ function ItemDetail({ lang, item, onBack }) {
               </div>
               <div style={{ marginTop: 10, fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>
                 {lang === 'ru'
-                  ? 'Steam — нативная цена; остальные площадки — USD × курс ЦБ · нажми, чтобы открыть'
-                  : 'Steam — native RUB; other marketplaces — USD × CBR rate · click to open'}
+                  ? 'Steam — нативная цена; LIS-Skins — ₽ с API/сайта; остальные — USD × курс ЦБ'
+                  : 'Steam — native RUB; LIS-Skins — RUB via API/site; others — USD × CBR rate'}
               </div>
             </div>
           </div>

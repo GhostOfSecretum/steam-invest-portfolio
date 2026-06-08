@@ -42,6 +42,7 @@
       const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
       const [screen, setScreen] = useState(window.location.hash === '#dashboard' ? 'dashboard' : 'home');
       const [activeItem, setActiveItem] = useState(null);
+      const [itemReturnScreen, setItemReturnScreen] = useState('dashboard');
       const [cursorStyle, setCursorStyle] = useState('default');
       const auth = useAuth();
 
@@ -61,7 +62,12 @@
       window.__lang = t.lang;
       window.__currency = t.currency || 'usd';
 
-      const goItem = (item) => { setActiveItem(item); setScreen('item'); window.scrollTo({top: 0, behavior: 'instant'}); };
+      const goItem = (item) => {
+        setItemReturnScreen(screen);
+        setActiveItem(item);
+        setScreen('item');
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      };
       const onNav = (s) => { setScreen(s); window.scrollTo({top: 0, behavior: 'instant'}); };
 
       return (
@@ -98,7 +104,7 @@
             <Dashboard lang={t.lang} onItemClick={goItem} auth={auth} />
           )}
           {screen === 'item' && (
-            <ItemDetail lang={t.lang} item={activeItem} onBack={() => onNav('dashboard')} />
+            <ItemDetail lang={t.lang} item={activeItem} onBack={() => onNav(itemReturnScreen)} />
           )}
 
           <CursorOverlay variant={cursorStyle} />
