@@ -1,5 +1,6 @@
-node_modules/
-.data/
+node_modules
+.data
 .env
+.git
 .DS_Store
 xray/config.json

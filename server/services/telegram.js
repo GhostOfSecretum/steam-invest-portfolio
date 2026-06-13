@@ -179,6 +179,34 @@ function getTelegramCredentials() {
   return { apiId, apiHash, session };
 }
 
+function getTelegramProxyConfig() {
+  const host = String(process.env.TELEGRAM_PROXY_HOST || '').trim();
+  const port = Number(process.env.TELEGRAM_PROXY_PORT);
+  if (!host || !Number.isFinite(port) || port < 1) return null;
+
+  return {
+    ip: host,
+    port,
+    socksType: 5,
+    MTProxy: false,
+    timeout: 10,
+  };
+}
+
+function getTelegramClientOptions(overrides = {}) {
+  const options = {
+    connectionRetries: overrides.connectionRetries ?? CONNECT_RETRIES,
+    timeout: (overrides.timeoutMs ?? CONNECT_TIMEOUT_MS) / 1000,
+    autoReconnect: overrides.autoReconnect ?? true,
+  };
+  const proxy = getTelegramProxyConfig();
+  if (proxy) {
+    options.useWSS = false;
+    options.proxy = proxy;
+  }
+  return options;
+}
+
 async function getTelegramClient(credentials) {
   if (!clientPromise) {
     clientPromise = connectTelegramClient(credentials).catch((error) => {
@@ -190,11 +218,7 @@ async function getTelegramClient(credentials) {
 }
 
 async function connectTelegramClient({ apiId, apiHash, session }) {
-  const client = new TelegramClient(new StringSession(session), apiId, apiHash, {
-    connectionRetries: CONNECT_RETRIES,
-    timeout: CONNECT_TIMEOUT_MS / 1000,
-    autoReconnect: true,
-  });
+  const client = new TelegramClient(new StringSession(session), apiId, apiHash, getTelegramClientOptions());
   try {
     await withTimeout(client.connect(), CONNECT_TIMEOUT_MS, 'Timed out connecting to Telegram.');
   } catch (error) {
@@ -416,4 +440,5 @@ function withTimeout(promise, timeoutMs, message) {
 module.exports = {
   getTelegramNewsChannels,
   getTelegramPostMedia,
+  getTelegramClientOptions,
 };

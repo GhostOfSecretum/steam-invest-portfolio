@@ -1,0 +1,36 @@
+services:
+  xray-config:
+    build: .
+    command: node scripts/generate-xray-config.js
+    env_file:
+      - .env
+    environment:
+      XRAY_CONFIG_PATH: /etc/xray/config.json
+    volumes:
+      - xray-config:/etc/xray
+
+  xray:
+    image: ghcr.io/xtls/xray-core:latest
+    restart: unless-stopped
+    command: run -c /etc/xray/config.json
+    volumes:
+      - xray-config:/etc/xray:ro
+    depends_on:
+      xray-config:
+        condition: service_completed_successfully
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TELEGRAM_PROXY_HOST: ${TELEGRAM_PROXY_HOST:-xray}
+      TELEGRAM_PROXY_PORT: ${TELEGRAM_PROXY_PORT:-1080}
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      - xray
+
+volumes:
+  xray-config:
