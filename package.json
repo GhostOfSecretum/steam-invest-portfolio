@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node --watch server/index.js",
     "telegram:session": "node scripts/create-telegram-session.js",
+    "telegram:session:apply": "node scripts/apply-telegram-session.js",
     "xray:config": "node scripts/generate-xray-config.js",
     "start": "node server/index.js"
   },
