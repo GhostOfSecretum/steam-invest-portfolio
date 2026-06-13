@@ -188,7 +188,6 @@ function getTelegramProxyConfig() {
     ip: host,
     port,
     socksType: 5,
-    MTProxy: false,
     timeout: 10,
   };
 }
