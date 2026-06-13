@@ -10,6 +10,18 @@ Current provider strategy in `server/services/prices.js`:
   - `pricempire`
   - `csfloat`
 
+### Catalog (`getMarketCatalog`)
+
+Default source is Steam Community Market search (`/market/search/render/`).
+
+Set `MARKET_CATALOG_PROVIDER=csmarketapi` (requires `CSMARKET_API_KEY`) to use CSMarketAPI instead:
+
+1. `GET /v1/items/` — full item dump, cached 24h, filtered locally (search/category/wear/special)
+2. `GET /v1/listings/latest/aggregate?markets=STEAMCOMMUNITY` — Steam listing prices per visible item, cached 10m
+3. Falls back to Steam search if the CSMarketAPI dump fails
+
+Price/popularity sorts hydrate up to 500 filtered items before paging. Pro plan recommended.
+
 ### Current order
 
 Price lookup for a single item:
