@@ -27,6 +27,8 @@ services:
     environment:
       TELEGRAM_PROXY_HOST: ${TELEGRAM_PROXY_HOST:-xray}
       TELEGRAM_PROXY_PORT: ${TELEGRAM_PROXY_PORT:-1080}
+    volumes:
+      - ./.data:/app/.data
     ports:
       - "${PORT:-3000}:3000"
     depends_on:
