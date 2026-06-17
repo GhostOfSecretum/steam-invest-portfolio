@@ -78,6 +78,7 @@ function StatCard({ label, value, delta, deltaColor, sub, accent }) {
 
 function inventorySourceLabel(source, lang) {
   if (source === 'desktop') return lang === 'ru' ? 'desktop · полный инвентарь' : 'desktop · full inventory';
+  if (source === 'manual') return lang === 'ru' ? 'ручной ввод' : 'manual input';
   return lang === 'ru' ? 'публичный Steam' : 'public Steam';
 }
 
@@ -106,24 +107,28 @@ function DesktopPairingButton({ lang }) {
 
 function Dashboard({ lang, onItemClick, auth }) {
   const t = useT(lang);
-  const portfolio = usePortfolio(auth);
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
+  const portfolio = usePortfolio(auth, selectedPortfolioId);
   const [range, setRange] = useState('30d');
   const [tab, setTab] = useState('inventory');
   const [query, setQuery] = useState('');
   const data = portfolio.data;
   const items = data?.items || [];
+  const portfolios = data?.portfolios || [];
+  const activePortfolioId = data?.portfolioId || selectedPortfolioId;
+  const isSteamPortfolio = data?.portfolioType === 'steam';
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return items;
     return items.filter((item) => item.marketHashName.toLowerCase().includes(needle));
   }, [items, query]);
 
-  if (!auth?.connected) {
-    return <DashboardState lang={lang} title={t.dash.title} auth={auth} />;
-  }
+  useEffect(() => {
+    if (!selectedPortfolioId && data?.portfolioId) setSelectedPortfolioId(data.portfolioId);
+  }, [data?.portfolioId, selectedPortfolioId]);
 
   if (portfolio.loading && !portfolio.data) {
-    return <DashboardState lang={lang} title={t.dash.title} message={lang === 'ru' ? 'Синхронизируем Steam inventory и цены...' : 'Syncing Steam inventory and prices...'} />;
+    return <DashboardState lang={lang} title={t.dash.title} message={lang === 'ru' ? 'Загружаем портфель и цены...' : 'Loading portfolio and prices...'} />;
   }
 
   if (portfolio.error) {
@@ -133,7 +138,23 @@ function Dashboard({ lang, onItemClick, auth }) {
   if (!data) return null;
 
   const pnlColor = data.pnl >= 0 ? 'var(--green)' : 'var(--red)';
-  const pricedPct = data.totalInventoryCount ? (data.pricedCount / data.totalInventoryCount) * 100 : 0;
+  const marketableQty = items.reduce((sum, item) => sum + (Number(item.marketableQty) || 0), 0);
+  const marketableValue = items.reduce((sum, item) => {
+    const unitValue = Number.isFinite(item.value) ? item.value : 0;
+    return sum + unitValue * (Number(item.marketableQty) || 0);
+  }, 0);
+  const notMarketableQty = Math.max(0, data.totalInventoryCount - marketableQty);
+  const valueRows = items
+    .map((item) => ({
+      name: item.name || item.marketHashName || 'Unknown item',
+      value: Number.isFinite(item.totalValue) ? item.totalValue : 0,
+    }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const topItem = valueRows[0];
+  const topItemPct = topItem && data.totalValue > 0 ? (topItem.value / data.totalValue) * 100 : 0;
+  const topFiveValue = valueRows.slice(0, 5).reduce((sum, item) => sum + item.value, 0);
+  const topFivePct = data.totalValue > 0 ? (topFiveValue / data.totalValue) * 100 : 0;
 
   return (
     <div style={{ padding: '40px 64px 80px' }}>
@@ -145,7 +166,7 @@ function Dashboard({ lang, onItemClick, auth }) {
             </div>
             <h1 className="display" style={{ fontSize: 44, fontWeight: 500, letterSpacing: '-0.02em' }}>{t.dash.title}</h1>
             <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
-              {data.profile?.personaname || data.profile?.steamId} · synced {new Date(data.syncedAt).toLocaleString()} · {data.assetEntriesCount} Steam stacks · {inventorySourceLabel(data.inventoryProvider, lang)} · {data.cached ? 'cache' : 'live'}
+              {data.portfolioName || data.profile?.personaname || data.profile?.steamId} · synced {new Date(data.syncedAt).toLocaleString()} · {data.assetEntriesCount} entries · {inventorySourceLabel(data.inventoryProvider, lang)} · {data.cached ? 'cache' : 'live'}
               {data.storageItemCount > 0 && (
                 <span> · {lang === 'ru' ? `в хранилищах: ${data.storageItemCount}` : `in storage: ${data.storageItemCount}`}</span>
               )}
@@ -153,18 +174,45 @@ function Dashboard({ lang, onItemClick, auth }) {
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {data.desktopConnected && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--green)' }}>● desktop</span>}
-            <DesktopPairingButton lang={lang} />
+            {auth?.connected && <DesktopPairingButton lang={lang} />}
             <button className="btn btn-sm btn-ghost" onClick={() => downloadPortfolioCsv(items)}>CSV</button>
-            <button className="btn btn-sm btn-ghost" onClick={() => portfolio.reload(true)}>{portfolio.loading ? 'Syncing...' : 'Sync'}</button>
+            <button className="btn btn-sm btn-ghost" onClick={() => portfolio.reload(isSteamPortfolio)}>
+              {portfolio.loading ? 'Syncing...' : (isSteamPortfolio ? 'Sync' : 'Refresh')}
+            </button>
             <button className="btn btn-sm btn-primary" title={lang === 'ru' ? 'Клик по ячейке Basis — ввести цену покупки за шт. (₽ или $ по переключателю валюты)' : 'Click Basis cell — enter buy price per item (RUB or USD from currency toggle)'}>Buy basis</button>
           </div>
         </div>
 
+        <PortfolioControls
+          lang={lang}
+          auth={auth}
+          portfolios={portfolios}
+          activePortfolioId={activePortfolioId}
+          portfolioType={data.portfolioType}
+          onSelect={(id) => setSelectedPortfolioId(id)}
+          onChanged={(id) => {
+            if (id) setSelectedPortfolioId(id);
+            portfolio.reload(false);
+          }}
+        />
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
-          <StatCard accent label={t.dash.total} value={compactUsd(data.totalValue)} delta={`${data.pricedCount}/${data.totalInventoryCount} priced`} sub={`${data.uniqueInventoryCount} unique rows from Steam inventory`} />
+          <StatCard accent label={t.dash.total} value={compactUsd(data.totalValue)} delta={`${data.pricedCount}/${data.totalInventoryCount} priced`} sub={`${data.uniqueInventoryCount} unique rows`} />
           <StatCard label={t.dash.pnl} value={`${data.pnl >= 0 ? '+' : ''}${compactUsd(data.pnl)}`} delta={`${data.pnlPct.toFixed(2)}% all-time`} deltaColor={pnlColor} sub={`Cost basis ${compactUsd(data.totalBasis)}`} />
-          <StatCard label={t.dash.liquidity} value={`${data.liquidityScore} / 100`} delta={`${data.totalVolume24h.toLocaleString()} volume / 24h`} deltaColor="var(--cyan)" sub="based on priced items" />
-          <StatCard label="Pricing coverage" value={`${pricedPct.toFixed(0)}%`} delta="Take.Skin + Steam fallback" deltaColor="var(--amber)" sub="all Steam inventory rows stay visible" />
+          <StatCard
+            label={lang === 'ru' ? 'ДОСТУПНО К ПРОДАЖЕ' : 'SELLABLE NOW'}
+            value={compactUsd(marketableValue)}
+            delta={`${marketableQty}/${data.totalInventoryCount} marketable`}
+            deltaColor="var(--cyan)"
+            sub={`${notMarketableQty} locked or storage`}
+          />
+          <StatCard
+            label={lang === 'ru' ? 'КОНЦЕНТРАЦИЯ' : 'CONCENTRATION'}
+            value={topItem ? `${topItemPct.toFixed(0)}%` : '0%'}
+            delta={topItem ? topItem.name : 'No priced items'}
+            deltaColor="var(--amber)"
+            sub={`Top 5 = ${topFivePct.toFixed(0)}% of portfolio`}
+          />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 24 }}>
@@ -224,7 +272,15 @@ function Dashboard({ lang, onItemClick, auth }) {
             }} />
           </div>
 
-          <InventoryTable items={filteredItems} onItemClick={onItemClick} lang={lang} onBasisSaved={() => portfolio.reload(false)} />
+          <InventoryTable
+            items={filteredItems}
+            onItemClick={onItemClick}
+            lang={lang}
+            portfolioId={activePortfolioId}
+            portfolioType={data.portfolioType}
+            onBasisSaved={() => portfolio.reload(false)}
+            onItemDeleted={() => portfolio.reload(false)}
+          />
         </div>
 
         <div className="glass" style={{ padding: 20 }}>
@@ -243,111 +299,287 @@ function Dashboard({ lang, onItemClick, auth }) {
   );
 }
 
-function BasisCell({ marketHashName, basisPerUnit, basisOriginal, basisCurrency, qty, totalBasis, lang, onSaved }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const inputRef = useRef(null);
-  const skipBlurRef = useRef(false);
-  const inputCurrency = getActiveCurrency();
+function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfolioType, onSelect, onChanged }) {
+  const [name, setName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const manualActive = portfolioType === 'manual' && activePortfolioId;
+
+  const createPortfolio = async () => {
+    const title = name.trim() || (lang === 'ru' ? 'Ручной портфель' : 'Manual portfolio');
+    setCreating(true);
+    try {
+      const data = await apiFetch('/api/portfolios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: title }),
+      });
+      setName('');
+      onChanged(data.portfolio?.id);
+    } catch (err) {
+      window.alert(err.message || (lang === 'ru' ? 'Не удалось создать портфель' : 'Could not create portfolio'));
+    }
+    setCreating(false);
+  };
+
+  return (
+    <div className="glass" style={{ padding: 16, marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 16, alignItems: 'start', position: 'relative', zIndex: 50 }}>
+      <div>
+        <div className="eyebrow">{lang === 'ru' ? 'Портфели' : 'Portfolios'}</div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <select
+            value={activePortfolioId || ''}
+            onChange={(e) => onSelect(e.target.value || null)}
+            style={portfolioInputStyle({ minWidth: 220 })}
+          >
+            {!activePortfolioId && <option value="">{lang === 'ru' ? 'Создай ручной портфель' : 'Create a manual portfolio'}</option>}
+            {portfolios.map((portfolio) => (
+              <option key={portfolio.id} value={portfolio.id}>
+                {portfolio.type === 'steam' ? 'Steam · ' : ''}{portfolio.name}{portfolio.itemCount != null ? ` (${portfolio.itemCount})` : ''}
+              </option>
+            ))}
+          </select>
+          {!auth?.connected && (
+            <button className="btn btn-sm btn-ghost" onClick={() => auth?.login && auth.login()}>
+              {lang === 'ru' ? 'Подключить Steam' : 'Link Steam'}
+            </button>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={lang === 'ru' ? 'Название нового портфеля' : 'New portfolio name'}
+            style={portfolioInputStyle({ flex: 1 })}
+          />
+          <button className="btn btn-sm btn-primary" onClick={createPortfolio} disabled={creating}>
+            {creating ? '...' : (lang === 'ru' ? 'Создать' : 'Create')}
+          </button>
+        </div>
+      </div>
+
+      <ManualItemForm
+        lang={lang}
+        portfolioId={manualActive ? activePortfolioId : null}
+        onSaved={() => onChanged(activePortfolioId)}
+      />
+    </div>
+  );
+}
+
+function ManualItemForm({ lang, portfolioId, onSaved }) {
+  const [name, setName] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [basisPerUnit, setBasisPerUnit] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [selectedSuggestion, setSelectedSuggestion] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const currency = getActiveCurrency();
 
   useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+    const query = name.trim();
+    if (!portfolioId || query.length < 2) {
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      return undefined;
     }
-  }, [editing]);
 
-  const startEdit = (e) => {
-    e.stopPropagation();
-    const displayValue = inputCurrency === 'rub'
-      ? (Number.isFinite(basisOriginal) && basisCurrency === 'rub'
-        ? basisOriginal
-        : (Number.isFinite(basisPerUnit) ? Number(usdBasisToInputDraft(basisPerUnit, inputCurrency)) : null))
-      : (Number.isFinite(basisOriginal) && basisCurrency === 'usd'
-        ? basisOriginal
-        : (Number.isFinite(basisPerUnit) ? Number(usdBasisToInputDraft(basisPerUnit, inputCurrency)) : null));
-    setDraft(Number.isFinite(displayValue) ? String(displayValue) : '');
-    setEditing(true);
-  };
-
-  const cancel = (e) => {
-    e?.stopPropagation();
-    skipBlurRef.current = true;
-    setEditing(false);
-  };
-
-  const commit = async (e) => {
-    e?.stopPropagation();
-    if (skipBlurRef.current) {
-      skipBlurRef.current = false;
-      return;
-    }
-    const raw = String(draft).trim().replace(',', '.');
-    if (raw === '') {
-      setEditing(false);
-      return;
-    }
-    const n = Number(raw);
-    if (!Number.isFinite(n) || n < 0) {
-      setEditing(false);
-      return;
-    }
-    try {
-      await apiFetch('/api/portfolio/basis', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ marketHashName, basisPerUnit: n, currency: inputCurrency }),
+    let active = true;
+    setSuggestionsLoading(true);
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({
+        query,
+        page: '1',
+        pageSize: '6',
+        category: 'all',
+        rarity: 'all',
+        wear: 'all',
+        special: 'all',
+        sort: 'name-asc',
       });
-      if (onSaved) onSaved();
+
+      apiFetch(`/api/market/catalog?${params.toString()}`)
+        .then((data) => {
+          if (!active) return;
+          setSuggestions(Array.isArray(data.items) ? data.items : []);
+          setSuggestionsOpen(true);
+        })
+        .catch(() => {
+          if (!active) return;
+          setSuggestions([]);
+        })
+        .finally(() => {
+          if (active) setSuggestionsLoading(false);
+        });
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [name, portfolioId]);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!portfolioId) return;
+    const selectedMarketHashName = selectedSuggestion?.marketHashName === name.trim() ? selectedSuggestion : null;
+    setSaving(true);
+    try {
+      await apiFetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          marketHashName: name.trim(),
+          name: name.trim(),
+          quantity: Number(quantity),
+          basisPerUnit: Number(String(basisPerUnit).replace(',', '.')),
+          currency,
+          iconUrl: selectedMarketHashName?.iconUrl,
+          marketUrl: selectedMarketHashName?.marketUrl,
+          category: selectedMarketHashName?.category,
+          rarity: selectedMarketHashName?.rarity,
+          wear: selectedMarketHashName?.wear,
+          tier: selectedMarketHashName?.tier,
+        }),
+      });
+      setName('');
+      setQuantity('1');
+      setBasisPerUnit('');
+      setSelectedSuggestion(null);
+      onSaved();
     } catch (err) {
-      window.alert(err.message || (lang === 'ru' ? 'Не удалось сохранить' : 'Could not save'));
+      window.alert(err.message || (lang === 'ru' ? 'Не удалось добавить предмет' : 'Could not add item'));
     }
-    setEditing(false);
+    setSaving(false);
   };
 
-  if (!marketHashName) {
-    return <div className="mono" style={{ fontSize: 12, color: 'var(--fg-2)' }}>—</div>;
-  }
-
-  if (editing) {
-    return (
-      <div className="mono" style={{ fontSize: 12 }} onClick={(e) => e.stopPropagation()}>
+  return (
+    <form onSubmit={submit}>
+      <div className="eyebrow">{lang === 'ru' ? 'Ручной ввод предметов' : 'Manual items'}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 86px 130px auto', gap: 8, marginTop: 10 }}>
+        <div style={{ position: 'relative', minWidth: 0, zIndex: 1 }}>
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setSelectedSuggestion(null);
+              setSuggestionsOpen(true);
+            }}
+            onFocus={() => setSuggestionsOpen(true)}
+            onBlur={() => setTimeout(() => setSuggestionsOpen(false), 120)}
+            placeholder={lang === 'ru' ? 'AK-47 | Redline (Field-Tested)' : 'AK-47 | Redline (Field-Tested)'}
+            disabled={!portfolioId}
+            style={portfolioInputStyle({ width: '100%' })}
+          />
+          {portfolioId && suggestionsOpen && (suggestionsLoading || suggestions.length > 0) && (
+            <div style={{
+              position: 'absolute',
+              zIndex: 100,
+              left: 0,
+              right: 0,
+              top: 'calc(100% + 6px)',
+              maxHeight: 260,
+              overflowY: 'auto',
+              borderRadius: 10,
+              border: '1px solid var(--line-strong)',
+              background: 'rgba(8,10,15,0.98)',
+              boxShadow: '0 18px 42px rgba(0,0,0,0.42)',
+            }}>
+              {suggestionsLoading && (
+                <div style={{ padding: 10, color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', fontSize: 11 }}>
+                  {lang === 'ru' ? 'Ищу предметы...' : 'Searching items...'}
+                </div>
+              )}
+              {!suggestionsLoading && suggestions.map((item) => (
+                <button
+                  key={item.marketHashName}
+                  type="button"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    setName(item.marketHashName);
+                    setSelectedSuggestion(item);
+                    setSuggestionsOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'grid',
+                    gridTemplateColumns: item.iconUrl ? '42px 1fr auto' : '1fr auto',
+                    gap: 10,
+                    alignItems: 'center',
+                    padding: '9px 10px',
+                    textAlign: 'left',
+                    borderBottom: '1px solid var(--line)',
+                    background: 'transparent',
+                  }}
+                >
+                  {item.iconUrl && <img src={item.iconUrl} alt="" style={{ width: 42, height: 28, objectFit: 'contain' }} />}
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.marketHashName}
+                    </span>
+                    <span style={{ display: 'block', marginTop: 3, fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)', textTransform: 'uppercase' }}>
+                      {item.category || 'cs2'} · {item.wear || 'N/A'}
+                    </span>
+                  </span>
+                  <span className="mono" style={{ fontSize: 11, color: 'var(--fg-2)' }}>
+                    {Number.isFinite(item.price) ? formatItemPrice(item, item.price, { digits: 2 }) : 'N/A'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <input
-          ref={inputRef}
-          value={draft}
-          placeholder={inputCurrency === 'rub'
-            ? (lang === 'ru' ? '₽ за шт.' : 'RUB per item')
-            : (lang === 'ru' ? '$ за шт.' : 'USD per item')}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => { setTimeout(commit, 0); }}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === 'Enter') { e.preventDefault(); commit(e); }
-            if (e.key === 'Escape') { e.preventDefault(); cancel(e); }
-          }}
-          style={{
-            width: '100%',
-            maxWidth: inputCurrency === 'rub' ? 110 : 92,
-            padding: '4px 6px',
-            borderRadius: 6,
-            fontSize: 12,
-            fontFamily: 'var(--f-mono)',
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid var(--accent)',
-            color: 'var(--fg-0)',
-            outline: 'none',
-          }}
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          type="number"
+          min="1"
+          step="1"
+          disabled={!portfolioId}
+          style={portfolioInputStyle()}
         />
+        <input
+          value={basisPerUnit}
+          onChange={(e) => setBasisPerUnit(e.target.value)}
+          placeholder={currency === 'rub' ? '₽ / шт.' : '$ / item'}
+          disabled={!portfolioId}
+          style={portfolioInputStyle()}
+        />
+        <button className="btn btn-sm btn-primary" disabled={!portfolioId || saving}>
+          {saving ? '...' : (lang === 'ru' ? 'Добавить' : 'Add')}
+        </button>
       </div>
-    );
-  }
+      <div style={{ marginTop: 8, color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', fontSize: 11 }}>
+        {portfolioId
+          ? (lang === 'ru' ? `Цена покупки сохраняется за 1 шт. в ${currency.toUpperCase()}.` : `Buy price is saved per item in ${currency.toUpperCase()}.`)
+          : (lang === 'ru' ? 'Выбери или создай ручной портфель.' : 'Select or create a manual portfolio.')}
+      </div>
+    </form>
+  );
+}
 
-  const unitHint = inputCurrency === 'rub'
-    ? (lang === 'ru' ? 'цена покупки за шт. (₽)' : 'buy price per item (RUB)')
-    : (lang === 'ru' ? 'цена покупки за шт. ($)' : 'buy price per item (USD)');
+function portfolioInputStyle(extra = {}) {
+  return {
+    padding: '7px 10px',
+    borderRadius: 8,
+    fontSize: 12,
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid var(--line)',
+    color: 'var(--fg-0)',
+    fontFamily: 'var(--f-body)',
+    outline: 'none',
+    minWidth: 0,
+    ...extra,
+  };
+}
+
+function BasisCell({ basisPerUnit, basisOriginal, basisCurrency, qty, totalBasis, lang }) {
+  const inputCurrency = getActiveCurrency();
+
   const title = qty > 1 && Number.isFinite(totalBasis)
     ? (lang === 'ru' ? `Всего: ${formatUsd(totalBasis)} · за шт.` : `Total: ${formatUsd(totalBasis)} · per unit`)
-    : (lang === 'ru' ? `Клик — ${unitHint}` : `Click — ${unitHint}`);
+    : (lang === 'ru' ? 'Цена покупки за шт.' : 'Buy price per item');
 
   const displayBasis = inputCurrency === 'rub'
     ? (Number.isFinite(basisOriginal) && basisCurrency === 'rub'
@@ -359,19 +591,11 @@ function BasisCell({ marketHashName, basisPerUnit, basisOriginal, basisCurrency,
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={startEdit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(e); }
-      }}
       className="mono"
       title={title}
       style={{
         fontSize: 12,
         color: 'var(--fg-2)',
-        cursor: 'pointer',
-        borderBottom: '1px dashed rgba(255,255,255,0.2)',
         display: 'inline-block',
         maxWidth: '100%',
       }}
@@ -381,21 +605,86 @@ function BasisCell({ marketHashName, basisPerUnit, basisOriginal, basisCurrency,
   );
 }
 
-function InventoryTable({ items, onItemClick, lang, onBasisSaved }) {
+function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, onBasisSaved, onItemDeleted }) {
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [editDraft, setEditDraft] = useState({ quantity: '', basisPerUnit: '' });
+  const [savingItemId, setSavingItemId] = useState(null);
+
+  const startManualEdit = (item, event) => {
+    event.stopPropagation();
+    const inputCurrency = getActiveCurrency();
+    const basisValue = inputCurrency === 'rub'
+      ? (Number.isFinite(item.basisOriginal) && item.basisCurrency === 'rub'
+        ? item.basisOriginal
+        : Number(usdBasisToInputDraft(item.basis, inputCurrency)))
+      : (Number.isFinite(item.basisOriginal) && item.basisCurrency === 'usd'
+        ? item.basisOriginal
+        : Number(usdBasisToInputDraft(item.basis, inputCurrency)));
+    setEditingItemId(item.manualItemId);
+    setEditDraft({
+      quantity: String(item.qty || 1),
+      basisPerUnit: Number.isFinite(basisValue) ? String(basisValue) : '',
+    });
+  };
+
+  const cancelManualEdit = (event) => {
+    event.stopPropagation();
+    setEditingItemId(null);
+    setEditDraft({ quantity: '', basisPerUnit: '' });
+  };
+
+  const saveManualEdit = async (item, event) => {
+    event.stopPropagation();
+    if (!portfolioId || !item.manualItemId) return;
+    const quantity = Number(String(editDraft.quantity).trim().replace(',', '.'));
+    const basisPerUnit = Number(String(editDraft.basisPerUnit).trim().replace(',', '.'));
+    if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(basisPerUnit) || basisPerUnit < 0) {
+      window.alert(lang === 'ru' ? 'Укажи корректное количество и цену.' : 'Enter a valid quantity and price.');
+      return;
+    }
+
+    setSavingItemId(item.manualItemId);
+    try {
+      await apiFetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/items/${encodeURIComponent(item.manualItemId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity, basisPerUnit, currency: getActiveCurrency() }),
+      });
+      setEditingItemId(null);
+      setEditDraft({ quantity: '', basisPerUnit: '' });
+      if (onBasisSaved) onBasisSaved();
+    } catch (err) {
+      window.alert(err.message || (lang === 'ru' ? 'Не удалось сохранить' : 'Could not save'));
+    }
+    setSavingItemId(null);
+  };
+
+  const deleteManualItem = async (item, event) => {
+    event.stopPropagation();
+    if (!portfolioId || !item.manualItemId) return;
+    try {
+      await apiFetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/items/${encodeURIComponent(item.manualItemId)}`, { method: 'DELETE' });
+      if (onItemDeleted) onItemDeleted();
+    } catch (err) {
+      window.alert(err.message || (lang === 'ru' ? 'Не удалось удалить предмет' : 'Could not delete item'));
+    }
+  };
+
   return (
     <>
       <div style={{
-        display: 'grid', gridTemplateColumns: '40px 60px 2fr 90px 100px 110px 100px 90px',
+        display: 'grid', gridTemplateColumns: '40px 60px 2fr 90px 100px 110px 100px 160px',
         padding: '12px 20px', gap: 12, alignItems: 'center', fontSize: 11,
         color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', letterSpacing: '0.06em', textTransform: 'uppercase',
         borderBottom: '1px solid var(--line)',
       }}>
         <div>#</div><div></div><div>Item</div><div>Qty</div>
-        <div title={lang === 'ru' ? 'Себестоимость за 1 шт. (валюта переключателя сверху) — клик в строке' : 'Cost per unit (matches currency toggle) — click cell in row'}>Basis</div>
+        <div title={lang === 'ru' ? 'Себестоимость за 1 шт. Меняется через кнопку Изменить.' : 'Cost per unit. Change it from the Edit button.'}>Basis</div>
         <div>Value</div><div>P&L</div><div>Source</div>
       </div>
       {items.map((h, i) => {
         const change = (h.spark || [0, 0]).at(-1) - (h.spark || [0, 0]).at(-2);
+        const isEditing = editingItemId === h.manualItemId;
         const lockLabel = h.tradableQty === h.qty
           ? null
           : h.tradableQty > 0
@@ -403,7 +692,7 @@ function InventoryTable({ items, onItemClick, lang, onBasisSaved }) {
             : 'restricted';
         return (
           <div key={h.marketHashName || String(h.assetid || i)} onClick={() => onItemClick && onItemClick(h)} style={{
-            display: 'grid', gridTemplateColumns: '40px 60px 2fr 90px 100px 110px 100px 90px',
+            display: 'grid', gridTemplateColumns: '40px 60px 2fr 90px 100px 110px 100px 160px',
             padding: '14px 20px', gap: 12, alignItems: 'center',
             borderBottom: i < items.length - 1 ? '1px solid var(--line)' : 'none',
             cursor: 'default', transition: 'background 120ms',
@@ -426,23 +715,67 @@ function InventoryTable({ items, onItemClick, lang, onBasisSaved }) {
                 {lockLabel && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--amber)' }}>{lockLabel}</span>}
               </div>
             </div>
-            <div className="mono" style={{ fontSize: 12 }}>{h.qty}</div>
-            <BasisCell
-              marketHashName={h.marketHashName}
-              basisPerUnit={h.basis}
-              basisOriginal={h.basisOriginal}
-              basisCurrency={h.basisCurrency}
-              qty={h.qty}
-              totalBasis={h.totalBasis}
-              lang={lang}
-              onSaved={onBasisSaved}
-            />
+            {isEditing ? (
+              <input
+                value={editDraft.quantity}
+                onClick={(event) => event.stopPropagation()}
+                onChange={(event) => setEditDraft((draft) => ({ ...draft, quantity: event.target.value }))}
+                type="number"
+                min="1"
+                step="1"
+                style={portfolioInputStyle({ width: 72, fontFamily: 'var(--f-mono)' })}
+              />
+            ) : (
+              <div className="mono" style={{ fontSize: 12 }}>{h.qty}</div>
+            )}
+            {isEditing ? (
+              <input
+                value={editDraft.basisPerUnit}
+                onClick={(event) => event.stopPropagation()}
+                onChange={(event) => setEditDraft((draft) => ({ ...draft, basisPerUnit: event.target.value }))}
+                placeholder={getActiveCurrency() === 'rub' ? '₽ / шт.' : '$ / item'}
+                style={portfolioInputStyle({ width: 96, fontFamily: 'var(--f-mono)' })}
+              />
+            ) : (
+              <BasisCell
+                basisPerUnit={h.basis}
+                basisOriginal={h.basisOriginal}
+                basisCurrency={h.basisCurrency}
+                qty={h.qty}
+                totalBasis={h.totalBasis}
+                lang={lang}
+              />
+            )}
             <div className="mono" style={{ fontSize: 13, fontWeight: 500 }}>{formatUsd(h.totalValue ?? h.value)}</div>
             <div className="mono" style={{ fontSize: 12, color: h.pnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
               {Number.isFinite(h.pnlPct) ? `${h.pnlPct >= 0 ? '+' : ''}${h.pnlPct.toFixed(1)}%` : 'N/A'}
             </div>
-            <div style={{ width: 70, height: 24 }} title={h.priceProvider}>
-              <Sparkline data={h.spark} color={change >= 0 ? 'var(--green)' : 'var(--red)'} height={24} fill={false} />
+            <div style={{ minWidth: 0 }} title={h.priceProvider}>
+              {portfolioType === 'manual' && h.manualItemId ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {isEditing ? (
+                    <>
+                      <button className="btn btn-sm btn-primary" onClick={(event) => saveManualEdit(h, event)} disabled={savingItemId === h.manualItemId}>
+                        {savingItemId === h.manualItemId ? '...' : (lang === 'ru' ? 'Сохранить' : 'Save')}
+                      </button>
+                      <button className="btn btn-sm btn-ghost" onClick={cancelManualEdit}>
+                        {lang === 'ru' ? 'Отмена' : 'Cancel'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn btn-sm btn-ghost" onClick={(event) => startManualEdit(h, event)}>
+                        {lang === 'ru' ? 'Изменить' : 'Edit'}
+                      </button>
+                      <button className="btn btn-sm btn-ghost" onClick={(event) => deleteManualItem(h, event)}>
+                        {lang === 'ru' ? 'Удалить' : 'Delete'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <Sparkline data={h.spark} color={change >= 0 ? 'var(--green)' : 'var(--red)'} height={24} fill={false} />
+              )}
             </div>
           </div>
         );

@@ -114,13 +114,21 @@ async function fetchJson(url, { timeoutMs = 6000, headers: extraHeaders = {} } =
   }
 }
 
-async function fetchText(url) {
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'text/html',
-      'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
-    },
-  });
+async function fetchText(url, { timeoutMs = 6000 } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        'Accept': 'text/html',
+        'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!response.ok) {
     const error = new Error(`Steam Market returned HTTP ${response.status}.`);
@@ -890,10 +898,21 @@ function mulberry32(seed) {
   };
 }
 
-async function getSteamMarketIcon(marketHashName) {
+async function getSteamMarketIcon(marketHashName, options = {}) {
   const key = `icon:${marketHashName}`;
   const cached = await getCached(key, ICON_MAX_AGE_MS);
   if (cached) return cached.iconUrl;
+  if (options.cachedOnly) return null;
+
+  const searchIconUrl = await getSteamMarketSearchIcon(marketHashName).catch(() => null);
+  if (searchIconUrl) {
+    await setCached(key, {
+      marketHashName,
+      iconUrl: searchIconUrl,
+      updatedAt: new Date().toISOString(),
+    });
+    return searchIconUrl;
+  }
 
   const urlName = encodeURIComponent(marketHashName);
   const html = await fetchText(`https://steamcommunity.com/market/listings/730/${urlName}`);
@@ -908,6 +927,14 @@ async function getSteamMarketIcon(marketHashName) {
   });
 
   return iconUrl;
+}
+
+async function getSteamMarketSearchIcon(marketHashName) {
+  const json = await fetchSteamMarketSearch({ query: marketHashName, start: 0, count: 10, sort: 'name-asc' });
+  const rawItems = Array.isArray(json.results) ? json.results : [];
+  const normalized = rawItems.map((item, index) => normalizeCatalogItem(item, index));
+  const exact = normalized.find((item) => item.marketHashName === marketHashName) || normalized[0];
+  return exact?.iconUrl || null;
 }
 
 async function getTickerItems() {

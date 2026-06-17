@@ -5,7 +5,17 @@ const express = require('express');
 const session = require('express-session');
 const { getSteamRedirectUrl, authenticateSteam } = require('./services/auth');
 const { getSteamProfile } = require('./services/steam');
-const { getPortfolio, setBasisPerUnitByMarketHashName } = require('./services/portfolio');
+const {
+  getPortfolio,
+  listPortfolios,
+  createManualPortfolio,
+  deleteManualPortfolio,
+  addManualPortfolioItem,
+  deleteManualPortfolioItem,
+  updateManualPortfolioItem,
+  setBasisPerUnitByMarketHashName,
+  setManualBasisPerUnitByMarketHashName,
+} = require('./services/portfolio');
 const { getMarketSnapshot, getMarketCatalog, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
@@ -73,13 +83,71 @@ app.get('/api/me', asyncRoute(async (req, res) => {
   res.json({ connected: true, profile, steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY) });
 }));
 
-app.get('/api/portfolio', requireAuth, asyncRoute(async (req, res) => {
-  const portfolio = await getPortfolio(req.session.steamId, { force: req.query.sync === '1' });
+app.get('/api/portfolio', asyncRoute(async (req, res) => {
+  if (req.query.sync === '1' && !req.session.steamId) {
+    res.status(401).json({ error: 'Steam account is not connected.', code: 'not_authenticated' });
+    return;
+  }
+
+  const portfolio = await getPortfolio(req.session.steamId || null, {
+    force: req.query.sync === '1',
+    portfolioId: req.query.portfolioId,
+  });
   res.json(portfolio);
 }));
 
-app.patch('/api/portfolio/basis', requireAuth, asyncRoute(async (req, res) => {
+app.patch('/api/portfolio/basis', asyncRoute(async (req, res) => {
+  const portfolioId = String(req.body?.portfolioId || '').trim();
+  if (portfolioId && portfolioId !== 'steam') {
+    await setManualBasisPerUnitByMarketHashName(portfolioId, req.body?.marketHashName, req.body?.basisPerUnit, req.body?.currency);
+    res.json({ ok: true });
+    return;
+  }
+
+  if (!req.session.steamId) {
+    res.status(401).json({ error: 'Steam account is not connected.', code: 'not_authenticated' });
+    return;
+  }
+
   await setBasisPerUnitByMarketHashName(req.body?.marketHashName, req.body?.basisPerUnit, req.body?.currency);
+  res.json({ ok: true });
+}));
+
+app.get('/api/portfolios', asyncRoute(async (req, res) => {
+  const portfolios = await listPortfolios(req.session.steamId || null);
+  res.json({ portfolios });
+}));
+
+app.post('/api/portfolios', asyncRoute(async (req, res) => {
+  const portfolio = await createManualPortfolio(req.body?.name);
+  res.status(201).json({ portfolio });
+}));
+
+app.delete('/api/portfolios/:portfolioId', asyncRoute(async (req, res) => {
+  const deleted = await deleteManualPortfolio(req.params.portfolioId);
+  if (!deleted) {
+    res.status(404).json({ error: 'Manual portfolio not found.', code: 'portfolio_not_found' });
+    return;
+  }
+  res.json({ ok: true });
+}));
+
+app.post('/api/portfolios/:portfolioId/items', asyncRoute(async (req, res) => {
+  const portfolio = await addManualPortfolioItem(req.params.portfolioId, req.body);
+  res.status(201).json({ portfolio });
+}));
+
+app.patch('/api/portfolios/:portfolioId/items/:itemId', asyncRoute(async (req, res) => {
+  const item = await updateManualPortfolioItem(req.params.portfolioId, req.params.itemId, req.body);
+  res.json({ item });
+}));
+
+app.delete('/api/portfolios/:portfolioId/items/:itemId', asyncRoute(async (req, res) => {
+  const deleted = await deleteManualPortfolioItem(req.params.portfolioId, req.params.itemId);
+  if (!deleted) {
+    res.status(404).json({ error: 'Manual portfolio item not found.', code: 'item_not_found' });
+    return;
+  }
   res.json({ ok: true });
 }));
 

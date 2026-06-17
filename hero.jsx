@@ -437,7 +437,7 @@ function Hero({ lang, onLink, auth }) {
             <button className="btn btn-primary" onClick={onLink}>
               <SteamGlyph /> {t.hero.cta1}
             </button>
-            <button className="btn btn-ghost">{t.hero.cta2} →</button>
+            <button className="btn btn-ghost" onClick={onLink}>{t.nav.dashboard}</button>
           </div>
 
           <div className="hero-stats">
