@@ -6,6 +6,9 @@
   "main": "server/index.js",
   "scripts": {
     "dev": "node --watch server/index.js",
+    "desktop:dev": "npm --prefix desktop run dev",
+    "desktop:dist:mac": "npm --prefix desktop run dist:mac",
+    "desktop:dist:win": "npm --prefix desktop run dist:win",
     "telegram:session": "node scripts/create-telegram-session.js",
     "telegram:session:apply": "node scripts/apply-telegram-session.js",
     "xray:config": "node scripts/generate-xray-config.js",

@@ -882,6 +882,81 @@ function ArmoryROI() {
   );
 }
 
+function DesktopDownload({ lang }) {
+  const copy = lang === 'ru'
+    ? {
+      title: 'Desktop app для полного портфеля',
+      sub: 'Скачайте локальный клиент, войдите в Steam на своём компьютере и синхронизируйте полный инвентарь вместе с содержимым Storage Units.',
+      macApple: 'macOS · Apple Silicon',
+      macIntel: 'macOS · Intel',
+      windows: 'Windows · x64',
+      note: 'После установки откройте портфель в браузере, нажмите «Код для desktop» и введите 6-значный код в приложении.',
+      security: 'Read-only: пароль Steam не запрашивается, токены хранятся локально, на сервер отправляется только список предметов.',
+    }
+    : {
+      title: 'Desktop app for the full portfolio',
+      sub: 'Download the local client, sign in to Steam on your computer, and sync the full inventory including Storage Units.',
+      macApple: 'macOS · Apple Silicon',
+      macIntel: 'macOS · Intel',
+      windows: 'Windows · x64',
+      note: 'After installing, open your browser portfolio, click “Desktop code”, and enter the 6-digit code in the app.',
+      security: 'Read-only: Steam password is never requested, tokens stay local, and only item lists are sent to the server.',
+    };
+
+  const downloads = [
+    { label: copy.macApple, href: '/downloads/Steam-Invest-Portfolio-mac-arm64.dmg' },
+    { label: copy.macIntel, href: '/downloads/Steam-Invest-Portfolio-mac-x64.dmg' },
+    { label: copy.windows, href: '/downloads/Steam-Invest-Portfolio-win-x64.exe' },
+  ];
+
+  return (
+    <section className="section-tight">
+      <div className="container">
+        <div className="glass-strong" style={{
+          padding: '34px 40px',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 0.8fr)',
+          gap: 28,
+          alignItems: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            position: 'absolute',
+            inset: 'auto -10% -80% 45%',
+            height: 260,
+            background: 'radial-gradient(circle, oklch(0.68 0.22 5 / 0.24), transparent 65%)',
+            pointerEvents: 'none',
+          }} />
+          <div style={{ position: 'relative' }}>
+            <div className="eyebrow" style={{ color: 'var(--accent)', marginBottom: 12 }}>// DESKTOP CLIENT</div>
+            <h2 className="display" style={{ fontSize: 'clamp(28px, 3.2vw, 44px)', fontWeight: 500, lineHeight: 1.08 }}>
+              {copy.title}
+            </h2>
+            <p style={{ marginTop: 14, color: 'var(--fg-1)', fontSize: 15, lineHeight: 1.65, maxWidth: 760 }}>
+              {copy.sub}
+            </p>
+            <p style={{ marginTop: 12, color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.6, maxWidth: 760 }}>
+              {copy.note}
+            </p>
+          </div>
+          <div style={{ position: 'relative', display: 'grid', gap: 10 }}>
+            {downloads.map((item) => (
+              <a key={item.href} className="btn btn-primary" href={item.href} download style={{ justifyContent: 'space-between' }}>
+                <span>{item.label}</span>
+                <span className="mono" style={{ fontSize: 11 }}>DOWNLOAD</span>
+              </a>
+            ))}
+            <div className="glass" style={{ padding: 14, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.55 }}>
+              {copy.security}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* Stats band */
 function StatsBand() {
   const t = useT(window.__lang || 'en');
@@ -1061,4 +1136,4 @@ function Footer({ lang }) {
   );
 }
 
-Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, StatsBand, FAQ, Footer, SectionHeader });
+Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, StatsBand, FAQ, Footer, SectionHeader });

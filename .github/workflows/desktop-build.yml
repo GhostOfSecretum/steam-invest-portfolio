@@ -1,0 +1,45 @@
+name: Desktop Builds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    name: macOS DMG
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+        working-directory: desktop
+      - run: npm run dist:mac
+        working-directory: desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: steam-invest-portfolio-macos
+          path: downloads/*.dmg
+          if-no-files-found: error
+
+  windows:
+    name: Windows Installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+        working-directory: desktop
+      - run: npm run dist:win
+        working-directory: desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: steam-invest-portfolio-windows
+          path: downloads/*.exe
+          if-no-files-found: error

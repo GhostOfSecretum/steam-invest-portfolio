@@ -66,6 +66,28 @@ function getTranslation(schema, token) {
   return schema.translations[key] || '';
 }
 
+function getGcValue(item, ...keys) {
+  for (const key of keys) {
+    if (item?.[key] != null) return item[key];
+  }
+  return null;
+}
+
+function getItemDef(schema, defIndex) {
+  const direct = schema.items[defIndex];
+  if (!direct) return null;
+
+  const merged = { ...direct };
+  const prefabs = String(direct.prefab || '').split(/\s+/).filter(Boolean);
+  for (const prefabName of prefabs) {
+    const prefab = schema.prefabs[prefabName];
+    if (prefab) {
+      Object.assign(merged, { ...prefab, ...merged });
+    }
+  }
+  return merged;
+}
+
 function getSkinWearName(paintWear) {
   const thresholds = [0.07, 0.15, 0.38, 0.45, 1];
   const names = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred'];
@@ -76,16 +98,21 @@ function getSkinWearName(paintWear) {
 }
 
 function getAttributeBytes(item, attribDefIndex) {
-  const attrib = (item.attribute || []).find((a) => a.def_index === attribDefIndex);
+  const attributes = item.attribute || item.attributes || [];
+  const attrib = attributes.find((a) => a.def_index === attribDefIndex || a.defIndex === attribDefIndex);
   return attrib ? attrib.value_bytes : null;
 }
 
 function isStatTrak(item) {
-  return (item.attribute || []).some((a) => a.def_index === 80);
+  const attributes = item.attribute || item.attributes || [];
+  return attributes.some((a) => a.def_index === 80 || a.defIndex === 80);
 }
 
 function resolveItemName(schema, gcItem) {
-  const def = schema.items[gcItem.def_index];
+  const defIndex = getGcValue(gcItem, 'def_index', 'defIndex', 'defindex');
+  const paintIndex = getGcValue(gcItem, 'paint_index', 'paintIndex', 'paintindex');
+  const paintWear = getGcValue(gcItem, 'paint_wear', 'paintWear', 'paintwear');
+  const def = getItemDef(schema, defIndex);
   if (!def) return null;
 
   const musicBytes = getAttributeBytes(gcItem, 166);
@@ -97,24 +124,18 @@ function resolveItemName(schema, gcItem) {
     }
   }
 
-  let baseOne = '';
-  if (def.item_name) {
-    baseOne = getTranslation(schema, def.item_name);
-  } else if (def.prefab) {
-    const prefab = schema.prefabs[def.prefab];
-    if (prefab?.item_name) baseOne = getTranslation(schema, prefab.item_name);
-  }
+  const baseOne = getTranslation(schema, def.item_name);
 
   let baseTwo = '';
-  if (gcItem.paint_index != null) {
-    const paint = schema.paint_kits[gcItem.paint_index];
+  if (paintIndex != null) {
+    const paint = schema.paint_kits[paintIndex];
     if (paint?.description_tag) baseTwo = getTranslation(schema, paint.description_tag);
   }
 
   if (!baseOne) return null;
   let name = baseTwo ? `${baseOne} | ${baseTwo}` : baseOne;
-  if (gcItem.paint_wear != null && baseTwo) {
-    name = `${name} (${getSkinWearName(gcItem.paint_wear)})`;
+  if (paintWear != null && baseTwo) {
+    name = `${name} (${getSkinWearName(paintWear)})`;
   }
   if (isStatTrak(gcItem)) name = `StatTrak™ ${name}`;
   if (gcItem.quality === 3) name = `★ ${name}`;
@@ -122,11 +143,13 @@ function resolveItemName(schema, gcItem) {
 }
 
 function resolveIconUrl(schema, gcItem) {
-  const def = schema.items[gcItem.def_index];
+  const defIndex = getGcValue(gcItem, 'def_index', 'defIndex', 'defindex');
+  const paintIndex = getGcValue(gcItem, 'paint_index', 'paintIndex', 'paintindex');
+  const def = getItemDef(schema, defIndex);
   if (!def) return null;
   let imagePath = def.image_inventory;
-  if (gcItem.paint_index != null && def.name) {
-    const paint = schema.paint_kits[gcItem.paint_index];
+  if (paintIndex != null && def.name) {
+    const paint = schema.paint_kits[paintIndex];
     if (paint?.name) {
       imagePath = `econ/default_generated/${def.name}_${paint.name}_light_large`;
     }
@@ -137,9 +160,12 @@ function resolveIconUrl(schema, gcItem) {
 
 async function buildItemFields(gcItem, cacheDir) {
   const schema = await loadSchema(cacheDir);
-  const marketHashName = resolveItemName(schema, gcItem) || `CS2 Item #${gcItem.def_index}`;
+  const defIndex = getGcValue(gcItem, 'def_index', 'defIndex', 'defindex');
+  const paintWear = getGcValue(gcItem, 'paint_wear', 'paintWear', 'paintwear');
+  const marketHashName = resolveItemName(schema, gcItem) || `CS2 Item #${defIndex}`;
   const iconUrl = resolveIconUrl(schema, gcItem);
-  const tradableAfter = gcItem.tradable_after ? new Date(gcItem.tradable_after) : null;
+  const tradableAfterRaw = getGcValue(gcItem, 'tradable_after', 'tradableAfter', 'tradableafter');
+  const tradableAfter = tradableAfterRaw ? new Date(tradableAfterRaw) : null;
   const tradable = !tradableAfter || tradableAfter <= new Date();
 
   return {
@@ -151,7 +177,7 @@ async function buildItemFields(gcItem, cacheDir) {
     type: 'Storage contents',
     category: 'Storage',
     rarity: 'Unknown',
-    wear: gcItem.paint_wear != null ? getSkinWearName(gcItem.paint_wear) : 'N/A',
+    wear: paintWear != null ? getSkinWearName(paintWear) : 'N/A',
   };
 }
 

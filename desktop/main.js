@@ -15,7 +15,7 @@ const LEGACY_GC_REFRESH_TOKEN_KEY = 'gcRefreshToken';
 
 function ensureSecretStorageAvailable() {
   if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('Защищённое хранилище macOS недоступно. Подключение складов отключено для безопасности.');
+    throw new Error('Защищённое хранилище ОС недоступно. Подключение складов отключено для безопасности.');
   }
 }
 

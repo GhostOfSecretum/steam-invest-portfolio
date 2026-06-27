@@ -6,7 +6,57 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "local.steaminvest.portfolio",
+    "productName": "Steam Invest Portfolio",
+    "artifactName": "Steam-Invest-Portfolio-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "../downloads"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "preload-gc-qr.js",
+      "inventory-merge.js",
+      "gc-storage-sync.js",
+      "gc-item-names.js",
+      "ui/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.finance",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    }
   },
   "dependencies": {
     "@node-steam/vdf": "^2.2.0",
@@ -17,6 +67,7 @@
     "steam-user": "^5.2.0"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^26.15.3"
   }
 }

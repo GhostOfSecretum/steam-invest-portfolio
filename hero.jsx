@@ -366,6 +366,11 @@ function HeroConcept_Vault({ portfolio, loading, auth, lang }) {
 }
 
 /* Concept 5: Operators squad readout */
+const HERO_OPERATORS_IMAGE = {
+  src: '/assets/hero-agents.png',
+  alt: 'Three featured CS2 operators',
+};
+
 function HeroConcept_Operators({ portfolio, loading, lang }) {
   const [imageMissing, setImageMissing] = useState(false);
   const totalValue = Number.isFinite(portfolio?.totalValue) ? compactUsd(portfolio.totalValue) : '...';
@@ -381,8 +386,8 @@ function HeroConcept_Operators({ portfolio, loading, lang }) {
       <div className="hero-operators-image-wrap">
         {!imageMissing ? (
           <img
-            src="/assets/hero-agents.png"
-            alt="Featured CS2 operators"
+            src={HERO_OPERATORS_IMAGE.src}
+            alt={HERO_OPERATORS_IMAGE.alt}
             className="hero-operators-image"
             onError={() => setImageMissing(true)}
           />
