@@ -185,10 +185,12 @@ const I18N = {
 const useT = (lang) => I18N[lang] || I18N.en;
 
 /* ─────────── Logo ─────────── */
-function Logo({ size = 28 }) {
+function Logo() {
   return (
     <div className="nav-logo">
-      <div className="nav-logo-mark" style={{ width: size, height: size }}></div>
+      <div className="nav-logo-mark">
+        <img src="logo-variant-08.png" alt="" />
+      </div>
       <span>SKINS<span style={{ opacity: 0.55, fontWeight: 400 }}>/</span>HEAD</span>
     </div>
   );
