@@ -2,7 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const { getSteamInventory, getSteamProfile } = require('./steam');
-const { getPrices, getSteamCurrencyRatio, getSteamRubRate, getSteamMarketIcon, rarityToTier } = require('./prices');
+const { getPrices, getPriceHistory, getSteamCurrencyRatio, getSteamRubRate, getSteamMarketIcon, rarityToTier } = require('./prices');
 const { getDesktopInventory } = require('./desktop');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
@@ -22,10 +22,11 @@ async function getPortfolio(steamId, options = {}) {
     return active ? getManualPortfolio(active.id, null) : buildEmptyManualPortfolio(store, null);
   }
 
+  const includeDesktop = options.includeDesktop !== false;
   const [profile, steamInventory, desktopInventory, basis] = await Promise.all([
     getSteamProfile(steamId),
     getSteamInventory(steamId, options),
-    getDesktopInventory(steamId).catch(() => null),
+    includeDesktop ? getDesktopInventory(steamId).catch(() => null) : Promise.resolve(null),
     readBasis(),
   ]);
 
@@ -54,6 +55,7 @@ async function getPortfolio(steamId, options = {}) {
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const providerLabel = useDesktop ? 'desktop' : (inventory.inventoryProvider || 'steam-public');
+  const history = await buildPortfolioHistory(pricedItems, totalValue);
 
   return {
     portfolioId: 'steam',
@@ -77,7 +79,7 @@ async function getPortfolio(steamId, options = {}) {
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
-    history: makePortfolioHistory(totalValue),
+    history,
     items,
     activity: [
       { t: 'now', a: `Inventory sync · ${inventory.totalInventoryCount} items across ${items.length} unique rows`, c: 'var(--fg-2)' },
@@ -283,6 +285,7 @@ async function getManualPortfolio(portfolioId, steamId = null) {
   const totalBasis = items.reduce((sum, item) => sum + item.basis * item.qty, 0);
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
+  const history = await buildPortfolioHistory(pricedItems, totalValue);
 
   return {
     portfolioId: portfolio.id,
@@ -306,7 +309,7 @@ async function getManualPortfolio(portfolioId, steamId = null) {
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
-    history: makePortfolioHistory(totalValue),
+    history,
     items,
     activity: [
       { t: 'manual', a: `Manual portfolio · ${totalInventoryCount} items across ${items.length} unique rows`, c: 'var(--fg-2)' },
@@ -348,7 +351,7 @@ function buildEmptyManualPortfolio(store, steamId = null) {
     liquidityScore: 0,
     totalVolume24h: 0,
     allocation: [],
-    history: makePortfolioHistory(0),
+    history: emptyPortfolioHistory(0),
     items: [],
     activity: [{ t: 'start', a: 'Create a manual portfolio to add items without Steam', c: 'var(--amber)' }],
   };
@@ -785,9 +788,108 @@ function scoreLiquidity(items) {
   return Math.max(0, Math.min(100, Math.round(averageVolume / 10)));
 }
 
-function makePortfolioHistory(totalValue) {
-  const value = Number.isFinite(totalValue) && totalValue > 0 ? totalValue : 1;
-  return Array.from({ length: 30 }, (_, i) => value * (0.92 + i * 0.003 + Math.sin(i / 2) * 0.018));
+async function buildPortfolioHistory(items, totalValue) {
+  const priced = items
+    .filter((item) => item.marketHashName && Number.isFinite(item.value) && item.value > 0 && item.qty > 0)
+    .sort((a, b) => (b.value * b.qty) - (a.value * a.qty));
+
+  if (!priced.length) return emptyPortfolioHistory(totalValue);
+
+  const tracked = priced.slice(0, 12);
+  const trackedNames = new Set(tracked.map((item) => item.marketHashName));
+  const trackedValue = tracked.reduce((sum, item) => sum + item.value * item.qty, 0);
+  const untrackedValue = priced
+    .filter((item) => !trackedNames.has(item.marketHashName))
+    .reduce((sum, item) => sum + item.value * item.qty, 0);
+
+  const histories = (await Promise.all(tracked.map(async (item) => {
+    const history = await getPriceHistory(item.marketHashName, 365, {
+      anchorPrice: item.value,
+      currency: 'usd',
+    }).catch(() => null);
+    if (history?.provider === 'synthetic') return null;
+    const points = normalizeHistoryPoints(history?.data);
+    if (points.length < 2) return null;
+    return {
+      marketHashName: item.marketHashName,
+      qty: item.qty,
+      currentValue: item.value * item.qty,
+      provider: history.provider || 'unknown',
+      points,
+    };
+  }))).filter(Boolean);
+
+  if (!histories.length) return emptyPortfolioHistory(totalValue);
+
+  const dateSet = new Set();
+  for (const history of histories) {
+    for (const point of history.points) dateSet.add(point.date);
+  }
+  const dates = [...dateSet].sort();
+
+  const points = dates.map((date) => {
+    let value = untrackedValue;
+    let coveredValue = 0;
+
+    for (const history of histories) {
+      const price = priceAtDate(history.points, date);
+      if (!Number.isFinite(price) || price <= 0) {
+        value += history.currentValue;
+      } else {
+        value += price * history.qty;
+      }
+      coveredValue += history.currentValue;
+    }
+
+    return {
+      date,
+      value: Math.round(value * 100) / 100,
+      coveredValue: Math.round(coveredValue * 100) / 100,
+    };
+  }).filter((point) => Number.isFinite(point.value) && point.value > 0);
+
+  return {
+    points,
+    coveragePct: totalValue > 0 ? Math.round((trackedValue / totalValue) * 100) : 0,
+    itemCount: histories.length,
+    sources: [...new Set(histories.map((history) => history.provider))],
+    synthetic: false,
+  };
+}
+
+function emptyPortfolioHistory(totalValue) {
+  const value = Number.isFinite(totalValue) && totalValue > 0 ? Math.round(totalValue * 100) / 100 : 0;
+  return {
+    points: value > 0 ? [{ date: new Date().toISOString().slice(0, 10), value, coveredValue: 0 }] : [],
+    coveragePct: 0,
+    itemCount: 0,
+    sources: [],
+    synthetic: false,
+  };
+}
+
+function normalizeHistoryPoints(points) {
+  return (Array.isArray(points) ? points : [])
+    .map((point) => {
+      const time = new Date(point.date).getTime();
+      const price = Number(point.price);
+      if (!Number.isFinite(time) || !Number.isFinite(price) || price <= 0) return null;
+      return {
+        date: new Date(time).toISOString().slice(0, 10),
+        price,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function priceAtDate(points, date) {
+  let last = null;
+  for (const point of points) {
+    if (point.date > date) break;
+    last = point.price;
+  }
+  return last ?? points[0]?.price ?? null;
 }
 
 function makeSpark(value, seedValue) {

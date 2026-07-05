@@ -5,23 +5,29 @@ const { useState, useRef, useMemo, useEffect } = React;
    PORTFOLIO DASHBOARD — API backed
    ─────────────────────────────────────────────────── */
 
-function PortfolioChart({ data }) {
-  const safeData = Array.isArray(data) && data.length > 1 ? data : [0, 0];
+function PortfolioChart({ history, range, lang }) {
+  const sourcePoints = Array.isArray(history)
+    ? history.map((value, index) => ({ date: String(index + 1), value }))
+    : (Array.isArray(history?.points) ? history.points : []);
+  const safeData = filterHistoryPoints(sourcePoints, range);
   const [hover, setHover] = useState(null);
   const ref = useRef(null);
   const w = 1000, h = 280;
-  const min = Math.min(...safeData) * 0.98, max = Math.max(...safeData) * 1.02;
-  const range = max - min || 1;
-  const pts = safeData.map((v, i) => [(i / (safeData.length - 1)) * w, h - ((v - min) / range) * (h - 40) - 20]);
+  const values = safeData.map((point) => Number(point.value)).filter((value) => Number.isFinite(value));
+  const hasRealLine = values.length > 1;
+  const chartValues = hasRealLine ? values : [0, Math.max(1, values[0] || 0)];
+  const min = Math.min(...chartValues) * 0.98, max = Math.max(...chartValues) * 1.02;
+  const yRange = max - min || 1;
+  const pts = chartValues.map((v, i) => [(i / (chartValues.length - 1)) * w, h - ((v - min) / yRange) * (h - 40) - 20]);
   const d = pts.map((p, i) => i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`).join(' ');
   const area = `${d} L ${w} ${h} L 0 ${h} Z`;
 
   const onMove = (e) => {
-    if (!ref.current) return;
+    if (!ref.current || !hasRealLine) return;
     const r = ref.current.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width * w;
     const idx = Math.min(safeData.length - 1, Math.max(0, Math.round((x / w) * (safeData.length - 1))));
-    setHover({ idx, x: pts[idx][0], y: pts[idx][1], v: safeData[idx] });
+    setHover({ idx, x: pts[idx][0], y: pts[idx][1], point: safeData[idx] });
   };
 
   return (
@@ -40,28 +46,58 @@ function PortfolioChart({ data }) {
         {[0.25, 0.5, 0.75].map((p, i) => (
           <line key={i} x1="0" x2={w} y1={p * h} y2={p * h} stroke="rgba(255,255,255,0.04)" strokeWidth="1" strokeDasharray="2 4" />
         ))}
-        <path d={area} fill="url(#chartFill)" />
-        <path d={d} stroke="url(#chartLine)" strokeWidth="2" fill="none" strokeLinejoin="round" />
-        {hover && (
+        {hasRealLine && <path d={area} fill="url(#chartFill)" />}
+        {hasRealLine && <path d={d} stroke="url(#chartLine)" strokeWidth="2" fill="none" strokeLinejoin="round" />}
+        {!hasRealLine && (
+          <text x={w / 2} y={h / 2} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontFamily: 'var(--f-mono)', fontSize: 28 }}>
+            {lang === 'ru' ? 'недостаточно истории цен' : 'not enough price history'}
+          </text>
+        )}
+        {hover && hasRealLine && (
           <g>
             <line x1={hover.x} x2={hover.x} y1="0" y2={h} stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="2 3" />
             <circle cx={hover.x} cy={hover.y} r="5" fill="oklch(0.68 0.22 5)" stroke="#fff" strokeWidth="1.5" />
           </g>
         )}
       </svg>
-      {hover && (
+      {hover && hasRealLine && (
         <div style={{
           position: 'absolute', left: `${(hover.x / w) * 100}%`, top: 12, transform: 'translateX(-50%)',
           padding: '8px 12px', borderRadius: 8,
           background: 'rgba(0,0,0,0.85)', border: '1px solid var(--line-strong)',
           fontFamily: 'var(--f-mono)', fontSize: 12, whiteSpace: 'nowrap', pointerEvents: 'none',
         }}>
-          <div style={{ color: 'var(--fg-3)', fontSize: 10 }}>day {hover.idx + 1}</div>
-          <div style={{ color: 'var(--fg-0)', marginTop: 2 }}>{formatUsd(hover.v, 0)}</div>
+          <div style={{ color: 'var(--fg-3)', fontSize: 10 }}>{formatHistoryDate(hover.point.date)}</div>
+          <div style={{ color: 'var(--fg-0)', marginTop: 2 }}>{formatUsd(hover.point.value, 0)}</div>
         </div>
       )}
     </div>
   );
+}
+
+function filterHistoryPoints(points, range) {
+  const clean = (Array.isArray(points) ? points : [])
+    .map((point) => ({
+      date: point.date,
+      value: Number(point.value),
+    }))
+    .filter((point) => point.date && Number.isFinite(point.value) && point.value > 0)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+  if (!clean.length || range === 'ALL') return clean;
+
+  const days = range === '7d' ? 7 : range === '90d' ? 90 : 30;
+  const lastTime = new Date(clean[clean.length - 1].date).getTime();
+  if (!Number.isFinite(lastTime)) return clean.slice(-days);
+  const cutoff = lastTime - days * 86400000;
+  const sliced = clean.filter((point) => new Date(point.date).getTime() >= cutoff);
+  return sliced.length > 1 ? sliced : clean.slice(-Math.max(2, Math.min(days, clean.length)));
+}
+
+function formatHistoryDate(date) {
+  const time = new Date(date).getTime();
+  if (!Number.isFinite(time)) return String(date || '');
+  return new Date(time).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function StatCard({ label, value, delta, deltaColor, sub, accent }) {
@@ -105,18 +141,22 @@ function DesktopPairingButton({ lang }) {
   );
 }
 
-function Dashboard({ lang, onItemClick, auth }) {
+function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
   const t = useT(lang);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
-  const portfolio = usePortfolio(auth, selectedPortfolioId);
+  const effectivePortfolioId = publicProfileUrl || String(selectedPortfolioId || '').startsWith('public-')
+    ? null
+    : selectedPortfolioId;
+  const portfolio = usePortfolio(auth, effectivePortfolioId, publicProfileUrl);
   const [range, setRange] = useState('30d');
   const [tab, setTab] = useState('inventory');
   const [query, setQuery] = useState('');
   const data = portfolio.data;
   const items = data?.items || [];
   const portfolios = data?.portfolios || [];
-  const activePortfolioId = data?.portfolioId || selectedPortfolioId;
+  const activePortfolioId = data?.portfolioId || effectivePortfolioId;
   const isSteamPortfolio = data?.portfolioType === 'steam';
+  const isPublicPortfolio = Boolean(publicProfileUrl);
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return items;
@@ -124,8 +164,12 @@ function Dashboard({ lang, onItemClick, auth }) {
   }, [items, query]);
 
   useEffect(() => {
+    if (publicProfileUrl) {
+      if (selectedPortfolioId) setSelectedPortfolioId(null);
+      return;
+    }
     if (!selectedPortfolioId && data?.portfolioId) setSelectedPortfolioId(data.portfolioId);
-  }, [data?.portfolioId, selectedPortfolioId]);
+  }, [data?.portfolioId, publicProfileUrl, selectedPortfolioId]);
 
   if (portfolio.loading && !portfolio.data) {
     return <DashboardState lang={lang} title={t.dash.title} message={lang === 'ru' ? 'Загружаем портфель и цены...' : 'Loading portfolio and prices...'} />;
@@ -155,6 +199,13 @@ function Dashboard({ lang, onItemClick, auth }) {
   const topItemPct = topItem && data.totalValue > 0 ? (topItem.value / data.totalValue) * 100 : 0;
   const topFiveValue = valueRows.slice(0, 5).reduce((sum, item) => sum + item.value, 0);
   const topFivePct = data.totalValue > 0 ? (topFiveValue / data.totalValue) * 100 : 0;
+  const historyMeta = data.history && !Array.isArray(data.history) ? data.history : {};
+  const historySources = Array.isArray(historyMeta.sources) && historyMeta.sources.length
+    ? historyMeta.sources.join(' + ')
+    : (lang === 'ru' ? 'нет истории' : 'no history');
+  const historySubtitle = lang === 'ru'
+    ? `USD · реальные price history · покрытие ${historyMeta.coveragePct || 0}% · ${historySources}`
+    : `USD · real price history · ${historyMeta.coveragePct || 0}% coverage · ${historySources}`;
 
   return (
     <div style={{ padding: '40px 64px 80px' }}>
@@ -173,28 +224,33 @@ function Dashboard({ lang, onItemClick, auth }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {data.desktopConnected && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--green)' }}>● desktop</span>}
-            {auth?.connected && <DesktopPairingButton lang={lang} />}
+            {isPublicPortfolio && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--cyan)' }}>● public profile</span>}
+            {!isPublicPortfolio && data.desktopConnected && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--green)' }}>● desktop</span>}
+            {!isPublicPortfolio && auth?.connected && <DesktopPairingButton lang={lang} />}
             <button className="btn btn-sm btn-ghost" onClick={() => downloadPortfolioCsv(items)}>CSV</button>
-            <button className="btn btn-sm btn-ghost" onClick={() => portfolio.reload(isSteamPortfolio)}>
-              {portfolio.loading ? 'Syncing...' : (isSteamPortfolio ? 'Sync' : 'Refresh')}
+            <button className="btn btn-sm btn-ghost" onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}>
+              {portfolio.loading ? 'Syncing...' : ((isSteamPortfolio || isPublicPortfolio) ? 'Sync' : 'Refresh')}
             </button>
-            <button className="btn btn-sm btn-primary" title={lang === 'ru' ? 'Клик по ячейке Basis — ввести цену покупки за шт. (₽ или $ по переключателю валюты)' : 'Click Basis cell — enter buy price per item (RUB or USD from currency toggle)'}>Buy basis</button>
+            {!isPublicPortfolio && (
+              <button className="btn btn-sm btn-primary" title={lang === 'ru' ? 'Клик по ячейке Basis — ввести цену покупки за шт. (₽ или $ по переключателю валюты)' : 'Click Basis cell — enter buy price per item (RUB or USD from currency toggle)'}>Buy basis</button>
+            )}
           </div>
         </div>
 
-        <PortfolioControls
-          lang={lang}
-          auth={auth}
-          portfolios={portfolios}
-          activePortfolioId={activePortfolioId}
-          portfolioType={data.portfolioType}
-          onSelect={(id) => setSelectedPortfolioId(id)}
-          onChanged={(id) => {
-            if (id) setSelectedPortfolioId(id);
-            portfolio.reload(false);
-          }}
-        />
+        {!isPublicPortfolio && (
+          <PortfolioControls
+            lang={lang}
+            auth={auth}
+            portfolios={portfolios}
+            activePortfolioId={activePortfolioId}
+            portfolioType={data.portfolioType}
+            onSelect={(id) => setSelectedPortfolioId(id)}
+            onChanged={(id) => {
+              if (id) setSelectedPortfolioId(id);
+              portfolio.reload(false);
+            }}
+          />
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
           <StatCard accent label={t.dash.total} value={compactUsd(data.totalValue)} delta={`${data.pricedCount}/${data.totalInventoryCount} priced`} sub={`${data.uniqueInventoryCount} unique rows`} />
@@ -220,7 +276,7 @@ function Dashboard({ lang, onItemClick, auth }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
                 <div className="eyebrow">VALUE OVER TIME</div>
-                <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>USD · synthetic from current holdings</div>
+                <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{historySubtitle}</div>
               </div>
               <div style={{ display: 'flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
                 {['7d', '30d', '90d', 'ALL'].map(r => (
@@ -232,7 +288,7 @@ function Dashboard({ lang, onItemClick, auth }) {
                 ))}
               </div>
             </div>
-            <PortfolioChart data={data.history} />
+            <PortfolioChart history={data.history} range={range} lang={lang} />
           </div>
 
           <div className="glass" style={{ padding: 24 }}>
@@ -819,6 +875,9 @@ function DashboardState({ lang, title, auth, message, error, onRetry }) {
 function errorMessage(error, lang) {
   const messages = {
     not_authenticated: lang === 'ru' ? 'Steam аккаунт не подключен.' : 'Steam account is not connected.',
+    missing_profile_url: lang === 'ru' ? 'Вставь ссылку на профиль Steam.' : 'Paste a Steam profile link.',
+    invalid_profile_url: lang === 'ru' ? 'Не удалось прочитать ссылку. Нужен профиль Steam или SteamID64.' : 'Could not read that link. Use a Steam profile URL or SteamID64.',
+    profile_not_found: lang === 'ru' ? 'Steam-профиль не найден.' : 'Steam profile was not found.',
     private_inventory: lang === 'ru' ? 'Steam не отдал inventory. Проверь, что инвентарь публичный.' : 'Steam did not return inventory. Make sure your inventory is public.',
     rate_limited: lang === 'ru' ? 'Steam временно ограничил запросы. Попробуй позже.' : 'Steam rate limited the request. Try again later.',
   };

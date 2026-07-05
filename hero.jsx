@@ -409,8 +409,10 @@ function HeroConcept_Operators({ portfolio, loading, lang }) {
 }
 
 /* Hero locked to Operators concept */
-function Hero({ lang, onLink, auth }) {
+function Hero({ lang, onLink, onPublicProfile, auth }) {
   const t = useT(lang);
+  const [profileUrl, setProfileUrl] = useState('');
+  const [profileUrlError, setProfileUrlError] = useState('');
   const portfolio = usePortfolio(auth);
   const heroCopy = [
     { key: 'stat-1', v: '482K', l: t.hero.stat1 },
@@ -421,6 +423,17 @@ function Hero({ lang, onLink, auth }) {
     () => <HeroConcept_Operators portfolio={portfolio.data} loading={portfolio.loading} auth={auth} lang={lang} />,
     [auth, lang, portfolio.data, portfolio.loading]
   );
+  const submitProfileUrl = (event) => {
+    event.preventDefault();
+    const nextProfileUrl = profileUrl.trim();
+    if (!nextProfileUrl) {
+      setProfileUrlError(t.hero.profileUrlError);
+      return;
+    }
+
+    setProfileUrlError('');
+    if (onPublicProfile) onPublicProfile(nextProfileUrl);
+  };
 
   return (
     <section className="hero scanlines hero-shell">
@@ -443,6 +456,19 @@ function Hero({ lang, onLink, auth }) {
               <SteamGlyph /> {t.hero.cta1}
             </button>
             <button className="btn btn-ghost" onClick={onLink}>{t.nav.dashboard}</button>
+            <form className="hero-profile-form" onSubmit={submitProfileUrl}>
+              <input
+                value={profileUrl}
+                onChange={(event) => {
+                  setProfileUrl(event.target.value);
+                  if (profileUrlError) setProfileUrlError('');
+                }}
+                placeholder={t.hero.profileUrlPlaceholder}
+                aria-label={t.hero.profileUrlCta}
+              />
+              <button className="btn btn-ghost" type="submit">{t.hero.profileUrlCta}</button>
+              {profileUrlError && <div className="hero-profile-error">{profileUrlError}</div>}
+            </form>
           </div>
 
           <div className="hero-stats">

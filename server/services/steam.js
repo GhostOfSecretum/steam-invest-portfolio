@@ -36,6 +36,74 @@ async function fetchJson(url) {
   return response.json();
 }
 
+async function fetchText(url) {
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'text/html,application/xhtml+xml,application/xml',
+      'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
+    },
+  });
+
+  if (!response.ok) {
+    const code = response.status === 429 ? 'rate_limited' : 'steam_http_error';
+    throw new SteamHttpError(`Steam returned HTTP ${response.status}.`, response.status, code);
+  }
+
+  return response.text();
+}
+
+async function resolveSteamProfileInput(input) {
+  const value = String(input || '').trim();
+  const directSteamId = extractSteamId64(value);
+  if (directSteamId) return directSteamId;
+
+  const vanity = extractVanityName(value);
+  if (!vanity) {
+    throw new SteamHttpError('Enter a Steam profile URL or SteamID64.', 400, 'invalid_profile_url');
+  }
+
+  if (process.env.STEAM_API_KEY) {
+    const params = new URLSearchParams({
+      key: process.env.STEAM_API_KEY,
+      vanityurl: vanity,
+    });
+    const json = await fetchJson(`https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?${params}`);
+    if (json.response?.success === 1 && /^\d{17}$/.test(String(json.response.steamid || ''))) {
+      return String(json.response.steamid);
+    }
+  }
+
+  const xml = await fetchText(`https://steamcommunity.com/id/${encodeURIComponent(vanity)}?xml=1`);
+  const match = xml.match(/<steamID64>(\d{17})<\/steamID64>/);
+  if (match) return match[1];
+
+  throw new SteamHttpError('Steam profile not found.', 404, 'profile_not_found');
+}
+
+function extractSteamId64(value) {
+  const raw = String(value || '').trim();
+  if (/^\d{17}$/.test(raw)) return raw;
+  const match = raw.match(/steamcommunity\.com\/profiles\/(\d{17})(?:[/?#]|$)/i);
+  return match ? match[1] : null;
+}
+
+function extractVanityName(value) {
+  const raw = String(value || '').trim();
+  let candidate = raw;
+
+  try {
+    const url = new URL(raw);
+    if (!/steamcommunity\.com$/i.test(url.hostname)) return null;
+    const parts = url.pathname.split('/').filter(Boolean);
+    candidate = parts[0] === 'id' ? parts[1] : '';
+  } catch {
+    candidate = raw.replace(/^@/, '');
+  }
+
+  candidate = String(candidate || '').trim();
+  return /^[A-Za-z0-9_-]{2,64}$/.test(candidate) ? candidate : null;
+}
+
 async function getSteamProfile(steamId) {
   requireSteamId(steamId);
 
@@ -165,6 +233,7 @@ function getWearFromName(name) {
 
 module.exports = {
   SteamHttpError,
+  resolveSteamProfileInput,
   getSteamProfile,
   getSteamInventory,
 };

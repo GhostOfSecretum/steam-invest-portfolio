@@ -47,7 +47,7 @@ function useAuth() {
   };
 }
 
-function usePortfolio(auth, portfolioId = null) {
+function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
   const [state, setState] = apiUseState({ loading: false, data: null, error: null });
 
   const load = apiUseCallback(async (sync = false) => {
@@ -55,14 +55,19 @@ function usePortfolio(auth, portfolioId = null) {
     try {
       const params = new URLSearchParams();
       if (sync) params.set('sync', '1');
-      if (portfolioId) params.set('portfolioId', portfolioId);
+      if (publicProfileUrl) {
+        params.set('profile', publicProfileUrl);
+      } else if (portfolioId) {
+        params.set('portfolioId', portfolioId);
+      }
       const suffix = params.toString() ? `?${params.toString()}` : '';
-      const data = await apiFetch(`/api/portfolio${suffix}`);
+      const endpoint = publicProfileUrl ? '/api/portfolio/public' : '/api/portfolio';
+      const data = await apiFetch(`${endpoint}${suffix}`);
       setState({ loading: false, data, error: null });
     } catch (error) {
       setState({ loading: false, data: null, error });
     }
-  }, [auth?.connected, portfolioId]);
+  }, [auth?.connected, portfolioId, publicProfileUrl]);
 
   apiUseEffect(() => { load(false); }, [load]);
 

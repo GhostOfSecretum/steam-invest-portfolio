@@ -4,7 +4,7 @@ const path = require('path');
 const express = require('express');
 const session = require('express-session');
 const { getSteamRedirectUrl, authenticateSteam } = require('./services/auth');
-const { getSteamProfile } = require('./services/steam');
+const { getSteamProfile, resolveSteamProfileInput } = require('./services/steam');
 const {
   getPortfolio,
   listPortfolios,
@@ -94,6 +94,30 @@ app.get('/api/portfolio', asyncRoute(async (req, res) => {
     portfolioId: req.query.portfolioId,
   });
   res.json(portfolio);
+}));
+
+app.get('/api/portfolio/public', asyncRoute(async (req, res) => {
+  const profileInput = String(req.query.profile || '').trim();
+  if (!profileInput) {
+    res.status(400).json({ error: 'Steam profile URL is required.', code: 'missing_profile_url' });
+    return;
+  }
+
+  const steamId = await resolveSteamProfileInput(profileInput);
+  const portfolio = await getPortfolio(steamId, {
+    force: req.query.sync === '1',
+    includeDesktop: false,
+  });
+
+  res.json({
+    ...portfolio,
+    portfolioId: `public-${steamId}`,
+    portfolioName: portfolio.profile?.personaname || `STEAM/${steamId.slice(-6)}`,
+    portfolioType: 'public-steam',
+    portfolios: [],
+    desktopConnected: false,
+    storageItemCount: 0,
+  });
 }));
 
 app.patch('/api/portfolio/basis', asyncRoute(async (req, res) => {

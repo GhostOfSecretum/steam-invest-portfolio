@@ -12,7 +12,9 @@ const I18N = {
       title3: 'asset class.',
       sub: 'Real-time valuation, P&L, float-adjusted pricing, and case ROI across your linked Steam inventory. Built for collectors and investors who treat the locker like a portfolio.',
       cta1: 'Link Steam Account',
-      cta2: 'See Live Demo',
+      profileUrlCta: 'Steam profile link',
+      profileUrlPlaceholder: 'https://steamcommunity.com/id/...',
+      profileUrlError: 'Paste a Steam profile link or SteamID64.',
       stat1: 'Items priced live',
       stat2: 'Tracked volume / 24h',
       stat3: 'Median latency',
@@ -100,7 +102,9 @@ const I18N = {
       title3: 'класс активов.',
       sub: 'Реальная оценка, P&L, цены с поправкой на float и доходность кейсов. Привяжи Steam — увидь свой локер как настоящий инвестпортфель.',
       cta1: 'Привязать Steam',
-      cta2: 'Живое демо',
+      profileUrlCta: 'Ссылка на профиль Steam',
+      profileUrlPlaceholder: 'https://steamcommunity.com/id/...',
+      profileUrlError: 'Вставь ссылку на профиль Steam или SteamID64.',
       stat1: 'Предметов в реальном времени',
       stat2: 'Оборот за 24 часа',
       stat3: 'Медианная задержка',
@@ -332,10 +336,7 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
           <button className="btn btn-sm btn-ghost" onClick={() => auth.logout()}>{profile?.personaname || 'Steam'} · Logout</button>
         )}
         {!connected && (
-          <>
-            <button className="btn btn-sm btn-ghost" onClick={() => onNav('dashboard')}>Demo View</button>
-            <button className="btn btn-sm btn-primary" onClick={() => auth?.login && auth.login()}>Link Steam</button>
-          </>
+          <button className="btn btn-sm btn-primary" onClick={() => auth?.login && auth.login()}>Link Steam</button>
         )}
       </div>
     </header>

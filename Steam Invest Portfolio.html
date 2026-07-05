@@ -44,7 +44,9 @@
       const [activeItem, setActiveItem] = useState(null);
       const [itemReturnScreen, setItemReturnScreen] = useState('dashboard');
       const [cursorStyle, setCursorStyle] = useState('default');
+      const [publicProfileUrl, setPublicProfileUrl] = useState('');
       const auth = useAuth();
+      const showDesktopDownload = false;
 
       // Set lang/currency globally so child components without prop access can read it
       useEffect(() => { window.__lang = t.lang; }, [t.lang]);
@@ -68,7 +70,16 @@
         setScreen('item');
         window.scrollTo({ top: 0, behavior: 'instant' });
       };
-      const onNav = (s) => { setScreen(s); window.scrollTo({top: 0, behavior: 'instant'}); };
+      const onNav = (s) => {
+        if (s !== 'dashboard') setPublicProfileUrl('');
+        setScreen(s);
+        window.scrollTo({top: 0, behavior: 'instant'});
+      };
+      const openPublicProfile = (profileUrl) => {
+        setPublicProfileUrl(profileUrl);
+        setScreen('dashboard');
+        window.scrollTo({top: 0, behavior: 'instant'});
+      };
 
       return (
         <div data-screen-label={`01 ${screen}`}>
@@ -87,10 +98,14 @@
             <>
               <Hero
                 lang={t.lang}
-                onLink={() => onNav('dashboard')}
+                onLink={() => {
+                  setPublicProfileUrl('');
+                  onNav('dashboard');
+                }}
+                onPublicProfile={openPublicProfile}
                 auth={auth}
               />
-              <DesktopDownload lang={t.lang} />
+              {showDesktopDownload && <DesktopDownload lang={t.lang} />}
               <Ticker onItemClick={goItem} />
               <TopMovers onItemClick={goItem} auth={auth} />
               <MarketCatalog onItemClick={goItem} />
@@ -102,7 +117,7 @@
             </>
           )}
           {screen === 'dashboard' && (
-            <Dashboard lang={t.lang} onItemClick={goItem} auth={auth} />
+            <Dashboard lang={t.lang} onItemClick={goItem} auth={auth} publicProfileUrl={publicProfileUrl} />
           )}
           {screen === 'item' && (
             <ItemDetail lang={t.lang} item={activeItem} onBack={() => onNav(itemReturnScreen)} />
