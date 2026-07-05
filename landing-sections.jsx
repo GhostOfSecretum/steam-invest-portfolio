@@ -584,7 +584,7 @@ function CaseROI() {
     || null;
 
   return (
-    <section className="section">
+    <section id="news" className="section">
       <div className="container">
         <SectionHeader title={t.sections.news} sub={t.sections.newsSub} num="03" />
         <div className="news-grid">
@@ -775,7 +775,7 @@ function ArmoryROI() {
     };
 
   return (
-    <section className="section armory-section">
+    <section id="armory" className="section armory-section">
       <div className="container">
         <SectionHeader title={t.sections.armory} sub={t.sections.armorySub} num="04" />
 

@@ -45,6 +45,7 @@
       const [itemReturnScreen, setItemReturnScreen] = useState('dashboard');
       const [cursorStyle, setCursorStyle] = useState('default');
       const [publicProfileUrl, setPublicProfileUrl] = useState('');
+      const [pendingSection, setPendingSection] = useState(null);
       const auth = useAuth();
       const showDesktopDownload = false;
 
@@ -60,6 +61,18 @@
         document.body.dataset.skin = t.skin;
         document.body.dataset.glass = String(t.glass);
       }, [t.skin, t.glass]);
+      useEffect(() => {
+        if (screen !== 'home' || !pendingSection) return;
+        const timer = window.setTimeout(() => {
+          const target = document.getElementById(pendingSection);
+          if (target) {
+            const y = target.getBoundingClientRect().top + window.scrollY - 78;
+            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+          }
+          setPendingSection(null);
+        }, 40);
+        return () => window.clearTimeout(timer);
+      }, [screen, pendingSection]);
       const i18n = useT(t.lang);
       window.__lang = t.lang;
       window.__currency = t.currency || 'usd';
@@ -71,7 +84,14 @@
         window.scrollTo({ top: 0, behavior: 'instant' });
       };
       const onNav = (s) => {
+        if (s === 'news' || s === 'armory') {
+          setPublicProfileUrl('');
+          setPendingSection(s);
+          setScreen('home');
+          return;
+        }
         if (s !== 'dashboard') setPublicProfileUrl('');
+        setPendingSection(null);
         setScreen(s);
         window.scrollTo({top: 0, behavior: 'instant'});
       };

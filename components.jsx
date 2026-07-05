@@ -4,13 +4,13 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 /* ─────────── i18n ─────────── */
 const I18N = {
   en: {
-    nav: { home: 'Home', dashboard: 'Dashboard', item: 'Item Detail', currency: 'Currency' },
+    nav: { home: 'Home', dashboard: 'Dashboard', news: 'News', armory: 'Armory Pass', item: 'Item Detail', currency: 'Currency' },
     hero: {
-      eyebrow: 'CS2 Inventory Intelligence',
+      eyebrow: 'Counter-Strike 2 Inventory Intelligence',
       title1: 'Your skins',
       title2: 'are an',
       title3: 'asset class.',
-      sub: 'Real-time valuation, P&L, float-adjusted pricing, and case ROI across your linked Steam inventory. Built for collectors and investors who treat the locker like a portfolio.',
+      sub: 'Analyze any public Steam Counter-Strike 2 inventory or your own portfolio with live market prices, real value history, P&L, allocation, liquidity, manual positions, case ROI, Armory ROI, and market/news intelligence in one dashboard.',
       cta1: 'Link Steam Account',
       profileUrlCta: 'Steam profile link',
       profileUrlPlaceholder: 'https://steamcommunity.com/id/...',
@@ -94,13 +94,13 @@ const I18N = {
     }
   },
   ru: {
-    nav: { home: 'Главная', dashboard: 'Портфель', item: 'Карточка', currency: 'Валюта' },
+    nav: { home: 'Главная', dashboard: 'Портфель', news: 'Новости', armory: 'Armory Pass', item: 'Карточка', currency: 'Валюта' },
     hero: {
-      eyebrow: 'CS2 · Аналитика инвентаря',
-      title1: 'Скины CS2 —',
+      eyebrow: 'Counter-Strike 2 · Аналитика инвентаря',
+      title1: 'Скины Counter-Strike 2 —',
       title2: 'это',
       title3: 'класс активов.',
-      sub: 'Реальная оценка, P&L, цены с поправкой на float и доходность кейсов. Привяжи Steam — увидь свой локер как настоящий инвестпортфель.',
+      sub: 'Анализируй любой публичный инвентарь Counter-Strike 2 в Steam или свой портфель: live-оценка, реальная история стоимости, P&L, распределение, ликвидность, ручные позиции, ROI кейсов и Armory, маркет и новости в одном дашборде.',
       cta1: 'Привязать Steam',
       profileUrlCta: 'Ссылка на профиль Steam',
       profileUrlPlaceholder: 'https://steamcommunity.com/id/...',
@@ -288,6 +288,8 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
           {[
             { k: 'home', label: t.nav.home },
             { k: 'dashboard', label: t.nav.dashboard },
+            { k: 'news', label: t.nav.news },
+            { k: 'armory', label: t.nav.armory },
           ].map(it => (
             <button key={it.k} className="nav-link" data-active={screen === it.k} onClick={() => onNav(it.k)}>{it.label}</button>
           ))}
