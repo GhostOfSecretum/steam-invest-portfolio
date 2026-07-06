@@ -7,10 +7,10 @@ RUN npm ci --omit=dev
 
 COPY . .
 
-# Keep the image default user (root) so the one-shot xray-config init container can
-# write to the shared Docker volume. The app service overrides user to `node` in
-# docker-compose.yml. Only chown paths the app needs at runtime.
-RUN mkdir -p /app/.data && chown -R node:node /app
+# su-exec drops root after fixing mounted .data permissions on startup.
+RUN apk add --no-cache su-exec \
+  && mkdir -p /app/.data && chown -R node:node /app \
+  && chmod +x /app/scripts/docker-app-entrypoint.sh
 
 EXPOSE 3000
 

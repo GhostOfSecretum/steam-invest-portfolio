@@ -32,7 +32,9 @@ services:
     build: .
     image: steam-invest-app:latest
     container_name: steam-invest-app
-    user: node
+    user: "0:0"
+    entrypoint: ["/app/scripts/docker-app-entrypoint.sh"]
+    command: ["node", "server/index.js"]
     restart: unless-stopped
     env_file:
       - .env
