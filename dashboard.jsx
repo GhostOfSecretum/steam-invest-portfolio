@@ -232,7 +232,9 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
               {portfolio.loading ? 'Syncing...' : ((isSteamPortfolio || isPublicPortfolio) ? 'Sync' : 'Refresh')}
             </button>
             {!isPublicPortfolio && (
-              <button className="btn btn-sm btn-primary" title={lang === 'ru' ? 'Клик по ячейке Basis — ввести цену покупки за шт. (₽ или $ по переключателю валюты)' : 'Click Basis cell — enter buy price per item (RUB or USD from currency toggle)'}>Buy basis</button>
+              <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }} title={lang === 'ru' ? 'Клик по ячейке Basis — ввести цену покупки за шт. (₽ или $ по переключателю валюты)' : 'Click Basis cell — enter buy price per item (RUB or USD from currency toggle)'}>
+                {lang === 'ru' ? 'Basis: клик по ячейке' : 'Basis: click a cell'}
+              </span>
             )}
           </div>
         </div>
@@ -630,30 +632,36 @@ function portfolioInputStyle(extra = {}) {
   };
 }
 
-function BasisCell({ basisPerUnit, basisOriginal, basisCurrency, qty, totalBasis, lang }) {
+function BasisCell({ basisPerUnit, basisOriginal, basisCurrency, hasBasis, qty, totalBasis, lang, editable, onEdit }) {
   const inputCurrency = getActiveCurrency();
 
-  const title = qty > 1 && Number.isFinite(totalBasis)
+  const editHint = editable ? (lang === 'ru' ? ' · клик, чтобы изменить' : ' · click to edit') : '';
+  const title = (hasBasis && qty > 1 && Number.isFinite(totalBasis)
     ? (lang === 'ru' ? `Всего: ${formatUsd(totalBasis)} · за шт.` : `Total: ${formatUsd(totalBasis)} · per unit`)
-    : (lang === 'ru' ? 'Цена покупки за шт.' : 'Buy price per item');
+    : (lang === 'ru' ? 'Цена покупки за шт.' : 'Buy price per item')) + editHint;
 
-  const displayBasis = inputCurrency === 'rub'
-    ? (Number.isFinite(basisOriginal) && basisCurrency === 'rub'
-      ? formatMoney(basisOriginal, { currency: 'rub' })
-      : (Number.isFinite(basisPerUnit) ? formatMoney(basisPerUnit, { currency: 'rub' }) : '—'))
-    : (Number.isFinite(basisOriginal) && basisCurrency === 'usd'
-      ? formatMoney(basisOriginal, { currency: 'usd' })
-      : (Number.isFinite(basisPerUnit) ? formatMoney(basisPerUnit, { currency: 'usd' }) : '—'));
+  // basisOriginal keeps the exact amount the user typed in its original currency.
+  // When the active currency differs, convert the USD basis (basisPerUnit) instead of
+  // formatting the USD number as if it were already in the active currency.
+  const displayBasis = !hasBasis
+    ? (lang === 'ru' ? 'не задан' : 'not set')
+    : (basisCurrency === inputCurrency && Number.isFinite(basisOriginal)
+      ? formatMoney(basisOriginal, { currency: inputCurrency })
+      : (Number.isFinite(basisPerUnit) ? formatMoney(basisPerUnit) : '—'));
 
   return (
     <div
       className="mono"
       title={title}
+      onClick={editable ? onEdit : undefined}
       style={{
         fontSize: 12,
-        color: 'var(--fg-2)',
+        color: hasBasis ? 'var(--fg-2)' : 'var(--fg-3)',
         display: 'inline-block',
         maxWidth: '100%',
+        cursor: editable ? 'pointer' : 'inherit',
+        textDecoration: editable ? 'underline dotted' : 'none',
+        textUnderlineOffset: 3,
       }}
     >
       {displayBasis}
@@ -665,18 +673,19 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
   const [editingItemId, setEditingItemId] = useState(null);
   const [editDraft, setEditDraft] = useState({ quantity: '', basisPerUnit: '' });
   const [savingItemId, setSavingItemId] = useState(null);
+  const isSteamPortfolio = portfolioType === 'steam';
+
+  const rowEditKey = (item) => item.manualItemId || item.marketHashName;
 
   const startManualEdit = (item, event) => {
     event.stopPropagation();
     const inputCurrency = getActiveCurrency();
-    const basisValue = inputCurrency === 'rub'
-      ? (Number.isFinite(item.basisOriginal) && item.basisCurrency === 'rub'
+    const basisValue = item.hasBasis
+      ? (Number.isFinite(item.basisOriginal) && item.basisCurrency === inputCurrency
         ? item.basisOriginal
         : Number(usdBasisToInputDraft(item.basis, inputCurrency)))
-      : (Number.isFinite(item.basisOriginal) && item.basisCurrency === 'usd'
-        ? item.basisOriginal
-        : Number(usdBasisToInputDraft(item.basis, inputCurrency)));
-    setEditingItemId(item.manualItemId);
+      : NaN;
+    setEditingItemId(rowEditKey(item));
     setEditDraft({
       quantity: String(item.qty || 1),
       basisPerUnit: Number.isFinite(basisValue) ? String(basisValue) : '',
@@ -691,15 +700,40 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
 
   const saveManualEdit = async (item, event) => {
     event.stopPropagation();
-    if (!portfolioId || !item.manualItemId) return;
-    const quantity = Number(String(editDraft.quantity).trim().replace(',', '.'));
+    if (!portfolioId) return;
     const basisPerUnit = Number(String(editDraft.basisPerUnit).trim().replace(',', '.'));
+
+    // Steam inventory rows: only the cost basis is editable (quantity comes from Steam).
+    if (isSteamPortfolio) {
+      if (!Number.isFinite(basisPerUnit) || basisPerUnit < 0) {
+        window.alert(lang === 'ru' ? 'Укажи корректную цену покупки.' : 'Enter a valid buy price.');
+        return;
+      }
+      setSavingItemId(rowEditKey(item));
+      try {
+        await apiFetch('/api/portfolio/basis', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ portfolioId: 'steam', marketHashName: item.marketHashName, basisPerUnit, currency: getActiveCurrency() }),
+        });
+        setEditingItemId(null);
+        setEditDraft({ quantity: '', basisPerUnit: '' });
+        if (onBasisSaved) onBasisSaved();
+      } catch (err) {
+        window.alert(err.message || (lang === 'ru' ? 'Не удалось сохранить' : 'Could not save'));
+      }
+      setSavingItemId(null);
+      return;
+    }
+
+    if (!item.manualItemId) return;
+    const quantity = Number(String(editDraft.quantity).trim().replace(',', '.'));
     if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(basisPerUnit) || basisPerUnit < 0) {
       window.alert(lang === 'ru' ? 'Укажи корректное количество и цену.' : 'Enter a valid quantity and price.');
       return;
     }
 
-    setSavingItemId(item.manualItemId);
+    setSavingItemId(rowEditKey(item));
     try {
       await apiFetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/items/${encodeURIComponent(item.manualItemId)}`, {
         method: 'PATCH',
@@ -740,7 +774,8 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
       </div>
       {items.map((h, i) => {
         const change = (h.spark || [0, 0]).at(-1) - (h.spark || [0, 0]).at(-2);
-        const isEditing = editingItemId === h.manualItemId;
+        const isEditing = editingItemId === (h.manualItemId || h.marketHashName);
+        const basisEditable = (portfolioType === 'manual' && h.manualItemId) || isSteamPortfolio;
         const lockLabel = h.tradableQty === h.qty
           ? null
           : h.tradableQty > 0
@@ -771,7 +806,7 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
                 {lockLabel && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--amber)' }}>{lockLabel}</span>}
               </div>
             </div>
-            {isEditing ? (
+            {isEditing && portfolioType === 'manual' ? (
               <input
                 value={editDraft.quantity}
                 onClick={(event) => event.stopPropagation()}
@@ -797,9 +832,12 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
                 basisPerUnit={h.basis}
                 basisOriginal={h.basisOriginal}
                 basisCurrency={h.basisCurrency}
+                hasBasis={h.hasBasis}
                 qty={h.qty}
                 totalBasis={h.totalBasis}
                 lang={lang}
+                editable={basisEditable}
+                onEdit={(event) => startManualEdit(h, event)}
               />
             )}
             <div className="mono" style={{ fontSize: 13, fontWeight: 500 }}>{formatUsd(h.totalValue ?? h.value)}</div>
@@ -828,6 +866,15 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
                       </button>
                     </>
                   )}
+                </div>
+              ) : isSteamPortfolio && isEditing ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button className="btn btn-sm btn-primary" onClick={(event) => saveManualEdit(h, event)} disabled={savingItemId === (h.manualItemId || h.marketHashName)}>
+                    {savingItemId === (h.manualItemId || h.marketHashName) ? '...' : (lang === 'ru' ? 'Сохранить' : 'Save')}
+                  </button>
+                  <button className="btn btn-sm btn-ghost" onClick={cancelManualEdit}>
+                    {lang === 'ru' ? 'Отмена' : 'Cancel'}
+                  </button>
                 </div>
               ) : (
                 <Sparkline data={h.spark} color={change >= 0 ? 'var(--green)' : 'var(--red)'} height={24} fill={false} />
