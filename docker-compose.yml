@@ -1,6 +1,12 @@
+# Run all commands from this repo root (/opt/steam-invest-portfolio on the server):
+#   docker compose up -d --build
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+name: steam-invest
+
 services:
-  xray-config:
+  steam-invest-xray-config:
     build: .
+    image: steam-invest-app:latest
     user: "0:0"
     command: node scripts/generate-xray-config.js
     env_file:
@@ -10,35 +16,32 @@ services:
     volumes:
       - xray-config:/etc/xray
 
-  xray:
-    # Pinned to a specific release instead of :latest for reproducible, auditable builds.
+  steam-invest-xray:
     image: ghcr.io/xtls/xray-core:v26.3.27
     restart: unless-stopped
     command: run -c /etc/xray/config.json
     volumes:
       - xray-config:/etc/xray:ro
     depends_on:
-      xray-config:
+      steam-invest-xray-config:
         condition: service_completed_successfully
 
-  app:
+  steam-invest-app:
     build: .
+    image: steam-invest-app:latest
     user: node
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      TELEGRAM_PROXY_HOST: ${TELEGRAM_PROXY_HOST:-xray}
+      TELEGRAM_PROXY_HOST: ${TELEGRAM_PROXY_HOST:-steam-invest-xray}
       TELEGRAM_PROXY_PORT: ${TELEGRAM_PROXY_PORT:-1080}
     volumes:
       - ./.data:/app/.data
     ports:
-      # Bind to localhost only: the app speaks plain HTTP, so it must sit behind a
-      # TLS-terminating reverse proxy (see caddy example) rather than be exposed
-      # directly. Override APP_BIND=0.0.0.0 only if you know what you are doing.
       - "${APP_BIND:-127.0.0.1}:${PORT:-3000}:3000"
     depends_on:
-      - xray
+      - steam-invest-xray
 
 volumes:
   xray-config:

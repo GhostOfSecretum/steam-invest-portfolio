@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-COMPOSE_FILE="${COMPOSE_FILE:-/opt/mysterium-tech-landing/docker-compose.yml}"
-ENV_FILE="${ENV_FILE:-/opt/steam-invest-portfolio/.env}"
+COMPOSE_FILE="${COMPOSE_FILE:-$ROOT_DIR/docker-compose.yml}"
+ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env}"
 
 if [[ ! -f "$COMPOSE_FILE" ]]; then
   echo "Compose file not found: $COMPOSE_FILE" >&2

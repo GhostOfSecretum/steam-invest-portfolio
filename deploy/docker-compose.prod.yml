@@ -8,13 +8,10 @@
 #   - SESSION_SECRET set in .env (required in production; app refuses to start otherwise).
 #   - Edit deploy/Caddyfile and replace your-domain.com.
 services:
-  app:
+  steam-invest-app:
     environment:
-      # Enables fail-fast on missing SESSION_SECRET and Secure cookies.
       NODE_ENV: production
-      # Trust the reverse proxy's X-Forwarded-* headers (Caddy sets them).
       TRUST_PROXY: "1"
-      # Public URL of the site, used for Steam OpenID return_to / realm.
       APP_BASE_URL: ${APP_BASE_URL:-https://your-domain.com}
 
   caddy:
@@ -26,7 +23,7 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      - app
+      - steam-invest-app
 
 volumes:
   caddy-data:
