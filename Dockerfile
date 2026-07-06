@@ -7,10 +7,10 @@ RUN npm ci --omit=dev
 
 COPY . .
 
-# Run as the non-root `node` user (already present in the base image). Ensure the
-# app dir and the mounted data dir are writable by that user.
+# Keep the image default user (root) so the one-shot xray-config init container can
+# write to the shared Docker volume. The app service overrides user to `node` in
+# docker-compose.yml. Only chown paths the app needs at runtime.
 RUN mkdir -p /app/.data && chown -R node:node /app
-USER node
 
 EXPOSE 3000
 

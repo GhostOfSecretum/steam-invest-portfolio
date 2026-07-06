@@ -1,6 +1,7 @@
 services:
   xray-config:
     build: .
+    user: "0:0"
     command: node scripts/generate-xray-config.js
     env_file:
       - .env
@@ -22,6 +23,7 @@ services:
 
   app:
     build: .
+    user: node
     restart: unless-stopped
     env_file:
       - .env

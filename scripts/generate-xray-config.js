@@ -112,16 +112,21 @@ function buildXrayConfig(settings) {
 }
 
 function main() {
-  const outputPath = path.resolve(
-    process.cwd(),
-    process.env.XRAY_CONFIG_PATH || 'xray/config.json',
-  );
-  const settings = getVlessSettings();
-  const config = buildXrayConfig(settings);
+  try {
+    const outputPath = path.resolve(
+      process.cwd(),
+      process.env.XRAY_CONFIG_PATH || 'xray/config.json',
+    );
+    const settings = getVlessSettings();
+    const config = buildXrayConfig(settings);
 
-  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-  fs.writeFileSync(outputPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
-  console.log(`Wrote Xray config to ${outputPath}`);
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    fs.writeFileSync(outputPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+    console.log(`Wrote Xray config to ${outputPath}`);
+  } catch (error) {
+    console.error('[xray-config]', error.message || error);
+    process.exit(1);
+  }
 }
 
 main();
