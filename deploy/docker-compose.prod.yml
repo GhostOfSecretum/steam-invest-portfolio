@@ -1,0 +1,33 @@
+# Production overlay: adds a Caddy TLS reverse proxy in front of the app.
+#
+# Usage (from the repo root):
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+#
+# Prerequisites:
+#   - A domain whose DNS A/AAAA record points to this server.
+#   - SESSION_SECRET set in .env (required in production; app refuses to start otherwise).
+#   - Edit deploy/Caddyfile and replace your-domain.com.
+services:
+  app:
+    environment:
+      # Enables fail-fast on missing SESSION_SECRET and Secure cookies.
+      NODE_ENV: production
+      # Trust the reverse proxy's X-Forwarded-* headers (Caddy sets them).
+      TRUST_PROXY: "1"
+      # Public URL of the site, used for Steam OpenID return_to / realm.
+      APP_BASE_URL: ${APP_BASE_URL:-https://your-domain.com}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy-data:
+  caddy-config:

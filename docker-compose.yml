@@ -10,7 +10,8 @@ services:
       - xray-config:/etc/xray
 
   xray:
-    image: ghcr.io/xtls/xray-core:latest
+    # Pinned to a specific release instead of :latest for reproducible, auditable builds.
+    image: ghcr.io/xtls/xray-core:v26.3.27
     restart: unless-stopped
     command: run -c /etc/xray/config.json
     volumes:
@@ -30,7 +31,10 @@ services:
     volumes:
       - ./.data:/app/.data
     ports:
-      - "${PORT:-3000}:3000"
+      # Bind to localhost only: the app speaks plain HTTP, so it must sit behind a
+      # TLS-terminating reverse proxy (see caddy example) rather than be exposed
+      # directly. Override APP_BIND=0.0.0.0 only if you know what you are doing.
+      - "${APP_BIND:-127.0.0.1}:${PORT:-3000}:3000"
     depends_on:
       - xray
 
