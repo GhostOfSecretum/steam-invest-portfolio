@@ -1,8 +1,11 @@
 require('dotenv').config();
 
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { getSteamRedirectUrl, authenticateSteam } = require('./services/auth');
 const { getSteamProfile, resolveSteamProfileInput } = require('./services/steam');
 const {
@@ -15,15 +18,25 @@ const {
   updateManualPortfolioItem,
   setBasisPerUnitByMarketHashName,
   setManualBasisPerUnitByMarketHashName,
+  migrateOwnershipToSteam,
 } = require('./services/portfolio');
 const { getMarketSnapshot, getMarketCatalog, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
-const { createPairingCode, redeemPairingCode, validateDeviceToken, saveDesktopInventory } = require('./services/desktop');
+const {
+  createPairingCode,
+  redeemPairingCode,
+  validateDeviceToken,
+  createDesktopLoginCode,
+  redeemDesktopLoginCode,
+  saveDesktopInventory,
+  getDesktopInventory,
+} = require('./services/desktop');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
+const isProduction = process.env.NODE_ENV === 'production';
 
 if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
   app.set('trust proxy', 1);
@@ -31,19 +44,55 @@ if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
 const rootDir = path.join(__dirname, '..');
 const appFile = 'Steam Invest Portfolio.html';
 
-app.use(express.json({ limit: '50mb' }));
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  if (isProduction) {
+    throw new Error('SESSION_SECRET is required in production. Generate one with `openssl rand -hex 32`.');
+  }
+  console.warn('[security] SESSION_SECRET is not set — using an ephemeral dev secret. Sessions reset on restart.');
+}
+const resolvedSessionSecret = sessionSecret || crypto.randomBytes(32).toString('hex');
+// Cookies must be Secure behind TLS in production. Enable explicitly via COOKIE_SECURE
+// or automatically when running with NODE_ENV=production (expects a TLS-terminating proxy).
+const cookieSecure = process.env.COOKIE_SECURE === '1' || process.env.COOKIE_SECURE === 'true' || isProduction;
+
+app.disable('x-powered-by');
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+// Default body limit is small; the large limit only applies to inventory sync.
+// This runs first, marks the body as parsed, so the global parser skips it.
+app.use('/api/desktop/inventory-sync', express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '256kb' }));
 app.use(session({
   name: 'steam-invest.sid',
-  secret: process.env.SESSION_SECRET || 'local-dev-only-change-me',
+  secret: resolvedSessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure: cookieSecure,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   },
 }));
+
+const pairingLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many pairing attempts. Try again later.', code: 'rate_limited' },
+});
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Try again later.', code: 'rate_limited' },
+});
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -54,17 +103,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/api/auth/steam', asyncRoute(async (req, res) => {
+app.get('/api/auth/steam', authLimiter, asyncRoute(async (req, res) => {
   const redirectUrl = await getSteamRedirectUrl(req);
   res.redirect(redirectUrl);
 }));
 
-app.get('/api/auth/steam/callback', asyncRoute(async (req, res) => {
+app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => {
   const auth = await authenticateSteam(req);
+  const priorOwnerId = req.session.ownerId || null;
   await regenerateSession(req);
   req.session.steamId = auth.steamId;
   req.session.steamRaw = auth.raw;
   await saveSession(req);
+  await migrateOwnershipToSteam(priorOwnerId, auth.steamId);
   res.redirect(`/${encodeURIComponent(appFile)}#dashboard`);
 }));
 
@@ -92,6 +143,7 @@ app.get('/api/portfolio', asyncRoute(async (req, res) => {
   const portfolio = await getPortfolio(req.session.steamId || null, {
     force: req.query.sync === '1',
     portfolioId: req.query.portfolioId,
+    ownerId: resolveOwnerId(req),
   });
   res.json(portfolio);
 }));
@@ -123,7 +175,8 @@ app.get('/api/portfolio/public', asyncRoute(async (req, res) => {
 app.patch('/api/portfolio/basis', asyncRoute(async (req, res) => {
   const portfolioId = String(req.body?.portfolioId || '').trim();
   if (portfolioId && portfolioId !== 'steam') {
-    await setManualBasisPerUnitByMarketHashName(portfolioId, req.body?.marketHashName, req.body?.basisPerUnit, req.body?.currency);
+    const ownerId = resolveOwnerId(req, { create: true });
+    await setManualBasisPerUnitByMarketHashName(ownerId, portfolioId, req.body?.marketHashName, req.body?.basisPerUnit, req.body?.currency);
     res.json({ ok: true });
     return;
   }
@@ -133,22 +186,22 @@ app.patch('/api/portfolio/basis', asyncRoute(async (req, res) => {
     return;
   }
 
-  await setBasisPerUnitByMarketHashName(req.body?.marketHashName, req.body?.basisPerUnit, req.body?.currency);
+  await setBasisPerUnitByMarketHashName(req.session.steamId, req.body?.marketHashName, req.body?.basisPerUnit, req.body?.currency);
   res.json({ ok: true });
 }));
 
 app.get('/api/portfolios', asyncRoute(async (req, res) => {
-  const portfolios = await listPortfolios(req.session.steamId || null);
+  const portfolios = await listPortfolios(resolveOwnerId(req), req.session.steamId || null);
   res.json({ portfolios });
 }));
 
 app.post('/api/portfolios', asyncRoute(async (req, res) => {
-  const portfolio = await createManualPortfolio(req.body?.name);
+  const portfolio = await createManualPortfolio(resolveOwnerId(req, { create: true }), req.body?.name);
   res.status(201).json({ portfolio });
 }));
 
 app.delete('/api/portfolios/:portfolioId', asyncRoute(async (req, res) => {
-  const deleted = await deleteManualPortfolio(req.params.portfolioId);
+  const deleted = await deleteManualPortfolio(resolveOwnerId(req, { create: true }), req.params.portfolioId);
   if (!deleted) {
     res.status(404).json({ error: 'Manual portfolio not found.', code: 'portfolio_not_found' });
     return;
@@ -157,17 +210,17 @@ app.delete('/api/portfolios/:portfolioId', asyncRoute(async (req, res) => {
 }));
 
 app.post('/api/portfolios/:portfolioId/items', asyncRoute(async (req, res) => {
-  const portfolio = await addManualPortfolioItem(req.params.portfolioId, req.body);
+  const portfolio = await addManualPortfolioItem(resolveOwnerId(req, { create: true }), req.params.portfolioId, req.body);
   res.status(201).json({ portfolio });
 }));
 
 app.patch('/api/portfolios/:portfolioId/items/:itemId', asyncRoute(async (req, res) => {
-  const item = await updateManualPortfolioItem(req.params.portfolioId, req.params.itemId, req.body);
+  const item = await updateManualPortfolioItem(resolveOwnerId(req, { create: true }), req.params.portfolioId, req.params.itemId, req.body);
   res.json({ item });
 }));
 
 app.delete('/api/portfolios/:portfolioId/items/:itemId', asyncRoute(async (req, res) => {
-  const deleted = await deleteManualPortfolioItem(req.params.portfolioId, req.params.itemId);
+  const deleted = await deleteManualPortfolioItem(resolveOwnerId(req, { create: true }), req.params.portfolioId, req.params.itemId);
   if (!deleted) {
     res.status(404).json({ error: 'Manual portfolio item not found.', code: 'item_not_found' });
     return;
@@ -277,12 +330,12 @@ app.get('/api/news/telegram-media/:sourceId/:messageId', asyncRoute(async (req, 
 
 // --- Desktop client pairing & sync ---
 
-app.post('/api/desktop/pairing-code', requireAuth, asyncRoute(async (req, res) => {
+app.post('/api/desktop/pairing-code', authLimiter, requireAuth, asyncRoute(async (req, res) => {
   const code = await createPairingCode(req.session.steamId);
   res.json({ code, expiresIn: 600 });
 }));
 
-app.post('/api/desktop/pair', express.json(), asyncRoute(async (req, res) => {
+app.post('/api/desktop/pair', pairingLimiter, asyncRoute(async (req, res) => {
   const code = String(req.body?.code || '').trim();
   if (!code) {
     res.status(400).json({ error: 'Pairing code is required.', code: 'missing_code' });
@@ -296,7 +349,7 @@ app.post('/api/desktop/pair', express.json(), asyncRoute(async (req, res) => {
   res.json({ ok: true, steamId: result.steamId, deviceToken: result.deviceToken });
 }));
 
-app.post('/api/desktop/inventory-sync', asyncRoute(async (req, res) => {
+app.post('/api/desktop/inventory-sync', pairingLimiter, asyncRoute(async (req, res) => {
   const deviceToken = String(req.headers['x-device-token'] || '').trim();
   const device = await validateDeviceToken(deviceToken);
   if (!device) {
@@ -309,30 +362,65 @@ app.post('/api/desktop/inventory-sync', asyncRoute(async (req, res) => {
     res.status(400).json({ error: 'items array is required.', code: 'missing_items' });
     return;
   }
-
-  const storageItemCount = Number(req.body?.storageItemCount) || items.filter((item) => item.inStorage).length;
-
-  await saveDesktopInventory(device.steamId, {
-    totalItemCount: items.reduce((sum, item) => sum + Number(item.amount || 1), 0),
-    storageItemCount,
-    items,
-  });
-
-  res.json({ ok: true, steamId: device.steamId, itemCount: items.length, storageItemCount });
-}));
-
-app.get('/api/desktop/login', asyncRoute(async (req, res) => {
-  const deviceToken = String(req.query.deviceToken || '').trim();
-  const device = await validateDeviceToken(deviceToken);
-  if (!device) {
-    res.status(401).json({ error: 'Invalid or expired device token.', code: 'invalid_device_token' });
+  if (items.length > 50000) {
+    res.status(413).json({ error: 'Too many inventory items.', code: 'too_many_items' });
     return;
   }
 
+  const sumPieces = (list) => list.reduce((sum, item) => sum + Number(item.amount || 1), 0);
+  // When a background sync omits Storage Units, keep the previously synced storage
+  // items instead of wiping them out of the portfolio.
+  const includeStorage = req.body?.includeStorage !== false;
+  let mergedItems = items;
+  let storageItemCount;
+
+  if (includeStorage) {
+    storageItemCount = Number.isFinite(Number(req.body?.storageItemCount))
+      ? Number(req.body.storageItemCount)
+      : sumPieces(items.filter((item) => item.inStorage));
+  } else {
+    const previous = await getDesktopInventory(device.steamId).catch(() => null);
+    const previousStorage = (previous?.items || []).filter((item) => item.inStorage);
+    const freshNonStorage = items.filter((item) => !item.inStorage);
+    mergedItems = [...freshNonStorage, ...previousStorage];
+    storageItemCount = Number.isFinite(previous?.storageItemCount)
+      ? previous.storageItemCount
+      : sumPieces(previousStorage);
+  }
+
+  await saveDesktopInventory(device.steamId, {
+    totalItemCount: sumPieces(mergedItems),
+    storageItemCount,
+    items: mergedItems,
+  });
+
+  res.json({ ok: true, steamId: device.steamId, itemCount: mergedItems.length, storageItemCount });
+}));
+
+app.post('/api/desktop/login-code', pairingLimiter, asyncRoute(async (req, res) => {
+  const deviceToken = String(req.headers['x-device-token'] || '').trim();
+  const code = await createDesktopLoginCode(deviceToken);
+  if (!code) {
+    res.status(401).json({ error: 'Invalid or expired device token.', code: 'invalid_device_token' });
+    return;
+  }
+  res.json({ code, expiresIn: 60 });
+}));
+
+app.get('/api/desktop/login', pairingLimiter, asyncRoute(async (req, res) => {
+  const code = String(req.query.code || '').trim();
+  const loginSession = await redeemDesktopLoginCode(code);
+  if (!loginSession) {
+    res.status(401).json({ error: 'Invalid or expired login code.', code: 'invalid_login_code' });
+    return;
+  }
+
+  const priorOwnerId = req.session.ownerId || null;
   await regenerateSession(req);
-  req.session.steamId = device.steamId;
+  req.session.steamId = loginSession.steamId;
   req.session.desktopLinked = true;
   await saveSession(req);
+  await migrateOwnershipToSteam(priorOwnerId, loginSession.steamId);
   res.redirect(`/${encodeURIComponent(appFile)}#dashboard`);
 }));
 
@@ -353,7 +441,7 @@ app.get('/', (req, res) => {
   res.redirect(`/${encodeURIComponent(appFile)}`);
 });
 
-app.use(express.static(rootDir));
+app.use(express.static(rootDir, { dotfiles: 'deny' }));
 
 app.use((error, req, res, next) => {
   const status = error.status || 500;
@@ -369,6 +457,18 @@ app.use((error, req, res, next) => {
 app.listen(port, () => {
   console.log(`Steam Invest Portfolio running at http://localhost:${port}`);
 });
+
+// Owner id scopes manual portfolios & basis per user: the Steam account when
+// logged in, otherwise a stable per-session anonymous id (only created on write).
+function resolveOwnerId(req, { create = false } = {}) {
+  if (req.session.steamId) return `steam:${req.session.steamId}`;
+  if (req.session.ownerId) return req.session.ownerId;
+  if (create) {
+    req.session.ownerId = `anon:${crypto.randomUUID()}`;
+    return req.session.ownerId;
+  }
+  return null;
+}
 
 function requireAuth(req, res, next) {
   if (!req.session.steamId) {

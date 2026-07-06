@@ -8,18 +8,21 @@ const { getDesktopInventory } = require('./desktop');
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const BASIS_FILE = path.join(DATA_DIR, 'portfolio.json');
 const MANUAL_PORTFOLIOS_FILE = path.join(DATA_DIR, 'manual-portfolios.json');
+const LEGACY_OWNER = '__legacy__';
 const iconRefreshes = new Set();
 
 async function getPortfolio(steamId, options = {}) {
+  const ownerId = options.ownerId || (steamId ? `steam:${steamId}` : null);
   const portfolioId = String(options.portfolioId || '').trim();
   if (portfolioId && portfolioId !== 'steam') {
-    return getManualPortfolio(portfolioId, steamId);
+    return getManualPortfolio(ownerId, portfolioId, steamId);
   }
 
   if (!steamId) {
     const store = await readManualPortfolioStore();
-    const active = resolveActiveManualPortfolio(store, portfolioId);
-    return active ? getManualPortfolio(active.id, null) : buildEmptyManualPortfolio(store, null);
+    const bucket = resolveOwnerBucketForRead(store, ownerId);
+    const active = resolveActiveManualPortfolio(bucket, portfolioId);
+    return active ? getManualPortfolio(ownerId, active.id, null) : buildEmptyManualPortfolio(bucket, null, ownerId);
   }
 
   const includeDesktop = options.includeDesktop !== false;
@@ -27,7 +30,7 @@ async function getPortfolio(steamId, options = {}) {
     getSteamProfile(steamId),
     getSteamInventory(steamId, options),
     includeDesktop ? getDesktopInventory(steamId).catch(() => null) : Promise.resolve(null),
-    readBasis(),
+    readBasis(steamId),
   ]);
 
   const useDesktop = desktopInventory && Array.isArray(desktopInventory.items) && desktopInventory.items.length > 0;
@@ -61,7 +64,7 @@ async function getPortfolio(steamId, options = {}) {
     portfolioId: 'steam',
     portfolioName: 'Steam inventory',
     portfolioType: 'steam',
-    portfolios: await listPortfolios(steamId),
+    portfolios: await listPortfolios(ownerId, steamId),
     profile,
     syncedAt: inventory.syncedAt,
     cached: inventory.cached,
@@ -90,9 +93,10 @@ async function getPortfolio(steamId, options = {}) {
   };
 }
 
-async function listPortfolios(steamId = null) {
+async function listPortfolios(ownerId = null, steamId = null) {
   const store = await readManualPortfolioStore();
-  const manual = store.portfolios.map((portfolio) => ({
+  const bucket = resolveOwnerBucketForRead(store, ownerId);
+  const manual = bucket.portfolios.map((portfolio) => ({
     id: portfolio.id,
     name: portfolio.name,
     type: 'manual',
@@ -107,9 +111,10 @@ async function listPortfolios(steamId = null) {
   ];
 }
 
-async function createManualPortfolio(name) {
+async function createManualPortfolio(ownerId, name) {
   const title = String(name || '').trim() || 'Manual portfolio';
   const store = await readManualPortfolioStore();
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
   const now = new Date().toISOString();
   const portfolio = {
     id: `manual-${crypto.randomUUID()}`,
@@ -120,27 +125,29 @@ async function createManualPortfolio(name) {
     updatedAt: now,
   };
 
-  store.portfolios.push(portfolio);
-  store.activePortfolioId = portfolio.id;
+  bucket.portfolios.push(portfolio);
+  bucket.activePortfolioId = portfolio.id;
   await writeManualPortfolioStore(store);
   return portfolio;
 }
 
-async function deleteManualPortfolio(portfolioId) {
+async function deleteManualPortfolio(ownerId, portfolioId) {
   const store = await readManualPortfolioStore();
-  const before = store.portfolios.length;
-  store.portfolios = store.portfolios.filter((portfolio) => portfolio.id !== portfolioId);
-  if (store.portfolios.length === before) return false;
-  if (store.activePortfolioId === portfolioId) {
-    store.activePortfolioId = store.portfolios[0]?.id || null;
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
+  const before = bucket.portfolios.length;
+  bucket.portfolios = bucket.portfolios.filter((portfolio) => portfolio.id !== portfolioId);
+  if (bucket.portfolios.length === before) return false;
+  if (bucket.activePortfolioId === portfolioId) {
+    bucket.activePortfolioId = bucket.portfolios[0]?.id || null;
   }
   await writeManualPortfolioStore(store);
   return true;
 }
 
-async function addManualPortfolioItem(portfolioId, payload = {}) {
+async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
   const store = await readManualPortfolioStore();
-  const portfolio = store.portfolios.find((entry) => entry.id === portfolioId);
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
+  const portfolio = bucket.portfolios.find((entry) => entry.id === portfolioId);
   if (!portfolio) {
     const err = new Error('Manual portfolio not found');
     err.status = 404;
@@ -183,14 +190,15 @@ async function addManualPortfolioItem(portfolioId, payload = {}) {
     updatedAt: now,
   });
   portfolio.updatedAt = now;
-  store.activePortfolioId = portfolio.id;
+  bucket.activePortfolioId = portfolio.id;
   await writeManualPortfolioStore(store);
   return portfolio;
 }
 
-async function deleteManualPortfolioItem(portfolioId, itemId) {
+async function deleteManualPortfolioItem(ownerId, portfolioId, itemId) {
   const store = await readManualPortfolioStore();
-  const portfolio = store.portfolios.find((entry) => entry.id === portfolioId);
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
+  const portfolio = bucket.portfolios.find((entry) => entry.id === portfolioId);
   if (!portfolio) return false;
 
   const before = portfolio.items.length;
@@ -202,9 +210,10 @@ async function deleteManualPortfolioItem(portfolioId, itemId) {
   return true;
 }
 
-async function updateManualPortfolioItem(portfolioId, itemId, payload = {}) {
+async function updateManualPortfolioItem(ownerId, portfolioId, itemId, payload = {}) {
   const store = await readManualPortfolioStore();
-  const portfolio = store.portfolios.find((entry) => entry.id === portfolioId);
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
+  const portfolio = bucket.portfolios.find((entry) => entry.id === portfolioId);
   if (!portfolio) {
     const err = new Error('Manual portfolio not found');
     err.status = 404;
@@ -239,10 +248,11 @@ async function updateManualPortfolioItem(portfolioId, itemId, payload = {}) {
   return item;
 }
 
-async function setManualBasisPerUnitByMarketHashName(portfolioId, marketHashName, basisPerUnit, currency = 'usd') {
+async function setManualBasisPerUnitByMarketHashName(ownerId, portfolioId, marketHashName, basisPerUnit, currency = 'usd') {
   const name = String(marketHashName || '').trim();
   const store = await readManualPortfolioStore();
-  const portfolio = store.portfolios.find((entry) => entry.id === portfolioId);
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
+  const portfolio = bucket.portfolios.find((entry) => entry.id === portfolioId);
   if (!portfolio) {
     const err = new Error('Manual portfolio not found');
     err.status = 404;
@@ -268,17 +278,48 @@ async function setManualBasisPerUnitByMarketHashName(portfolioId, marketHashName
   await writeManualPortfolioStore(store);
 }
 
-async function getManualPortfolio(portfolioId, steamId = null) {
+// On Steam login, fold any pre-login anonymous-session data and un-migrated legacy
+// data into the Steam-owned bucket, so a single local user keeps their portfolios.
+async function migrateOwnershipToSteam(anonOwnerId, steamId) {
+  if (!steamId) return;
+  const targetOwner = `steam:${steamId}`;
+
   const store = await readManualPortfolioStore();
-  const portfolio = resolveActiveManualPortfolio(store, portfolioId);
-  if (!portfolio) return buildEmptyManualPortfolio(store, steamId);
+  const sources = [];
+  if (anonOwnerId && anonOwnerId !== targetOwner && store.owners[anonOwnerId]) sources.push(anonOwnerId);
+  if (store.owners[LEGACY_OWNER]) sources.push(LEGACY_OWNER);
+  if (sources.length) {
+    const target = store.owners[targetOwner] || (store.owners[targetOwner] = { activePortfolioId: null, portfolios: [] });
+    for (const src of sources) {
+      const bucket = store.owners[src];
+      target.portfolios.push(...bucket.portfolios);
+      if (!target.activePortfolioId) target.activePortfolioId = bucket.activePortfolioId;
+      delete store.owners[src];
+    }
+    await writeManualPortfolioStore(store);
+  }
+
+  const basisStore = await readBasisStore();
+  const legacyBasis = basisStore.byUser[LEGACY_OWNER];
+  if (legacyBasis && Object.keys(legacyBasis).length) {
+    basisStore.byUser[steamId] = { ...legacyBasis, ...(basisStore.byUser[steamId] || {}) };
+    delete basisStore.byUser[LEGACY_OWNER];
+    await writeBasisStore(basisStore);
+  }
+}
+
+async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
+  const store = await readManualPortfolioStore();
+  const bucket = resolveOwnerBucketForRead(store, ownerId);
+  const portfolio = resolveActiveManualPortfolio(bucket, portfolioId);
+  if (!portfolio) return buildEmptyManualPortfolio(bucket, steamId, ownerId);
 
   const marketHashNames = portfolio.items.map((item) => item.marketHashName);
   const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER);
   const iconUrls = await hydrateManualItemIcons(portfolio.items);
   const sourceItems = portfolio.items.map((item) => enrichManualItem(item, prices[item.marketHashName], iconUrls[item.marketHashName]));
   const items = aggregatePortfolioItems(sourceItems);
-  refreshManualItemIconsInBackground(portfolio.id);
+  refreshManualItemIconsInBackground(ownerId, portfolio.id);
   const pricedItems = items.filter((item) => item.value != null);
   const totalInventoryCount = items.reduce((sum, item) => sum + item.qty, 0);
   const totalValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
@@ -291,7 +332,7 @@ async function getManualPortfolio(portfolioId, steamId = null) {
     portfolioId: portfolio.id,
     portfolioName: portfolio.name,
     portfolioType: 'manual',
-    portfolios: await listPortfolios(steamId),
+    portfolios: await listPortfolios(ownerId, steamId),
     profile: { steamId: 'manual', personaname: portfolio.name },
     syncedAt: portfolio.updatedAt || portfolio.createdAt || new Date().toISOString(),
     cached: false,
@@ -318,14 +359,14 @@ async function getManualPortfolio(portfolioId, steamId = null) {
   };
 }
 
-function buildEmptyManualPortfolio(store, steamId = null) {
+function buildEmptyManualPortfolio(bucket, steamId = null, ownerId = null) {
   return {
     portfolioId: null,
     portfolioName: 'Manual portfolio',
     portfolioType: 'manual',
     portfolios: [
       ...(steamId ? [{ id: 'steam', name: 'Steam inventory', type: 'steam', itemCount: null }] : []),
-      ...store.portfolios.map((portfolio) => ({
+      ...bucket.portfolios.map((portfolio) => ({
         id: portfolio.id,
         name: portfolio.name,
         type: 'manual',
@@ -360,8 +401,9 @@ function buildEmptyManualPortfolio(store, steamId = null) {
 function enrichItem(item, price, basis) {
   const qty = item.amount || 1;
   const value = price?.price ?? price?.medianPrice ?? null;
-  const basisEntry = resolveBasisEntry(basis[item.assetid] ?? basis[item.marketHashName], value);
+  const basisEntry = resolveBasisEntry(basis[item.assetid] ?? basis[item.marketHashName]);
   const basisValue = basisEntry.usdPerUnit;
+  const hasBasis = basisEntry.hasBasis;
   const history = makeSpark(value || basisValue || 1, item.assetid);
 
   return {
@@ -369,10 +411,11 @@ function enrichItem(item, price, basis) {
     qty,
     value,
     basis: basisValue,
+    hasBasis,
     basisOriginal: basisEntry.originalAmount,
     basisCurrency: basisEntry.currency,
-    pnl: value != null ? (value - basisValue) * qty : 0,
-    pnlPct: value != null && basisValue > 0 ? ((value - basisValue) / basisValue) * 100 : 0,
+    pnl: value != null && hasBasis ? (value - basisValue) * qty : 0,
+    pnlPct: value != null && hasBasis && basisValue > 0 ? ((value - basisValue) / basisValue) * 100 : null,
     volume24h: price?.volume24h || null,
     medianPrice: price?.medianPrice || null,
     priceProvider: price?.provider || 'unpriced',
@@ -387,8 +430,9 @@ function enrichItem(item, price, basis) {
 function enrichManualItem(item, price, resolvedIconUrl = null) {
   const qty = safeQty(item.quantity ?? item.amount);
   const value = price?.price ?? price?.medianPrice ?? null;
-  const basisEntry = resolveBasisEntry(item.basis, value);
+  const basisEntry = resolveBasisEntry(item.basis);
   const basisValue = basisEntry.usdPerUnit;
+  const hasBasis = basisEntry.hasBasis;
   const rarity = item.rarity || null;
   const tier = Number.isFinite(Number(item.tier)) ? Number(item.tier) : rarityToTier(rarity);
 
@@ -401,10 +445,11 @@ function enrichManualItem(item, price, resolvedIconUrl = null) {
     qty,
     value,
     basis: basisValue,
+    hasBasis,
     basisOriginal: basisEntry.originalAmount,
     basisCurrency: basisEntry.currency,
-    pnl: value != null ? (value - basisValue) * qty : 0,
-    pnlPct: value != null && basisValue > 0 ? ((value - basisValue) / basisValue) * 100 : 0,
+    pnl: value != null && hasBasis ? (value - basisValue) * qty : 0,
+    pnlPct: value != null && hasBasis && basisValue > 0 ? ((value - basisValue) / basisValue) * 100 : null,
     volume24h: price?.volume24h || null,
     medianPrice: price?.medianPrice || null,
     priceProvider: price?.provider || 'unpriced',
@@ -439,17 +484,19 @@ async function hydrateManualItemIcons(items) {
   return Object.fromEntries(entries);
 }
 
-function refreshManualItemIconsInBackground(portfolioId) {
-  if (iconRefreshes.has(portfolioId)) return;
-  iconRefreshes.add(portfolioId);
-  refreshManualItemIcons(portfolioId)
+function refreshManualItemIconsInBackground(ownerId, portfolioId) {
+  const refreshKey = `${ownerId || ''}::${portfolioId}`;
+  if (iconRefreshes.has(refreshKey)) return;
+  iconRefreshes.add(refreshKey);
+  refreshManualItemIcons(ownerId, portfolioId)
     .catch((error) => console.warn('[portfolio] manual icon refresh failed:', error.message))
-    .finally(() => iconRefreshes.delete(portfolioId));
+    .finally(() => iconRefreshes.delete(refreshKey));
 }
 
-async function refreshManualItemIcons(portfolioId) {
+async function refreshManualItemIcons(ownerId, portfolioId) {
   const store = await readManualPortfolioStore();
-  const portfolio = store.portfolios.find((entry) => entry.id === portfolioId);
+  const bucket = resolveOwnerBucketForRead(store, ownerId);
+  const portfolio = bucket.portfolios.find((entry) => entry.id === portfolioId);
   if (!portfolio) return;
 
   const missingNames = [...new Set((portfolio.items || [])
@@ -497,7 +544,8 @@ function aggregatePortfolioItems(items) {
         storageQty: item.inStorage ? item.qty : 0,
         tradableQty: item.tradable ? item.qty : 0,
         marketableQty: item.marketable ? item.qty : 0,
-        totalBasis: item.basis * item.qty,
+        hasBasis: Boolean(item.hasBasis),
+        totalBasis: item.hasBasis ? item.basis * item.qty : 0,
       });
       continue;
     }
@@ -507,7 +555,8 @@ function aggregatePortfolioItems(items) {
     current.qty += item.qty;
     current.pnl += item.pnl;
     current.stickers += item.stickers;
-    current.totalBasis += item.basis * item.qty;
+    current.hasBasis = current.hasBasis && Boolean(item.hasBasis);
+    current.totalBasis += item.hasBasis ? item.basis * item.qty : 0;
     current.storageQty = (current.storageQty || 0) + (item.inStorage ? item.qty : 0);
     current.tradableQty += item.tradable ? item.qty : 0;
     current.marketableQty += item.marketable ? item.qty : 0;
@@ -519,20 +568,22 @@ function aggregatePortfolioItems(items) {
 
   return [...grouped.values()]
     .map((item) => {
-      const basis = item.qty > 0 ? item.totalBasis / item.qty : item.basis;
+      const hasBasis = Boolean(item.hasBasis);
+      const basis = hasBasis && item.qty > 0 ? item.totalBasis / item.qty : 0;
       const tradable = item.tradableQty === item.qty;
       const marketable = item.marketableQty === item.qty;
       const totalValue = item.value != null ? item.value * item.qty : null;
       return {
         ...item,
         basis,
-        totalBasis: item.totalBasis,
+        hasBasis,
+        totalBasis: hasBasis ? item.totalBasis : 0,
         totalValue,
         tradable,
         marketable,
         lock: tradable ? 0 : null,
-        pnl: totalValue != null ? totalValue - item.totalBasis : 0,
-        pnlPct: item.totalBasis > 0 && totalValue != null ? ((totalValue - item.totalBasis) / item.totalBasis) * 100 : 0,
+        pnl: totalValue != null && hasBasis ? totalValue - item.totalBasis : 0,
+        pnlPct: hasBasis && item.totalBasis > 0 && totalValue != null ? ((totalValue - item.totalBasis) / item.totalBasis) * 100 : null,
       };
     })
     .sort((a, b) => {
@@ -542,22 +593,51 @@ function aggregatePortfolioItems(items) {
     });
 }
 
-async function readBasis() {
+// Basis store is keyed per Steam user: { version: 2, byUser: { [steamId]: { [name]: record } } }.
+// Legacy flat files ({ [name]: record }) are read into a __legacy__ bucket and migrated
+// into the first Steam user that writes basis (single-user local MVP).
+async function readBasisStore() {
   try {
     const raw = await fs.readFile(BASIS_FILE, 'utf8');
-    if (!raw.trim()) return {};
+    if (!raw.trim()) return { version: 2, byUser: {} };
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return parsed;
+    return normalizeBasisStore(parsed);
   } catch (error) {
-    if (error.code === 'ENOENT') return {};
+    if (error.code === 'ENOENT') return { version: 2, byUser: {} };
     if (error instanceof SyntaxError) {
       console.error('[portfolio] corrupt portfolio.json (basis), using empty basis:', error.message);
       await backupCorruptBasisFile();
-      return {};
+      return { version: 2, byUser: {} };
     }
     throw error;
   }
+}
+
+function normalizeBasisStore(parsed) {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { version: 2, byUser: {} };
+  }
+  if (parsed.byUser && typeof parsed.byUser === 'object' && !Array.isArray(parsed.byUser)) {
+    const byUser = {};
+    for (const [key, value] of Object.entries(parsed.byUser)) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) byUser[key] = value;
+    }
+    return { version: 2, byUser };
+  }
+  // Legacy flat format: keys are market_hash_name → record.
+  return { version: 2, byUser: { [LEGACY_OWNER]: parsed } };
+}
+
+async function readBasis(steamId) {
+  const store = await readBasisStore();
+  const legacy = store.byUser[LEGACY_OWNER] || {};
+  const user = (steamId && store.byUser[steamId]) || {};
+  return { ...legacy, ...user };
+}
+
+async function writeBasisStore(store) {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(BASIS_FILE, JSON.stringify({ version: 2, byUser: store.byUser }, null, 2), 'utf8');
 }
 
 async function backupCorruptBasisFile() {
@@ -571,7 +651,13 @@ async function backupCorruptBasisFile() {
   }
 }
 
-async function setBasisPerUnitByMarketHashName(marketHashName, basisPerUnit, currency = 'usd') {
+async function setBasisPerUnitByMarketHashName(steamId, marketHashName, basisPerUnit, currency = 'usd') {
+  if (!steamId) {
+    const err = new Error('Steam account is not connected.');
+    err.status = 401;
+    err.code = 'not_authenticated';
+    throw err;
+  }
   const name = String(marketHashName || '').trim();
   if (!name) {
     const err = new Error('marketHashName is required');
@@ -617,10 +703,17 @@ async function setBasisPerUnitByMarketHashName(marketHashName, basisPerUnit, cur
     err.code = 'invalid_currency';
     throw err;
   }
-  const basis = await readBasis();
-  basis[name] = record;
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(BASIS_FILE, JSON.stringify(basis, null, 2), 'utf8');
+  const store = await readBasisStore();
+  // Migrate legacy flat basis to this user on first write (single-user local MVP).
+  const legacy = store.byUser[LEGACY_OWNER];
+  const onlyLegacy = legacy && Object.keys(store.byUser).every((key) => key === LEGACY_OWNER);
+  if (onlyLegacy && !store.byUser[steamId]) {
+    store.byUser[steamId] = { ...legacy };
+    delete store.byUser[LEGACY_OWNER];
+  }
+  const bucket = store.byUser[steamId] || (store.byUser[steamId] = {});
+  bucket[name] = record;
+  await writeBasisStore(store);
 }
 
 async function makeBasisRecord(marketHashName, basisPerUnit, currency = 'usd') {
@@ -642,10 +735,16 @@ async function makeBasisRecord(marketHashName, basisPerUnit, currency = 'usd') {
     const ratio = Number.isFinite(ratioData?.ratio) && ratioData.ratio > 0
       ? ratioData.ratio
       : await getSteamRubRate().catch(() => null);
+    if (!Number.isFinite(ratio) || ratio <= 0) {
+      const err = new Error('Could not derive RUB/USD ratio from Steam right now. Try again later or enter the cost in USD.');
+      err.status = 502;
+      err.code = 'steam_fx_unavailable';
+      throw err;
+    }
     return {
       amount: n,
       currency: 'rub',
-      usdPerUnit: n / (Number.isFinite(ratio) && ratio > 0 ? ratio : 92),
+      usdPerUnit: n / ratio,
       steamRubPrice: ratioData?.fromPrice?.price,
       steamUsdPrice: ratioData?.toPrice?.price,
       savedAt: new Date().toISOString(),
@@ -658,18 +757,21 @@ async function makeBasisRecord(marketHashName, basisPerUnit, currency = 'usd') {
   throw err;
 }
 
+// Manual portfolios are grouped per owner: { version: 2, owners: { [ownerId]: bucket } }
+// where bucket = { activePortfolioId, portfolios: [] }. Legacy flat stores are read
+// into a __legacy__ bucket and migrated to the first owner that writes.
 async function readManualPortfolioStore() {
   try {
     const raw = await fs.readFile(MANUAL_PORTFOLIOS_FILE, 'utf8');
-    if (!raw.trim()) return { activePortfolioId: null, portfolios: [] };
+    if (!raw.trim()) return { version: 2, owners: {} };
     const parsed = JSON.parse(raw);
     return normalizeManualPortfolioStore(parsed);
   } catch (error) {
-    if (error.code === 'ENOENT') return { activePortfolioId: null, portfolios: [] };
+    if (error.code === 'ENOENT') return { version: 2, owners: {} };
     if (error instanceof SyntaxError) {
       const backupFile = `${MANUAL_PORTFOLIOS_FILE}.corrupt-${Date.now()}`;
       await fs.rename(MANUAL_PORTFOLIOS_FILE, backupFile).catch(() => {});
-      return { activePortfolioId: null, portfolios: [] };
+      return { version: 2, owners: {} };
     }
     throw error;
   }
@@ -680,7 +782,7 @@ async function writeManualPortfolioStore(store) {
   await fs.writeFile(MANUAL_PORTFOLIOS_FILE, JSON.stringify(normalizeManualPortfolioStore(store), null, 2), 'utf8');
 }
 
-function normalizeManualPortfolioStore(raw) {
+function normalizeManualBucket(raw) {
   const portfolios = Array.isArray(raw?.portfolios) ? raw.portfolios : [];
   return {
     activePortfolioId: typeof raw?.activePortfolioId === 'string' ? raw.activePortfolioId : null,
@@ -697,10 +799,55 @@ function normalizeManualPortfolioStore(raw) {
   };
 }
 
-function resolveActiveManualPortfolio(store, requestedId = '') {
+function normalizeManualPortfolioStore(raw) {
+  if (raw && raw.owners && typeof raw.owners === 'object' && !Array.isArray(raw.owners)) {
+    const owners = {};
+    for (const [ownerId, bucket] of Object.entries(raw.owners)) {
+      owners[ownerId] = normalizeManualBucket(bucket);
+    }
+    return { version: 2, owners };
+  }
+  // Legacy flat store ({ activePortfolioId, portfolios }) → __legacy__ bucket.
+  if (Array.isArray(raw?.portfolios)) {
+    return { version: 2, owners: { [LEGACY_OWNER]: normalizeManualBucket(raw) } };
+  }
+  return { version: 2, owners: {} };
+}
+
+function isLegacyClaimable(store) {
+  const keys = Object.keys(store.owners);
+  return keys.length === 1 && keys[0] === LEGACY_OWNER;
+}
+
+function resolveOwnerBucketForRead(store, ownerId) {
+  if (ownerId && store.owners[ownerId]) return store.owners[ownerId];
+  // Expose the un-migrated legacy data only while it is the sole bucket (single-user MVP).
+  if (isLegacyClaimable(store)) return store.owners[LEGACY_OWNER];
+  return { activePortfolioId: null, portfolios: [] };
+}
+
+function resolveOwnerBucketForWrite(store, ownerId) {
+  if (!ownerId) {
+    const err = new Error('Missing portfolio owner.');
+    err.status = 400;
+    err.code = 'missing_owner';
+    throw err;
+  }
+  if (store.owners[ownerId]) return store.owners[ownerId];
+  // Claim legacy data for the first owner that writes.
+  if (isLegacyClaimable(store)) {
+    store.owners[ownerId] = store.owners[LEGACY_OWNER];
+    delete store.owners[LEGACY_OWNER];
+    return store.owners[ownerId];
+  }
+  store.owners[ownerId] = { activePortfolioId: null, portfolios: [] };
+  return store.owners[ownerId];
+}
+
+function resolveActiveManualPortfolio(bucket, requestedId = '') {
   const id = String(requestedId || '').trim();
-  if (id) return store.portfolios.find((portfolio) => portfolio.id === id) || null;
-  return store.portfolios.find((portfolio) => portfolio.id === store.activePortfolioId) || store.portfolios[0] || null;
+  if (id) return bucket.portfolios.find((portfolio) => portfolio.id === id) || null;
+  return bucket.portfolios.find((portfolio) => portfolio.id === bucket.activePortfolioId) || bucket.portfolios[0] || null;
 }
 
 function safeQty(value) {
@@ -724,12 +871,13 @@ function normalizeOptionalUrl(value) {
   }
 }
 
-function resolveBasisEntry(rawEntry, fallbackUsdPerUnit) {
+function resolveBasisEntry(rawEntry) {
   if (typeof rawEntry === 'number' && Number.isFinite(rawEntry)) {
     return {
       usdPerUnit: rawEntry,
       originalAmount: rawEntry,
       currency: 'usd',
+      hasBasis: true,
     };
   }
 
@@ -742,15 +890,18 @@ function resolveBasisEntry(rawEntry, fallbackUsdPerUnit) {
         usdPerUnit,
         originalAmount: Number.isFinite(amount) ? amount : usdPerUnit,
         currency: currency === 'rub' ? 'rub' : 'usd',
+        hasBasis: true,
       };
     }
   }
 
-  const fallback = Number.isFinite(fallbackUsdPerUnit) ? fallbackUsdPerUnit : 0;
+  // No explicit cost basis set: report 0 with hasBasis=false instead of masking
+  // the missing basis with the current market price.
   return {
-    usdPerUnit: fallback,
-    originalAmount: fallback,
+    usdPerUnit: 0,
+    originalAmount: 0,
     currency: 'usd',
+    hasBasis: false,
   };
 }
 
@@ -833,12 +984,13 @@ async function buildPortfolioHistory(items, totalValue) {
 
     for (const history of histories) {
       const price = priceAtDate(history.points, date);
-      if (!Number.isFinite(price) || price <= 0) {
-        value += history.currentValue;
-      } else {
+      // Use the last known price on/before this date. If there is no known price
+      // yet (date precedes the item's earliest data point), treat the position as
+      // not-yet-held rather than injecting today's value into the past.
+      if (Number.isFinite(price) && price > 0) {
         value += price * history.qty;
+        coveredValue += history.currentValue;
       }
-      coveredValue += history.currentValue;
     }
 
     return {
@@ -889,7 +1041,7 @@ function priceAtDate(points, date) {
     if (point.date > date) break;
     last = point.price;
   }
-  return last ?? points[0]?.price ?? null;
+  return last;
 }
 
 function makeSpark(value, seedValue) {
@@ -914,4 +1066,5 @@ module.exports = {
   updateManualPortfolioItem,
   setBasisPerUnitByMarketHashName,
   setManualBasisPerUnitByMarketHashName,
+  migrateOwnershipToSteam,
 };

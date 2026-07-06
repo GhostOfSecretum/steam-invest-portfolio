@@ -199,8 +199,11 @@ async function buildArmoryPayload(options = {}) {
     ? await getSteamRubRate().catch(() => null)
     : null;
 
+  // Always price anchors in USD so EV scaling stays in a single currency; the final
+  // EV/starCost are converted to the display currency via toDisplayMoney. Mixing a
+  // RUB anchor with a USD baseAnchorUsd previously inflated ROI ~90x.
   const [anchorPrices, iconMap] = await Promise.all([
-    fetchAnchorPrices(currency),
+    fetchAnchorPrices('usd'),
     fetchIconMap(),
   ]);
 
