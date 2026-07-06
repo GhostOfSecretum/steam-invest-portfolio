@@ -61,13 +61,16 @@
   "dependencies": {
     "@node-steam/vdf": "^2.2.0",
     "electron-store": "^8.2.0",
-    "globaloffensive": "^3.2.0",
+    "globaloffensive": "^3.3.0",
     "qrcode": "^1.5.4",
     "steam-session": "^1.9.4",
-    "steam-user": "^5.2.0"
+    "steam-user": "^5.3.0"
   },
   "devDependencies": {
-    "electron": "^33.0.0",
+    "electron": "^43.0.0",
     "electron-builder": "^26.15.3"
+  },
+  "overrides": {
+    "protobufjs": "^7"
   }
 }

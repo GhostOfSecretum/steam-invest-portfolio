@@ -168,26 +168,33 @@ async function autoSyncIfNeeded() {
   }
 }
 
-function buildDesktopAppUrl() {
+async function openDesktopApp() {
   const serverUrl = store.get('serverUrl', SERVER_URL);
   const deviceToken = store.get('deviceToken');
-  if (!deviceToken) return serverUrl;
-  return `${serverUrl}/api/desktop/login?deviceToken=${encodeURIComponent(deviceToken)}`;
-}
 
-async function openDesktopApp() {
-  const url = buildDesktopAppUrl();
-  const response = await fetch(url, { redirect: 'manual' }).catch((error) => {
+  if (!deviceToken) {
+    if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.loadURL(serverUrl);
+    return;
+  }
+
+  // Exchange the long-lived device token (sent as a header) for a short-lived,
+  // single-use login code, so the token never ends up in a URL / browser history.
+  const codeResponse = await fetch(`${serverUrl}/api/desktop/login-code`, {
+    method: 'POST',
+    headers: { 'X-Device-Token': deviceToken },
+  }).catch((error) => {
     throw new Error(`desktop login probe failed: ${error.message}`);
   });
 
-  if (response.status === 401) {
+  if (codeResponse.status === 401) {
     throw new Error('desktop token expired');
   }
-
-  if (response.status >= 400) {
-    throw new Error(`desktop login probe returned HTTP ${response.status}`);
+  if (!codeResponse.ok) {
+    throw new Error(`desktop login-code returned HTTP ${codeResponse.status}`);
   }
+
+  const { code } = await codeResponse.json();
+  const url = `${serverUrl}/api/desktop/login?code=${encodeURIComponent(code)}`;
 
   if (mainWindow && !mainWindow.isDestroyed()) {
     await mainWindow.loadURL(url);
@@ -224,17 +231,20 @@ async function runInventorySync(steamId, steamSession, deviceToken, { includeSto
 
   const webItems = await fetchFullInventory(steamId, steamSession);
   const items = mergeInventoryItems(webItems, storageItems);
+  const storageItemCount = storageItems.reduce((sum, item) => sum + Number(item.amount || 1), 0);
   const response = await fetch(`${serverUrl}/api/desktop/inventory-sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Device-Token': deviceToken },
-    body: JSON.stringify({ items, storageItemCount: storageItems.length }),
+    // includeStorage tells the server whether this sync carries Storage Units. When
+    // false (background sync), the server keeps the previously synced storage items.
+    body: JSON.stringify({ items, storageItemCount, includeStorage }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Sync failed');
   store.set('lastSync', new Date().toISOString());
   return {
     itemCount: items.length,
-    storageItemCount: storageItems.length,
+    storageItemCount,
     totalPieces: items.reduce((s, i) => s + Number(i.amount || 1), 0),
     gcStorageError,
     gcConnected: includeStorage && Boolean(refreshToken),
@@ -636,7 +646,7 @@ async function fetchTradeOfferInventory(steamId, steamSession) {
   if (!trade.partner || !trade.token) {
     throw new Error('Trade URL is missing partner or token');
   }
-  console.log(`[inventory] using trade partner=${trade.partner} token=${trade.token}`);
+  console.log(`[inventory] using trade partner=${trade.partner}`);
 
   const cookies = await steamSession.cookies.get({ url: STEAM_COMMUNITY });
   const sessionId = cookies.find((c) => c.name === 'sessionid')?.value;
