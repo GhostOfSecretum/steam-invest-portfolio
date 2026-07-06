@@ -7,6 +7,7 @@ services:
   steam-invest-xray-config:
     build: .
     image: steam-invest-app:latest
+    container_name: steam-invest-xray-config
     user: "0:0"
     command: node scripts/generate-xray-config.js
     env_file:
@@ -18,6 +19,7 @@ services:
 
   steam-invest-xray:
     image: ghcr.io/xtls/xray-core:26.3.27
+    container_name: steam-invest-xray
     restart: unless-stopped
     command: run -c /etc/xray/config.json
     volumes:
@@ -29,6 +31,7 @@ services:
   steam-invest-app:
     build: .
     image: steam-invest-app:latest
+    container_name: steam-invest-app
     user: node
     restart: unless-stopped
     env_file:
@@ -42,6 +45,14 @@ services:
       - "${APP_BIND:-127.0.0.1}:${PORT:-3000}:3000"
     depends_on:
       - steam-invest-xray
+    networks:
+      - default
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_DOCKER_NETWORK:-mysterium-tech-landing_default}
 
 volumes:
   xray-config:
