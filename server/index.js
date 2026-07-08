@@ -20,7 +20,7 @@ const {
   setManualBasisPerUnitByMarketHashName,
   migrateOwnershipToSteam,
 } = require('./services/portfolio');
-const { getMarketSnapshot, getMarketCatalog, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
+const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
@@ -245,6 +245,24 @@ app.get('/api/market/catalog', asyncRoute(async (req, res) => {
     sort: req.query.sort,
   });
   res.json(catalog);
+}));
+
+app.get('/api/market/prices', asyncRoute(async (req, res) => {
+  const rawNames = Array.isArray(req.query.names) ? req.query.names : [req.query.names];
+  const names = rawNames
+    .flatMap((value) => String(value || '').split(','))
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+
+  if (!names.length) {
+    res.status(400).json({ error: 'names is required', code: 'missing_names' });
+    return;
+  }
+
+  const prices = await getPrices(names, 12, { maxAgeMs: 2 * 60 * 1000 });
+  res.set('Cache-Control', 'no-store');
+  res.json({ prices, updatedAt: new Date().toISOString() });
 }));
 
 app.get('/api/market/history', asyncRoute(async (req, res) => {

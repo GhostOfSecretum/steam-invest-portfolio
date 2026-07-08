@@ -1,4 +1,4 @@
-const { getTickerItems, getTopMovers, getCases, getPriceHistory, getMarketCatalog, getSteamRubRate, getItemOffers, getItemVariants, getMultiWearHistory } = require('./prices');
+const { getTickerItems, getTopMovers, getCases, getPrices, getPriceHistory, getMarketCatalog, getSteamRubRate, getItemOffers, getItemVariants, getMultiWearHistory } = require('./prices');
 
 async function getMarketSnapshot() {
   const [tickerResult, moversResult, casesResult, rubRate] = await Promise.allSettled([
@@ -21,6 +21,7 @@ module.exports = {
   getMarketSnapshot,
   getCases,
   getMarketCatalog,
+  getPrices,
   getPriceHistory,
   getItemOffers,
   getItemVariants,

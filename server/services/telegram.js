@@ -182,7 +182,8 @@ function getTelegramCredentials() {
 function getTelegramProxyConfig() {
   const host = String(process.env.TELEGRAM_PROXY_HOST || '').trim();
   const port = Number(process.env.TELEGRAM_PROXY_PORT);
-  if (!host || !Number.isFinite(port) || port < 1) return null;
+  if (!host || /^(none|off|direct|disabled)$/i.test(host)) return null;
+  if (!Number.isFinite(port) || port < 1) return null;
 
   return {
     ip: host,
@@ -220,12 +221,21 @@ async function connectTelegramClient({ apiId, apiHash, session }) {
   const client = new TelegramClient(new StringSession(session), apiId, apiHash, getTelegramClientOptions());
   try {
     await withTimeout(client.connect(), CONNECT_TIMEOUT_MS, 'Timed out connecting to Telegram.');
+    await withTimeout(client.getMe(), 15000, 'Timed out validating Telegram session.');
   } catch (error) {
     await client.disconnect().catch(() => {});
-    throw error;
+    throw normalizeTelegramAuthError(error);
   }
   clientInstance = client;
   return client;
+}
+
+function normalizeTelegramAuthError(error) {
+  const message = String(error?.message || error || '');
+  if (/SESSION_REVOKED|AUTH_KEY_UNREGISTERED|USER_DEACTIVATED/i.test(message)) {
+    return new Error('Telegram session is invalid or revoked. Run npm run telegram:session and update TELEGRAM_SESSION.');
+  }
+  return error instanceof Error ? error : new Error(message || 'Failed to connect to Telegram.');
 }
 
 async function loadChannelPosts(client, channel) {

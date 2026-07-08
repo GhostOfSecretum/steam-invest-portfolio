@@ -27,6 +27,10 @@ services:
     depends_on:
       steam-invest-xray-config:
         condition: service_completed_successfully
+    networks:
+      default:
+        aliases:
+          - xray
 
   steam-invest-app:
     build: .
@@ -39,8 +43,9 @@ services:
     env_file:
       - .env
     environment:
-      TELEGRAM_PROXY_HOST: ${TELEGRAM_PROXY_HOST:-steam-invest-xray}
-      TELEGRAM_PROXY_PORT: ${TELEGRAM_PROXY_PORT:-1080}
+      # Leave TELEGRAM_PROXY_HOST unset to connect directly. Set steam-invest-xray (or xray) when VPN is required.
+      TELEGRAM_PROXY_HOST: ${TELEGRAM_PROXY_HOST-}
+      TELEGRAM_PROXY_PORT: ${TELEGRAM_PROXY_PORT-}
     volumes:
       - ./.data:/app/.data
     ports:

@@ -366,30 +366,226 @@ function HeroConcept_Vault({ portfolio, loading, auth, lang }) {
 }
 
 /* Concept 5: Operators squad readout */
-const HERO_OPERATORS_IMAGE = {
-  src: '/assets/hero-agents.png',
-  alt: 'Three featured CS2 operators',
-};
+const HERO_AGENT_PRICE_CARDS = [
+  {
+    label: 'B Squadron Officer',
+    marketHashName: 'B Squadron Officer | SAS',
+    category: 'agents',
+    type: 'Agent',
+  },
+  {
+    label: 'Sir Bloody Darryl Royale',
+    marketHashName: 'Sir Bloody Darryl Royale | The Professionals',
+    category: 'agents',
+    type: 'Agent',
+  },
+  {
+    label: 'Osiris',
+    marketHashName: 'Osiris | Elite Crew',
+    category: 'agents',
+    type: 'Agent',
+  },
+];
 
-function HeroConcept_Operators({ portfolio, loading, lang }) {
-  const [imageMissing, setImageMissing] = useState(false);
+const HERO_OPERATORS_IMAGES = [
+  {
+    src: '/assets/hero-agents.png',
+    alt: 'Three featured CS2 operators',
+    label: 'Featured agents',
+    priceCards: HERO_AGENT_PRICE_CARDS,
+  },
+  {
+    src: '/assets/hero-ak47-gpt-transparent.png',
+    alt: 'AK-47 Wild Lotus high-detail render',
+    label: 'AK-47 Wild Lotus',
+    marketHashName: 'AK-47 | Wild Lotus (Minimal Wear)',
+    category: 'weapons',
+    type: 'Covert Rifle',
+    wear: 'MW',
+  },
+  {
+    src: '/assets/hero-m4-red-gpt-transparent.png',
+    alt: 'M4 red flame high-detail render',
+    label: 'M4A4 Howl',
+    marketHashName: 'M4A4 | Howl (Minimal Wear)',
+    category: 'weapons',
+    type: 'Contraband Rifle',
+    wear: 'MW',
+  },
+  {
+    src: '/assets/hero-awp-dragon-gpt-transparent.png',
+    alt: 'AWP Dragon Lore high-detail render',
+    label: 'AWP Dragon Lore',
+    marketHashName: 'AWP | Dragon Lore (Minimal Wear)',
+    category: 'weapons',
+    type: 'Covert Sniper Rifle',
+    wear: 'MW',
+  },
+];
+const HERO_OPERATORS_IMAGE_DELAY_MS = 4200;
+const HERO_MARKET_PRICE_REFRESH_MS = 2 * 60 * 1000;
+
+function useHeroMarketPrices() {
+  const [state, setState] = useState({ loading: true, prices: {}, updatedAt: null, error: null });
+  const [currency, setCurrency] = useState(() => getActiveCurrency());
+  const names = useMemo(() => {
+    const marketHashNames = HERO_OPERATORS_IMAGES.flatMap((image) => [
+      image.marketHashName,
+      ...(image.priceCards || []).map((card) => card.marketHashName),
+    ]);
+    return [...new Set(marketHashNames.filter(Boolean))];
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let timer;
+
+    const load = async () => {
+      try {
+        const search = new URLSearchParams();
+        names.forEach((name) => search.append('names', name));
+        const data = await apiFetch(`/api/market/prices?${search.toString()}`);
+        if (!active) return;
+        setState({ loading: false, prices: data.prices || {}, updatedAt: data.updatedAt || null, error: null });
+      } catch (error) {
+        if (active) setState((current) => ({ ...current, loading: false, error }));
+      }
+    };
+
+    load();
+    timer = setInterval(load, HERO_MARKET_PRICE_REFRESH_MS);
+    return () => {
+      active = false;
+      if (timer) clearInterval(timer);
+    };
+  }, [names]);
+
+  useEffect(() => {
+    const syncCurrency = () => setCurrency(getActiveCurrency());
+    window.addEventListener('currency-change', syncCurrency);
+    return () => window.removeEventListener('currency-change', syncCurrency);
+  }, []);
+
+  return { ...state, currency };
+}
+
+function HeroOperatorsBackdrop() {
+  return (
+    <div className="hero-backdrop hb-reticle" aria-hidden="true">
+      <div className="hb-reticle-ticks"></div>
+      <div className="hb-reticle-arc"></div>
+      <div className="hb-reticle-arc hb-reticle-arc-2"></div>
+      <div className="hb-reticle-cross"></div>
+    </div>
+  );
+}
+
+function HeroConcept_Operators({ portfolio, loading, lang, onItemClick }) {
+  const [imageIndex, setImageIndex] = useState(0);
+  const [missingByIndex, setMissingByIndex] = useState({});
+  const rotateTimerRef = useRef(null);
+  const marketPrices = useHeroMarketPrices();
   const totalValue = Number.isFinite(portfolio?.totalValue) ? compactUsd(portfolio.totalValue) : '...';
   const readoutLabel = lang === 'ru' ? '// СТОИМОСТЬ ПОРТФЕЛЯ' : '// PORTFOLIO VALUE';
+  const activeImage = HERO_OPERATORS_IMAGES[imageIndex] || HERO_OPERATORS_IMAGES[0];
+  const imageMissing = Boolean(missingByIndex[imageIndex]);
+  const activePriceCards = activeImage.priceCards || [
+    {
+      label: activeImage.label || activeImage.marketHashName,
+      marketHashName: activeImage.marketHashName,
+      category: activeImage.category,
+      type: activeImage.type,
+      wear: activeImage.wear,
+      rarity: activeImage.rarity,
+    },
+  ];
+  const getPriceCard = (card) => {
+    const price = card.marketHashName ? marketPrices.prices[card.marketHashName] : null;
+    const value = Number.isFinite(price?.price) ? price.price : price?.medianPrice;
+    const updatedAt = price?.updatedAt || marketPrices.updatedAt;
+    return {
+      ...card,
+      price,
+      priceLabel: Number.isFinite(value) ? formatItemPrice(price, value, { digits: 2 }) : marketPrices.loading ? '...' : 'N/A',
+      provider: price?.provider || (marketPrices.error ? 'offline' : 'market'),
+      updatedLabel: updatedAt
+        ? new Date(updatedAt).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+        : null,
+    };
+  };
+  const openPriceCard = (card) => {
+    if (!onItemClick || !card.marketHashName) return;
+    const price = card.price || {};
+    const itemPrice = Number.isFinite(price.price) ? price.price
+      : Number.isFinite(price.medianPrice) ? price.medianPrice
+      : 0;
+    onItemClick({
+      assetid: `hero-${card.marketHashName}`,
+      assetIds: [`hero-${card.marketHashName}`],
+      marketHashName: card.marketHashName,
+      name: card.label || card.marketHashName,
+      price: itemPrice,
+      value: itemPrice,
+      totalValue: itemPrice,
+      priceRub: price.priceRub,
+      medianPrice: price.medianPrice,
+      medianPriceRub: price.medianPriceRub,
+      qty: 1,
+      basis: itemPrice,
+      totalBasis: itemPrice,
+      pnl: 0,
+      pnlPct: 0,
+      tradable: true,
+      tradableQty: 1,
+      marketable: true,
+      rarity: card.rarity || (card.category === 'agents' ? 'Extraordinary' : 'Covert'),
+      category: card.category || 'collectibles',
+      type: card.type || 'Collectible',
+      wear: card.wear || 'N/A',
+      special: 'normal',
+      tier: 5,
+      currencyCode: price.currencyCode || 'USD',
+      priceProvider: price.provider,
+    });
+  };
+
+  const scheduleAutoRotate = () => {
+    if (HERO_OPERATORS_IMAGES.length < 2) return;
+    if (rotateTimerRef.current) clearInterval(rotateTimerRef.current);
+    rotateTimerRef.current = setInterval(() => {
+      setImageIndex((current) => (current + 1) % HERO_OPERATORS_IMAGES.length);
+    }, HERO_OPERATORS_IMAGE_DELAY_MS);
+  };
+
+  useEffect(() => {
+    scheduleAutoRotate();
+    return () => {
+      if (rotateTimerRef.current) clearInterval(rotateTimerRef.current);
+    };
+  }, []);
+
+  const selectImage = (nextIndex) => {
+    setImageIndex(nextIndex);
+    scheduleAutoRotate();
+  };
 
   return (
-    <div className="hero-3d-stage" style={{ perspective: 1400 }}>
+    <div
+      className="hero-3d-stage"
+      style={{ perspective: 1400, '--image-delay': `${HERO_OPERATORS_IMAGE_DELAY_MS}ms` }}
+    >
       <div className="hero-operators-glow"></div>
-      <div className="hero-operators-ring"></div>
-      <div className="hero-operators-ring-alt"></div>
+      <HeroOperatorsBackdrop />
       <div className="hero-operators-shadow"></div>
 
       <div className="hero-operators-image-wrap">
         {!imageMissing ? (
           <img
-            src={HERO_OPERATORS_IMAGE.src}
-            alt={HERO_OPERATORS_IMAGE.alt}
+            key={activeImage.src}
+            src={activeImage.src}
+            alt={activeImage.alt}
             className="hero-operators-image"
-            onError={() => setImageMissing(true)}
+            onError={() => setMissingByIndex((current) => ({ ...current, [imageIndex]: true }))}
           />
         ) : (
           <div className="hero-operators-fallback" aria-hidden="true">
@@ -400,6 +596,79 @@ function HeroConcept_Operators({ portfolio, loading, lang }) {
         )}
       </div>
 
+      {HERO_OPERATORS_IMAGES.length > 1 ? (
+        <div className="hero-operators-picker" role="tablist" aria-label={lang === 'ru' ? 'Картинки героя' : 'Hero images'}>
+          {HERO_OPERATORS_IMAGES.map((image, index) => (
+            <button
+              key={image.src}
+              type="button"
+              role="tab"
+              aria-selected={index === imageIndex}
+              aria-label={image.alt}
+              className={`hero-operators-picker-dot${index === imageIndex ? ' is-active' : ''}`}
+              onClick={() => selectImage(index)}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {activePriceCards.length > 1 ? (
+        <div className="hero-agent-price-layout">
+          {activePriceCards.map((card, index) => {
+            const pricedCard = getPriceCard(card);
+            const slot = index === 0 ? 'left' : index === 1 ? 'center' : 'right';
+            return (
+              <button
+                type="button"
+                className={`hero-operators-badge hero-market-agent-card hero-market-agent-card-${slot}`}
+                key={pricedCard.marketHashName || index}
+                onClick={() => openPriceCard(pricedCard)}
+                title={pricedCard.marketHashName}
+              >
+                <div className="hero-market-price-head">
+                  <span>{lang === 'ru' ? 'Агент' : 'Agent'}</span>
+                  <span>{pricedCard.provider}</span>
+                </div>
+                <div className="hero-market-price-value">{pricedCard.priceLabel}</div>
+                <div className="hero-market-price-name">{pricedCard.label || pricedCard.marketHashName}</div>
+                {pricedCard.updatedLabel ? (
+                  <div className="hero-market-price-updated">
+                    {lang === 'ru' ? 'обновлено' : 'updated'} {pricedCard.updatedLabel}
+                  </div>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="hero-market-single-wrap">
+          {activePriceCards.map((card, index) => {
+            const pricedCard = getPriceCard(card);
+            return (
+              <button
+                type="button"
+                className="hero-operators-badge hero-market-price-card"
+                key={pricedCard.marketHashName || index}
+                onClick={() => openPriceCard(pricedCard)}
+                title={pricedCard.marketHashName}
+              >
+                <div className="hero-market-price-head">
+                  <span>{lang === 'ru' ? 'Рыночная цена' : 'Market price'}</span>
+                  <span>{pricedCard.provider}</span>
+                </div>
+                <div className="hero-market-price-value">{pricedCard.priceLabel}</div>
+                <div className="hero-market-price-name">{pricedCard.label || pricedCard.marketHashName}</div>
+                {pricedCard.updatedLabel ? (
+                  <div className="hero-market-price-updated">
+                    {lang === 'ru' ? 'обновлено' : 'updated'} {pricedCard.updatedLabel}
+                  </div>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="hero-operators-readout">
         <div className="eyebrow" style={{ color: 'var(--accent)' }}>{readoutLabel}</div>
         <div style={{ fontFamily: 'var(--f-display)', fontSize: 26, fontWeight: 500, marginTop: 4 }}>{totalValue}</div>
@@ -409,7 +678,7 @@ function HeroConcept_Operators({ portfolio, loading, lang }) {
 }
 
 /* Hero locked to Operators concept */
-function Hero({ lang, onLink, onPublicProfile, auth }) {
+function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
   const t = useT(lang);
   const [profileUrl, setProfileUrl] = useState('');
   const [profileUrlError, setProfileUrlError] = useState('');
@@ -420,8 +689,8 @@ function Hero({ lang, onLink, onPublicProfile, auth }) {
     { key: 'stat-3', v: '12ms', l: t.hero.stat3 },
   ];
   const stage = useMemo(
-    () => <HeroConcept_Operators portfolio={portfolio.data} loading={portfolio.loading} auth={auth} lang={lang} />,
-    [auth, lang, portfolio.data, portfolio.loading]
+    () => <HeroConcept_Operators portfolio={portfolio.data} loading={portfolio.loading} auth={auth} lang={lang} onItemClick={onItemClick} />,
+    [auth, lang, onItemClick, portfolio.data, portfolio.loading]
   );
   const submitProfileUrl = (event) => {
     event.preventDefault();

@@ -139,13 +139,15 @@ async function fetchText(url, { timeoutMs = 6000 } = {}) {
   return response.text();
 }
 
-async function getPrice(marketHashName) {
+async function getPrice(marketHashName, options = {}) {
   const key = `price:${marketHashName}`;
-  const cached = await getCached(key, PRICE_MAX_AGE_MS);
+  const maxAgeMs = Number.isFinite(options.maxAgeMs) ? Math.max(0, options.maxAgeMs) : PRICE_MAX_AGE_MS;
+  const cached = maxAgeMs > 0 ? await getCached(key, maxAgeMs) : null;
   if (cached) return { ...cached, cached: true };
 
   const staleCached = await getCached(key, 30 * 24 * 60 * 60 * 1000);
-  const price = await getCSFloatPrice(marketHashName).catch(() => null)
+  const price = await getCSMarketAPIPrice(marketHashName).catch(() => null)
+    || await getCSFloatPrice(marketHashName).catch(() => null)
     || await getTakeSkinPrice(marketHashName).catch(() => null)
     || await getSteamMarketPrice(marketHashName).catch(() => null)
     || await getSkinportPrice(marketHashName).catch(() => null)
@@ -162,16 +164,18 @@ async function getPrice(marketHashName) {
   // Also fetch the native RUB price from Steam so the UI can show exact Steam Market values
   // instead of converting USD with a stale FX rate. We do this lazily and cache the result.
   if (Number.isFinite(price.price) || Number.isFinite(price.medianPrice)) {
-    const rub = await getSteamMarketPrice(marketHashName, 'rub').catch(() => null);
-    if (Number.isFinite(rub?.price) || Number.isFinite(rub?.medianPrice)) {
-      price.priceRub = rub.price;
-      price.medianPriceRub = rub.medianPrice;
-    } else {
-      // Steam returned null for RUB on this item — derive from the global rate.
-      const rate = await getSteamRubRate().catch(() => null);
-      if (Number.isFinite(rate) && rate > 0) {
-        if (Number.isFinite(price.price)) price.priceRub = Math.round(price.price * rate * 100) / 100;
-        if (Number.isFinite(price.medianPrice)) price.medianPriceRub = Math.round(price.medianPrice * rate * 100) / 100;
+    if (!Number.isFinite(price.priceRub) && !Number.isFinite(price.medianPriceRub)) {
+      const rub = await getSteamMarketPrice(marketHashName, 'rub').catch(() => null);
+      if (Number.isFinite(rub?.price) || Number.isFinite(rub?.medianPrice)) {
+        price.priceRub = rub.price;
+        price.medianPriceRub = rub.medianPrice;
+      } else {
+        // Steam returned null for RUB on this item — derive from the global rate.
+        const rate = await getSteamRubRate().catch(() => null);
+        if (Number.isFinite(rate) && rate > 0) {
+          if (Number.isFinite(price.price)) price.priceRub = Math.round(price.price * rate * 100) / 100;
+          if (Number.isFinite(price.medianPrice)) price.medianPriceRub = Math.round(price.medianPrice * rate * 100) / 100;
+        }
       }
     }
     await setCached(key, price);
@@ -179,14 +183,14 @@ async function getPrice(marketHashName) {
   return { ...price, cached: false };
 }
 
-async function getPrices(marketHashNames, limit = 24) {
+async function getPrices(marketHashNames, limit = 24, options = {}) {
   const safeLimit = Number.isFinite(limit) ? limit : Number.MAX_SAFE_INTEGER;
   const unique = [...new Set(marketHashNames.filter(Boolean))].slice(0, safeLimit);
   const result = {};
 
   for (let i = 0; i < unique.length; i += 4) {
     const batch = unique.slice(i, i + 4);
-    const priced = await Promise.all(batch.map((name) => getPrice(name)));
+    const priced = await Promise.all(batch.map((name) => getPrice(name, options)));
     for (const item of priced) result[item.marketHashName] = item;
   }
 
@@ -1230,6 +1234,28 @@ async function getCSMarketListingPrice(marketHashName, currency = 'usd') {
   };
   await setCached(cacheKey, result);
   return result;
+}
+
+async function getCSMarketAPIPrice(marketHashName) {
+  if (!process.env.CSMARKET_API_KEY) return null;
+
+  const [usd, rub] = await Promise.all([
+    getCSMarketListingPrice(marketHashName, 'usd'),
+    getCSMarketListingPrice(marketHashName, 'rub'),
+  ]);
+  if (!Number.isFinite(usd?.price) && !Number.isFinite(usd?.medianPrice)) return null;
+
+  return {
+    marketHashName,
+    price: usd.price,
+    medianPrice: usd.medianPrice,
+    priceRub: Number.isFinite(rub?.price) ? rub.price : null,
+    medianPriceRub: Number.isFinite(rub?.medianPrice) ? rub.medianPrice : null,
+    volume24h: usd.sellListings || null,
+    provider: 'csmarketapi',
+    currencyCode: 'USD',
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 async function hydrateCSMarketCatalogPrices(items) {

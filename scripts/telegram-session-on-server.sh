@@ -23,10 +23,17 @@ fi
 echo "Stopping steam-invest-app..."
 docker compose -f "$COMPOSE_FILE" stop steam-invest-app >/dev/null
 
-echo "Creating Telegram session through VPN..."
+PROXY_HOST="${TELEGRAM_PROXY_HOST-}"
+PROXY_PORT="${TELEGRAM_PROXY_PORT-}"
+if [[ -n "$PROXY_HOST" && "$PROXY_HOST" != "none" && "$PROXY_HOST" != "off" && "$PROXY_HOST" != "direct" ]]; then
+  echo "Creating Telegram session through SOCKS proxy ${PROXY_HOST}:${PROXY_PORT:-1080}..."
+else
+  echo "Creating Telegram session without proxy..."
+fi
+
 docker compose -f "$COMPOSE_FILE" run --rm --no-deps \
-  -e TELEGRAM_PROXY_HOST=steam-invest-xray \
-  -e TELEGRAM_PROXY_PORT=1080 \
+  -e TELEGRAM_PROXY_HOST="$PROXY_HOST" \
+  -e TELEGRAM_PROXY_PORT="$PROXY_PORT" \
   -e TELEGRAM_PHONE \
   -e TELEGRAM_CODE \
   -e TELEGRAM_PASSWORD \

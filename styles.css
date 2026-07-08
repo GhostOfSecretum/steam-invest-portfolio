@@ -626,25 +626,69 @@ button:disabled,
   filter: blur(20px);
 }
 
-.hero-operators-ring,
-.hero-operators-ring-alt {
+@keyframes ringSpin {
+  to { transform: rotate(360deg); }
+}
+
+.hero-backdrop {
   position: absolute;
-  border-radius: 50%;
+  inset: 0;
+  display: grid;
+  place-items: center;
   pointer-events: none;
 }
 
-.hero-operators-ring {
-  width: min(62vw, 380px);
-  aspect-ratio: 1;
-  border: 1px solid oklch(0.68 0.22 5 / 0.35);
-  animation: ringSpin 40s linear infinite;
+.hero-backdrop > * {
+  grid-area: 1 / 1;
 }
 
-.hero-operators-ring-alt {
-  width: min(74vw, 460px);
+.hb-reticle-ticks {
+  width: min(72vw, 440px);
   aspect-ratio: 1;
-  border: 1px dashed oklch(0.78 0.14 210 / 0.3);
-  animation: ringSpin 80s linear infinite reverse;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    oklch(0.68 0.22 5 / 0.55) 0deg 1deg,
+    transparent 1deg 6deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 66%, #000 66.5%, #000 70%, transparent 70.5%);
+  mask: radial-gradient(circle, transparent 66%, #000 66.5%, #000 70%, transparent 70.5%);
+  animation: ringSpin 60s linear infinite;
+}
+
+.hb-reticle-arc {
+  width: min(62vw, 380px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: conic-gradient(
+    oklch(0.68 0.22 5 / 0.6) 0deg 70deg,
+    transparent 70deg 180deg,
+    oklch(0.68 0.22 5 / 0.6) 180deg 250deg,
+    transparent 250deg 360deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 69.4%, #000 70%, #000 71%, transparent 71.6%);
+  mask: radial-gradient(circle, transparent 69.4%, #000 70%, #000 71%, transparent 71.6%);
+  animation: ringSpin 14s linear infinite;
+}
+
+.hb-reticle-arc-2 {
+  width: min(78vw, 480px);
+  background: conic-gradient(
+    oklch(0.78 0.14 210 / 0.5) 0deg 30deg,
+    transparent 30deg 90deg,
+    oklch(0.78 0.14 210 / 0.5) 90deg 120deg,
+    transparent 120deg 360deg
+  );
+  animation: ringSpin 26s linear infinite reverse;
+}
+
+.hb-reticle-cross {
+  width: min(82vw, 520px);
+  aspect-ratio: 1;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 0.5px), oklch(0.68 0.22 5 / 0.22) 50%, transparent calc(50% + 0.5px)),
+    linear-gradient(0deg, transparent calc(50% - 0.5px), oklch(0.68 0.22 5 / 0.22) 50%, transparent calc(50% + 0.5px));
+  -webkit-mask: radial-gradient(circle, transparent 18%, #000 20%);
+  mask: radial-gradient(circle, transparent 18%, #000 20%);
 }
 
 .hero-operators-shadow {
@@ -695,7 +739,7 @@ button:disabled,
 .hero-operators-picker {
   position: absolute;
   left: 50%;
-  bottom: clamp(18px, 5vw, 34px);
+  bottom: clamp(82px, 12vw, 96px);
   z-index: 3;
   display: flex;
   align-items: center;
@@ -823,6 +867,115 @@ button:disabled,
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   box-shadow: 0 14px 32px rgba(0,0,0,0.22);
+}
+
+.hero-market-price-card {
+  top: clamp(22px, 5vw, 58px);
+  right: clamp(14px, 5vw, 42px);
+  width: min(72vw, 230px);
+  padding: 12px 14px;
+  border-color: oklch(0.68 0.22 5 / 0.34);
+  background:
+    radial-gradient(circle at 10% 0%, oklch(0.68 0.22 5 / 0.14), transparent 42%),
+    rgba(3, 7, 14, 0.72);
+}
+
+.hero-market-price-card,
+.hero-market-agent-card {
+  appearance: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 160ms, box-shadow 160ms, transform 160ms;
+}
+
+.hero-market-price-card:hover,
+.hero-market-agent-card:hover {
+  border-color: oklch(0.68 0.22 5 / 0.62);
+  box-shadow: 0 18px 42px rgba(0,0,0,0.28), 0 0 24px oklch(0.68 0.22 5 / 0.18);
+}
+
+.hero-agent-price-layout {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.hero-market-agent-card {
+  pointer-events: auto;
+  width: min(29vw, 178px);
+  padding: 8px 10px;
+  border-color: oklch(0.68 0.22 5 / 0.34);
+  background:
+    radial-gradient(circle at 10% 0%, oklch(0.68 0.22 5 / 0.14), transparent 42%),
+    rgba(3, 7, 14, 0.72);
+}
+
+.hero-market-agent-card-left {
+  left: clamp(8px, 7vw, 54px);
+  bottom: clamp(142px, 22vw, 176px);
+  transform: rotate(-2deg);
+}
+
+.hero-market-agent-card-center {
+  left: 50%;
+  top: clamp(-18px, 1vw, 8px);
+  transform: translateX(-50%);
+}
+
+.hero-market-agent-card-right {
+  right: clamp(8px, 7vw, 54px);
+  bottom: clamp(142px, 22vw, 176px);
+  transform: rotate(2deg);
+}
+
+.hero-market-agent-card .hero-market-price-value {
+  font-size: clamp(18px, 2.7vw, 24px);
+}
+
+.hero-market-agent-card .hero-market-price-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-market-price-head,
+.hero-market-price-updated {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.hero-market-price-head span:last-child {
+  color: var(--accent);
+}
+
+.hero-market-price-value {
+  margin-top: 6px;
+  font-family: var(--f-display);
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1;
+  color: var(--fg-0);
+}
+
+.hero-market-price-name {
+  margin-top: 6px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--fg-2);
+}
+
+.hero-market-price-updated {
+  margin-top: 8px;
+  justify-content: flex-start;
+  letter-spacing: 0.08em;
 }
 
 .hero-operators-readout {
@@ -1102,6 +1255,49 @@ button:disabled,
   .hero-operators-fallback {
     width: min(100%, 360px);
     height: min(100%, 360px);
+  }
+
+  .hero-market-price-card {
+    top: 8px;
+    right: 10px;
+    width: min(58vw, 190px);
+    padding: 10px 12px;
+  }
+
+  .hero-market-agent-card {
+    width: min(30vw, 112px);
+    padding: 6px 7px;
+  }
+
+  .hero-market-agent-card-left {
+    left: 8px;
+    bottom: 92px;
+  }
+
+  .hero-market-agent-card-center {
+    top: -8px;
+  }
+
+  .hero-market-agent-card-right {
+    right: 8px;
+    bottom: 92px;
+  }
+
+  .hero-market-price-value {
+    font-size: 22px;
+  }
+
+  .hero-market-agent-card .hero-market-price-value {
+    font-size: 16px;
+  }
+
+  .hero-market-agent-card .hero-market-price-head,
+  .hero-market-agent-card .hero-market-price-updated {
+    font-size: 7px;
+  }
+
+  .hero-market-agent-card .hero-market-price-name {
+    font-size: 8px;
   }
 
   .hero-operators-readout {
