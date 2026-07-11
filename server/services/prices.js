@@ -1201,6 +1201,43 @@ function pickCSMarketListingPrice(listing) {
   return null;
 }
 
+function median(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+// Aggregate a CSMarketAPI listings payload into a single representative price.
+// The Steam Community Market is not exposed on every CSMarketAPI plan, so we
+// prefer it when present and otherwise fall back to the median of the per-market
+// minimum prices (robust to stale outliers) instead of returning nothing.
+function aggregateCSMarketListing(listings) {
+  if (!Array.isArray(listings) || !listings.length) return null;
+
+  const steam = listings.find((row) => row.market === 'STEAMCOMMUNITY');
+  const steamPrice = pickCSMarketListingPrice(steam);
+  if (Number.isFinite(steamPrice)) {
+    return {
+      price: steamPrice,
+      medianPrice: Number.isFinite(steam.median_price) ? steam.median_price : steamPrice,
+      sellListings: Number(steam.listings) || 0,
+    };
+  }
+
+  const perMarketMins = listings
+    .map((row) => pickCSMarketListingPrice(row))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const representative = median(perMarketMins);
+  if (!Number.isFinite(representative)) return null;
+
+  return {
+    price: representative,
+    medianPrice: representative,
+    sellListings: listings.reduce((sum, row) => sum + (Number(row.listings) || 0), 0),
+  };
+}
+
 async function getCSMarketListingPrice(marketHashName, currency = 'usd') {
   if (!process.env.CSMARKET_API_KEY) return null;
 
@@ -1213,7 +1250,6 @@ async function getCSMarketListingPrice(marketHashName, currency = 'usd') {
     market_hash_name: marketHashName,
     currency: normalizedCurrency,
     key: process.env.CSMARKET_API_KEY,
-    markets: 'STEAMCOMMUNITY',
   });
   const json = await fetchJson(`https://api.csmarketapi.com/v1/listings/latest/aggregate?${params}`, {
     timeoutMs: 10000,
@@ -1221,14 +1257,11 @@ async function getCSMarketListingPrice(marketHashName, currency = 'usd') {
   if (!json) return null;
 
   const listings = Array.isArray(json.listings) ? json.listings : [];
-  const listing = listings.find((row) => row.market === 'STEAMCOMMUNITY') || listings[0];
-  const price = pickCSMarketListingPrice(listing);
-  if (!Number.isFinite(price)) return null;
+  const aggregated = aggregateCSMarketListing(listings);
+  if (!aggregated) return null;
 
   const result = {
-    price,
-    medianPrice: Number.isFinite(listing.median_price) ? listing.median_price : price,
-    sellListings: Number(listing.listings) || 0,
+    ...aggregated,
     provider: 'csmarketapi',
     currencyCode: normalizedCurrency,
   };

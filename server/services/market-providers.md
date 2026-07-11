@@ -17,7 +17,7 @@ Default source is Steam Community Market search (`/market/search/render/`).
 Set `MARKET_CATALOG_PROVIDER=csmarketapi` (requires `CSMARKET_API_KEY`) to use CSMarketAPI instead:
 
 1. `GET /v1/items/` — full item dump, cached 24h, filtered locally (search/category/wear/special)
-2. `GET /v1/listings/latest/aggregate?markets=STEAMCOMMUNITY` — Steam listing prices per visible item, cached 10m
+2. `GET /v1/listings/latest/aggregate` — latest listing prices per visible item across all markets, cached 10m. Prefers Steam Community Market when the plan exposes it, otherwise uses the median of per-market minimum prices (Steam is not available on every CSMarketAPI plan).
 3. Falls back to Steam search if the CSMarketAPI dump fails
 
 Price/popularity sorts hydrate up to 500 filtered items before paging. Pro plan recommended.
