@@ -12,7 +12,7 @@ services:
     environment:
       NODE_ENV: production
       TRUST_PROXY: "1"
-      APP_BASE_URL: ${APP_BASE_URL:-https://your-domain.com}
+      APP_BASE_URL: ${APP_BASE_URL:-https://skinshead.pro}
 
   caddy:
     image: caddy:2

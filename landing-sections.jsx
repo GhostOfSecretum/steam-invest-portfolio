@@ -990,9 +990,47 @@ function StatsBand() {
   );
 }
 
+/* SEO intro */
+function SeoIntro({ lang }) {
+  const copy = lang === 'ru'
+    ? {
+        title: 'Портфель скинов CS2',
+        sub: 'Трекер инвестиций в скины Steam и аналитика цен Counter-Strike 2',
+        paragraphs: [
+          'SkinsHead — это портфель скинов CS2 для инвесторов и трейдеров Counter-Strike 2. Сервис собирает live-цены Steam Community Market и сторонних площадок, показывает стоимость инвентаря, P&L, распределение по категориям и историю изменения цен.',
+          'Если вам нужен трекер инвестиций в скины Steam, а не просто список предметов, здесь есть аналитика цен скинов CS2: маркет-эксплорер, лидеры портфеля, новости рынка, ROI кейсов и Armory Pass. Подключите Steam через OpenID или вставьте ссылку на публичный профиль.',
+          'CS2 skin portfolio tracker на skinshead.pro работает в браузере без установки. Интерфейс доступен на русском и английском — удобно отслеживать Counter-Strike 2 инвентарь и принимать решения по позициям на основе реальных рыночных данных.',
+        ],
+      }
+    : {
+        title: 'CS2 skin portfolio tracker',
+        sub: 'Steam skins investment tracker and Counter-Strike 2 price analytics',
+        paragraphs: [
+          'SkinsHead is a CS2 skin portfolio tracker for Counter-Strike 2 investors and traders. It aggregates live Steam Community Market and third-party listing prices, then surfaces portfolio value, P&L, allocation, and price history in one dashboard.',
+          'As a Steam skins investment tracker, it goes beyond a raw inventory list with CS2 skin price analytics: market explorer, portfolio movers, market news, case ROI, and Armory Pass payback. Link Steam via OpenID or paste a public profile URL for read-only tracking.',
+          'The Counter-Strike 2 portfolio tracker runs in the browser at skinshead.pro with Russian and English UI. Track inventory value, monitor positions, and review market intelligence without installing desktop software.',
+        ],
+      };
+
+  return (
+    <section className="section section-tight" id="about">
+      <div className="container" style={{ maxWidth: 920 }}>
+        <SectionHeader title={copy.title} sub={copy.sub} num="—" />
+        <div style={{ display: 'grid', gap: 16, color: 'var(--fg-1)', fontSize: 15, lineHeight: 1.75 }}>
+          {copy.paragraphs.map((paragraph, index) => (
+            <p key={index} style={{ margin: 0 }}>{paragraph}</p>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* FAQ */
 const FAQ_ITEMS = {
   en: [
+    { q: 'What is a CS2 skin portfolio tracker?', a: 'A CS2 skin portfolio tracker measures the market value of your Counter-Strike 2 inventory over time. SkinsHead combines live Steam prices, P&L, allocation, and price history so you can treat skins as an investment asset class.' },
+    { q: 'How does Steam skins investment tracking work?', a: 'Link your Steam account or paste a public profile URL. We read the inventory, price each item with live market data, and show portfolio analytics including 24h change, cost basis, and top movers.' },
     { q: 'How does Steam linking work?', a: 'Open-Auth via your Steam ID, then we read your public inventory. We never request your password or session token. You can also paste an inventory URL to track read-only.' },
     { q: 'Where do prices come from?', a: 'We aggregate community market and major third-party listing books, weighting by recent volume and float band. Per-item provenance is shown on the detail view.' },
     { q: 'Are float, paint seed, and stickers considered?', a: 'Yes. Valuation is float-band aware and applies per-skin sticker multipliers. Paint-seed premium tables are maintained for known pattern lines.' },
@@ -1001,6 +1039,8 @@ const FAQ_ITEMS = {
     { q: 'Is there a free tier?', a: 'Yes. Up to 100 items tracked, 24h price refresh. Pro lifts caps and adds float scanners, alerts, and CSV export.' },
   ],
   ru: [
+    { q: 'Что такое портфель скинов CS2?', a: 'Портфель скинов CS2 — это оценка и аналитика вашего инвентаря Counter-Strike 2: live-цены, P&L, распределение по категориям и история стоимости. SkinsHead собирает эти данные в одном дашборде.' },
+    { q: 'Как работает трекер инвестиций в скины Steam?', a: 'Привяжите Steam через OpenID или вставьте ссылку на публичный профиль. Сервис читает инвентарь, оценивает предметы по рынку и показывает аналитику: изменение за 24ч, себестоимость и лидеров портфеля.' },
     { q: 'Как работает привязка Steam?', a: 'OpenID через Steam ID, далее читаем публичный инвентарь. Пароль и токены сессии не запрашиваем. Можно вставить URL инвентаря для read-only режима.' },
     { q: 'Откуда берутся цены?', a: 'Агрегируем community market и крупные сторонние книги ставок, взвешиваем по объёму и float-бэнду. На карточке предмета показан per-item provenance.' },
     { q: 'Учитываются ли float, paint seed и наклейки?', a: 'Да. Оценка зависит от float-бэнда, применяет per-skin множители наклеек. Для известных pattern-line ведём таблицы premium-ов по seed.' },
@@ -1109,8 +1149,8 @@ function Footer({ lang }) {
           <Logo />
           <p style={{ marginTop: 16, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.6, maxWidth: 320 }}>
             {lang === 'ru'
-              ? 'Независимый трекер инвестиций в CS2. Не аффилирован со Steam, Valve или CSGO.'
-              : 'Independent CS2 investment tracker. Not affiliated with Steam, Valve, or CSGO.'}
+              ? 'Независимый трекер инвестиций в скины CS2 и аналитика цен Counter-Strike 2 на skinshead.pro. Не аффилирован со Steam, Valve или CSGO.'
+              : 'Independent Steam skins investment tracker and CS2 skin price analytics at skinshead.pro. Not affiliated with Steam, Valve, or CSGO.'}
           </p>
         </div>
         {[
@@ -1136,4 +1176,4 @@ function Footer({ lang }) {
   );
 }
 
-Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, StatsBand, FAQ, Footer, SectionHeader });
+Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });

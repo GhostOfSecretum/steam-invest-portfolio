@@ -456,7 +456,7 @@ app.get('/api/desktop/status', requireAuth, asyncRoute(async (req, res) => {
 // --- Static & root ---
 
 app.get('/', (req, res) => {
-  res.redirect(`/${encodeURIComponent(appFile)}`);
+  res.sendFile(path.join(rootDir, appFile));
 });
 
 app.use(express.static(rootDir, { dotfiles: 'deny' }));
