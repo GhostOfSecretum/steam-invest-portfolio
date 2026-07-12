@@ -755,9 +755,77 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
   const [editingItemId, setEditingItemId] = useState(null);
   const [editDraft, setEditDraft] = useState({ quantity: '', basisPerUnit: '' });
   const [savingItemId, setSavingItemId] = useState(null);
+  const [sortKey, setSortKey] = useState('value');
+  const [sortDir, setSortDir] = useState('desc');
   const isSteamPortfolio = portfolioType === 'steam';
 
   const rowEditKey = (item) => item.manualItemId || item.marketHashName;
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === 'name' ? 'asc' : 'desc');
+  };
+
+  const sortedItems = useMemo(() => {
+    const list = Array.isArray(items) ? [...items] : [];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const num = (value) => (Number.isFinite(value) ? value : null);
+
+    list.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'name') {
+        cmp = String(a.name || a.marketHashName || '').localeCompare(String(b.name || b.marketHashName || ''), undefined, { sensitivity: 'base' });
+      } else if (sortKey === 'qty') {
+        cmp = (num(a.qty) ?? -Infinity) - (num(b.qty) ?? -Infinity);
+      } else if (sortKey === 'basis') {
+        cmp = (num(a.basis) ?? -Infinity) - (num(b.basis) ?? -Infinity);
+      } else if (sortKey === 'value') {
+        cmp = (num(a.totalValue ?? a.value) ?? -Infinity) - (num(b.totalValue ?? b.value) ?? -Infinity);
+      } else if (sortKey === 'pnl') {
+        const aPnl = num(a.pnlPct);
+        const bPnl = num(b.pnlPct);
+        cmp = (aPnl ?? -Infinity) - (bPnl ?? -Infinity);
+      }
+      if (cmp === 0) {
+        cmp = String(a.name || a.marketHashName || '').localeCompare(String(b.name || b.marketHashName || ''), undefined, { sensitivity: 'base' });
+      }
+      return cmp * dir;
+    });
+    return list;
+  }, [items, sortKey, sortDir]);
+
+  const SortHeader = ({ label, column, title }) => {
+    const active = sortKey === column;
+    const arrow = active ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        title={title}
+        onClick={() => toggleSort(column)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleSort(column);
+          }
+        }}
+        style={{
+          cursor: 'pointer',
+          userSelect: 'none',
+          color: active ? 'var(--fg-1)' : 'var(--fg-3)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 2,
+        }}
+      >
+        {label}{arrow}
+      </div>
+    );
+  };
 
   const startManualEdit = (item, event) => {
     event.stopPropagation();
@@ -850,11 +918,19 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
         color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', letterSpacing: '0.06em', textTransform: 'uppercase',
         borderBottom: '1px solid var(--line)',
       }}>
-        <div>#</div><div></div><div>Item</div><div>Qty</div>
-        <div title={lang === 'ru' ? 'Себестоимость за 1 шт. Меняется через кнопку Изменить.' : 'Cost per unit. Change it from the Edit button.'}>Basis</div>
-        <div>Value</div><div>P&L</div><div>Source</div>
+        <div>#</div><div></div>
+        <SortHeader label="Item" column="name" />
+        <SortHeader label="Qty" column="qty" />
+        <SortHeader
+          label="Basis"
+          column="basis"
+          title={lang === 'ru' ? 'Себестоимость за 1 шт. Меняется через кнопку Изменить.' : 'Cost per unit. Change it from the Edit button.'}
+        />
+        <SortHeader label="Value" column="value" />
+        <SortHeader label="P&L" column="pnl" />
+        <div>Source</div>
       </div>
-      {items.map((h, i) => {
+      {sortedItems.map((h, i) => {
         const change = (h.spark || [0, 0]).at(-1) - (h.spark || [0, 0]).at(-2);
         const isEditing = editingItemId === (h.manualItemId || h.marketHashName);
         const basisEditable = (portfolioType === 'manual' && h.manualItemId) || isSteamPortfolio;
@@ -867,7 +943,7 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
           <div key={h.marketHashName || String(h.assetid || i)} onClick={() => onItemClick && onItemClick(h)} style={{
             display: 'grid', gridTemplateColumns: '40px 60px 2fr 90px 100px 110px 100px 160px',
             padding: '14px 20px', gap: 12, alignItems: 'center',
-            borderBottom: i < items.length - 1 ? '1px solid var(--line)' : 'none',
+            borderBottom: i < sortedItems.length - 1 ? '1px solid var(--line)' : 'none',
             cursor: 'default', transition: 'background 120ms',
           }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
