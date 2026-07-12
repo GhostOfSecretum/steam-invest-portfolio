@@ -20,6 +20,12 @@ const {
   setManualBasisPerUnitByMarketHashName,
   migrateOwnershipToSteam,
 } = require('./services/portfolio');
+const {
+  listFavoriteProfiles,
+  addFavoriteProfile,
+  removeFavoriteProfile,
+  migrateFavoriteProfilesToSteam,
+} = require('./services/favorite-profiles');
 const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
@@ -117,6 +123,7 @@ app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => 
   req.session.steamRaw = auth.raw;
   await saveSession(req);
   await migrateOwnershipToSteam(priorOwnerId, auth.steamId);
+  await migrateFavoriteProfilesToSteam(priorOwnerId, auth.steamId);
   res.redirect(`/${encodeURIComponent(appFile)}#dashboard`);
 }));
 
@@ -188,6 +195,25 @@ app.patch('/api/portfolio/basis', asyncRoute(async (req, res) => {
   }
 
   await setBasisPerUnitByMarketHashName(req.session.steamId, req.body?.marketHashName, req.body?.basisPerUnit, req.body?.currency);
+  res.json({ ok: true });
+}));
+
+app.get('/api/favorite-profiles', asyncRoute(async (req, res) => {
+  const profiles = await listFavoriteProfiles(resolveOwnerId(req));
+  res.json({ profiles });
+}));
+
+app.post('/api/favorite-profiles', asyncRoute(async (req, res) => {
+  const profile = await addFavoriteProfile(resolveOwnerId(req, { create: true }), req.body);
+  res.status(201).json({ profile });
+}));
+
+app.delete('/api/favorite-profiles/:steamId', asyncRoute(async (req, res) => {
+  const deleted = await removeFavoriteProfile(resolveOwnerId(req, { create: true }), req.params.steamId);
+  if (!deleted) {
+    res.status(404).json({ error: 'Favorite profile not found.', code: 'favorite_not_found' });
+    return;
+  }
   res.json({ ok: true });
 }));
 
@@ -440,6 +466,7 @@ app.get('/api/desktop/login', pairingLimiter, asyncRoute(async (req, res) => {
   req.session.desktopLinked = true;
   await saveSession(req);
   await migrateOwnershipToSteam(priorOwnerId, loginSession.steamId);
+  await migrateFavoriteProfilesToSteam(priorOwnerId, loginSession.steamId);
   res.redirect(`/${encodeURIComponent(appFile)}#dashboard`);
 }));
 
@@ -480,6 +507,10 @@ app.get('/item/:slug', asyncRoute(async (req, res) => {
 }));
 
 app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(rootDir, appFile));
+});
+
+app.get('/favorites', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));
 });
 

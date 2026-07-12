@@ -75,6 +75,7 @@
   <script type="text/babel" src="hero.jsx"></script>
   <script type="text/babel" src="landing-sections.jsx"></script>
   <script type="text/babel" src="dashboard.jsx"></script>
+  <script type="text/babel" src="favorite-profiles.jsx"></script>
   <script type="text/babel" src="item-detail.jsx"></script>
 
   <script type="text/babel">
@@ -151,28 +152,37 @@
 
     function parseAppRoute() {
       const path = window.location.pathname.replace(/\/+$/, '') || '/';
+      const profile = String(new URLSearchParams(window.location.search).get('profile') || '').trim();
       if (path.startsWith('/item/')) {
         const slug = decodeURIComponent(path.slice('/item/'.length)).toLowerCase();
         if (slug) return { screen: 'item', slug };
       }
+      if (path === '/favorites') {
+        return { screen: 'favorites' };
+      }
       if (path === '/dashboard' || window.location.hash === '#dashboard') {
-        return { screen: 'dashboard' };
+        return { screen: 'dashboard', profile: profile || '' };
       }
       return { screen: 'home' };
     }
 
-    function pathForScreen(screen, item) {
-      if (screen === 'dashboard') return '/dashboard';
+    function pathForScreen(screen, item, profileUrl = '') {
+      if (screen === 'favorites') return '/favorites';
+      if (screen === 'dashboard') {
+        if (profileUrl) return `/dashboard?profile=${encodeURIComponent(profileUrl)}`;
+        return '/dashboard';
+      }
       if (screen === 'item' && item?.marketHashName && window.ItemSlugs) {
         return `/item/${window.ItemSlugs.marketHashNameToSlug(item.marketHashName)}`;
       }
       return '/';
     }
 
-    function syncAppUrl(screen, item, { replace = false } = {}) {
-      const nextPath = pathForScreen(screen, item);
-      if (window.location.pathname === nextPath) return;
-      const state = { screen, slug: screen === 'item' ? window.ItemSlugs?.marketHashNameToSlug(item?.marketHashName) : null };
+    function syncAppUrl(screen, item, { replace = false, profileUrl = '' } = {}) {
+      const nextPath = pathForScreen(screen, item, profileUrl);
+      const current = `${window.location.pathname}${window.location.search}`;
+      if (current === nextPath) return;
+      const state = { screen, slug: screen === 'item' ? window.ItemSlugs?.marketHashNameToSlug(item?.marketHashName) : null, profileUrl: profileUrl || null };
       if (replace) history.replaceState(state, '', nextPath);
       else history.pushState(state, '', nextPath);
     }
@@ -192,7 +202,7 @@
       const [activeItem, setActiveItem] = useState(null);
       const [itemReturnScreen, setItemReturnScreen] = useState(initialRoute.screen === 'item' ? 'home' : initialRoute.screen);
       const [cursorStyle, setCursorStyle] = useState('default');
-      const [publicProfileUrl, setPublicProfileUrl] = useState('');
+      const [publicProfileUrl, setPublicProfileUrl] = useState(initialRoute.profile || '');
       const [pendingSection, setPendingSection] = useState(null);
       const auth = useAuth();
       const showDesktopDownload = false;
@@ -230,6 +240,7 @@
           const route = parseAppRoute();
           setScreen(route.screen);
           setItemSlug(route.slug || null);
+          setPublicProfileUrl(route.profile || '');
           if (route.screen !== 'item') setActiveItem(null);
         };
         window.addEventListener('popstate', onPopState);
@@ -284,16 +295,17 @@
           setItemSlug(null);
           setActiveItem(null);
         }
-        syncAppUrl(s);
+        syncAppUrl(s, null, { profileUrl: s === 'dashboard' ? publicProfileUrl : '' });
         if (s === 'home') applyHomeSeo(t.lang);
         window.scrollTo({top: 0, behavior: 'instant'});
       };
       const openPublicProfile = (profileUrl) => {
-        setPublicProfileUrl(profileUrl);
+        const nextUrl = String(profileUrl || '').trim();
+        setPublicProfileUrl(nextUrl);
         setScreen('dashboard');
         setItemSlug(null);
         setActiveItem(null);
-        syncAppUrl('dashboard');
+        syncAppUrl('dashboard', null, { profileUrl: nextUrl });
         window.scrollTo({top: 0, behavior: 'instant'});
       };
 
@@ -336,6 +348,9 @@
           )}
           {screen === 'dashboard' && (
             <Dashboard lang={t.lang} onItemClick={goItem} auth={auth} publicProfileUrl={publicProfileUrl} />
+          )}
+          {screen === 'favorites' && (
+            <FavoriteProfiles lang={t.lang} onOpenProfile={openPublicProfile} />
           )}
           {screen === 'item' && (
             <ItemDetail
@@ -395,6 +410,7 @@
             <TweakSection label="Navigate" />
             <TweakButton label="Home" onClick={() => onNav('home')} />
             <TweakButton label="Dashboard" onClick={() => onNav('dashboard')} />
+            <TweakButton label="Favorites" onClick={() => onNav('favorites')} />
             <TweakButton label="Item Detail" onClick={() => onNav('item')} />
           </TweaksPanel>
         </div>

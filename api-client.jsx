@@ -362,10 +362,49 @@ function useItemBySlug(slug, enabled = true) {
   return state;
 }
 
+function useFavoriteProfiles() {
+  const [state, setState] = apiUseState({ loading: true, profiles: [], error: null });
+
+  const reload = apiUseCallback(async () => {
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const data = await apiFetch('/api/favorite-profiles');
+      setState({ loading: false, profiles: Array.isArray(data.profiles) ? data.profiles : [], error: null });
+    } catch (error) {
+      setState({ loading: false, profiles: [], error });
+    }
+  }, []);
+
+  apiUseEffect(() => { reload(); }, [reload]);
+
+  const add = apiUseCallback(async (payload) => {
+    const data = await apiFetch('/api/favorite-profiles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    await reload();
+    return data.profile;
+  }, [reload]);
+
+  const remove = apiUseCallback(async (steamId) => {
+    await apiFetch(`/api/favorite-profiles/${encodeURIComponent(steamId)}`, { method: 'DELETE' });
+    await reload();
+  }, [reload]);
+
+  const isFavorite = apiUseCallback((steamId) => {
+    const id = String(steamId || '');
+    return state.profiles.some((entry) => entry.steamId === id);
+  }, [state.profiles]);
+
+  return { ...state, reload, add, remove, isFavorite };
+}
+
 Object.assign(window, {
   apiFetch,
   useAuth,
   usePortfolio,
+  useFavoriteProfiles,
   useMarketSnapshot,
   useMarketCatalog,
   useItemHistory,

@@ -1,4 +1,4 @@
-/* global React */
+/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd */
 const { useState, useRef, useMemo, useEffect } = React;
 
 /* ───────────────────────────────────────────────────
@@ -148,6 +148,9 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
     ? null
     : selectedPortfolioId;
   const portfolio = usePortfolio(auth, effectivePortfolioId, publicProfileUrl);
+  const favorites = useFavoriteProfiles();
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [favoriteError, setFavoriteError] = useState(null);
   const [range, setRange] = useState('30d');
   const [tab, setTab] = useState('inventory');
   const [query, setQuery] = useState('');
@@ -157,6 +160,10 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
   const activePortfolioId = data?.portfolioId || effectivePortfolioId;
   const isSteamPortfolio = data?.portfolioType === 'steam';
   const isPublicPortfolio = Boolean(publicProfileUrl);
+  const publicSteamId = data?.profile?.steamId && /^\d{17}$/.test(String(data.profile.steamId))
+    ? String(data.profile.steamId)
+    : null;
+  const isFavorited = Boolean(publicSteamId && favorites.isFavorite(publicSteamId));
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return items;
@@ -180,6 +187,26 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
   }
 
   if (!data) return null;
+
+  const toggleFavorite = async () => {
+    if (!isPublicPortfolio || favoriteBusy) return;
+    setFavoriteBusy(true);
+    setFavoriteError(null);
+    try {
+      if (isFavorited && publicSteamId) {
+        await favorites.remove(publicSteamId);
+      } else {
+        await favorites.add({
+          profileUrl: publicProfileUrl || data.profile?.profileurl || publicSteamId,
+          steamId: publicSteamId,
+        });
+      }
+    } catch (error) {
+      setFavoriteError(error?.message || (lang === 'ru' ? 'Не удалось обновить избранное' : 'Failed to update favorites'));
+    } finally {
+      setFavoriteBusy(false);
+    }
+  };
 
   const pnlColor = data.pnl >= 0 ? 'var(--green)' : 'var(--red)';
   const marketableQty = items.reduce((sum, item) => sum + (Number(item.marketableQty) || 0), 0);
@@ -227,6 +254,20 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
             {isPublicPortfolio && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--cyan)' }}>● public profile</span>}
             {!isPublicPortfolio && data.desktopConnected && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--green)' }}>● desktop</span>}
             {!isPublicPortfolio && auth?.connected && <DesktopPairingButton lang={lang} />}
+            {isPublicPortfolio && (
+              <button
+                className={`btn btn-sm ${isFavorited ? 'btn-ghost' : 'btn-primary'}`}
+                onClick={toggleFavorite}
+                disabled={favoriteBusy || favorites.loading}
+                title={lang === 'ru' ? 'Сохранить профиль в избранное' : 'Save profile to favorites'}
+              >
+                {favoriteBusy
+                  ? '...'
+                  : isFavorited
+                    ? (lang === 'ru' ? 'В избранном' : 'Favorited')
+                    : (lang === 'ru' ? 'В избранное' : 'Add to favorites')}
+              </button>
+            )}
             <button className="btn btn-sm btn-ghost" onClick={() => downloadPortfolioCsv(items)}>CSV</button>
             <button className="btn btn-sm btn-ghost" onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}>
               {portfolio.loading ? 'Syncing...' : ((isSteamPortfolio || isPublicPortfolio) ? 'Sync' : 'Refresh')}
@@ -238,6 +279,9 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
             )}
           </div>
         </div>
+        {favoriteError && (
+          <div style={{ marginBottom: 16, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red)' }}>{favoriteError}</div>
+        )}
 
         {!isPublicPortfolio && (
           <PortfolioControls
