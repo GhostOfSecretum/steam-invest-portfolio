@@ -4,6 +4,13 @@ const crypto = require('crypto');
 const { getSteamInventory, getSteamProfile } = require('./steam');
 const { getPrices, getPriceHistory, getSteamCurrencyRatio, getSteamRubRate, getSteamMarketIcon, rarityToTier } = require('./prices');
 const { getDesktopInventory } = require('./desktop');
+const {
+  makeActivityEvent,
+  appendEvent,
+  backfillManualEvents,
+  isStructuredActivity,
+  syncInventoryDiffActivity,
+} = require('./activity');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const BASIS_FILE = path.join(DATA_DIR, 'portfolio.json');
@@ -59,6 +66,11 @@ async function getPortfolio(steamId, options = {}) {
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const providerLabel = useDesktop ? 'desktop' : (inventory.inventoryProvider || 'steam-public');
   const history = await buildPortfolioHistory(pricedItems, totalValue);
+  const activitySource = options.activitySource === 'public-diff' ? 'public-diff' : 'steam-diff';
+  const activity = await syncInventoryDiffActivity(steamId, items, {
+    source: activitySource,
+    syncedAt: inventory.syncedAt,
+  });
 
   return {
     portfolioId: 'steam',
@@ -84,12 +96,7 @@ async function getPortfolio(steamId, options = {}) {
     allocation: buildAllocation(pricedItems, totalValue),
     history,
     items,
-    activity: [
-      { t: 'now', a: `Inventory sync · ${inventory.totalInventoryCount} items across ${items.length} unique rows`, c: 'var(--fg-2)' },
-      { t: 'now', a: `Price refresh · ${pricedCount}/${inventory.totalInventoryCount} priced`, c: pricedCount ? 'var(--green)' : 'var(--amber)' },
-      { t: useDesktop ? 'desktop' : (inventory.cached ? 'cache' : 'live'), a: useDesktop ? 'Full inventory from desktop client' : (inventory.cached ? 'Loaded from local cache' : 'Fetched from Steam'), c: useDesktop ? 'var(--green)' : 'var(--cyan)' },
-      ...(storageItemCount > 0 ? [{ t: 'storage', a: `Storage units · ${storageItemCount} items included (read-only GC sync)`, c: 'var(--cyan)' }] : []),
-    ],
+    activity: activity.filter(isStructuredActivity).slice().reverse(),
   };
 }
 
@@ -121,6 +128,7 @@ async function createManualPortfolio(ownerId, name) {
     name: title.slice(0, 80),
     type: 'manual',
     items: [],
+    events: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -173,7 +181,7 @@ async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
 
   const basis = await makeBasisRecord(marketHashName, payload.basisPerUnit, payload.currency);
   const now = new Date().toISOString();
-  portfolio.items.push({
+  const item = {
     id: `manual-item-${crypto.randomUUID()}`,
     assetid: `manual-${crypto.randomUUID()}`,
     marketHashName,
@@ -188,7 +196,20 @@ async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
     tier: Number.isFinite(Number(payload.tier)) ? Number(payload.tier) : null,
     createdAt: now,
     updatedAt: now,
-  });
+  };
+  portfolio.items.push(item);
+  portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
+    at: now,
+    kind: 'added',
+    marketHashName,
+    name: item.name,
+    qtyBefore: 0,
+    qtyAfter: quantity,
+    qtyDelta: quantity,
+    basisPerUnit: Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit,
+    currency: basis.currency || null,
+    source: 'manual',
+  }));
   portfolio.updatedAt = now;
   bucket.activePortfolioId = portfolio.id;
   await writeManualPortfolioStore(store);
@@ -201,11 +222,29 @@ async function deleteManualPortfolioItem(ownerId, portfolioId, itemId) {
   const portfolio = bucket.portfolios.find((entry) => entry.id === portfolioId);
   if (!portfolio) return false;
 
+  const removed = portfolio.items.find((item) => item.id === itemId);
   const before = portfolio.items.length;
   portfolio.items = portfolio.items.filter((item) => item.id !== itemId);
   if (portfolio.items.length === before) return false;
 
-  portfolio.updatedAt = new Date().toISOString();
+  const now = new Date().toISOString();
+  if (removed) {
+    const qty = safeQty(removed.quantity ?? removed.amount);
+    const basis = removed.basis || {};
+    portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
+      at: now,
+      kind: 'removed',
+      marketHashName: removed.marketHashName,
+      name: removed.name || removed.marketHashName,
+      qtyBefore: qty,
+      qtyAfter: 0,
+      qtyDelta: -qty,
+      basisPerUnit: Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit,
+      currency: basis.currency || null,
+      source: 'manual',
+    }));
+  }
+  portfolio.updatedAt = now;
   await writeManualPortfolioStore(store);
   return true;
 }
@@ -237,13 +276,31 @@ async function updateManualPortfolioItem(ownerId, portfolioId, itemId, payload =
     throw err;
   }
 
+  const qtyBefore = safeQty(item.quantity ?? item.amount);
   item.quantity = quantity;
   item.amount = quantity;
+  let basisChanged = false;
   if (payload.basisPerUnit != null) {
     item.basis = await makeBasisRecord(item.marketHashName, payload.basisPerUnit, payload.currency);
+    basisChanged = true;
   }
   item.updatedAt = new Date().toISOString();
   portfolio.updatedAt = item.updatedAt;
+  const basis = item.basis || {};
+  portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
+    at: item.updatedAt,
+    kind: qtyBefore !== quantity ? (quantity > qtyBefore ? 'qty_up' : 'qty_down') : 'updated',
+    marketHashName: item.marketHashName,
+    name: item.name || item.marketHashName,
+    qtyBefore,
+    qtyAfter: quantity,
+    qtyDelta: quantity - qtyBefore,
+    basisPerUnit: basisChanged
+      ? (Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit)
+      : null,
+    currency: basisChanged ? (basis.currency || null) : null,
+    source: 'manual',
+  }));
   await writeManualPortfolioStore(store);
   return item;
 }
@@ -274,6 +331,18 @@ async function setManualBasisPerUnitByMarketHashName(ownerId, portfolioId, marke
     item.basis = record;
     item.updatedAt = now;
   }
+  portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
+    at: now,
+    kind: 'updated',
+    marketHashName: name,
+    name,
+    qtyBefore: matching.reduce((sum, item) => sum + safeQty(item.quantity ?? item.amount), 0),
+    qtyAfter: matching.reduce((sum, item) => sum + safeQty(item.quantity ?? item.amount), 0),
+    qtyDelta: 0,
+    basisPerUnit: Number.isFinite(record.amount) ? record.amount : record.usdPerUnit,
+    currency: record.currency || null,
+    source: 'manual',
+  }));
   portfolio.updatedAt = now;
   await writeManualPortfolioStore(store);
 }
@@ -327,6 +396,17 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const history = await buildPortfolioHistory(pricedItems, totalValue);
+  const activity = backfillManualEvents(portfolio);
+  if (!Array.isArray(portfolio.events) || !portfolio.events.length) {
+    // Persist backfill once so subsequent mutations append cleanly.
+    const writeStore = await readManualPortfolioStore();
+    const writeBucket = resolveOwnerBucketForWrite(writeStore, ownerId);
+    const writePortfolio = writeBucket.portfolios.find((entry) => entry.id === portfolio.id);
+    if (writePortfolio) {
+      writePortfolio.events = activity;
+      await writeManualPortfolioStore(writeStore);
+    }
+  }
 
   return {
     portfolioId: portfolio.id,
@@ -352,10 +432,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     allocation: buildAllocation(pricedItems, totalValue),
     history,
     items,
-    activity: [
-      { t: 'manual', a: `Manual portfolio · ${totalInventoryCount} items across ${items.length} unique rows`, c: 'var(--fg-2)' },
-      { t: 'prices', a: `Price refresh · ${pricedCount}/${totalInventoryCount} priced`, c: pricedCount ? 'var(--green)' : 'var(--amber)' },
-    ],
+    activity: activity.slice().reverse(),
   };
 }
 
@@ -394,7 +471,7 @@ function buildEmptyManualPortfolio(bucket, steamId = null, ownerId = null) {
     allocation: [],
     history: emptyPortfolioHistory(0),
     items: [],
-    activity: [{ t: 'start', a: 'Create a manual portfolio to add items without Steam', c: 'var(--amber)' }],
+    activity: [],
   };
 }
 
@@ -910,26 +987,95 @@ function buildAllocation(items, totalValue) {
 
   for (const item of items) {
     const label = bucketLabel(item);
-    const current = buckets.get(label) || { l: label, v: 0, c: `var(--rar-${item.tier || 1})`, p: 0 };
-    current.v += (item.value || 0) * item.qty;
-    current.p = totalValue > 0 ? (current.v / totalValue) * 100 : 0;
+    const current = buckets.get(label) || { l: label, v: 0, c: allocationColor(label), p: 0 };
+    current.v += (Number.isFinite(item.totalValue) ? item.totalValue : (item.value || 0) * (item.qty || 1));
     buckets.set(label, current);
   }
 
-  return [...buckets.values()]
-    .sort((a, b) => b.v - a.v)
-    .slice(0, 6)
-    .map((bucket) => ({ ...bucket, p: Math.round(bucket.p) }));
+  const sorted = [...buckets.values()].sort((a, b) => b.v - a.v);
+  const maxBars = 8;
+  let rows = sorted;
+
+  if (sorted.length > maxBars) {
+    const head = sorted.slice(0, maxBars - 1);
+    const tailValue = sorted.slice(maxBars - 1).reduce((sum, bucket) => sum + bucket.v, 0);
+    const otherIdx = head.findIndex((bucket) => bucket.l === 'Other');
+    if (otherIdx >= 0) {
+      head[otherIdx] = { ...head[otherIdx], v: head[otherIdx].v + tailValue };
+      rows = head;
+    } else {
+      rows = [...head, { l: 'Other', v: tailValue, c: allocationColor('Other'), p: 0 }];
+    }
+  }
+
+  return rows.map((bucket) => ({
+    ...bucket,
+    p: totalValue > 0 ? Math.round((bucket.v / totalValue) * 100) : 0,
+  }));
+}
+
+function allocationColor(label) {
+  const colors = {
+    Knives: 'var(--rar-5)',
+    Gloves: 'var(--rar-5)',
+    Rifles: 'var(--rar-4)',
+    Snipers: 'var(--cyan)',
+    SMGs: 'var(--rar-3)',
+    Shotguns: 'var(--amber)',
+    Machineguns: 'var(--rar-2)',
+    Pistols: 'var(--rar-3)',
+    Agents: 'var(--rar-4)',
+    Stickers: 'var(--green)',
+    Cases: 'var(--amber)',
+    Capsules: 'var(--accent)',
+    Graffiti: 'var(--fg-2)',
+    Patches: 'var(--fg-2)',
+    Charms: 'var(--cyan)',
+    Music: 'var(--rar-2)',
+    Tools: 'var(--fg-3)',
+    Other: 'var(--fg-3)',
+  };
+  return colors[label] || 'var(--fg-3)';
 }
 
 function bucketLabel(item) {
   const category = String(item.category || '').toLowerCase();
   const type = String(item.type || '').toLowerCase();
-  if (category.includes('knife') || type.includes('knife')) return 'Knives';
-  if (category.includes('glove') || type.includes('glove')) return 'Gloves';
-  if (category.includes('rifle') || /ak-47|awp|m4a/i.test(item.marketHashName)) return 'Rifles';
-  if (category.includes('pistol') || /glock|usp|desert eagle|p250/i.test(item.marketHashName)) return 'Pistols';
-  if (type.includes('case')) return 'Cases';
+  const name = String(item.marketHashName || item.name || '').toLowerCase();
+  const haystack = `${category} ${type} ${name}`;
+
+  if (
+    name.startsWith('★')
+    || /knife|bayonet|karambit|butterfly|talon|navaja|stiletto|ursus|skeleton|nomad|survival|paracord|kukri|shadow daggers|gut knife|flip knife|huntsman|falchion|bowie|daggers/.test(haystack)
+  ) {
+    return 'Knives';
+  }
+  if (/glove|hand wraps|wraps/.test(haystack)) return 'Gloves';
+  if (/agent/.test(haystack)) return 'Agents';
+  if (/sticker capsule|capsule/.test(haystack) && !/graffiti/.test(haystack)) return 'Capsules';
+  if ((/sticker/.test(haystack) || category === 'stickers') && !/capsule/.test(haystack)) return 'Stickers';
+  if (/graffiti|sealed graffiti/.test(haystack)) return 'Graffiti';
+  if (/patch/.test(haystack) && !/dispatch/.test(haystack)) return 'Patches';
+  if (/charm|keychain/.test(haystack)) return 'Charms';
+  if (/music kit/.test(haystack)) return 'Music';
+  if (/storage unit|tool/.test(haystack) || category === 'storage') return 'Tools';
+  if (/container|\bcase\b|weapon case|souvenir package/.test(haystack) || name.endsWith(' case')) return 'Cases';
+
+  if (/sniper|awp|ssg 08|scar-20|g3sg1/.test(haystack)) return 'Snipers';
+  if (/\bsmg\b|mp9|mp7|mp5|ump-45|ump |p90|pp-bizon|mac-10/.test(haystack)) return 'SMGs';
+  if (/shotgun|nova|xm1014|mag-7|sawed-off/.test(haystack)) return 'Shotguns';
+  if (/machinegun|negev|m249/.test(haystack)) return 'Machineguns';
+  if (
+    /pistol|glock|usp-s|p2000|p250|five-seven|tec-9|cz75|dual berettas|desert eagle|r8 revolver|deagle/.test(haystack)
+  ) {
+    return 'Pistols';
+  }
+  if (
+    /rifle|ak-47|ak47|m4a1-s|m4a4|galil|famas|aug|sg 553|sg553/.test(haystack)
+  ) {
+    return 'Rifles';
+  }
+
   return 'Other';
 }
 
@@ -999,6 +1145,34 @@ async function buildPortfolioHistory(items, totalValue) {
       coveredValue: Math.round(coveredValue * 100) / 100,
     };
   }).filter((point) => Number.isFinite(point.value) && point.value > 0);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const liveValue = Number.isFinite(totalValue) && totalValue > 0
+    ? Math.round(totalValue * 100) / 100
+    : null;
+  if (liveValue != null) {
+    if (!points.length) {
+      points.push({ date: today, value: liveValue, coveredValue: 0 });
+    } else {
+      const last = points[points.length - 1];
+      if (last.date === today) {
+        points[points.length - 1] = { ...last, value: liveValue };
+      } else if (last.date < today) {
+        let cursor = new Date(`${last.date}T12:00:00.000Z`);
+        const end = new Date(`${today}T12:00:00.000Z`);
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+        while (cursor.getTime() <= end.getTime()) {
+          const date = cursor.toISOString().slice(0, 10);
+          points.push({
+            date,
+            value: date === today ? liveValue : last.value,
+            coveredValue: last.coveredValue,
+          });
+          cursor.setUTCDate(cursor.getUTCDate() + 1);
+        }
+      }
+    }
+  }
 
   return {
     points,

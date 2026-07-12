@@ -124,7 +124,7 @@ app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => 
   await saveSession(req);
   await migrateOwnershipToSteam(priorOwnerId, auth.steamId);
   await migrateFavoriteProfilesToSteam(priorOwnerId, auth.steamId);
-  res.redirect(`/${encodeURIComponent(appFile)}#dashboard`);
+  res.redirect('/dashboard');
 }));
 
 app.post('/api/auth/logout', asyncRoute(async (req, res) => {
@@ -167,6 +167,7 @@ app.get('/api/portfolio/public', asyncRoute(async (req, res) => {
   const portfolio = await getPortfolio(steamId, {
     force: req.query.sync === '1',
     includeDesktop: false,
+    activitySource: 'public-diff',
   });
 
   res.json({
@@ -467,7 +468,7 @@ app.get('/api/desktop/login', pairingLimiter, asyncRoute(async (req, res) => {
   await saveSession(req);
   await migrateOwnershipToSteam(priorOwnerId, loginSession.steamId);
   await migrateFavoriteProfilesToSteam(priorOwnerId, loginSession.steamId);
-  res.redirect(`/${encodeURIComponent(appFile)}#dashboard`);
+  res.redirect('/dashboard');
 }));
 
 app.get('/api/desktop/status', requireAuth, asyncRoute(async (req, res) => {

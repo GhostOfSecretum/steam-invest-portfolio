@@ -328,7 +328,12 @@
                 lang={t.lang}
                 onLink={() => {
                   setPublicProfileUrl('');
-                  onNav('dashboard');
+                  if (auth?.connected) {
+                    onNav('dashboard');
+                    return;
+                  }
+                  if (auth?.login) auth.login();
+                  else onNav('dashboard');
                 }}
                 onPublicProfile={openPublicProfile}
                 onItemClick={goItem}

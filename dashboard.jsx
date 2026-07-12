@@ -87,10 +87,12 @@ function filterHistoryPoints(points, range) {
   if (!clean.length || range === 'ALL') return clean;
 
   const days = range === '7d' ? 7 : range === '90d' ? 90 : 30;
-  const lastTime = new Date(clean[clean.length - 1].date).getTime();
-  if (!Number.isFinite(lastTime)) return clean.slice(-days);
-  const cutoff = lastTime - days * 86400000;
-  const sliced = clean.filter((point) => new Date(point.date).getTime() >= cutoff);
+  // Cut relative to today, not the last provider point (providers can lag months).
+  const cutoff = Date.now() - days * 86400000;
+  const sliced = clean.filter((point) => {
+    const time = new Date(point.date).getTime();
+    return Number.isFinite(time) && time >= cutoff;
+  });
   return sliced.length > 1 ? sliced : clean.slice(-Math.max(2, Math.min(days, clean.length)));
 }
 
@@ -116,6 +118,31 @@ function inventorySourceLabel(source, lang) {
   if (source === 'desktop') return lang === 'ru' ? 'desktop · полный инвентарь' : 'desktop · full inventory';
   if (source === 'manual') return lang === 'ru' ? 'ручной ввод' : 'manual input';
   return lang === 'ru' ? 'публичный Steam' : 'public Steam';
+}
+
+function allocationLabel(key, lang) {
+  if (lang !== 'ru') return key;
+  const labels = {
+    Knives: 'Ножи',
+    Gloves: 'Перчатки',
+    Rifles: 'Винтовки',
+    Snipers: 'Снайперки',
+    SMGs: 'ПП',
+    Shotguns: 'Дробовики',
+    Machineguns: 'Пулемёты',
+    Pistols: 'Пистолеты',
+    Agents: 'Агенты',
+    Stickers: 'Стикеры',
+    Cases: 'Кейсы',
+    Capsules: 'Капсулы',
+    Graffiti: 'Граффити',
+    Patches: 'Патчи',
+    Charms: 'Брелоки',
+    Music: 'Music Kit',
+    Tools: 'Инструменты',
+    Other: 'Прочее',
+  };
+  return labels[key] || key;
 }
 
 function DesktopPairingButton({ lang }) {
@@ -152,8 +179,8 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [favoriteError, setFavoriteError] = useState(null);
   const [range, setRange] = useState('30d');
-  const [tab, setTab] = useState('inventory');
   const [query, setQuery] = useState('');
+  const prevConnectedRef = useRef(null);
   const data = portfolio.data;
   const items = data?.items || [];
   const portfolios = data?.portfolios || [];
@@ -177,6 +204,16 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
     }
     if (!selectedPortfolioId && data?.portfolioId) setSelectedPortfolioId(data.portfolioId);
   }, [data?.portfolioId, publicProfileUrl, selectedPortfolioId]);
+
+  // After a successful Steam OpenID login, land on the Steam inventory — not the last manual portfolio.
+  useEffect(() => {
+    if (auth?.loading) return;
+    const connected = Boolean(auth?.connected);
+    if (prevConnectedRef.current === false && connected && !publicProfileUrl) {
+      setSelectedPortfolioId('steam');
+    }
+    prevConnectedRef.current = connected;
+  }, [auth?.connected, auth?.loading, publicProfileUrl]);
 
   if (portfolio.loading && !portfolio.data) {
     return <DashboardState lang={lang} title={t.dash.title} message={lang === 'ru' ? 'Загружаем портфель и цены...' : 'Loading portfolio and prices...'} />;
@@ -243,15 +280,9 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
               // PORTFOLIO · {data.totalInventoryCount} ITEMS · {data.uniqueInventoryCount} UNIQUE
             </div>
             <h1 className="display" style={{ fontSize: 44, fontWeight: 500, letterSpacing: '-0.02em' }}>{t.dash.title}</h1>
-            <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
-              {data.portfolioName || data.profile?.personaname || data.profile?.steamId} · synced {new Date(data.syncedAt).toLocaleString()} · {data.assetEntriesCount} entries · {inventorySourceLabel(data.inventoryProvider, lang)} · {data.cached ? 'cache' : 'live'}
-              {data.storageItemCount > 0 && (
-                <span> · {lang === 'ru' ? `в хранилищах: ${data.storageItemCount}` : `in storage: ${data.storageItemCount}`}</span>
-              )}
-            </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {isPublicPortfolio && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--cyan)' }}>● public profile</span>}
+            {isPublicPortfolio && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--cyan)' }}>● public</span>}
             {!isPublicPortfolio && data.desktopConnected && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--green)' }}>● desktop</span>}
             {!isPublicPortfolio && auth?.connected && <DesktopPairingButton lang={lang} />}
             {isPublicPortfolio && (
@@ -267,15 +298,6 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
                     ? (lang === 'ru' ? 'В избранном' : 'Favorited')
                     : (lang === 'ru' ? 'В избранное' : 'Add to favorites')}
               </button>
-            )}
-            <button className="btn btn-sm btn-ghost" onClick={() => downloadPortfolioCsv(items)}>CSV</button>
-            <button className="btn btn-sm btn-ghost" onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}>
-              {portfolio.loading ? 'Syncing...' : ((isSteamPortfolio || isPublicPortfolio) ? 'Sync' : 'Refresh')}
-            </button>
-            {!isPublicPortfolio && (
-              <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }} title={lang === 'ru' ? 'Клик по ячейке Basis — ввести цену покупки за шт. (₽ или $ по переключателю валюты)' : 'Click Basis cell — enter buy price per item (RUB or USD from currency toggle)'}>
-                {lang === 'ru' ? 'Basis: клик по ячейке' : 'Basis: click a cell'}
-              </span>
             )}
           </div>
         </div>
@@ -341,14 +363,18 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           <div className="glass" style={{ padding: 24 }}>
             <div className="eyebrow">{t.dash.breakdown}</div>
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {(data.allocation || []).map((b, i) => (
-                <div key={i}>
+              {(data.allocation || []).length === 0 ? (
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                  {lang === 'ru' ? 'Нет оценённых предметов' : 'No priced items'}
+                </div>
+              ) : (data.allocation || []).map((b, i) => (
+                <div key={`${b.l}-${i}`}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                    <span style={{ color: 'var(--fg-1)' }}>{b.l}</span>
+                    <span style={{ color: 'var(--fg-1)' }}>{allocationLabel(b.l, lang)}</span>
                     <span style={{ fontFamily: 'var(--f-mono)', color: 'var(--fg-2)' }}>{compactUsd(b.v)} · {b.p}%</span>
                   </div>
                   <div style={{ height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${b.p}%`, height: '100%', background: b.c, borderRadius: 3, opacity: 0.8 }}></div>
+                    <div style={{ width: `${Math.min(100, Math.max(0, b.p))}%`, height: '100%', background: b.c, borderRadius: 3, opacity: 0.85 }}></div>
                   </div>
                 </div>
               ))}
@@ -357,22 +383,37 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
         </div>
 
         <div className="glass" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
-          <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--line)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                showing {filteredItems.length} of {items.length} unique rows · {data.totalInventoryCount} total items
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-              {['inventory', 'movers', 'watchlist', 'activity'].map(k => (
-                <button key={k} className="tab" data-active={tab === k} onClick={() => setTab(k)}>{t.dash[k] || k}</button>
-              ))}
-              </div>
+          <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
+            <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+              {filteredItems.length}/{items.length} · {data.totalInventoryCount} {lang === 'ru' ? 'шт.' : 'items'}
+              {data.storageItemCount > 0 && (
+                <span> · {lang === 'ru' ? `хранилище ${data.storageItemCount}` : `storage ${data.storageItemCount}`}</span>
+              )}
+              <span style={{ color: 'var(--fg-3)', opacity: 0.7 }}> · {inventorySourceLabel(data.inventoryProvider, lang)}</span>
             </div>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={lang === 'ru' ? 'Поиск...' : 'Search...'} style={{
-              padding: '6px 12px', borderRadius: 7, fontSize: 12,
-              background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', color: 'var(--fg-0)',
-              fontFamily: 'var(--f-body)', outline: 'none', width: 260,
-            }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={() => downloadPortfolioCsv(items)}
+                title={lang === 'ru' ? 'Экспорт CSV' : 'Export CSV'}
+              >
+                CSV
+              </button>
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}
+                title={lang === 'ru'
+                  ? `Обновить · ${new Date(data.syncedAt).toLocaleString()}`
+                  : `Refresh · ${new Date(data.syncedAt).toLocaleString()}`}
+              >
+                {portfolio.loading ? '...' : ((isSteamPortfolio || isPublicPortfolio) ? 'Sync' : 'Refresh')}
+              </button>
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={lang === 'ru' ? 'Поиск...' : 'Search...'} style={{
+                padding: '6px 12px', borderRadius: 7, fontSize: 12,
+                background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', color: 'var(--fg-0)',
+                fontFamily: 'var(--f-body)', outline: 'none', width: 200,
+              }} />
+            </div>
           </div>
 
           <InventoryTable
@@ -388,16 +429,119 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
 
         <div className="glass" style={{ padding: 20 }}>
           <div className="eyebrow">{t.dash.activity}</div>
-          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6, fontFamily: 'var(--f-mono)', fontSize: 11.5 }}>
-            {(data.activity || []).map((a, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: i < data.activity.length - 1 ? '1px solid var(--line)' : 'none' }}>
-                <span style={{ color: 'var(--fg-3)', minWidth: 48 }}>{a.t}</span>
-                <span style={{ color: a.c }}>{a.a}</span>
-              </div>
-            ))}
-          </div>
+          <ActivityTable
+            activity={data.activity}
+            portfolioType={data.portfolioType}
+            lang={lang}
+          />
         </div>
       </div>
+    </div>
+  );
+}
+
+function activityKindLabel(kind, lang) {
+  const ru = {
+    added: 'Купил / добавлен',
+    removed: 'Удалён',
+    qty_up: 'Кол-во +',
+    qty_down: 'Кол-во −',
+    updated: 'Изменён',
+  };
+  const en = {
+    added: 'Added',
+    removed: 'Removed',
+    qty_up: 'Qty +',
+    qty_down: 'Qty −',
+    updated: 'Updated',
+  };
+  return (lang === 'ru' ? ru : en)[kind] || kind;
+}
+
+function ActivityTable({ activity, portfolioType, lang }) {
+  const rows = (Array.isArray(activity) ? activity : []).filter((row) => row && row.kind && row.at);
+  const isManual = portfolioType === 'manual';
+
+  if (!rows.length) {
+    const empty = isManual
+      ? (lang === 'ru' ? 'Пока нет покупок' : 'No purchases yet')
+      : (lang === 'ru'
+        ? 'Изменения появятся после следующего синка с другим составом инвентаря'
+        : 'Changes will appear after the next sync with a different inventory');
+    return (
+      <div style={{ marginTop: 14, fontFamily: 'var(--f-mono)', fontSize: 11.5, color: 'var(--fg-3)' }}>
+        {empty}
+      </div>
+    );
+  }
+
+  const headerStyle = {
+    fontFamily: 'var(--f-mono)',
+    fontSize: 10,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    color: 'var(--fg-3)',
+    padding: '0 0 10px',
+    borderBottom: '1px solid var(--line)',
+  };
+  const cellStyle = {
+    padding: '10px 0',
+    borderBottom: '1px solid var(--line)',
+    fontSize: 12,
+    verticalAlign: 'top',
+  };
+
+  return (
+    <div style={{ marginTop: 14, overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isManual ? 560 : 480 }}>
+        <thead>
+          <tr>
+            <th style={{ ...headerStyle, textAlign: 'left' }}>{lang === 'ru' ? 'Дата' : 'Date'}</th>
+            <th style={{ ...headerStyle, textAlign: 'left' }}>{lang === 'ru' ? 'Действие' : 'Action'}</th>
+            <th style={{ ...headerStyle, textAlign: 'left' }}>{lang === 'ru' ? 'Предмет' : 'Item'}</th>
+            <th style={{ ...headerStyle, textAlign: 'right' }}>{lang === 'ru' ? 'Кол-во' : 'Qty'}</th>
+            {isManual && (
+              <th style={{ ...headerStyle, textAlign: 'right' }}>{lang === 'ru' ? 'Цена/шт.' : 'Basis'}</th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const kindColor = row.kind === 'removed' || row.kind === 'qty_down'
+              ? 'var(--red)'
+              : (row.kind === 'added' || row.kind === 'qty_up' ? 'var(--green)' : 'var(--fg-1)');
+            const qtyLabel = Number.isFinite(row.qtyDelta) && row.qtyDelta !== 0
+              ? `${row.qtyDelta > 0 ? '+' : ''}${row.qtyDelta}`
+              : (Number.isFinite(row.qtyAfter) ? String(row.qtyAfter) : '—');
+            const basisLabel = Number.isFinite(row.basisPerUnit)
+              ? formatMoney(row.basisPerUnit, { currency: row.currency === 'rub' || row.currency === 'rur' ? 'rub' : 'usd', digits: 2 })
+              : '—';
+            return (
+              <tr key={row.id || `${row.at}-${row.marketHashName}-${row.kind}`}>
+                <td style={{ ...cellStyle, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)', whiteSpace: 'nowrap' }}>
+                  {new Date(row.at).toLocaleString()}
+                </td>
+                <td style={{ ...cellStyle, color: kindColor, fontFamily: 'var(--f-mono)', fontSize: 11 }}>
+                  {activityKindLabel(row.kind, lang)}
+                </td>
+                <td style={{ ...cellStyle, color: 'var(--fg-1)', maxWidth: 360 }}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.marketHashName || row.name}>
+                    {row.name || row.marketHashName || '—'}
+                  </div>
+                </td>
+                <td style={{ ...cellStyle, textAlign: 'right', fontFamily: 'var(--f-mono)', color: kindColor }}>
+                  {qtyLabel}
+                </td>
+                {isManual && (
+                  <td style={{ ...cellStyle, textAlign: 'right', fontFamily: 'var(--f-mono)', color: 'var(--fg-2)' }}>
+                    {basisLabel}
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -406,6 +550,7 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
   const t = useT(lang);
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [naming, setNaming] = useState(false);
   const [profileUrl, setProfileUrl] = useState('');
   const [profileUrlError, setProfileUrlError] = useState('');
   const manualActive = portfolioType === 'manual' && activePortfolioId;
@@ -420,6 +565,7 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
         body: JSON.stringify({ name: title }),
       });
       setName('');
+      setNaming(false);
       onChanged(data.portfolio?.id);
     } catch (err) {
       window.alert(err.message || (lang === 'ru' ? 'Не удалось создать портфель' : 'Could not create portfolio'));
@@ -438,75 +584,122 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
     if (onPublicProfile) onPublicProfile(nextProfileUrl);
   };
 
+  const sectionLabel = {
+    fontFamily: 'var(--f-mono)',
+    fontSize: 10,
+    letterSpacing: '0.16em',
+    textTransform: 'uppercase',
+    color: 'var(--fg-3)',
+    whiteSpace: 'nowrap',
+    minWidth: 88,
+  };
+
   return (
-    <div className="glass" style={{ padding: 16, marginBottom: 16, display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 16, alignItems: 'start', position: 'relative', zIndex: 50 }}>
-      <div>
-        <div className="eyebrow">{lang === 'ru' ? 'Портфели' : 'Portfolios'}</div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-          <select
-            value={activePortfolioId || ''}
-            onChange={(e) => onSelect(e.target.value || null)}
-            style={portfolioInputStyle({ minWidth: 220 })}
-          >
-            {!activePortfolioId && <option value="">{lang === 'ru' ? 'Создай ручной портфель' : 'Create a manual portfolio'}</option>}
-            {portfolios.map((portfolio) => (
-              <option key={portfolio.id} value={portfolio.id}>
-                {portfolio.type === 'steam' ? 'Steam · ' : ''}{portfolio.name}{portfolio.itemCount != null ? ` (${portfolio.itemCount})` : ''}
-              </option>
-            ))}
-          </select>
-          {!auth?.connected && (
-            <button className="btn btn-sm btn-ghost" onClick={() => auth?.login && auth.login()}>
-              {lang === 'ru' ? 'Подключить Steam' : 'Link Steam'}
-            </button>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={lang === 'ru' ? 'Название нового портфеля' : 'New portfolio name'}
-            style={portfolioInputStyle({ flex: 1 })}
-          />
-          <button className="btn btn-sm btn-primary" onClick={createPortfolio} disabled={creating}>
-            {creating ? '...' : (lang === 'ru' ? 'Создать' : 'Create')}
+    <div
+      className="glass"
+      style={{
+        padding: '14px 16px',
+        marginBottom: 16,
+        position: 'relative',
+        zIndex: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minHeight: 33 }}>
+        <span style={sectionLabel}>{lang === 'ru' ? 'Портфель' : 'Portfolio'}</span>
+        {!auth?.connected && (
+          <button className="btn btn-sm btn-primary" onClick={() => auth?.login && auth.login()}>
+            {lang === 'ru' ? 'Подключить Steam' : 'Link Steam'}
           </button>
-        </div>
-        <form onSubmit={submitProfileUrl} style={{ marginTop: 14 }}>
-          <div className="eyebrow">{lang === 'ru' ? 'Публичный профиль' : 'Public profile'}</div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        )}
+        {naming ? (
+          <>
             <input
-              value={profileUrl}
-              onChange={(e) => {
-                setProfileUrl(e.target.value);
-                if (profileUrlError) setProfileUrlError('');
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') createPortfolio();
+                if (e.key === 'Escape') {
+                  setNaming(false);
+                  setName('');
+                }
               }}
-              placeholder={t.hero.profileUrlPlaceholder}
-              aria-label={t.hero.profileUrlCta}
-              style={portfolioInputStyle({ flex: 1 })}
+              placeholder={lang === 'ru' ? 'Название нового портфеля' : 'New portfolio name'}
+              style={portfolioInputStyle({ flex: '1 1 180px', minWidth: 160, height: 31 })}
             />
-            <button className="btn btn-sm btn-ghost" type="submit">
-              {t.hero.profileUrlCta}
+            <button className="btn btn-sm btn-primary" onClick={createPortfolio} disabled={creating}>
+              {creating ? '...' : (lang === 'ru' ? 'Создать' : 'Create')}
             </button>
-          </div>
-          {profileUrlError && (
-            <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--amber)' }}>
-              {profileUrlError}
-            </div>
-          )}
-        </form>
+            <button
+              className="btn btn-sm btn-ghost"
+              type="button"
+              onClick={() => {
+                setNaming(false);
+                setName('');
+              }}
+            >
+              {lang === 'ru' ? 'Отмена' : 'Cancel'}
+            </button>
+          </>
+        ) : (
+          <button className="btn btn-sm btn-ghost" onClick={() => setNaming(true)}>
+            {lang === 'ru' ? 'Создать вручную' : 'Create manually'}
+          </button>
+        )}
+        <select
+          value={activePortfolioId || ''}
+          onChange={(e) => onSelect(e.target.value || null)}
+          style={portfolioInputStyle({ minWidth: 200, height: 31 })}
+        >
+          {!activePortfolioId && <option value="">{lang === 'ru' ? 'Создай ручной портфель' : 'Create a manual portfolio'}</option>}
+          {portfolios.map((portfolio) => (
+            <option key={portfolio.id} value={portfolio.id}>
+              {portfolio.type === 'steam' ? 'Steam · ' : ''}{portfolio.name}{portfolio.itemCount != null ? ` (${portfolio.itemCount})` : ''}
+            </option>
+          ))}
+        </select>
       </div>
+
+      <div style={{ height: 1, background: 'var(--line)', margin: '12px 0' }} />
+
+      <form onSubmit={submitProfileUrl} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={sectionLabel}>{lang === 'ru' ? 'Профиль' : 'Profile'}</span>
+        <input
+          value={profileUrl}
+          onChange={(e) => {
+            setProfileUrl(e.target.value);
+            if (profileUrlError) setProfileUrlError('');
+          }}
+          placeholder={t.hero.profileUrlPlaceholder}
+          aria-label={t.hero.profileUrlCta}
+          style={portfolioInputStyle({ flex: '1 1 240px', minWidth: 180, height: 31 })}
+        />
+        <button className="btn btn-sm btn-ghost" type="submit">
+          {t.hero.profileUrlCta}
+        </button>
+        {profileUrlError && (
+          <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--amber)', width: '100%', marginLeft: 98 }}>
+            {profileUrlError}
+          </span>
+        )}
+      </form>
+
+      <div style={{ height: 1, background: 'var(--line)', margin: '12px 0' }} />
 
       <ManualItemForm
         lang={lang}
         portfolioId={manualActive ? activePortfolioId : null}
         onSaved={() => onChanged(activePortfolioId)}
+        sectionLabel={sectionLabel}
       />
     </div>
   );
 }
 
-function ManualItemForm({ lang, portfolioId, onSaved }) {
+function ManualItemForm({ lang, portfolioId, onSaved, sectionLabel }) {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [basisPerUnit, setBasisPerUnit] = useState('');
@@ -596,9 +789,9 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
 
   return (
     <form onSubmit={submit}>
-      <div className="eyebrow">{lang === 'ru' ? 'Ручной ввод предметов' : 'Manual items'}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 86px 130px auto', gap: 8, marginTop: 10 }}>
-        <div style={{ position: 'relative', minWidth: 0, zIndex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={sectionLabel || undefined}>{lang === 'ru' ? 'Предмет' : 'Item'}</span>
+        <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 160, zIndex: 1 }}>
           <input
             value={name}
             onChange={(e) => {
@@ -610,7 +803,7 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
             onBlur={() => setTimeout(() => setSuggestionsOpen(false), 120)}
             placeholder={lang === 'ru' ? 'AK-47 | Redline (Field-Tested)' : 'AK-47 | Redline (Field-Tested)'}
             disabled={!portfolioId}
-            style={portfolioInputStyle({ width: '100%' })}
+            style={portfolioInputStyle({ width: '100%', height: 31 })}
           />
           {portfolioId && suggestionsOpen && (suggestionsLoading || suggestions.length > 0) && (
             <div style={{
@@ -677,23 +870,19 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
           min="1"
           step="1"
           disabled={!portfolioId}
-          style={portfolioInputStyle()}
+          title={lang === 'ru' ? 'Количество' : 'Quantity'}
+          style={portfolioInputStyle({ width: 72, height: 31 })}
         />
         <input
           value={basisPerUnit}
           onChange={(e) => setBasisPerUnit(e.target.value)}
           placeholder={currency === 'rub' ? '₽ / шт.' : '$ / item'}
           disabled={!portfolioId}
-          style={portfolioInputStyle()}
+          style={portfolioInputStyle({ width: 110, height: 31 })}
         />
         <button className="btn btn-sm btn-primary" disabled={!portfolioId || saving}>
           {saving ? '...' : (lang === 'ru' ? 'Добавить' : 'Add')}
         </button>
-      </div>
-      <div style={{ marginTop: 8, color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', fontSize: 11 }}>
-        {portfolioId
-          ? (lang === 'ru' ? `Цена покупки сохраняется за 1 шт. в ${currency.toUpperCase()}.` : `Buy price is saved per item in ${currency.toUpperCase()}.`)
-          : (lang === 'ru' ? 'Выбери или создай ручной портфель.' : 'Select or create a manual portfolio.')}
       </div>
     </form>
   );

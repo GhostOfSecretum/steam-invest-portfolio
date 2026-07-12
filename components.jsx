@@ -15,9 +15,10 @@ const I18N = {
       profileUrlCta: 'Steam profile link',
       profileUrlPlaceholder: 'https://steamcommunity.com/id/...',
       profileUrlError: 'Paste a Steam profile link or SteamID64.',
-      stat1: 'Items priced live',
-      stat2: 'Tracked volume / 24h',
-      stat3: 'Median latency',
+      stat1: 'Items in catalog',
+      stat2: 'Watchlist volume / 24h',
+      stat3: 'Your portfolio',
+      stat3Fallback: 'Cases tracked',
       concept: 'Concept',
     },
     sections: {
@@ -58,7 +59,7 @@ const I18N = {
       worst: 'Worst performer',
       liquidity: 'Liquidity score',
       sticker: 'Sticker capital',
-      breakdown: 'Allocation by tier',
+      breakdown: 'Allocation by type',
       inventory: 'Inventory',
       movers: 'Movers in your bag',
       watchlist: 'Watchlist',
@@ -105,9 +106,10 @@ const I18N = {
       profileUrlCta: 'Ссылка на профиль Steam',
       profileUrlPlaceholder: 'https://steamcommunity.com/id/...',
       profileUrlError: 'Вставь ссылку на профиль Steam или SteamID64.',
-      stat1: 'Предметов в реальном времени',
-      stat2: 'Оборот за 24 часа',
-      stat3: 'Медианная задержка',
+      stat1: 'Предметов в каталоге',
+      stat2: 'Объём watchlist · 24ч',
+      stat3: 'Твой портфель',
+      stat3Fallback: 'Кейсов в трекере',
       concept: 'Концепт',
     },
     sections: {
@@ -148,7 +150,7 @@ const I18N = {
       worst: 'Худший',
       liquidity: 'Ликвидность',
       sticker: 'Капитал в наклейках',
-      breakdown: 'Распределение по тирам',
+      breakdown: 'Распределение по типам',
       inventory: 'Инвентарь',
       movers: 'Движение в портфеле',
       watchlist: 'Список наблюдения',
@@ -285,7 +287,8 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
     <header className="nav">
       <div className="nav-main">
         <Logo />
-        <div className="nav-divider"></div>
+      </div>
+      <div className="nav-controls">
         <nav className="nav-links">
           {[
             { k: 'home', label: t.nav.home },
@@ -297,9 +300,6 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
             <button key={it.k} className="nav-link" data-active={screen === it.k} onClick={() => onNav(it.k)}>{it.label}</button>
           ))}
         </nav>
-      </div>
-      <div className="nav-controls">
-        <span className="chip nav-status"><span className="live-dot"></span> API · {connected ? 'connected' : 'local'}</span>
         <div className="nav-segment">
           {['en', 'ru'].map(l => (
             <button key={l} onClick={() => onLang(l)} style={{
@@ -341,7 +341,9 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
           <button className="btn btn-sm btn-ghost" onClick={() => auth.logout()}>{profile?.personaname || 'Steam'} · Logout</button>
         )}
         {!connected && (
-          <button className="btn btn-sm btn-primary" onClick={() => auth?.login && auth.login()}>Link Steam</button>
+          <button className="btn btn-sm btn-primary" onClick={() => auth?.login && auth.login()}>
+            {lang === 'ru' ? 'Подключить Steam' : 'Link Steam'}
+          </button>
         )}
       </div>
     </header>

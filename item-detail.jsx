@@ -196,22 +196,19 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
   };
 
   const pnlColor = Number.isFinite(item.pnl) && item.pnl >= 0 ? 'var(--green)' : 'var(--red)';
-  const totalValue = item.totalValue ?? (item.value != null ? item.value * item.qty : null);
   const totalBasis = item.totalBasis ?? (Number.isFinite(item.basis) ? item.basis * item.qty : null);
-  const stackCount = item.assetIds?.length || 1;
   const tradableQty = Number.isFinite(item.tradableQty) ? item.tradableQty : (item.tradable ? item.qty : 0);
-  const assetLabel = item.assetIds?.length > 1
-    ? `${item.assetIds.length} merged stacks`
-    : `asset ${item.assetid}`;
-  const isPublicItem = String(item.assetid || '').startsWith('slug-');
+  // Portfolio holdings (Steam / manual / public profile) keep Buy·Qty·P&L·lock.
+  // Market search, ticker, movers, hero, and /item/:slug pages do not.
+  const isPortfolioHolding = Boolean(
+    item.manualItemId
+    || (item.assetid && !/^(slug|catalog|ticker|mover|fallback|hero)-/.test(String(item.assetid)))
+  );
   const displayWear = item.wear && item.wear !== 'N/A'
     ? item.wear
     : (parsedActive.wearLabel
       ? parsedActive.wearLabel.split(/[- ]/).map((part) => part[0]).join('').toUpperCase()
       : 'N/A');
-  const pnlPctLabel = Number.isFinite(item.pnlPct)
-    ? `${item.pnlPct >= 0 ? '+' : ''}${item.pnlPct.toFixed(2)}%`
-    : (lang === 'ru' ? 'нет данных портфеля' : 'no portfolio data');
 
   const onMove = (e) => {
     if (!chartRef.current || !chart) return;
@@ -247,9 +244,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
                   <span className="chip">{item.marketable === false ? 'not marketable' : 'marketable'}</span>
                 </div>
                 <h1 className="display" style={{ fontSize: 36, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{item.name}</h1>
-                <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
-                  {assetLabel} · {item.marketHashName}
-                </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div className="eyebrow">{lang === 'ru' ? 'ЦЕНА STEAM' : 'STEAM PRICE'}</div>
@@ -340,18 +334,17 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {!isPublicItem ? (
+            {isPortfolioHolding ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {[
-                { l: t.item.buy, v: formatItemMoney(totalBasis, item.currencyCode), s: `${formatItemMoney(item.basis, item.currencyCode)} each · local .data/portfolio.json` },
-                { l: 'Qty', v: item.qty, s: `${stackCount} Steam stack(s)` },
-                { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, s: pnlPctLabel, c: pnlColor },
-                { l: t.item.tradelock, v: tradableQty === item.qty ? 'open' : (tradableQty > 0 ? 'partial' : 'restricted'), s: `${tradableQty}/${item.qty} available by Steam flag` },
+                { l: t.item.buy, v: formatItemMoney(totalBasis, item.currencyCode) },
+                { l: 'Qty', v: item.qty },
+                { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, c: pnlColor },
+                { l: t.item.tradelock, v: tradableQty === item.qty ? 'open' : (tradableQty > 0 ? 'partial' : 'restricted') },
               ].map((s, i) => (
                 <div key={i} className="glass" style={{ padding: 16 }}>
                   <div className="eyebrow">{s.l}</div>
                   <div className="display" style={{ fontSize: 22, fontWeight: 500, marginTop: 8, color: s.c || 'var(--fg-0)' }}>{s.v}</div>
-                  <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)', marginTop: 4 }}>{s.s}</div>
                 </div>
               ))}
             </div>
@@ -433,11 +426,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
                     {lang === 'ru' ? 'Нет данных по площадкам.' : 'No marketplace data.'}
                   </div>
                 )}
-              </div>
-              <div style={{ marginTop: 10, fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>
-                {lang === 'ru'
-                  ? 'Steam — нативная цена; LIS-Skins — ₽ с API/сайта; остальные — USD × курс ЦБ'
-                  : 'Steam — native RUB; LIS-Skins — RUB via API/site; others — USD × CBR rate'}
               </div>
             </div>
           </div>
