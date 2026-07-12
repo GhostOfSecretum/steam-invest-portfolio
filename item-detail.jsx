@@ -195,14 +195,23 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
     setChartHover(null);
   };
 
-  const pnlColor = item.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const pnlColor = Number.isFinite(item.pnl) && item.pnl >= 0 ? 'var(--green)' : 'var(--red)';
   const totalValue = item.totalValue ?? (item.value != null ? item.value * item.qty : null);
-  const totalBasis = item.totalBasis ?? (item.basis * item.qty);
+  const totalBasis = item.totalBasis ?? (Number.isFinite(item.basis) ? item.basis * item.qty : null);
   const stackCount = item.assetIds?.length || 1;
   const tradableQty = Number.isFinite(item.tradableQty) ? item.tradableQty : (item.tradable ? item.qty : 0);
   const assetLabel = item.assetIds?.length > 1
     ? `${item.assetIds.length} merged stacks`
     : `asset ${item.assetid}`;
+  const isPublicItem = String(item.assetid || '').startsWith('slug-');
+  const displayWear = item.wear && item.wear !== 'N/A'
+    ? item.wear
+    : (parsedActive.wearLabel
+      ? parsedActive.wearLabel.split(/[- ]/).map((part) => part[0]).join('').toUpperCase()
+      : 'N/A');
+  const pnlPctLabel = Number.isFinite(item.pnlPct)
+    ? `${item.pnlPct >= 0 ? '+' : ''}${item.pnlPct.toFixed(2)}%`
+    : (lang === 'ru' ? 'нет данных портфеля' : 'no portfolio data');
 
   const onMove = (e) => {
     if (!chartRef.current || !chart) return;
@@ -233,9 +242,9 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-                  <span className="chip chip-accent">TIER {item.tier} · {item.rarity || 'UNKNOWN'}</span>
-                  <span className="chip">{item.wear || 'N/A'}</span>
-                  <span className="chip">{item.marketable ? 'marketable' : 'not marketable'}</span>
+                  <span className="chip chip-accent">TIER {item.tier || '—'} · {item.rarity || 'UNKNOWN'}</span>
+                  <span className="chip">{displayWear}</span>
+                  <span className="chip">{item.marketable === false ? 'not marketable' : 'marketable'}</span>
                 </div>
                 <h1 className="display" style={{ fontSize: 36, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{item.name}</h1>
                 <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
@@ -331,11 +340,12 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {!isPublicItem ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {[
                 { l: t.item.buy, v: formatItemMoney(totalBasis, item.currencyCode), s: `${formatItemMoney(item.basis, item.currencyCode)} each · local .data/portfolio.json` },
                 { l: 'Qty', v: item.qty, s: `${stackCount} Steam stack(s)` },
-                { l: 'P&L', v: `${item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, s: `${item.pnlPct >= 0 ? '+' : ''}${item.pnlPct.toFixed(2)}%`, c: pnlColor },
+                { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, s: pnlPctLabel, c: pnlColor },
                 { l: t.item.tradelock, v: tradableQty === item.qty ? 'open' : (tradableQty > 0 ? 'partial' : 'restricted'), s: `${tradableQty}/${item.qty} available by Steam flag` },
               ].map((s, i) => (
                 <div key={i} className="glass" style={{ padding: 16 }}>
@@ -345,6 +355,21 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
                 </div>
               ))}
             </div>
+            ) : (
+            <div className="glass" style={{ padding: 20 }}>
+              <div className="eyebrow">{lang === 'ru' ? 'Публичная карточка' : 'Public item page'}</div>
+              <div style={{ marginTop: 12, color: 'var(--fg-1)', fontSize: 13, lineHeight: 1.6 }}>
+                {lang === 'ru'
+                  ? 'Цена, история и предложения маркетплейсов для Counter-Strike 2. Чтобы видеть P&L и себестоимость, откройте предмет из своего портфеля.'
+                  : 'Live Counter-Strike 2 price, history, and marketplace offers. Open an item from your portfolio to see P&L and cost basis.'}
+              </div>
+              {item.marketUrl && (
+                <a href={item.marketUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-ghost" style={{ marginTop: 16 }}>
+                  {lang === 'ru' ? 'Открыть в Steam Market' : 'Open on Steam Market'} →
+                </a>
+              )}
+            </div>
+            )}
 
             <div className="glass" style={{ padding: 20 }}>
               <div className="eyebrow">{t.item.stickers}</div>

@@ -49,6 +49,11 @@ async function getItemPageData(slug) {
   ]);
 
   const price = Number(priceData?.price);
+  const wearMatch = marketHashName.match(/\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i);
+  const wearLabel = wearMatch?.[1] || null;
+  const wear = wearLabel
+    ? wearLabel.split(/[- ]/).map((part) => part[0]).join('').toUpperCase()
+    : null;
   const item = {
     assetid: `slug-${marketHashNameToSlug(marketHashName)}`,
     marketHashName,
@@ -57,10 +62,11 @@ async function getItemPageData(slug) {
     iconUrl: iconData?.iconUrl || null,
     marketUrl: `https://steamcommunity.com/market/listings/730/${encodeURIComponent(marketHashName)}`,
     type: priceData?.type || '',
-    wear: priceData?.wear || null,
+    wear,
     rarity: priceData?.rarity || null,
     tier: priceData?.tier || null,
     priceProvider: priceData?.provider || null,
+    marketable: true,
     qty: 1,
   };
 
