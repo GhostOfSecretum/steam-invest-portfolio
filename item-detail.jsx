@@ -31,7 +31,7 @@ function buildVariantHashName(base, wearLabel, { stattrak = false, souvenir = fa
    ITEM DETAIL — API backed
    ─────────────────────────────────────────────────── */
 
-function ItemDetail({ lang, item, onBack }) {
+function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
   const t = useT(lang);
   const PERIOD_OPTIONS = [
     { key: '1d',  days: 1,   label: lang === 'ru' ? 'День' : '1D' },
@@ -86,6 +86,35 @@ function ItemDetail({ lang, item, onBack }) {
 
   const chartNames = (selectedWears && selectedWears.length) ? selectedWears : [activeName].filter(Boolean);
   const multiState = useMultiWearHistory(chartNames, fetchDays, activeCurrency);
+
+  if (loading) {
+    return (
+      <div style={{ padding: '80px 64px' }}>
+        <div className="container">
+          <div className="glass" style={{ padding: 32, maxWidth: 620 }}>
+            <button onClick={onBack} className="btn btn-sm btn-ghost" style={{ marginBottom: 24 }}>{t.item.back}</button>
+            <h1 className="display" style={{ fontSize: 34, fontWeight: 500 }}>{lang === 'ru' ? 'Загружаем предмет...' : 'Loading item...'}</h1>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: '80px 64px' }}>
+        <div className="container">
+          <div className="glass" style={{ padding: 32, maxWidth: 620 }}>
+            <button onClick={onBack} className="btn btn-sm btn-ghost" style={{ marginBottom: 24 }}>{t.item.back}</button>
+            <h1 className="display" style={{ fontSize: 34, fontWeight: 500 }}>{lang === 'ru' ? 'Предмет не найден' : 'Item not found'}</h1>
+            <p style={{ marginTop: 12, color: 'var(--fg-1)', lineHeight: 1.6 }}>
+              {lang === 'ru' ? 'Проверьте ссылку или откройте предмет из маркета или портфеля.' : 'Check the URL or open an item from the market or portfolio.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!item) {
     return (

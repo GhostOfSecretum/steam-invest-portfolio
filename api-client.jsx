@@ -335,6 +335,33 @@ function withSteamImageSize(url, width = 640, height = 360) {
   return `${cleanUrl}/${width}fx${height}f`;
 }
 
+function useItemBySlug(slug, enabled = true) {
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+
+  apiUseEffect(() => {
+    if (!enabled || !slug) {
+      setState({ loading: false, data: null, error: null });
+      return undefined;
+    }
+
+    let active = true;
+    setState({ loading: true, data: null, error: null });
+    apiFetch(`/api/items/by-slug/${encodeURIComponent(slug)}`)
+      .then((payload) => {
+        if (!active) return;
+        setState({ loading: false, data: payload.item || null, error: null });
+      })
+      .catch((error) => {
+        if (!active) return;
+        setState({ loading: false, data: null, error });
+      });
+
+    return () => { active = false; };
+  }, [slug, enabled]);
+
+  return state;
+}
+
 Object.assign(window, {
   apiFetch,
   useAuth,
@@ -345,6 +372,7 @@ Object.assign(window, {
   useItemOffers,
   useItemVariants,
   useMultiWearHistory,
+  useItemBySlug,
   useArmoryRoi,
   useCsNews,
   formatMoney,

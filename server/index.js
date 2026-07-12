@@ -24,6 +24,7 @@ const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItem
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
+const { getItemPageData, renderItemHtml, buildSitemapXml } = require('./services/items');
 const {
   createPairingCode,
   redeemPairingCode,
@@ -454,6 +455,33 @@ app.get('/api/desktop/status', requireAuth, asyncRoute(async (req, res) => {
 }));
 
 // --- Static & root ---
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml').send(buildSitemapXml());
+});
+
+app.get('/api/items/by-slug/:slug', asyncRoute(async (req, res) => {
+  const data = await getItemPageData(req.params.slug);
+  if (!data) {
+    res.status(404).json({ error: 'Item not found.', code: 'item_not_found' });
+    return;
+  }
+  res.json(data);
+}));
+
+app.get('/item/:slug', asyncRoute(async (req, res) => {
+  const data = await getItemPageData(req.params.slug);
+  if (!data) {
+    res.status(404).type('text/html').send('<!doctype html><title>Item not found · SkinsHead</title><p>Item not found.</p>');
+    return;
+  }
+  const html = await renderItemHtml(path.join(rootDir, appFile), data.seo);
+  res.type('html').send(html);
+}));
+
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(rootDir, appFile));
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));

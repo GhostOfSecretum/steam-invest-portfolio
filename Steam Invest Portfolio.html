@@ -67,6 +67,7 @@
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
+  <script src="item-slugs.js"></script>
   <script type="text/babel" src="tweaks-panel.jsx"></script>
   <script type="text/babel" src="api-client.jsx"></script>
   <script type="text/babel" src="components.jsx"></script>
@@ -78,6 +79,103 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
+    const SITE_URL = 'https://skinshead.pro';
+    const HOME_SEO = {
+      ru: {
+        title: 'SkinsHead — портфель скинов CS2 | CS2 Skin Portfolio Tracker',
+        description: 'Портфель скинов CS2 и CS2 skin portfolio tracker на skinshead.pro: трекер инвестиций в скины Steam, аналитика цен скинов CS2, P&L и live-рынок Counter-Strike 2.',
+      },
+      en: {
+        title: 'SkinsHead — CS2 Skin Portfolio Tracker | Steam Skins Investment',
+        description: 'CS2 skin portfolio tracker and Steam skins investment analytics with live Counter-Strike 2 market prices, portfolio P&L, and price history.',
+      },
+    };
+
+    function upsertMeta(attr, key, value) {
+      const selector = attr === 'property'
+        ? `meta[property="${key}"]`
+        : `meta[name="${key}"]`;
+      let node = document.head.querySelector(selector);
+      if (!node) {
+        node = document.createElement('meta');
+        node.setAttribute(attr, key);
+        document.head.appendChild(node);
+      }
+      node.setAttribute('content', value);
+    }
+
+    function upsertCanonical(url) {
+      let node = document.head.querySelector('link[rel="canonical"]');
+      if (!node) {
+        node = document.createElement('link');
+        node.setAttribute('rel', 'canonical');
+        document.head.appendChild(node);
+      }
+      node.setAttribute('href', url);
+    }
+
+    function applyHomeSeo(lang) {
+      const copy = HOME_SEO[lang] || HOME_SEO.en;
+      document.title = copy.title;
+      upsertMeta('name', 'description', copy.description);
+      upsertCanonical(`${SITE_URL}/`);
+      upsertMeta('property', 'og:title', copy.title);
+      upsertMeta('property', 'og:description', copy.description);
+      upsertMeta('property', 'og:url', `${SITE_URL}/`);
+      upsertMeta('property', 'og:type', 'website');
+    }
+
+    function applyItemSeo(item, lang) {
+      if (!item?.marketHashName || !window.ItemSlugs) return;
+      const seo = window.ItemSlugs.buildItemSeoMeta({
+        marketHashName: item.marketHashName,
+        slug: window.ItemSlugs.marketHashNameToSlug(item.marketHashName),
+        price: item.price,
+        iconUrl: item.iconUrl,
+        siteUrl: SITE_URL,
+      });
+      const title = lang === 'ru'
+        ? `${item.marketHashName}${Number.isFinite(item.price) ? ` — $${item.price.toFixed(2)}` : ''} | цена CS2 · SkinsHead`
+        : seo.title;
+      const description = lang === 'ru' ? seo.descriptionRu : seo.description;
+      document.title = title;
+      upsertMeta('name', 'description', description);
+      upsertCanonical(seo.url);
+      upsertMeta('property', 'og:title', title);
+      upsertMeta('property', 'og:description', description);
+      upsertMeta('property', 'og:url', seo.url);
+      upsertMeta('property', 'og:type', 'product');
+      if (item.iconUrl) upsertMeta('property', 'og:image', item.iconUrl);
+    }
+
+    function parseAppRoute() {
+      const path = window.location.pathname.replace(/\/+$/, '') || '/';
+      if (path.startsWith('/item/')) {
+        const slug = decodeURIComponent(path.slice('/item/'.length)).toLowerCase();
+        if (slug) return { screen: 'item', slug };
+      }
+      if (path === '/dashboard' || window.location.hash === '#dashboard') {
+        return { screen: 'dashboard' };
+      }
+      return { screen: 'home' };
+    }
+
+    function pathForScreen(screen, item) {
+      if (screen === 'dashboard') return '/dashboard';
+      if (screen === 'item' && item?.marketHashName && window.ItemSlugs) {
+        return `/item/${window.ItemSlugs.marketHashNameToSlug(item.marketHashName)}`;
+      }
+      return '/';
+    }
+
+    function syncAppUrl(screen, item, { replace = false } = {}) {
+      const nextPath = pathForScreen(screen, item);
+      if (window.location.pathname === nextPath) return;
+      const state = { screen, slug: screen === 'item' ? window.ItemSlugs?.marketHashNameToSlug(item?.marketHashName) : null };
+      if (replace) history.replaceState(state, '', nextPath);
+      else history.pushState(state, '', nextPath);
+    }
+
     const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
       "concept": "vault",
       "skin": "cyber",
@@ -86,15 +184,24 @@
       "currency": "usd"
     }/*EDITMODE-END*/;
     function App() {
+      const initialRoute = parseAppRoute();
       const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-      const [screen, setScreen] = useState(window.location.hash === '#dashboard' ? 'dashboard' : 'home');
+      const [screen, setScreen] = useState(initialRoute.screen);
+      const [itemSlug, setItemSlug] = useState(initialRoute.slug || null);
       const [activeItem, setActiveItem] = useState(null);
-      const [itemReturnScreen, setItemReturnScreen] = useState('dashboard');
+      const [itemReturnScreen, setItemReturnScreen] = useState(initialRoute.screen === 'item' ? 'home' : initialRoute.screen);
       const [cursorStyle, setCursorStyle] = useState('default');
       const [publicProfileUrl, setPublicProfileUrl] = useState('');
       const [pendingSection, setPendingSection] = useState(null);
       const auth = useAuth();
       const showDesktopDownload = false;
+      const slugMatchesItem = Boolean(
+        activeItem?.marketHashName
+        && itemSlug
+        && window.ItemSlugs
+        && window.ItemSlugs.marketHashNameToSlug(activeItem.marketHashName) === itemSlug
+      );
+      const slugItem = useItemBySlug(itemSlug, screen === 'item' && itemSlug && !slugMatchesItem);
 
       // Set lang/currency globally so child components without prop access can read it
       useEffect(() => { window.__lang = t.lang; }, [t.lang]);
@@ -110,10 +217,29 @@
       }, [t.skin, t.glass]);
       useEffect(() => {
         document.documentElement.lang = t.lang === 'ru' ? 'ru' : 'en';
-        document.title = t.lang === 'ru'
-          ? 'SkinsHead — портфель скинов CS2 | CS2 Skin Portfolio Tracker'
-          : 'SkinsHead — CS2 Skin Portfolio Tracker | Steam Skins Investment';
-      }, [t.lang]);
+        if (screen === 'item' && activeItem) applyItemSeo(activeItem, t.lang);
+        else applyHomeSeo(t.lang);
+      }, [t.lang, screen, activeItem]);
+      useEffect(() => {
+        if (screen !== 'item' || !slugItem.data) return;
+        setActiveItem(slugItem.data);
+      }, [screen, slugItem.data]);
+      useEffect(() => {
+        const onPopState = () => {
+          const route = parseAppRoute();
+          setScreen(route.screen);
+          setItemSlug(route.slug || null);
+          if (route.screen !== 'item') setActiveItem(null);
+        };
+        window.addEventListener('popstate', onPopState);
+        return () => window.removeEventListener('popstate', onPopState);
+      }, []);
+      useEffect(() => {
+        if (window.location.hash === '#dashboard' && screen !== 'dashboard') {
+          history.replaceState({ screen: 'dashboard' }, '', '/dashboard');
+          setScreen('dashboard');
+        }
+      }, []);
       useEffect(() => {
         if (screen !== 'home' || !pendingSection) return;
         const timer = window.setTimeout(() => {
@@ -131,9 +257,13 @@
       window.__currency = t.currency || 'usd';
 
       const goItem = (item) => {
+        const slug = window.ItemSlugs?.marketHashNameToSlug(item.marketHashName);
         setItemReturnScreen(screen);
         setActiveItem(item);
+        setItemSlug(slug || null);
         setScreen('item');
+        syncAppUrl('item', item);
+        if (item) applyItemSeo(item, t.lang);
         window.scrollTo({ top: 0, behavior: 'instant' });
       };
       const onNav = (s) => {
@@ -141,16 +271,28 @@
           setPublicProfileUrl('');
           setPendingSection(s);
           setScreen('home');
+          setItemSlug(null);
+          setActiveItem(null);
+          syncAppUrl('home');
           return;
         }
         if (s !== 'dashboard') setPublicProfileUrl('');
         setPendingSection(null);
         setScreen(s);
+        if (s !== 'item') {
+          setItemSlug(null);
+          setActiveItem(null);
+        }
+        syncAppUrl(s);
+        if (s === 'home') applyHomeSeo(t.lang);
         window.scrollTo({top: 0, behavior: 'instant'});
       };
       const openPublicProfile = (profileUrl) => {
         setPublicProfileUrl(profileUrl);
         setScreen('dashboard');
+        setItemSlug(null);
+        setActiveItem(null);
+        syncAppUrl('dashboard');
         window.scrollTo({top: 0, behavior: 'instant'});
       };
 
@@ -195,7 +337,13 @@
             <Dashboard lang={t.lang} onItemClick={goItem} auth={auth} publicProfileUrl={publicProfileUrl} />
           )}
           {screen === 'item' && (
-            <ItemDetail lang={t.lang} item={activeItem} onBack={() => onNav(itemReturnScreen)} />
+            <ItemDetail
+              lang={t.lang}
+              item={activeItem}
+              loading={!activeItem && slugItem.loading}
+              error={!activeItem ? slugItem.error : null}
+              onBack={() => onNav(itemReturnScreen)}
+            />
           )}
 
           <CursorOverlay variant={cursorStyle} />
