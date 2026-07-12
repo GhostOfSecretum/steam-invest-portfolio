@@ -347,7 +347,7 @@
             </>
           )}
           {screen === 'dashboard' && (
-            <Dashboard lang={t.lang} onItemClick={goItem} auth={auth} publicProfileUrl={publicProfileUrl} />
+            <Dashboard lang={t.lang} onItemClick={goItem} auth={auth} publicProfileUrl={publicProfileUrl} onPublicProfile={openPublicProfile} />
           )}
           {screen === 'favorites' && (
             <FavoriteProfiles lang={t.lang} onOpenProfile={openPublicProfile} />

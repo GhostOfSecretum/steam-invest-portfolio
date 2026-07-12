@@ -141,7 +141,7 @@ function DesktopPairingButton({ lang }) {
   );
 }
 
-function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
+function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicProfile }) {
   const t = useT(lang);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
   const effectivePortfolioId = publicProfileUrl || String(selectedPortfolioId || '').startsWith('public-')
@@ -295,6 +295,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
               if (id) setSelectedPortfolioId(id);
               portfolio.reload(false);
             }}
+            onPublicProfile={onPublicProfile}
           />
         )}
 
@@ -401,9 +402,12 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '' }) {
   );
 }
 
-function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfolioType, onSelect, onChanged }) {
+function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfolioType, onSelect, onChanged, onPublicProfile }) {
+  const t = useT(lang);
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [profileUrl, setProfileUrl] = useState('');
+  const [profileUrlError, setProfileUrlError] = useState('');
   const manualActive = portfolioType === 'manual' && activePortfolioId;
 
   const createPortfolio = async () => {
@@ -421,6 +425,17 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
       window.alert(err.message || (lang === 'ru' ? 'Не удалось создать портфель' : 'Could not create portfolio'));
     }
     setCreating(false);
+  };
+
+  const submitProfileUrl = (event) => {
+    event.preventDefault();
+    const nextProfileUrl = profileUrl.trim();
+    if (!nextProfileUrl) {
+      setProfileUrlError(t.hero.profileUrlError);
+      return;
+    }
+    setProfileUrlError('');
+    if (onPublicProfile) onPublicProfile(nextProfileUrl);
   };
 
   return (
@@ -457,6 +472,29 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
             {creating ? '...' : (lang === 'ru' ? 'Создать' : 'Create')}
           </button>
         </div>
+        <form onSubmit={submitProfileUrl} style={{ marginTop: 14 }}>
+          <div className="eyebrow">{lang === 'ru' ? 'Публичный профиль' : 'Public profile'}</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <input
+              value={profileUrl}
+              onChange={(e) => {
+                setProfileUrl(e.target.value);
+                if (profileUrlError) setProfileUrlError('');
+              }}
+              placeholder={t.hero.profileUrlPlaceholder}
+              aria-label={t.hero.profileUrlCta}
+              style={portfolioInputStyle({ flex: 1 })}
+            />
+            <button className="btn btn-sm btn-ghost" type="submit">
+              {t.hero.profileUrlCta}
+            </button>
+          </div>
+          {profileUrlError && (
+            <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--amber)' }}>
+              {profileUrlError}
+            </div>
+          )}
+        </form>
       </div>
 
       <ManualItemForm
