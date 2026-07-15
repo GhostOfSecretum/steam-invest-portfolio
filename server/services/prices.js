@@ -1,4 +1,4 @@
-const { getCached, setCached, remember } = require('./cache');
+const { getCached, getCachedEntry, setCached, remember } = require('./cache');
 
 const PRICE_MAX_AGE_MS = 30 * 60 * 1000;
 const CATALOG_MAX_AGE_MS = 6 * 60 * 60 * 1000;
@@ -675,6 +675,15 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
   const key = `history:${marketHashName}:${requestedCurrency}:full`;
   const cached = await getCached(key, HISTORY_MAX_AGE_MS);
   let history = cached && Array.isArray(cached.data) && cached.data.length ? cached : null;
+  let usedCached = Boolean(history);
+
+  // Prefer a slightly stale real series over inventing synthetic data when providers
+  // are rate-limited / unavailable.
+  const staleEntry = !history ? await getCachedEntry(key).catch(() => null) : null;
+  const staleHistory = staleEntry?.value && Array.isArray(staleEntry.value.data) && staleEntry.value.data.length
+    ? staleEntry.value
+    : null;
+  const staleIsReal = Boolean(staleHistory && staleHistory.provider && staleHistory.provider !== 'synthetic');
 
   if (!history) {
     const optionalHistory = await getOptionalProviderHistory(marketHashName, requestedCurrency).catch(() => null);
@@ -747,32 +756,56 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
 
     if (providerData.length >= 2 && Number.isFinite(anchor) && anchor > 0) {
       // Splice: synthetic baseline before the first provider point, real provider data afterwards.
+      const realFrom = new Date(providerData[0].date).toISOString().slice(0, 10);
       const firstProviderTs = new Date(providerData[0].date).getTime();
       const baseline = synthesizePriceHistory(marketHashName, anchor, FULL_SPAN_DAYS)
         .filter((p) => new Date(p.date).getTime() < firstProviderTs);
       providerData = baseline.concat(providerData);
       providerName = 'mixed';
+      history = {
+        marketHashName,
+        currency,
+        data: providerData,
+        provider: providerName,
+        realFrom,
+        updatedAt: new Date().toISOString(),
+      };
+    } else if (staleIsReal) {
+      // Providers are down/rate-limited — keep the last real series instead of faking one.
+      history = staleHistory;
+      usedCached = true;
     } else if (Number.isFinite(anchor) && anchor > 0) {
       providerData = synthesizePriceHistory(marketHashName, anchor, FULL_SPAN_DAYS);
       providerName = 'synthetic';
+      history = {
+        marketHashName,
+        currency,
+        data: providerData,
+        provider: providerName,
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      history = {
+        marketHashName,
+        currency,
+        data: providerData,
+        provider: providerName,
+        updatedAt: new Date().toISOString(),
+      };
     }
 
-    history = {
-      marketHashName,
-      currency,
-      data: providerData,
-      provider: providerName,
-      updatedAt: new Date().toISOString(),
-    };
-
     // Cache the full series so subsequent period switches are instant.
+    // Never let synthetic overwrite a previously stored real/mixed history.
     if (history.data.length) {
-      await setCached(key, history);
+      const shouldCache = history.provider !== 'synthetic' || !staleIsReal;
+      if (shouldCache && history !== staleHistory) {
+        await setCached(key, history);
+      }
     }
   }
 
   // Slice to the requested period.
-  const series = history.data;
+  const series = history?.data || [];
   let slice = series;
   if (!allTime && series.length > 0) {
     const cutoff = Date.now() - requestedDays * 86400000;
@@ -784,7 +817,7 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
     ...history,
     data: slice,
     requestedDays,
-    cached: Boolean(cached),
+    cached: usedCached,
   };
 }
 

@@ -480,13 +480,11 @@ function HeroOperatorsBackdrop() {
   );
 }
 
-function HeroConcept_Operators({ portfolio, loading, lang, onItemClick }) {
+function HeroConcept_Operators({ lang, onItemClick }) {
   const [imageIndex, setImageIndex] = useState(0);
   const [missingByIndex, setMissingByIndex] = useState({});
   const rotateTimerRef = useRef(null);
   const marketPrices = useHeroMarketPrices();
-  const totalValue = Number.isFinite(portfolio?.totalValue) ? compactUsd(portfolio.totalValue) : '...';
-  const readoutLabel = lang === 'ru' ? '// СТОИМОСТЬ ПОРТФЕЛЯ' : '// PORTFOLIO VALUE';
   const activeImage = HERO_OPERATORS_IMAGES[imageIndex] || HERO_OPERATORS_IMAGES[0];
   const imageMissing = Boolean(missingByIndex[imageIndex]);
   const activePriceCards = activeImage.priceCards || [
@@ -502,15 +500,10 @@ function HeroConcept_Operators({ portfolio, loading, lang, onItemClick }) {
   const getPriceCard = (card) => {
     const price = card.marketHashName ? marketPrices.prices[card.marketHashName] : null;
     const value = Number.isFinite(price?.price) ? price.price : price?.medianPrice;
-    const updatedAt = price?.updatedAt || marketPrices.updatedAt;
     return {
       ...card,
       price,
-      priceLabel: Number.isFinite(value) ? formatItemPrice(price, value, { digits: 2 }) : marketPrices.loading ? '...' : 'N/A',
-      provider: price?.provider || (marketPrices.error ? 'offline' : 'market'),
-      updatedLabel: updatedAt
-        ? new Date(updatedAt).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' })
-        : null,
+      priceLabel: Number.isFinite(value) ? formatItemPrice(price, value, { digits: 0 }) : marketPrices.loading ? '...' : 'N/A',
     };
   };
   const openPriceCard = (card) => {
@@ -549,25 +542,15 @@ function HeroConcept_Operators({ portfolio, loading, lang, onItemClick }) {
     });
   };
 
-  const scheduleAutoRotate = () => {
-    if (HERO_OPERATORS_IMAGES.length < 2) return;
-    if (rotateTimerRef.current) clearInterval(rotateTimerRef.current);
+  useEffect(() => {
+    if (HERO_OPERATORS_IMAGES.length < 2) return undefined;
     rotateTimerRef.current = setInterval(() => {
       setImageIndex((current) => (current + 1) % HERO_OPERATORS_IMAGES.length);
     }, HERO_OPERATORS_IMAGE_DELAY_MS);
-  };
-
-  useEffect(() => {
-    scheduleAutoRotate();
     return () => {
       if (rotateTimerRef.current) clearInterval(rotateTimerRef.current);
     };
   }, []);
-
-  const selectImage = (nextIndex) => {
-    setImageIndex(nextIndex);
-    scheduleAutoRotate();
-  };
 
   return (
     <div
@@ -596,22 +579,6 @@ function HeroConcept_Operators({ portfolio, loading, lang, onItemClick }) {
         )}
       </div>
 
-      {HERO_OPERATORS_IMAGES.length > 1 ? (
-        <div className="hero-operators-picker" role="tablist" aria-label={lang === 'ru' ? 'Картинки героя' : 'Hero images'}>
-          {HERO_OPERATORS_IMAGES.map((image, index) => (
-            <button
-              key={image.src}
-              type="button"
-              role="tab"
-              aria-selected={index === imageIndex}
-              aria-label={image.alt}
-              className={`hero-operators-picker-dot${index === imageIndex ? ' is-active' : ''}`}
-              onClick={() => selectImage(index)}
-            />
-          ))}
-        </div>
-      ) : null}
-
       {activePriceCards.length > 1 ? (
         <div className="hero-agent-price-layout">
           {activePriceCards.map((card, index) => {
@@ -627,15 +594,9 @@ function HeroConcept_Operators({ portfolio, loading, lang, onItemClick }) {
               >
                 <div className="hero-market-price-head">
                   <span>{lang === 'ru' ? 'Агент' : 'Agent'}</span>
-                  <span>{pricedCard.provider}</span>
                 </div>
                 <div className="hero-market-price-value">{pricedCard.priceLabel}</div>
                 <div className="hero-market-price-name">{pricedCard.label || pricedCard.marketHashName}</div>
-                {pricedCard.updatedLabel ? (
-                  <div className="hero-market-price-updated">
-                    {lang === 'ru' ? 'обновлено' : 'updated'} {pricedCard.updatedLabel}
-                  </div>
-                ) : null}
               </button>
             );
           })}
@@ -654,25 +615,14 @@ function HeroConcept_Operators({ portfolio, loading, lang, onItemClick }) {
               >
                 <div className="hero-market-price-head">
                   <span>{lang === 'ru' ? 'Рыночная цена' : 'Market price'}</span>
-                  <span>{pricedCard.provider}</span>
                 </div>
                 <div className="hero-market-price-value">{pricedCard.priceLabel}</div>
                 <div className="hero-market-price-name">{pricedCard.label || pricedCard.marketHashName}</div>
-                {pricedCard.updatedLabel ? (
-                  <div className="hero-market-price-updated">
-                    {lang === 'ru' ? 'обновлено' : 'updated'} {pricedCard.updatedLabel}
-                  </div>
-                ) : null}
               </button>
             );
           })}
         </div>
       )}
-
-      <div className="hero-operators-readout">
-        <div className="eyebrow" style={{ color: 'var(--accent)' }}>{readoutLabel}</div>
-        <div style={{ fontFamily: 'var(--f-display)', fontSize: 26, fontWeight: 500, marginTop: 4 }}>{totalValue}</div>
-      </div>
     </div>
   );
 }
@@ -732,8 +682,8 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
   }, [auth?.connected, catalog.data?.totalCount, market.data, portfolio.data?.totalValue, t.hero]);
 
   const stage = useMemo(
-    () => <HeroConcept_Operators portfolio={portfolio.data} loading={portfolio.loading} auth={auth} lang={lang} onItemClick={onItemClick} />,
-    [auth, lang, onItemClick, portfolio.data, portfolio.loading]
+    () => <HeroConcept_Operators lang={lang} onItemClick={onItemClick} />,
+    [lang, onItemClick]
   );
   const submitProfileUrl = (event) => {
     event.preventDefault();

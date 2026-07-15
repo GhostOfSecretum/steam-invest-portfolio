@@ -102,6 +102,148 @@ function formatHistoryDate(date) {
   return new Date(time).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function TrendArrowIcon({ up }) {
+  const color = up ? 'var(--green)' : 'var(--red)';
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      {up ? (
+        <path d="M2 11 L5 7 L8 9 L12 4 L14 6" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      ) : (
+        <path d="M2 5 L5 9 L8 7 L12 12 L14 10" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+    </svg>
+  );
+}
+
+function PortfolioLeaders({ leaders, lang, onItemClick }) {
+  const t = useT(lang);
+  const [range, setRange] = useState('30d');
+  const limit = 5;
+
+  const ranked = useMemo(() => {
+    const rows = (Array.isArray(leaders) ? leaders : [])
+      .map((item) => {
+        const entry = item?.changes?.[range];
+        if (!entry || !Number.isFinite(entry.pct) || !Number.isFinite(entry.change)) return null;
+        return {
+          marketHashName: item.marketHashName,
+          name: item.name || item.marketHashName,
+          iconUrl: item.iconUrl || null,
+          pct: entry.pct,
+          change: entry.change,
+        };
+      })
+      .filter(Boolean);
+
+    return {
+      best: rows.filter((row) => row.pct > 0).sort((a, b) => b.pct - a.pct),
+      worst: rows.filter((row) => row.pct < 0).sort((a, b) => a.pct - b.pct),
+    };
+  }, [leaders, range]);
+
+  const renderSection = (kind) => {
+    const up = kind === 'best';
+    const visible = ranked[kind].slice(0, limit);
+    const title = up ? t.dash.bestLeaders : t.dash.worstLeaders;
+    const color = up ? 'var(--green)' : 'var(--red)';
+
+    return (
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <TrendArrowIcon up={up} />
+          <div style={{ fontFamily: 'var(--f-display)', fontSize: 14, fontWeight: 500, color: 'var(--fg-0)' }}>{title}</div>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) 72px 64px',
+          gap: 8,
+          padding: '0 0 8px',
+          fontFamily: 'var(--f-mono)',
+          fontSize: 10,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: 'var(--fg-3)',
+          borderBottom: '1px solid var(--line)',
+        }}>
+          <div>{t.dash.trendsItem}</div>
+          <div style={{ textAlign: 'right' }}>{t.dash.trendsPercent}</div>
+          <div style={{ textAlign: 'right' }}>{t.dash.trendsChange}</div>
+        </div>
+
+        {!visible.length ? (
+          <div style={{ padding: '14px 0', fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+            {t.dash.leadersEmpty}
+          </div>
+        ) : visible.map((row, index) => (
+          <div
+            key={`${kind}-${row.marketHashName}`}
+            onClick={() => onItemClick && onItemClick(row)}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) 72px 64px',
+              gap: 8,
+              alignItems: 'center',
+              padding: '8px 0',
+              borderBottom: index < visible.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+              cursor: onItemClick ? 'pointer' : 'default',
+              background: index % 2 ? 'rgba(255,255,255,0.015)' : 'transparent',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              {row.iconUrl
+                ? <img src={row.iconUrl} alt="" style={{ width: 28, height: 20, objectFit: 'contain', flexShrink: 0, borderRadius: 4, background: 'rgba(255,255,255,0.03)' }} />
+                : <div style={{ width: 28, height: 20, flexShrink: 0, borderRadius: 4, background: 'rgba(255,255,255,0.04)' }} />}
+              <div style={{
+                fontSize: 12,
+                color: 'var(--fg-1)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }} title={row.name}>{row.name}</div>
+            </div>
+            <div className="mono" style={{ fontSize: 12, textAlign: 'right', color }}>{`${row.pct >= 0 ? '+' : ''}${row.pct.toFixed(1)}%`}</div>
+            <div className="mono" style={{ fontSize: 12, textAlign: 'right', color }}>{`${row.change >= 0 ? '+' : '-'}${compactUsd(Math.abs(row.change))}`}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16, minHeight: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <div>
+          <div className="eyebrow">{t.dash.leaders}</div>
+          <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+            {t.dash.leadersHint}
+          </div>
+        </div>
+        <div style={{ display: 'flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+          {['7d', '30d', '90d'].map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRange(r)}
+              style={{
+                padding: '5px 9px',
+                fontFamily: 'var(--f-mono)',
+                fontSize: 10,
+                color: range === r ? 'var(--fg-0)' : 'var(--fg-3)',
+                background: range === r ? 'rgba(255,255,255,0.06)' : 'transparent',
+              }}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+      {renderSection('best')}
+      {renderSection('worst')}
+    </div>
+  );
+}
+
 function StatCard({ label, value, delta, deltaColor, sub, accent }) {
   return (
     <div className="glass" style={{ padding: 20, position: 'relative', overflow: 'hidden' }}>
@@ -216,7 +358,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
   }, [auth?.connected, auth?.loading, publicProfileUrl]);
 
   if (portfolio.loading && !portfolio.data) {
-    return <DashboardState lang={lang} title={t.dash.title} message={lang === 'ru' ? 'Загружаем портфель и цены...' : 'Loading portfolio and prices...'} />;
+    return <DashboardState lang={lang} title={t.dash.title} loading message={lang === 'ru' ? 'Загружаем портфель и цены...' : 'Loading portfolio and prices...'} />;
   }
 
   if (portfolio.error) {
@@ -340,7 +482,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1.25fr) minmax(200px, 0.9fr)', gap: 12, marginBottom: 24 }}>
           <div className="glass" style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
@@ -359,6 +501,15 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
             </div>
             <PortfolioChart history={data.history} range={range} lang={lang} />
           </div>
+
+          <PortfolioLeaders
+            leaders={data.leaders}
+            lang={lang}
+            onItemClick={(row) => {
+              const match = items.find((item) => item.marketHashName === row.marketHashName);
+              if (match && onItemClick) onItemClick(match);
+            }}
+          />
 
           <div className="glass" style={{ padding: 24 }}>
             <div className="eyebrow">{t.dash.breakdown}</div>
@@ -1234,7 +1385,75 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
   );
 }
 
-function DashboardState({ lang, title, auth, message, error, onRetry }) {
+function PortfolioLoadingVisual({ lang }) {
+  const labels = lang === 'ru'
+    ? ['Читаем инвентарь', 'Сверяем цены', 'Строим аналитику']
+    : ['Reading inventory', 'Matching prices', 'Building analytics'];
+  const candles = [
+    { bottom: 20, body: 22, wick: 38, up: true },
+    { bottom: 27, body: 16, wick: 31, up: false },
+    { bottom: 24, body: 28, wick: 46, up: true },
+    { bottom: 38, body: 19, wick: 35, up: true },
+    { bottom: 34, body: 14, wick: 30, up: false },
+    { bottom: 41, body: 26, wick: 44, up: true },
+    { bottom: 53, body: 18, wick: 34, up: false },
+    { bottom: 49, body: 31, wick: 49, up: true },
+    { bottom: 61, body: 15, wick: 29, up: true },
+    { bottom: 56, body: 20, wick: 38, up: false },
+    { bottom: 66, body: 27, wick: 45, up: true },
+    { bottom: 76, body: 18, wick: 34, up: true },
+  ];
+
+  return (
+    <div className="portfolio-loader" aria-hidden="true">
+      <div className="portfolio-loader__glow"></div>
+      <div className="portfolio-loader__scene">
+        <div className="portfolio-loader__core">
+          <div className="portfolio-loader__core-face">
+            <img src="assets/loader-arrow-neon-glass-01.png" alt="" />
+          </div>
+        </div>
+        <div className="portfolio-loader__asset portfolio-loader__asset--one">
+          <span>AK-47</span>
+          <img src="assets/hero-ak47-gpt-transparent.png" alt="" />
+        </div>
+        <div className="portfolio-loader__asset portfolio-loader__asset--two">
+          <span>M4A4</span>
+          <img src="assets/hero-m4-red-gpt-transparent.png" alt="" />
+        </div>
+        <div className="portfolio-loader__asset portfolio-loader__asset--three">
+          <span>AWP</span>
+          <img src="assets/hero-awp-dragon-gpt-transparent.png" alt="" />
+        </div>
+        <div className="portfolio-loader__candles">
+          <div className="portfolio-loader__candle-grid"></div>
+          <div className="portfolio-loader__price-line"><i></i><b>LIVE</b></div>
+          {candles.map((candle, index) => (
+            <span
+              key={index}
+              className={`portfolio-loader__candle ${candle.up ? 'is-up' : 'is-down'}`}
+              style={{
+                '--candle-index': index,
+                '--candle-bottom': `${candle.bottom}%`,
+                '--candle-body': `${candle.body}%`,
+                '--candle-wick': `${candle.wick}%`,
+              }}
+            >
+              <i></i>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="portfolio-loader__status">
+        {labels.map((label, index) => (
+          <span key={label} style={{ '--loader-step': index }}>{label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardState({ lang, title, auth, message, error, onRetry, loading = false }) {
   const suggestSteamApiKey = auth?.steamApiKeyConfigured === false;
   const text = error
     ? errorMessage(error, lang)
@@ -1243,23 +1462,33 @@ function DashboardState({ lang, title, auth, message, error, onRetry }) {
       : 'Connect Steam to read your public CS2 inventory and value the portfolio.');
 
   return (
-    <div style={{ padding: '80px 64px' }}>
+    <div className={loading ? 'dashboard-state dashboard-state--loading' : 'dashboard-state'}>
       <div className="container">
-        <div className="glass" style={{ padding: 36, maxWidth: 720 }}>
-          <div className="eyebrow" style={{ color: 'var(--accent)' }}>// REAL DATA MVP</div>
-          <h1 className="display" style={{ fontSize: 44, fontWeight: 500, marginTop: 12 }}>{title}</h1>
-          <p style={{ marginTop: 14, color: 'var(--fg-1)', lineHeight: 1.6 }}>{text}</p>
-          {suggestSteamApiKey && (
-            <p style={{ marginTop: 12, color: 'var(--amber)', fontFamily: 'var(--f-mono)', fontSize: 12 }}>
-              {lang === 'ru'
-                ? 'Для ника и аватара в Steam добавь STEAM_API_KEY в .env и перезапусти сервер (вход без ключа уже работает).'
-                : 'Add STEAM_API_KEY to .env and restart the server for Steam display names and avatars (login works without it).'}
-            </p>
-          )}
-          <div style={{ marginTop: 24, display: 'flex', gap: 10 }}>
-            {!error && <button className="btn btn-primary" onClick={() => auth?.login && auth.login()}>Link Steam</button>}
-            {error && <button className="btn btn-primary" onClick={onRetry}>Retry sync</button>}
+        <div className={`glass dashboard-state__card${loading ? ' dashboard-state__card--loading' : ''}`}>
+          <div className="dashboard-state__copy">
+            <div className="eyebrow" style={{ color: 'var(--accent)' }}>{loading ? '// LIVE PORTFOLIO SYNC' : '// REAL DATA MVP'}</div>
+            <h1 className="display">{title}</h1>
+            <p aria-live="polite">{text}</p>
+            {loading && (
+              <div className="dashboard-state__progress">
+                <span></span>
+              </div>
+            )}
+            {suggestSteamApiKey && !loading && (
+              <p className="dashboard-state__warning">
+                {lang === 'ru'
+                  ? 'Для ника и аватара в Steam добавь STEAM_API_KEY в .env и перезапусти сервер (вход без ключа уже работает).'
+                  : 'Add STEAM_API_KEY to .env and restart the server for Steam display names and avatars (login works without it).'}
+              </p>
+            )}
+            {!loading && (
+              <div className="dashboard-state__actions">
+                {!error && <button className="btn btn-primary" onClick={() => auth?.login && auth.login()}>Link Steam</button>}
+                {error && <button className="btn btn-primary" onClick={onRetry}>Retry sync</button>}
+              </div>
+            )}
           </div>
+          {loading && <PortfolioLoadingVisual lang={lang} />}
         </div>
       </div>
     </div>

@@ -65,7 +65,7 @@ async function getPortfolio(steamId, options = {}) {
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const providerLabel = useDesktop ? 'desktop' : (inventory.inventoryProvider || 'steam-public');
-  const history = await buildPortfolioHistory(pricedItems, totalValue);
+  const { history, leaders } = await buildPortfolioHistoryAndLeaders(pricedItems, totalValue);
   const activitySource = options.activitySource === 'public-diff' ? 'public-diff' : 'steam-diff';
   const activity = await syncInventoryDiffActivity(steamId, items, {
     source: activitySource,
@@ -95,6 +95,7 @@ async function getPortfolio(steamId, options = {}) {
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
     history,
+    leaders,
     items,
     activity: activity.filter(isStructuredActivity).slice().reverse(),
   };
@@ -395,7 +396,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   const totalBasis = items.reduce((sum, item) => sum + item.basis * item.qty, 0);
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
-  const history = await buildPortfolioHistory(pricedItems, totalValue);
+  const { history, leaders } = await buildPortfolioHistoryAndLeaders(pricedItems, totalValue);
   const activity = backfillManualEvents(portfolio);
   if (!Array.isArray(portfolio.events) || !portfolio.events.length) {
     // Persist backfill once so subsequent mutations append cleanly.
@@ -431,6 +432,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
     history,
+    leaders,
     items,
     activity: activity.slice().reverse(),
   };
@@ -470,6 +472,7 @@ function buildEmptyManualPortfolio(bucket, steamId = null, ownerId = null) {
     totalVolume24h: 0,
     allocation: [],
     history: emptyPortfolioHistory(0),
+    leaders: [],
     items: [],
     activity: [],
   };
@@ -1085,30 +1088,37 @@ function scoreLiquidity(items) {
   return Math.max(0, Math.min(100, Math.round(averageVolume / 10)));
 }
 
-async function buildPortfolioHistory(items, totalValue) {
+async function buildPortfolioHistoryAndLeaders(items, totalValue) {
   const priced = items
     .filter((item) => item.marketHashName && Number.isFinite(item.value) && item.value > 0 && item.qty > 0)
     .sort((a, b) => (b.value * b.qty) - (a.value * a.qty));
 
-  if (!priced.length) return emptyPortfolioHistory(totalValue);
+  if (!priced.length) {
+    return { history: emptyPortfolioHistory(totalValue), leaders: [] };
+  }
 
-  const tracked = priced.slice(0, 12);
-  const trackedNames = new Set(tracked.map((item) => item.marketHashName));
-  const trackedValue = tracked.reduce((sum, item) => sum + item.value * item.qty, 0);
+  // Fetch enough for period leaders; chart uses the top slice of the same set.
+  const leaderTracked = priced.slice(0, 36);
+  const chartTracked = leaderTracked.slice(0, 12);
+  const chartNames = new Set(chartTracked.map((item) => item.marketHashName));
+  const chartTrackedValue = chartTracked.reduce((sum, item) => sum + item.value * item.qty, 0);
   const untrackedValue = priced
-    .filter((item) => !trackedNames.has(item.marketHashName))
+    .filter((item) => !chartNames.has(item.marketHashName))
     .reduce((sum, item) => sum + item.value * item.qty, 0);
 
-  const histories = (await Promise.all(tracked.map(async (item) => {
+  const histories = (await Promise.all(leaderTracked.map(async (item) => {
     const history = await getPriceHistory(item.marketHashName, 365, {
       anchorPrice: item.value,
       currency: 'usd',
     }).catch(() => null);
-    if (history?.provider === 'synthetic') return null;
-    const points = normalizeHistoryPoints(history?.data);
+    if (!history || history.provider === 'synthetic') return null;
+    const points = realHistoryPoints(history);
     if (points.length < 2) return null;
     return {
       marketHashName: item.marketHashName,
+      name: item.name || item.marketHashName,
+      iconUrl: item.iconUrl || null,
+      value: item.value,
       qty: item.qty,
       currentValue: item.value * item.qty,
       provider: history.provider || 'unknown',
@@ -1116,8 +1126,60 @@ async function buildPortfolioHistory(items, totalValue) {
     };
   }))).filter(Boolean);
 
-  if (!histories.length) return emptyPortfolioHistory(totalValue);
+  const chartHistories = histories.filter((history) => chartNames.has(history.marketHashName));
+  const history = chartHistories.length
+    ? composePortfolioHistory(chartHistories, untrackedValue, chartTrackedValue, totalValue)
+    : emptyPortfolioHistory(totalValue);
 
+  return {
+    history,
+    leaders: buildPeriodLeaders(histories),
+  };
+}
+
+function buildPeriodLeaders(histories) {
+  const ranges = ['7d', '30d', '90d'];
+  return histories.map((history) => {
+    const endPrice = history.points[history.points.length - 1]?.price;
+    const changes = {};
+    for (const range of ranges) {
+      const entry = periodPositionChange(history.points, endPrice, history.qty, range);
+      if (entry) changes[range] = entry;
+    }
+    if (!Object.keys(changes).length) return null;
+    return {
+      marketHashName: history.marketHashName,
+      name: history.name,
+      iconUrl: history.iconUrl,
+      qty: history.qty,
+      provider: history.provider,
+      changes,
+    };
+  }).filter(Boolean);
+}
+
+function periodPositionChange(points, endPrice, qty, range) {
+  if (!Array.isArray(points) || points.length < 2 || !Number.isFinite(endPrice) || endPrice <= 0) {
+    return null;
+  }
+
+  const days = range === '7d' ? 7 : range === '90d' ? 90 : 30;
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  // Require real coverage back to the period start.
+  if (points[0].date > cutoff) return null;
+
+  const startPrice = priceAtDate(points, cutoff);
+  if (!Number.isFinite(startPrice) || startPrice <= 0) return null;
+
+  // Keep start/end inside the same history series so FX/provider mismatch does not invent PnL.
+  const unitChange = endPrice - startPrice;
+  const amount = Number.isFinite(qty) && qty > 0 ? qty : 1;
+  const change = Math.round(unitChange * amount * 100) / 100;
+  const pct = Math.round((unitChange / startPrice) * 10000) / 100;
+  return { pct, change, startPrice, endPrice };
+}
+
+function composePortfolioHistory(histories, untrackedValue, trackedValue, totalValue) {
   const dateSet = new Set();
   for (const history of histories) {
     for (const point of history.points) dateSet.add(point.date);
@@ -1181,6 +1243,24 @@ async function buildPortfolioHistory(items, totalValue) {
     sources: [...new Set(histories.map((history) => history.provider))],
     synthetic: false,
   };
+}
+
+function realHistoryPoints(history) {
+  const points = normalizeHistoryPoints(history?.data);
+  if (!points.length) return [];
+  if (history?.provider === 'synthetic') return [];
+
+  if (history?.realFrom) {
+    return points.filter((point) => point.date >= history.realFrom);
+  }
+
+  // Legacy mixed caches had no realFrom: take.skin free tier is ~30d of real data.
+  if (history?.provider === 'mixed') {
+    const cutoff = new Date(Date.now() - 35 * 86400000).toISOString().slice(0, 10);
+    return points.filter((point) => point.date >= cutoff);
+  }
+
+  return points;
 }
 
 function emptyPortfolioHistory(totalValue) {
