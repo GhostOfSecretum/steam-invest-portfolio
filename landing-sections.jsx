@@ -890,7 +890,7 @@ function DesktopDownload({ lang }) {
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
       windows: 'Windows · x64',
-      note: 'После установки откройте портфель в браузере, нажмите «Код для desktop» и введите 6-значный код в приложении.',
+      note: 'После установки откройте дашборд на skinshead.pro, нажмите «Код для desktop» и введите 6-значный код в приложении. Server URL оставьте https://skinshead.pro.',
       security: 'Read-only: пароль Steam не запрашивается, токены хранятся локально, на сервер отправляется только список предметов.',
     }
     : {
@@ -899,7 +899,7 @@ function DesktopDownload({ lang }) {
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
       windows: 'Windows · x64',
-      note: 'After installing, open your browser portfolio, click “Desktop code”, and enter the 6-digit code in the app.',
+      note: 'After installing, open the dashboard on skinshead.pro, click “Desktop code”, and enter the 6-digit code in the app. Leave Server URL as https://skinshead.pro.',
       security: 'Read-only: Steam password is never requested, tokens stay local, and only item lists are sent to the server.',
     };
 

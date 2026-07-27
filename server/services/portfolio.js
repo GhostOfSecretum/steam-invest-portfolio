@@ -182,35 +182,65 @@ async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
 
   const basis = await makeBasisRecord(marketHashName, payload.basisPerUnit, payload.currency);
   const now = new Date().toISOString();
-  const item = {
-    id: `manual-item-${crypto.randomUUID()}`,
-    assetid: `manual-${crypto.randomUUID()}`,
-    marketHashName,
-    name: String(payload.name || marketHashName).trim(),
-    quantity,
-    basis,
-    iconUrl: normalizeOptionalUrl(payload.iconUrl),
-    marketUrl: normalizeOptionalUrl(payload.marketUrl),
-    category: normalizeOptionalString(payload.category),
-    rarity: normalizeOptionalString(payload.rarity),
-    wear: normalizeOptionalString(payload.wear),
-    tier: Number.isFinite(Number(payload.tier)) ? Number(payload.tier) : null,
-    createdAt: now,
-    updatedAt: now,
-  };
-  portfolio.items.push(item);
-  portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
-    at: now,
-    kind: 'added',
-    marketHashName,
-    name: item.name,
-    qtyBefore: 0,
-    qtyAfter: quantity,
-    qtyDelta: quantity,
-    basisPerUnit: Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit,
-    currency: basis.currency || null,
-    source: 'manual',
-  }));
+  // Manual table stacks by marketHashName — keep a single row per name so edit/delete match UI totals.
+  const existing = (portfolio.items || []).find((entry) => entry.marketHashName === marketHashName);
+  if (existing) {
+    const qtyBefore = safeQty(existing.quantity ?? existing.amount);
+    const qtyAfter = qtyBefore + quantity;
+    existing.quantity = qtyAfter;
+    existing.amount = qtyAfter;
+    existing.basis = basis;
+    existing.name = String(payload.name || existing.name || marketHashName).trim();
+    existing.iconUrl = normalizeOptionalUrl(payload.iconUrl) || existing.iconUrl || null;
+    existing.marketUrl = normalizeOptionalUrl(payload.marketUrl) || existing.marketUrl || null;
+    existing.category = normalizeOptionalString(payload.category) || existing.category || null;
+    existing.rarity = normalizeOptionalString(payload.rarity) || existing.rarity || null;
+    existing.wear = normalizeOptionalString(payload.wear) || existing.wear || null;
+    if (Number.isFinite(Number(payload.tier))) existing.tier = Number(payload.tier);
+    existing.updatedAt = now;
+    portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
+      at: now,
+      kind: 'qty_up',
+      marketHashName,
+      name: existing.name,
+      qtyBefore,
+      qtyAfter,
+      qtyDelta: quantity,
+      basisPerUnit: Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit,
+      currency: basis.currency || null,
+      source: 'manual',
+    }));
+  } else {
+    const item = {
+      id: `manual-item-${crypto.randomUUID()}`,
+      assetid: `manual-${crypto.randomUUID()}`,
+      marketHashName,
+      name: String(payload.name || marketHashName).trim(),
+      quantity,
+      basis,
+      iconUrl: normalizeOptionalUrl(payload.iconUrl),
+      marketUrl: normalizeOptionalUrl(payload.marketUrl),
+      category: normalizeOptionalString(payload.category),
+      rarity: normalizeOptionalString(payload.rarity),
+      wear: normalizeOptionalString(payload.wear),
+      tier: Number.isFinite(Number(payload.tier)) ? Number(payload.tier) : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    portfolio.items.push(item);
+    portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
+      at: now,
+      kind: 'added',
+      marketHashName,
+      name: item.name,
+      qtyBefore: 0,
+      qtyAfter: quantity,
+      qtyDelta: quantity,
+      basisPerUnit: Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit,
+      currency: basis.currency || null,
+      source: 'manual',
+    }));
+  }
   portfolio.updatedAt = now;
   bucket.activePortfolioId = portfolio.id;
   await writeManualPortfolioStore(store);
@@ -224,27 +254,27 @@ async function deleteManualPortfolioItem(ownerId, portfolioId, itemId) {
   if (!portfolio) return false;
 
   const removed = portfolio.items.find((item) => item.id === itemId);
-  const before = portfolio.items.length;
-  portfolio.items = portfolio.items.filter((item) => item.id !== itemId);
-  if (portfolio.items.length === before) return false;
+  if (!removed) return false;
+
+  // UI rows are aggregated by marketHashName — remove every stack for that name.
+  const siblings = portfolio.items.filter((item) => item.marketHashName === removed.marketHashName);
+  const qty = siblings.reduce((sum, item) => sum + safeQty(item.quantity ?? item.amount), 0);
+  portfolio.items = portfolio.items.filter((item) => item.marketHashName !== removed.marketHashName);
 
   const now = new Date().toISOString();
-  if (removed) {
-    const qty = safeQty(removed.quantity ?? removed.amount);
-    const basis = removed.basis || {};
-    portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
-      at: now,
-      kind: 'removed',
-      marketHashName: removed.marketHashName,
-      name: removed.name || removed.marketHashName,
-      qtyBefore: qty,
-      qtyAfter: 0,
-      qtyDelta: -qty,
-      basisPerUnit: Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit,
-      currency: basis.currency || null,
-      source: 'manual',
-    }));
-  }
+  const basis = removed.basis || {};
+  portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
+    at: now,
+    kind: 'removed',
+    marketHashName: removed.marketHashName,
+    name: removed.name || removed.marketHashName,
+    qtyBefore: qty,
+    qtyAfter: 0,
+    qtyDelta: -qty,
+    basisPerUnit: Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit,
+    currency: basis.currency || null,
+    source: 'manual',
+  }));
   portfolio.updatedAt = now;
   await writeManualPortfolioStore(store);
   return true;
@@ -277,7 +307,10 @@ async function updateManualPortfolioItem(ownerId, portfolioId, itemId, payload =
     throw err;
   }
 
-  const qtyBefore = safeQty(item.quantity ?? item.amount);
+  // UI shows aggregated qty for the marketHashName; treat the payload as that total
+  // and collapse duplicate stacks so the saved number matches what the user typed.
+  const siblings = portfolio.items.filter((entry) => entry.marketHashName === item.marketHashName);
+  const qtyBefore = siblings.reduce((sum, entry) => sum + safeQty(entry.quantity ?? entry.amount), 0);
   item.quantity = quantity;
   item.amount = quantity;
   let basisChanged = false;
@@ -286,6 +319,11 @@ async function updateManualPortfolioItem(ownerId, portfolioId, itemId, payload =
     basisChanged = true;
   }
   item.updatedAt = new Date().toISOString();
+  if (siblings.length > 1) {
+    portfolio.items = portfolio.items.filter((entry) => (
+      entry.id === item.id || entry.marketHashName !== item.marketHashName
+    ));
+  }
   portfolio.updatedAt = item.updatedAt;
   const basis = item.basis || {};
   portfolio.events = appendEvent(portfolio.events, makeActivityEvent({

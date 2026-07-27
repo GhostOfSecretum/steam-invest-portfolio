@@ -7,11 +7,19 @@ const { mergeInventoryItems } = require('./inventory-merge');
 
 const store = new Store({ encryptionKey: 'steam-invest-local-only' });
 
-const SERVER_URL = store.get('serverUrl', 'http://localhost:3000');
+const DEFAULT_SERVER_URL = 'https://skinshead.pro';
+const SERVER_URL = store.get('serverUrl', DEFAULT_SERVER_URL);
 const STEAM_COMMUNITY = 'https://steamcommunity.com';
 const INVENTORY_URL_PATTERN = /\/inventory\/(\d{17})\/730\/2/;
 const GC_REFRESH_TOKEN_KEY = 'gcRefreshTokenProtected';
 const LEGACY_GC_REFRESH_TOKEN_KEY = 'gcRefreshToken';
+
+function normalizeServerUrl(raw) {
+  let url = String(raw || '').trim().replace(/\/+$/, '');
+  if (!url) throw new Error('Укажите адрес сервера (например https://skinshead.pro)');
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  return url;
+}
 
 function ensureSecretStorageAvailable() {
   if (!safeStorage.isEncryptionAvailable()) {
@@ -359,17 +367,39 @@ ipcMain.handle('get-state', async () => ({
 }));
 
 ipcMain.handle('pair-device', async (_event, { serverUrl, code }) => {
-  const response = await fetch(`${serverUrl}/api/desktop/pair`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Pairing failed');
+  const normalizedUrl = normalizeServerUrl(serverUrl);
+  const pairingCode = String(code || '').trim();
+  if (!/^\d{6}$/.test(pairingCode)) {
+    throw new Error('Введите 6-значный код с сайта');
+  }
+
+  let response;
+  try {
+    response = await fetch(`${normalizedUrl}/api/desktop/pair`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ code: pairingCode }),
+    });
+  } catch (error) {
+    throw new Error(
+      `Не удалось подключиться к ${normalizedUrl}. Проверьте Server URL (для skinshead.pro оставьте https://skinshead.pro). ${error.message}`,
+    );
+  }
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (data.code === 'invalid_code') {
+      throw new Error('Неверный или просроченный код. Сгенерируйте новый на сайте (кнопка «Код для desktop»).');
+    }
+    if (data.code === 'rate_limited') {
+      throw new Error('Слишком много попыток. Подождите несколько минут и попробуйте снова.');
+    }
+    throw new Error(data.error || `Pairing failed (HTTP ${response.status})`);
+  }
 
   store.set('deviceToken', data.deviceToken);
   store.set('steamId', data.steamId);
-  store.set('serverUrl', serverUrl);
+  store.set('serverUrl', normalizedUrl);
 
   showDesktopSettings();
 

@@ -290,22 +290,28 @@ function allocationLabel(key, lang) {
 function DesktopPairingButton({ lang }) {
   const [code, setCode] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const generate = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await apiFetch('/api/desktop/pairing-code', { method: 'POST' });
       setCode(data.code);
-    } catch { setCode(null); }
+    } catch (err) {
+      setCode(null);
+      setError(err?.message || (lang === 'ru' ? 'Не удалось создать код' : 'Failed to create code'));
+    }
     setLoading(false);
   };
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <button className="btn btn-sm btn-ghost" onClick={generate} disabled={loading}>
         {loading ? '...' : (lang === 'ru' ? 'Код для desktop' : 'Desktop code')}
       </button>
       {code && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 14, color: 'var(--accent)', letterSpacing: '0.15em' }}>{code}</span>}
+      {error && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #ef4444)' }}>{error}</span>}
     </div>
   );
 }

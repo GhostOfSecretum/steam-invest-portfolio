@@ -69,9 +69,9 @@
     <div id="step-pair">
       <div class="eyebrow">// STEAM INVEST · DESKTOP</div>
       <h1>Connect to server</h1>
-      <p>Open your Steam Invest Portfolio website, go to profile settings, and generate a pairing code. Enter it below.</p>
-      <input id="server-url" type="text" value="http://localhost:3000" placeholder="Server URL" />
-      <input id="pairing-code" type="text" placeholder="6-digit pairing code" maxlength="6" autocomplete="off" />
+      <p>На сайте skinshead.pro откройте дашборд, нажмите «Код для desktop» и введите 6-значный код ниже.</p>
+      <input id="server-url" type="text" value="https://skinshead.pro" placeholder="Server URL" />
+      <input id="pairing-code" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="6-значный код" maxlength="6" autocomplete="off" />
       <button class="btn btn-primary" id="btn-pair">Connect</button>
       <div id="pair-status" class="status"></div>
     </div>
@@ -108,6 +108,9 @@
 
     async function init() {
       const state = await window.desktop.getState();
+      if (state.serverUrl) {
+        $('server-url').value = state.serverUrl;
+      }
       if (state.deviceToken && state.steamId) {
         showConnected(state);
       } else {
