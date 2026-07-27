@@ -3,6 +3,8 @@
    Original design. Not affiliated with Steam/Valve.
    ───────────────────────────────────────────────────────────────── */
 
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+
 :root {
   /* Base — near black, cool slight-blue tone */
   --bg-0: #050608;
@@ -43,10 +45,10 @@
   --glass-blur: 22px;
   --glass-sat: 140%;
 
-  /* Type — system stacks only (no Google Fonts / fonts.googleapis.com) */
-  --f-display: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --f-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --f-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, monospace;
+  /* Type */
+  --f-display: 'Unbounded', system-ui, sans-serif;
+  --f-body: 'Inter', system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
