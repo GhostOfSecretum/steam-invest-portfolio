@@ -475,101 +475,65 @@ async function getSteamCurrencyRatio(marketHashName, fromCurrency = 'rub', toCur
   };
 }
 
-function pickCSMarketDayPrice(sales) {
-  const rows = Array.isArray(sales) ? sales : [];
-  if (!rows.length) return null;
-
-  const steam = rows.find((row) => row?.market === 'STEAMCOMMUNITY');
-  const source = steam ? [steam] : rows;
-  const prices = source
-    .map((row) => row?.median_price ?? row?.mean_price ?? row?.min_price ?? row?.max_price)
-    .map((value) => Number(value))
-    .filter((value) => Number.isFinite(value) && value > 0)
-    .sort((a, b) => a - b);
-
-  if (!prices.length) return null;
-
-  const volume = source.reduce((sum, row) => sum + (Number(row?.volume) || 0), 0);
-  return {
-    price: Math.round(prices[Math.floor(prices.length / 2)] * 100) / 100,
-    volume: volume > 0 ? volume : null,
-  };
-}
-
-function normalizeCSMarketAPIHistory(json) {
-  const rows = Array.isArray(json) ? json
-    : Array.isArray(json?.data) ? json.data
-    : Array.isArray(json?.items) ? json.items
-    : Array.isArray(json?.history) ? json.history
-    : [];
-
-  return rows
-    .map((bucket) => {
-      const nested = pickCSMarketDayPrice(bucket?.sales);
-      if (nested) {
-        return {
-          date: bucket.day || bucket.date,
-          price: nested.price,
-          volume: nested.volume,
-        };
-      }
-
-      const date = bucket.date || bucket.day
-        || (bucket.timestamp ? new Date(bucket.timestamp * 1000).toISOString().slice(0, 10) : null);
-      const rawPrice = bucket.avg_price ?? bucket.median_price ?? bucket.price ?? bucket.avg ?? bucket.median;
-      const price = parseMoney(rawPrice);
-      return {
-        date,
-        price,
-        volume: Number.isFinite(bucket.volume) ? bucket.volume : null,
-      };
-    })
-    .filter((point) => point.date && Number.isFinite(point.price) && !Number.isNaN(new Date(point.date).getTime()))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-}
-
-async function getCSMarketAPIHistory(marketHashName, currency = 'usd') {
-  if (!process.env.CSMARKET_API_KEY) return null;
-
-  const normalizedCurrency = normalizeCurrency(currency).toUpperCase();
-  const cacheKey = `csmarketapi:history:${marketHashName}:${normalizedCurrency}`;
+/** Free CSFloat daily avg-price graph (no API key). Prices are returned in USD cents. */
+async function getCSFloatGraphHistory(marketHashName, currency = 'usd') {
+  const normalizedCurrency = normalizeCurrency(currency);
+  const cacheKey = `csfloat:graph:${marketHashName}:${normalizedCurrency}`;
   const cached = await getCached(cacheKey, HISTORY_MAX_AGE_MS);
-  if (cached?.data?.length) return { ...cached, cached: true };
+  if (cached?.data?.length && !historyLooksStale(cached, 3)) return { ...cached, cached: true };
 
-  const params = new URLSearchParams({
-    market_hash_name: marketHashName,
-    currency: normalizedCurrency,
-    key: process.env.CSMARKET_API_KEY,
-  });
-  const json = await fetchJson(`https://api.csmarketapi.com/v1/sales/history/aggregate?${params}`, {
+  const urlName = encodeURIComponent(marketHashName);
+  const rows = await fetchJson(`https://csfloat.com/api/v1/history/${urlName}/graph`, {
     timeoutMs: 12000,
+    headers: { Accept: 'application/json' },
   }).catch(() => null);
 
-  const data = normalizeCSMarketAPIHistory(json);
+  if (!Array.isArray(rows) || !rows.length) return null;
+
+  let data = rows
+    .map((bucket) => {
+      const cents = Number(bucket?.avg_price);
+      if (!Number.isFinite(cents) || cents <= 0) return null;
+      const day = String(bucket.day || '').slice(0, 10);
+      if (!day || Number.isNaN(new Date(day).getTime())) return null;
+      return {
+        date: day,
+        price: Math.round(cents) / 100,
+        volume: Number.isFinite(bucket.count) ? bucket.count : null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
   if (!data.length) return null;
+
+  if (normalizedCurrency === 'rub') {
+    const rate = await getSteamRubRate().catch(() => null);
+    if (!Number.isFinite(rate) || rate <= 0) return null;
+    data = data.map((point) => ({
+      ...point,
+      price: Math.round(point.price * rate * 100) / 100,
+    }));
+  }
 
   const result = {
     marketHashName,
-    currency: normalizedCurrency,
+    currency: normalizedCurrency.toUpperCase(),
     data,
-    provider: 'csmarketapi',
+    provider: 'csfloat',
     updatedAt: new Date().toISOString(),
   };
-
   await setCached(cacheKey, result);
   return { ...result, cached: false };
 }
 
-async function getOptionalProviderHistory(marketHashName, currency = 'usd') {
-  if (process.env.CSMARKET_API_KEY) {
-    const history = await getCSMarketAPIHistory(marketHashName, currency).catch(() => null);
-    if (history?.data?.length) return history;
-  }
-  if (process.env.PRICEMPIRE_API_KEY) {
-    const history = await getPriceEmpireHistory(marketHashName, currency).catch(() => null);
-    if (history?.data?.length) return history;
-  }
-  return null;
+function historyLooksStale(history, maxLagDays = 3) {
+  const data = Array.isArray(history?.data) ? history.data : [];
+  if (!data.length) return true;
+  const last = data[data.length - 1]?.date;
+  if (!last) return true;
+  const lagMs = Date.now() - new Date(last).getTime();
+  return !Number.isFinite(lagMs) || lagMs > maxLagDays * 86400000;
 }
 
 async function getSkinportSalesHistory(marketHashName, currency = 'usd') {
@@ -634,34 +598,6 @@ async function getSkinportSalesHistory(marketHashName, currency = 'usd') {
   return { ...result, cached: false };
 }
 
-async function getPriceEmpireHistory(marketHashName, currency = 'usd') {
-  const url = new URL('https://api.pricempire.com/v4/paid/items/prices/history');
-  url.searchParams.set('currency', normalizeCurrency(currency).toUpperCase());
-  url.searchParams.set('market_hash_name', marketHashName);
-  const json = await fetchJson(String(url), {
-    timeoutMs: 6000,
-    headers: { Authorization: `Bearer ${process.env.PRICEMPIRE_API_KEY}` },
-  }).catch(() => null);
-  const rows = Array.isArray(json?.items) ? json.items : Array.isArray(json?.data) ? json.data : [];
-  const exact = rows.find((row) => row.market_hash_name === marketHashName) || rows[0];
-  if (!exact) return null;
-  const points = Array.isArray(exact.history) ? exact.history : [];
-  const data = points
-    .map((point) => ({
-      date: point.date || point.timestamp || point.time,
-      price: parseMoney(point.price ?? point.close ?? point.avg ?? point.median),
-      volume: Number.isFinite(point.volume) ? point.volume : null,
-    }))
-    .filter((point) => Number.isFinite(point.price) && !Number.isNaN(new Date(point.date).getTime()));
-  return {
-    marketHashName,
-    currency: exact.currency || normalizeCurrency(currency).toUpperCase(),
-    data,
-    provider: data.length ? 'pricempire' : 'none',
-    updatedAt: new Date().toISOString(),
-  };
-}
-
 async function getPriceHistory(marketHashName, days = 30, options = {}) {
   const allTime = days === 'all' || days === 'max' || Number(days) > 365;
   const requestedDays = allTime ? 'all' : Math.max(1, Math.min(365, Number(days) || 30));
@@ -672,9 +608,12 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
   // Always build the full 4-year series and slice per request, so short periods (1d/7d/30d/1y)
   // remain consistent with "All time" and never get re-derived from a stale FX rate.
   const FULL_SPAN_DAYS = 365 * 4;
-  const key = `history:${marketHashName}:${requestedCurrency}:full`;
+  // v3: charts use free CSFloat graph only (CSMarketAPI kept for catalog/listings).
+  const key = `history:v3:${marketHashName}:${requestedCurrency}:full`;
   const cached = await getCached(key, HISTORY_MAX_AGE_MS);
-  let history = cached && Array.isArray(cached.data) && cached.data.length ? cached : null;
+  let history = cached && Array.isArray(cached.data) && cached.data.length && !historyLooksStale(cached, 3)
+    ? cached
+    : null;
   let usedCached = Boolean(history);
 
   // Prefer a slightly stale real series over inventing synthetic data when providers
@@ -686,9 +625,9 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
   const staleIsReal = Boolean(staleHistory && staleHistory.provider && staleHistory.provider !== 'synthetic');
 
   if (!history) {
-    const optionalHistory = await getOptionalProviderHistory(marketHashName, requestedCurrency).catch(() => null);
-    if (optionalHistory?.data?.length) {
-      history = optionalHistory;
+    const csfloatHistory = await getCSFloatGraphHistory(marketHashName, requestedCurrency).catch(() => null);
+    if (csfloatHistory?.data?.length) {
+      history = csfloatHistory;
     }
   }
 

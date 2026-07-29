@@ -34,11 +34,12 @@ Price lookup for a single item:
 
 History lookup:
 
-1. `csmarketapi` if `CSMARKET_API_KEY` exists (`/v1/sales/history/aggregate`, daily sales grouped by `day`)
-2. `pricempire` if `PRICEMPIRE_API_KEY` exists
-3. `skinport`
-4. `take.skin`
-5. synthetic fallback
+1. `csfloat` free graph (`/api/v1/history/{name}/graph`, no key) — primary chart source
+2. `skinport` sparse buckets
+3. `take.skin` (~30d free cap)
+4. synthetic fallback
+
+CSMarketAPI is not used for charts (catalog/listings only).
 
 ### Item-detail marketplace offers (`getItemOffers`)
 
