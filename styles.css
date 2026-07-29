@@ -2216,6 +2216,29 @@ button:disabled,
   border-color: oklch(0.68 0.16 285 / 0.55);
   box-shadow: 0 16px 40px rgba(0,0,0,0.35);
 }
+/* CSROI-like green Armory ribbon strip */
+.armory-ribbon {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 12px 3px 10px;
+  background: linear-gradient(90deg, oklch(0.62 0.17 145), oklch(0.7 0.18 145));
+  box-shadow: 0 4px 12px oklch(0.35 0.1 145 / 0.35);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%);
+  pointer-events: none;
+}
+.armory-ribbon-label {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: oklch(0.98 0.02 145);
+}
 .armory-tile-accent {
   position: absolute;
   left: 0;
@@ -2232,6 +2255,7 @@ button:disabled,
   gap: 10px;
   position: relative;
   z-index: 1;
+  padding-top: 22px;
 }
 .armory-tile-title {
   margin: 0;

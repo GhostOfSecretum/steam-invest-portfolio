@@ -193,8 +193,8 @@
     const url = `${siteUrl}/item/${safeSlug}`;
     const priceLabel = Number.isFinite(price) ? ` — $${price.toFixed(2)}` : '';
     const title = `${marketHashName}${priceLabel} | CS2 price · SkinsHead`;
-    const description = `Live CS2 skin price analytics for ${marketHashName}. Track Counter-Strike 2 market value, price history, and marketplace offers on SkinsHead.`;
-    const descriptionRu = `Аналитика цен скинов CS2 для ${marketHashName}: live-цена, история стоимости и предложения маркетплейсов на SkinsHead.`;
+    const description = `Live CS2 price for ${marketHashName} on SkinsHead: market value, price history, and marketplace offers.`;
+    const descriptionRu = `Цена CS2 для ${marketHashName} на SkinsHead: рыночная стоимость, история цены и предложения площадок.`;
 
     return {
       marketHashName,

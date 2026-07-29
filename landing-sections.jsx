@@ -783,7 +783,7 @@ function ArmoryROI() {
           <div className="armory-toolbar">
             <div className="armory-toolbar-group">
               <span className="armory-toolbar-label">{copy.pricing}</span>
-              <span className="armory-source-pill">Steam</span>
+              <span className="armory-source-pill">{feed.data?.pricingSource === 'csroi-steam' ? 'CSROI · Steam' : 'Steam'}</span>
             </div>
             <div className="armory-toolbar-group">
               <span className="armory-toolbar-label">{copy.currency}</span>
@@ -820,6 +820,10 @@ function ArmoryROI() {
           <div className="armory-grid">
             {items.map((item) => (
               <article key={item.id} className={`armory-tile tone-${armoryRoiTone(item.roi)}`}>
+                <div className="armory-ribbon" aria-hidden="true">
+                  <span className="armory-ribbon-label">ARMORY</span>
+                </div>
+
                 <div className="armory-tile-head">
                   <h3 className="armory-tile-title">{item.name}</h3>
                   <span className="armory-tile-rank">#{item.rank}</span>
@@ -885,22 +889,22 @@ function ArmoryROI() {
 function DesktopDownload({ lang }) {
   const copy = lang === 'ru'
     ? {
-      title: 'Desktop app для полного портфеля',
-      sub: 'Скачайте локальный клиент, войдите в Steam на своём компьютере и синхронизируйте полный инвентарь вместе с содержимым Storage Units.',
+      title: 'Desktop — полный инвентарь и Storage Units',
+      sub: 'Публичный Steam показывает только основной инвентарь. Desktop-клиент SkinsHead заходит в Steam локально и подтягивает полный портфель, включая содержимое Storage Units.',
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
       windows: 'Windows · x64',
-      note: 'После установки откройте дашборд на skinshead.pro, нажмите «Код для desktop» и введите 6-значный код в приложении. Server URL оставьте https://skinshead.pro.',
-      security: 'Read-only: пароль Steam не запрашивается, токены хранятся локально, на сервер отправляется только список предметов.',
+      note: 'Установите приложение, откройте портфель на skinshead.pro, нажмите «Код для desktop» и введите 6-значный код. Server URL оставьте https://skinshead.pro.',
+      security: 'Только чтение: пароль Steam не запрашивается, токены остаются на компьютере, на сервер уходит только список предметов.',
     }
     : {
-      title: 'Desktop app for the full portfolio',
-      sub: 'Download the local client, sign in to Steam on your computer, and sync the full inventory including Storage Units.',
+      title: 'Desktop — full inventory and Storage Units',
+      sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client signs into Steam locally and syncs the full portfolio, including Storage Units.',
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
       windows: 'Windows · x64',
-      note: 'After installing, open the dashboard on skinshead.pro, click “Desktop code”, and enter the 6-digit code in the app. Leave Server URL as https://skinshead.pro.',
-      security: 'Read-only: Steam password is never requested, tokens stay local, and only item lists are sent to the server.',
+      note: 'Install the app, open your portfolio on skinshead.pro, click “Desktop code”, and enter the 6-digit code. Leave Server URL as https://skinshead.pro.',
+      security: 'Read-only: Steam password is never requested, tokens stay on your computer, and only item lists are sent to the server.',
     };
 
   const downloads = [
@@ -957,15 +961,23 @@ function DesktopDownload({ lang }) {
   );
 }
 
-/* Stats band */
+/* Stats band — product pillars, not vanity metrics */
 function StatsBand() {
-  const t = useT(window.__lang || 'en');
-  const stats = [
-    { v: '482,180', l: 'items priced live' },
-    { v: compactUsd(31200000, { digits: 1, compact: true }), l: 'tracked / 24h' },
-    { v: '14,210', l: 'portfolios linked' },
-    { v: '99.94%', l: 'price-feed uptime' },
-  ];
+  const lang = window.__lang || 'en';
+  const t = useT(lang);
+  const stats = lang === 'ru'
+    ? [
+      { v: 'Steam', l: 'OpenID или публичный профиль' },
+      { v: 'Desktop', l: 'полный инвентарь + Storage Units' },
+      { v: 'Маркет', l: 'live-цены и история предмета' },
+      { v: 'Armory', l: 'ROI звёзд на ценах Steam' },
+    ]
+    : [
+      { v: 'Steam', l: 'OpenID or public profile' },
+      { v: 'Desktop', l: 'full inventory + Storage Units' },
+      { v: 'Market', l: 'live prices and item history' },
+      { v: 'Armory', l: 'star ROI on Steam prices' },
+    ];
   return (
     <section className="section-tight">
       <div className="container">
@@ -974,13 +986,15 @@ function StatsBand() {
           display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24,
           position: 'relative', overflow: 'hidden',
         }}>
-          {/* march line */}
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2 }}>
             <div className="march" style={{ height: '100%' }}></div>
           </div>
+          <div style={{ gridColumn: '1 / -1', marginBottom: 4 }}>
+            <div className="eyebrow" style={{ color: 'var(--accent)' }}>// {t.sections.stats}</div>
+          </div>
           {stats.map((s, i) => (
             <div key={i} style={{ position: 'relative' }}>
-              <div className="display" style={{ fontSize: 44, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em' }}>{s.v}</div>
+              <div className="display" style={{ fontSize: 36, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em' }}>{s.v}</div>
               <div className="eyebrow" style={{ marginTop: 10 }}>{s.l}</div>
             </div>
           ))}
@@ -995,20 +1009,20 @@ function SeoIntro({ lang }) {
   const copy = lang === 'ru'
     ? {
         title: 'Портфель скинов CS2',
-        sub: 'Трекер инвестиций в скины Steam и аналитика цен Counter-Strike 2',
+        sub: 'SkinsHead — трекер инвентаря Steam и аналитика цен Counter-Strike 2',
         paragraphs: [
-          'SkinsHead — это портфель скинов CS2 для инвесторов и трейдеров Counter-Strike 2. Сервис собирает live-цены Steam Community Market и сторонних площадок, показывает стоимость инвентаря, P&L, распределение по категориям и историю изменения цен.',
-          'Если вам нужен трекер инвестиций в скины Steam, а не просто список предметов, здесь есть аналитика цен скинов CS2: маркет-эксплорер, лидеры портфеля, новости рынка, ROI кейсов и Armory Pass. Подключите Steam через OpenID или вставьте ссылку на публичный профиль.',
-          'CS2 skin portfolio tracker на skinshead.pro работает в браузере без установки. Интерфейс доступен на русском и английском — удобно отслеживать Counter-Strike 2 инвентарь и принимать решения по позициям на основе реальных рыночных данных.',
+          'SkinsHead помогает считать скины CS2 как портфель: live-оценка инвентаря, себестоимость, P&L, распределение по типам и история цен по предметам. Цены собираются со Steam Community Market и сторонних площадок.',
+          'Кроме портфеля на сайте есть маркет-эксплорер, лидеры позиций, лента новостей из Telegram и калькулятор ROI Armory Pass. Подключите Steam через OpenID, откройте чужой публичный профиль по ссылке или создайте ручной портфель.',
+          'Для полного инвентаря вместе со Storage Units скачайте desktop-клиент и синхронизируйте его кодом с skinshead.pro. Интерфейс на русском и английском, валюты USD и RUB.',
         ],
       }
     : {
         title: 'CS2 skin portfolio tracker',
-        sub: 'Steam skins investment tracker and Counter-Strike 2 price analytics',
+        sub: 'SkinsHead — Steam inventory tracker and Counter-Strike 2 price analytics',
         paragraphs: [
-          'SkinsHead is a CS2 skin portfolio tracker for Counter-Strike 2 investors and traders. It aggregates live Steam Community Market and third-party listing prices, then surfaces portfolio value, P&L, allocation, and price history in one dashboard.',
-          'As a Steam skins investment tracker, it goes beyond a raw inventory list with CS2 skin price analytics: market explorer, portfolio movers, market news, case ROI, and Armory Pass payback. Link Steam via OpenID or paste a public profile URL for read-only tracking.',
-          'The Counter-Strike 2 portfolio tracker runs in the browser at skinshead.pro with Russian and English UI. Track inventory value, monitor positions, and review market intelligence without installing desktop software.',
+          'SkinsHead treats CS2 skins as a portfolio: live inventory valuation, cost basis, P&L, allocation by type, and per-item price history. Prices come from the Steam Community Market and major third-party marketplaces.',
+          'Beyond the portfolio you get a market explorer, portfolio leaders, Telegram news, and an Armory Pass ROI board. Link Steam via OpenID, open any public profile URL, or keep a manual portfolio.',
+          'For the full inventory including Storage Units, download the desktop client and sync it to skinshead.pro with a one-time code. The UI is available in Russian and English, with USD and RUB.',
         ],
       };
 
@@ -1029,24 +1043,24 @@ function SeoIntro({ lang }) {
 /* FAQ */
 const FAQ_ITEMS = {
   en: [
-    { q: 'What is a CS2 skin portfolio tracker?', a: 'A CS2 skin portfolio tracker measures the market value of your Counter-Strike 2 inventory over time. SkinsHead combines live Steam prices, P&L, allocation, and price history so you can treat skins as an investment asset class.' },
-    { q: 'How does Steam skins investment tracking work?', a: 'Link your Steam account or paste a public profile URL. We read the inventory, price each item with live market data, and show portfolio analytics including 24h change, cost basis, and top movers.' },
-    { q: 'How does Steam linking work?', a: 'Open-Auth via your Steam ID, then we read your public inventory. We never request your password or session token. You can also paste an inventory URL to track read-only.' },
-    { q: 'Where do prices come from?', a: 'We aggregate community market and major third-party listing books, weighting by recent volume and float band. Per-item provenance is shown on the detail view.' },
-    { q: 'Are float, paint seed, and stickers considered?', a: 'Yes. Valuation is float-band aware and applies per-skin sticker multipliers. Paint-seed premium tables are maintained for known pattern lines.' },
-    { q: 'Do you show Steam availability restrictions?', a: 'Yes. Steam availability status is surfaced per item so you can distinguish open and restricted inventory entries.' },
-    { q: 'What about Steam Mobile Authenticator?', a: 'Read-only tracking needs nothing. Sensitive Steam actions always stay inside Steam — we never touch SDA seeds or codes.' },
-    { q: 'Is there a free tier?', a: 'Yes. Up to 100 items tracked, 24h price refresh. Pro lifts caps and adds float scanners, alerts, and CSV export.' },
+    { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin portfolio tracker. It values a Steam inventory with live market prices and shows P&L, cost basis, allocation, market explorer, Armory Pass ROI, and Telegram news in one place.' },
+    { q: 'How do I track a portfolio?', a: 'Link Steam with OpenID, paste a public profile URL, or create a manual portfolio and add purchases. SkinsHead prices items and surfaces leaders, 24h change, and inventory breakdown.' },
+    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Storage Units. The desktop client signs into Steam on your computer and syncs the full inventory to your SkinsHead portfolio with a one-time code.' },
+    { q: 'Where do prices come from?', a: 'We combine Steam Community Market data with major third-party marketplaces. Each item page shows available offers and price history from the providers we could reach.' },
+    { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. The desktop client keeps tokens locally and only sends item lists to the server. We never request SDA seeds or authenticator codes.' },
+    { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
+    { q: 'Is SkinsHead free?', a: 'Yes. Portfolio tracking, market explorer, Armory ROI, news, and the desktop sync flow are available without a paid plan.' },
+    { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
-    { q: 'Что такое портфель скинов CS2?', a: 'Портфель скинов CS2 — это оценка и аналитика вашего инвентаря Counter-Strike 2: live-цены, P&L, распределение по категориям и история стоимости. SkinsHead собирает эти данные в одном дашборде.' },
-    { q: 'Как работает трекер инвестиций в скины Steam?', a: 'Привяжите Steam через OpenID или вставьте ссылку на публичный профиль. Сервис читает инвентарь, оценивает предметы по рынку и показывает аналитику: изменение за 24ч, себестоимость и лидеров портфеля.' },
-    { q: 'Как работает привязка Steam?', a: 'OpenID через Steam ID, далее читаем публичный инвентарь. Пароль и токены сессии не запрашиваем. Можно вставить URL инвентаря для read-only режима.' },
-    { q: 'Откуда берутся цены?', a: 'Агрегируем community market и крупные сторонние книги ставок, взвешиваем по объёму и float-бэнду. На карточке предмета показан per-item provenance.' },
-    { q: 'Учитываются ли float, paint seed и наклейки?', a: 'Да. Оценка зависит от float-бэнда, применяет per-skin множители наклеек. Для известных pattern-line ведём таблицы premium-ов по seed.' },
-    { q: 'Показываете ли ограничения доступности Steam?', a: 'Да. Для каждого предмета виден статус Steam, чтобы можно было отличать открытые и ограниченные позиции.' },
-    { q: 'А Steam Mobile Authenticator?', a: 'Для read-only ничего не нужно. Все чувствительные действия остаются внутри Steam, SDA-seed-ов мы не касаемся.' },
-    { q: 'Есть бесплатный тариф?', a: 'Да. До 100 предметов и 24-часовой refresh. Pro снимает лимиты, добавляет float-сканер, алерты и CSV-экспорт.' },
+    { q: 'Что такое SkinsHead?', a: 'SkinsHead — трекер портфеля скинов CS2. Сервис оценивает инвентарь Steam по live-ценам и показывает P&L, себестоимость, распределение, маркет, ROI Armory Pass и новости из Telegram в одном месте.' },
+    { q: 'Как отслеживать портфель?', a: 'Привяжите Steam через OpenID, вставьте ссылку на публичный профиль или создайте ручной портфель и добавьте покупки. SkinsHead оценит предметы и покажет лидеров, изменение за 24ч и разбивку инвентаря.' },
+    { q: 'Зачем нужен desktop?', a: 'Публичный инвентарь Steam обычно не включает Storage Units. Desktop-клиент входит в Steam на вашем компьютере и синхронизирует полный инвентарь в портфель SkinsHead по одноразовому коду.' },
+    { q: 'Откуда берутся цены?', a: 'Собираем данные Steam Community Market и крупных сторонних площадок. На карточке предмета видны доступные предложения и история цен из источников, до которых удалось достучаться.' },
+    { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. В desktop токены остаются локально, на сервер уходит только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
+    { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
+    { q: 'SkinsHead бесплатный?', a: 'Да. Портфель, маркет, Armory ROI, новости и синхронизация через desktop доступны без платной подписки.' },
+    { q: 'Вы связаны с Valve?', a: 'Нет. SkinsHead — независимый проект и не аффилирован со Steam, Valve или Counter-Strike.' },
   ],
 };
 
@@ -1062,10 +1076,12 @@ function FAQ({ lang }) {
           <div>
             <p style={{ color: 'var(--fg-1)', lineHeight: 1.6, fontSize: 15 }}>
               {lang === 'ru'
-                ? 'Не нашли ответ? Напишите нам — отвечаем в течение часа в рабочее время.'
-                : 'Couldn\'t find what you needed? Email us — we answer within an hour during business hours.'}
+                ? 'Не нашли ответ? Напишите на support@skinshead.pro — разберёмся с портфелем, desktop или ценами.'
+                : 'Still stuck? Email support@skinshead.pro — we can help with portfolio, desktop sync, or pricing.'}
             </p>
-            <button className="btn btn-ghost btn-sm" style={{ marginTop: 16 }}>support@steaminvest.local →</button>
+            <a className="btn btn-ghost btn-sm" href="mailto:support@skinshead.pro" style={{ marginTop: 16, display: 'inline-flex' }}>
+              support@skinshead.pro →
+            </a>
           </div>
           <div className="glass" style={{ overflow: 'hidden' }}>
             {items.map((it, i) => (
@@ -1142,6 +1158,18 @@ function MarketFilterGroup({ label, value, options, onChange }) {
 
 /* Footer */
 function Footer({ lang }) {
+  const columns = lang === 'ru'
+    ? [
+      { h: 'Продукт', items: ['Портфель', 'Маркет CS2', 'Armory Pass', 'Desktop'] },
+      { h: 'Возможности', items: ['Публичный профиль', 'Избранные профили', 'Новости Telegram', 'CSV-экспорт'] },
+      { h: 'SkinsHead', items: ['О сервисе', 'Поддержка', 'USD / RUB', 'RU / EN'] },
+    ]
+    : [
+      { h: 'Product', items: ['Portfolio', 'CS2 market', 'Armory Pass', 'Desktop'] },
+      { h: 'Features', items: ['Public profiles', 'Favorite profiles', 'Telegram news', 'CSV export'] },
+      { h: 'SkinsHead', items: ['About', 'Support', 'USD / RUB', 'RU / EN'] },
+    ];
+
   return (
     <footer style={{ padding: '64px 64px 48px', borderTop: '1px solid var(--line)' }}>
       <div className="container" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 32 }}>
@@ -1149,15 +1177,11 @@ function Footer({ lang }) {
           <Logo />
           <p style={{ marginTop: 16, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.6, maxWidth: 320 }}>
             {lang === 'ru'
-              ? 'Независимый трекер инвестиций в скины CS2 и аналитика цен Counter-Strike 2 на skinshead.pro. Не аффилирован со Steam, Valve или CSGO.'
-              : 'Independent Steam skins investment tracker and CS2 skin price analytics at skinshead.pro. Not affiliated with Steam, Valve, or CSGO.'}
+              ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI и desktop для Storage Units. Не аффилирован со Steam, Valve или Counter-Strike.'
+              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI, and desktop sync for Storage Units. Not affiliated with Steam, Valve, or Counter-Strike.'}
           </p>
         </div>
-        {[
-          { h: 'Product', items: ['Dashboard', 'Watchlist', 'API', 'Pricing'] },
-          { h: 'Resources', items: ['Float guide', 'Pattern atlas', 'Case ROI', 'Changelog'] },
-          { h: 'Company', items: ['About', 'Privacy', 'Terms', 'Contact'] },
-        ].map((c, i) => (
+        {columns.map((c, i) => (
           <div key={i}>
             <div className="eyebrow">{c.h}</div>
             <ul style={{ marginTop: 14, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1169,8 +1193,8 @@ function Footer({ lang }) {
         ))}
       </div>
       <div style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', fontSize: 11 }}>
-        <span>© 2026 STEAM/INVEST · all rights reserved</span>
-        <span>build 0824-A · 12ms median</span>
+        <span>© 2026 SKINS/HEAD · skinshead.pro</span>
+        <span>{lang === 'ru' ? 'не аффилирован с Valve' : 'not affiliated with Valve'}</span>
       </div>
     </footer>
   );

@@ -1,0 +1,26 @@
+{
+  "subject": "AK-47 Asiimov",
+  "route": "general-object + projection-first finish",
+  "cs2Family": "rifle",
+  "cs2SkillStatus": "unsupported-family in img2threejs v1.4 knife-only CS2 gates — using general object pipeline with rifle anatomy vocabulary and multi-view projection",
+  "views": {
+    "front": "assets/ak47-asiimov/front.png + front-delit.png",
+    "back": "assets/ak47-asiimov/back.png + back-delit.png",
+    "threequarter": "assets/ak47-asiimov/threequarter.png (generated) + threequarter-delit.png",
+    "top": "assets/ak47-asiimov/top.png (generated) + top-delit.png"
+  },
+  "pipeline": [
+    "probe_image (pass)",
+    "delight_albedo front/back/3q/top",
+    "column silhouette trace → geo-outline.json",
+    "extruded silhouette + volumetric furniture",
+    "planar UV projection of de-lit front/back albedos"
+  ],
+  "exactnessTier": "image-matched-approximation",
+  "confidence": {
+    "silhouette": 0.75,
+    "paintedFinish": 0.8,
+    "thickness": 0.45,
+    "hiddenSides": 0.5
+  }
+}

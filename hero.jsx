@@ -44,8 +44,8 @@ function HeroConcept_GlockGhost() {
         textAlign: 'center', pointerEvents: 'none', zIndex: 2,
       }}>
         <div className="eyebrow" style={{ color: 'var(--accent)' }}>// GLOCK-18 · GHOST PROTOCOL</div>
-        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 22, fontWeight: 500, color: 'var(--fg-0)' }}>IMG2THREEJS SHOWCASE</div>
-        <div className="eyebrow" style={{ marginTop: 4 }}>OFFICIAL FACTORY · DRAG TO ORBIT</div>
+        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 22, fontWeight: 500, color: 'var(--fg-0)' }}>SKINSHEAD 3D</div>
+        <div className="eyebrow" style={{ marginTop: 4 }}>DRAG TO ORBIT</div>
       </div>
     </div>
   );
@@ -111,7 +111,7 @@ function HeroConcept_Ak47Asiimov() {
       }}>
         <div className="eyebrow" style={{ color: 'var(--accent)' }}>// AK-47 · ASIIMOV</div>
         <div style={{ fontFamily: 'var(--f-mono)', fontSize: 28, fontWeight: 500, color: 'var(--fg-0)' }}>FIELD-TESTED</div>
-        <div className="eyebrow" style={{ marginTop: 4 }}>IMG2THREEJS PROJECTION · DRAG TO ORBIT</div>
+        <div className="eyebrow" style={{ marginTop: 4 }}>SKINSHEAD 3D · DRAG TO ORBIT</div>
       </div>
     </div>
   );
@@ -848,17 +848,17 @@ function Glock3DPage({ lang }) {
 
   const copy = lang === 'ru'
     ? {
-      eyebrow: '// IMG2THREEJS SHOWCASE',
+      eyebrow: '// SKINSHEAD · 3D PREVIEW',
       title: 'Glock-18 · Ghost Protocol',
-      sub: 'Официальная procedural-модель из img2threejs. Крутите мышью — полный 3D с projection-текстурами.',
-      hint: 'DRAG TO ORBIT',
+      sub: 'Интерактивный 3D-превью скина на SkinsHead. Крутите мышью, разбирайте модель и смотрите форму в деталях.',
+      hint: 'ТЯНИТЕ ДЛЯ ОРБИТЫ',
       explode: 'Разобрать',
       assemble: 'Собрать',
     }
     : {
-      eyebrow: '// IMG2THREEJS SHOWCASE',
+      eyebrow: '// SKINSHEAD · 3D PREVIEW',
       title: 'Glock-18 · Ghost Protocol',
-      sub: 'Official procedural model from img2threejs. Drag to orbit — full 3D with projection textures.',
+      sub: 'Interactive CS2 skin preview on SkinsHead. Drag to orbit, explode the model, and inspect the shape up close.',
       hint: 'DRAG TO ORBIT',
       explode: 'Explode',
       assemble: 'Assemble',
