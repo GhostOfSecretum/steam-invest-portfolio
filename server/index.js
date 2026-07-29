@@ -515,6 +515,14 @@ app.get('/favorites', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));
 });
 
+app.get('/glock-3d', (req, res) => {
+  res.sendFile(path.join(rootDir, appFile));
+});
+
+app.get('/glock3d', (req, res) => {
+  res.redirect(301, '/glock-3d');
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));
 });

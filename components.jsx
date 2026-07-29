@@ -4,7 +4,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 /* ─────────── i18n ─────────── */
 const I18N = {
   en: {
-    nav: { home: 'Home', dashboard: 'Dashboard', favorites: 'Favorite Profiles', news: 'News', armory: 'Armory Pass', item: 'Item Detail', currency: 'Currency' },
+    nav: { home: 'Home', dashboard: 'Dashboard', favorites: 'Favorite Profiles', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item Detail', currency: 'Currency' },
     hero: {
       eyebrow: 'Counter-Strike 2 Inventory Intelligence',
       title1: 'Your skins',
@@ -108,7 +108,7 @@ const I18N = {
     }
   },
   ru: {
-    nav: { home: 'Главная', dashboard: 'Портфель', favorites: 'Избранные профили', news: 'Новости', armory: 'Armory Pass', item: 'Карточка', currency: 'Валюта' },
+    nav: { home: 'Главная', dashboard: 'Портфель', favorites: 'Избранные профили', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
     hero: {
       eyebrow: 'Counter-Strike 2 · Аналитика инвентаря',
       title1: 'Скины Counter-Strike 2 —',
@@ -322,6 +322,7 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
             { k: 'favorites', label: t.nav.favorites },
             { k: 'news', label: t.nav.news },
             { k: 'armory', label: t.nav.armory },
+            { k: 'glock3d', label: t.nav.glock3d },
           ].map(it => (
             <button key={it.k} className="nav-link" data-active={screen === it.k} onClick={() => onNav(it.k)}>{it.label}</button>
           ))}

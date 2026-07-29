@@ -5,24 +5,131 @@ const { useState, useEffect, useRef, useMemo } = React;
    HERO — 4 swappable 3D concepts + dense content
    ─────────────────────────────────────────────────── */
 
-/* Concept 1: Floating Knife with chromatic float-value rings */
-function HeroConcept_Knife() {
-  const ref = useRef(null);
+/* Concept: official img2threejs Glock-18 Ghost Protocol showcase factory */
+function HeroConcept_GlockGhost() {
+  const mountRef = useRef(null);
+
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let raf;
-    let t = 0;
-    const tick = () => {
-      t += 0.4;
-      el.style.transform = `rotateY(${t}deg) rotateX(${Math.sin(t / 60) * 12}deg)`;
-      raf = requestAnimationFrame(tick);
+    const el = mountRef.current;
+    if (!el || typeof window.mountHeroGlockGhost !== 'function') return undefined;
+    const handle = window.mountHeroGlockGhost(el);
+    return () => {
+      if (handle && typeof handle.dispose === 'function') handle.dispose();
     };
-    tick();
-    return () => cancelAnimationFrame(raf);
   }, []);
 
-  // chromatic float rings
+  return (
+    <div className="hero-3d-stage" style={{ perspective: 1400 }}>
+      <div
+        style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse at 50% 45%, oklch(0.28 0.08 15 / 0.55), transparent 62%)',
+          pointerEvents: 'none',
+        }}
+      />
+      <div
+        ref={mountRef}
+        className="hero-glock-canvas"
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: 'min(100%, 560px)',
+          height: 'min(100%, 520px)',
+          cursor: 'grab',
+        }}
+        aria-label="Glock-18 Ghost Protocol 3D — img2threejs showcase"
+      />
+      <div style={{
+        position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',
+        textAlign: 'center', pointerEvents: 'none', zIndex: 2,
+      }}>
+        <div className="eyebrow" style={{ color: 'var(--accent)' }}>// GLOCK-18 · GHOST PROTOCOL</div>
+        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 22, fontWeight: 500, color: 'var(--fg-0)' }}>IMG2THREEJS SHOWCASE</div>
+        <div className="eyebrow" style={{ marginTop: 4 }}>OFFICIAL FACTORY · DRAG TO ORBIT</div>
+      </div>
+    </div>
+  );
+}
+
+/* Concept 1b: AK-47 Asiimov from reference PNG */
+function HeroConcept_Ak47Asiimov() {
+  const mountRef = useRef(null);
+
+  useEffect(() => {
+    const el = mountRef.current;
+    if (!el || typeof window.mountHeroAk47Asiimov !== 'function') return undefined;
+    const handle = window.mountHeroAk47Asiimov(el);
+    return () => {
+      if (handle && typeof handle.dispose === 'function') handle.dispose();
+    };
+  }, []);
+
+  const rings = [
+    { r: 250, color: 'oklch(0.78 0.16 150)', label: 'FN', val: '0.00–0.07' },
+    { r: 300, color: 'oklch(0.82 0.18 55)', label: 'MW', val: '0.07–0.15' },
+    { r: 350, color: 'oklch(0.78 0.18 45)', label: 'FT', val: '0.15–0.38' },
+    { r: 400, color: 'oklch(0.72 0.18 35)', label: 'WW', val: '0.38–0.45' },
+    { r: 450, color: 'oklch(0.66 0.2 25)', label: 'BS', val: '0.45–1.00' },
+  ];
+
+  return (
+    <div className="hero-3d-stage" style={{ perspective: 1400 }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
+        {rings.map((r, i) => (
+          <div key={i} style={{
+            position: 'absolute', width: r.r, height: r.r, borderRadius: '50%',
+            border: `1px solid ${r.color.replace(')', ' / 0.32)')}`,
+            boxShadow: `0 0 28px ${r.color.replace(')', ' / 0.12)')} inset`,
+            animation: `ringSpin ${20 + i * 4}s linear infinite ${i % 2 ? 'reverse' : ''}`,
+          }}>
+            <span style={{
+              position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+              padding: '2px 8px', borderRadius: 4,
+              fontFamily: 'var(--f-mono)', fontSize: 9.5, letterSpacing: '0.18em',
+              color: r.color, background: 'var(--bg-0)', border: `1px solid ${r.color.replace(')', ' / 0.4)')}`,
+            }}>{r.label} · {r.val}</span>
+          </div>
+        ))}
+      </div>
+
+      <div
+        ref={mountRef}
+        className="hero-ak47-canvas"
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: 'min(100%, 560px)',
+          height: 'min(100%, 520px)',
+          cursor: 'grab',
+        }}
+        aria-label="AK-47 Asiimov 3D preview"
+      />
+
+      <div style={{
+        position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',
+        textAlign: 'center', pointerEvents: 'none', zIndex: 2,
+      }}>
+        <div className="eyebrow" style={{ color: 'var(--accent)' }}>// AK-47 · ASIIMOV</div>
+        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 28, fontWeight: 500, color: 'var(--fg-0)' }}>FIELD-TESTED</div>
+        <div className="eyebrow" style={{ marginTop: 4 }}>IMG2THREEJS PROJECTION · DRAG TO ORBIT</div>
+      </div>
+    </div>
+  );
+}
+
+/* Concept 1: Procedural Three.js Classic Knife · Fade + float rings */
+function HeroConcept_Knife() {
+  const mountRef = useRef(null);
+
+  useEffect(() => {
+    const el = mountRef.current;
+    if (!el || typeof window.mountHeroKnife !== 'function') return undefined;
+    const handle = window.mountHeroKnife(el);
+    return () => {
+      if (handle && typeof handle.dispose === 'function') handle.dispose();
+    };
+  }, []);
+
   const rings = [
     { r: 240, color: 'oklch(0.78 0.16 150)', label: 'FN', val: '0.00–0.07' },
     { r: 290, color: 'oklch(0.82 0.18 130)', label: 'MW', val: '0.07–0.15' },
@@ -33,7 +140,6 @@ function HeroConcept_Knife() {
 
   return (
     <div className="hero-3d-stage" style={{ perspective: 1400 }}>
-      {/* concentric rings */}
       <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
         {rings.map((r, i) => (
           <div key={i} style={{
@@ -52,90 +158,26 @@ function HeroConcept_Knife() {
         ))}
       </div>
 
-      {/* combat blade — bowie/tactical silhouette */}
-      <div ref={ref} style={{
-        position: 'relative', transformStyle: 'preserve-3d', width: 460, height: 460,
-        display: 'grid', placeItems: 'center',
-      }}>
-        <svg viewBox="0 0 600 200" width="500" height="167" style={{
-          filter: 'drop-shadow(0 12px 40px oklch(0.68 0.22 5 / 0.45)) drop-shadow(0 0 20px oklch(0.68 0.22 5 / 0.3))',
-          transform: 'rotate(-12deg)',
-        }}>
-          <defs>
-            <linearGradient id="blade" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#e8ecf2" />
-              <stop offset="40%" stopColor="#c8cdd6" />
-              <stop offset="55%" stopColor="#f6f7fb" />
-              <stop offset="80%" stopColor="#7a8090" />
-              <stop offset="100%" stopColor="#4a5060" />
-            </linearGradient>
-            <linearGradient id="bladeEdge" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.92 0.08 5)" />
-              <stop offset="100%" stopColor="#fff" />
-            </linearGradient>
-            <linearGradient id="grip" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#3a3f4c" />
-              <stop offset="50%" stopColor="#1a1e28" />
-              <stop offset="100%" stopColor="#0a0c11" />
-            </linearGradient>
-            <linearGradient id="bolster" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.78 0.18 5)" />
-              <stop offset="100%" stopColor="oklch(0.5 0.22 5)" />
-            </linearGradient>
-          </defs>
+      <div
+        ref={mountRef}
+        className="hero-knife-canvas"
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: 'min(100%, 520px)',
+          height: 'min(100%, 520px)',
+          cursor: 'grab',
+        }}
+        aria-label="Classic Knife Fade 3D preview"
+      />
 
-          {/* Blade — bowie/clip-point shape, pointing right */}
-          <path d="M 200 90
-                   L 380 80
-                   Q 460 78 520 88
-                   L 560 100
-                   L 510 112
-                   Q 460 115 380 110
-                   L 200 100
-                   Z"
-                fill="url(#blade)" stroke="rgba(0,0,0,0.4)" strokeWidth="0.5" />
-
-          {/* Blade tip refinement (clip point) */}
-          <path d="M 480 88 L 560 100 L 480 112 Z" fill="url(#blade)" />
-
-          {/* Edge highlight */}
-          <path d="M 210 102 Q 380 108 510 110" stroke="url(#bladeEdge)" strokeWidth="1" fill="none" opacity="0.7" />
-
-          {/* Fuller groove */}
-          <path d="M 240 96 L 470 92" stroke="rgba(0,0,0,0.25)" strokeWidth="1.5" fill="none" />
-          <path d="M 240 98 L 470 94" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" fill="none" />
-
-          {/* Spine line */}
-          <path d="M 200 90 L 380 80 Q 460 78 510 88" stroke="rgba(255,255,255,0.5)" strokeWidth="0.8" fill="none" />
-
-          {/* Bolster / guard */}
-          <path d="M 175 70 L 200 80 L 200 110 L 175 122 Q 165 96 175 70 Z" fill="url(#bolster)" stroke="rgba(0,0,0,0.5)" strokeWidth="0.5" />
-
-          {/* Grip / handle */}
-          <path d="M 50 80 Q 35 82 30 96 Q 35 110 50 112 L 175 122 L 175 70 Z" fill="url(#grip)" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-
-          {/* Grip rivets */}
-          <circle cx="80" cy="90" r="3" fill="#2a2f3c" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-          <circle cx="120" cy="92" r="3" fill="#2a2f3c" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-          <circle cx="80" cy="103" r="3" fill="#2a2f3c" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-          <circle cx="120" cy="105" r="3" fill="#2a2f3c" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-
-          {/* Pommel */}
-          <circle cx="32" cy="96" r="6" fill="url(#grip)" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-
-          {/* Lanyard hole */}
-          <circle cx="44" cy="96" r="2.5" fill="#000" />
-        </svg>
-      </div>
-
-      {/* center readout */}
       <div style={{
-        position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, calc(-50% + 200px))',
-        textAlign: 'center', pointerEvents: 'none',
+        position: 'absolute', left: '50%', bottom: 28, transform: 'translateX(-50%)',
+        textAlign: 'center', pointerEvents: 'none', zIndex: 2,
       }}>
-        <div className="eyebrow" style={{ color: 'var(--accent)' }}>// FLOAT VALUE</div>
-        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 32, fontWeight: 500, color: 'var(--fg-0)' }}>0.0184</div>
-        <div className="eyebrow" style={{ marginTop: 4 }}>FACTORY NEW · TIER 4</div>
+        <div className="eyebrow" style={{ color: 'var(--accent)' }}>// CLASSIC KNIFE · FADE</div>
+        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 28, fontWeight: 500, color: 'var(--fg-0)' }}>0.0184</div>
+        <div className="eyebrow" style={{ marginTop: 4 }}>FACTORY NEW · DRAG TO ORBIT</div>
       </div>
     </div>
   );
@@ -627,7 +669,7 @@ function HeroConcept_Operators({ lang, onItemClick }) {
   );
 }
 
-/* Hero locked to Operators concept */
+/* Hero stage: Operators concept */
 function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
   const t = useT(lang);
   const [profileUrl, setProfileUrl] = useState('');
@@ -779,4 +821,94 @@ function Bracket({ pos }) {
   return <div style={{ position: 'absolute', width: 20, height: 20, borderColor: 'var(--accent)', opacity: 0.4, ...styles[pos] }}></div>;
 }
 
-Object.assign(window, { Hero });
+/* Full-page Glock Ghost Protocol viewer (img2threejs showcase) */
+function Glock3DPage({ lang }) {
+  const mountRef = useRef(null);
+  const handleRef = useRef(null);
+  const [exploded, setExploded] = useState(false);
+
+  useEffect(() => {
+    const el = mountRef.current;
+    if (!el || typeof window.mountHeroGlockGhost !== 'function') return undefined;
+    const handle = window.mountHeroGlockGhost(el);
+    handleRef.current = handle;
+    return () => {
+      handleRef.current = null;
+      if (handle && typeof handle.dispose === 'function') handle.dispose();
+    };
+  }, []);
+
+  const toggleExplode = () => {
+    const next = !exploded;
+    setExploded(next);
+    if (handleRef.current && typeof handleRef.current.setExplode === 'function') {
+      handleRef.current.setExplode(next ? 1 : 0);
+    }
+  };
+
+  const copy = lang === 'ru'
+    ? {
+      eyebrow: '// IMG2THREEJS SHOWCASE',
+      title: 'Glock-18 · Ghost Protocol',
+      sub: 'Официальная procedural-модель из img2threejs. Крутите мышью — полный 3D с projection-текстурами.',
+      hint: 'DRAG TO ORBIT',
+      explode: 'Разобрать',
+      assemble: 'Собрать',
+    }
+    : {
+      eyebrow: '// IMG2THREEJS SHOWCASE',
+      title: 'Glock-18 · Ghost Protocol',
+      sub: 'Official procedural model from img2threejs. Drag to orbit — full 3D with projection textures.',
+      hint: 'DRAG TO ORBIT',
+      explode: 'Explode',
+      assemble: 'Assemble',
+    };
+
+  return (
+    <section className="glock3d-page" style={{ padding: '32px 0 64px', minHeight: 'calc(100vh - 90px)' }}>
+      <div className="container" style={{ maxWidth: 1100 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <div className="eyebrow" style={{ color: 'var(--accent)', marginBottom: 10 }}>{copy.eyebrow}</div>
+            <h1 className="display" style={{ fontSize: 36, fontWeight: 500, letterSpacing: '-0.03em', margin: 0 }}>{copy.title}</h1>
+            <p style={{ color: 'var(--fg-2)', maxWidth: 560, marginTop: 10, lineHeight: 1.5 }}>{copy.sub}</p>
+          </div>
+          <button
+            type="button"
+            className={`btn ${exploded ? 'btn-ghost' : 'btn-primary'}`}
+            onClick={toggleExplode}
+            style={{ flexShrink: 0 }}
+          >
+            {exploded ? copy.assemble : copy.explode}
+          </button>
+        </div>
+
+        <div
+          className="glass"
+          style={{
+            marginTop: 28,
+            padding: 8,
+            position: 'relative',
+            height: 'min(72vh, 680px)',
+            minHeight: 420,
+            overflow: 'hidden',
+            background: 'radial-gradient(ellipse at 50% 42%, oklch(0.28 0.08 15 / 0.45), transparent 65%), var(--bg-1)',
+          }}
+        >
+          <div
+            ref={mountRef}
+            style={{ width: '100%', height: '100%', cursor: 'grab' }}
+            aria-label={copy.title}
+          />
+          <div style={{
+            position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)',
+            fontFamily: 'var(--f-mono)', fontSize: 11, letterSpacing: '0.16em',
+            color: 'var(--fg-3)', pointerEvents: 'none',
+          }}>{copy.hint}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+Object.assign(window, { Hero, Glock3DPage });
