@@ -588,8 +588,10 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           <div className="eyebrow">{t.dash.activity}</div>
           <ActivityTable
             activity={data.activity}
+            portfolioId={activePortfolioId}
             portfolioType={data.portfolioType}
             lang={lang}
+            onEventDeleted={() => portfolio.reload(false)}
           />
         </div>
       </div>
@@ -615,9 +617,10 @@ function activityKindLabel(kind, lang) {
   return (lang === 'ru' ? ru : en)[kind] || kind;
 }
 
-function ActivityTable({ activity, portfolioType, lang }) {
+function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDeleted }) {
   const rows = (Array.isArray(activity) ? activity : []).filter((row) => row && row.kind && row.at);
   const isManual = portfolioType === 'manual';
+  const [deletingId, setDeletingId] = useState(null);
 
   if (!rows.length) {
     const empty = isManual
@@ -648,9 +651,32 @@ function ActivityTable({ activity, portfolioType, lang }) {
     verticalAlign: 'top',
   };
 
+  const deleteEvent = async (row) => {
+    if (!isManual || !portfolioId || !row.id) return;
+    const qtyLabel = Number.isFinite(row.qtyDelta) && row.qtyDelta !== 0
+      ? `${row.qtyDelta > 0 ? '+' : ''}${row.qtyDelta}`
+      : '';
+    const confirmText = lang === 'ru'
+      ? `Удалить транзакцию «${row.name || row.marketHashName}»${qtyLabel ? ` (${qtyLabel})` : ''}?\nКоличество и себестоимость позиции будут пересчитаны.`
+      : `Delete transaction “${row.name || row.marketHashName}”${qtyLabel ? ` (${qtyLabel})` : ''}?\nPosition quantity and cost basis will be recalculated.`;
+    if (!window.confirm(confirmText)) return;
+
+    setDeletingId(row.id);
+    try {
+      await apiFetch(
+        `/api/portfolios/${encodeURIComponent(portfolioId)}/events/${encodeURIComponent(row.id)}`,
+        { method: 'DELETE' },
+      );
+      if (onEventDeleted) onEventDeleted();
+    } catch (err) {
+      window.alert(err.message || (lang === 'ru' ? 'Не удалось удалить транзакцию' : 'Could not delete transaction'));
+    }
+    setDeletingId(null);
+  };
+
   return (
     <div style={{ marginTop: 14, overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isManual ? 560 : 480 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isManual ? 620 : 480 }}>
         <thead>
           <tr>
             <th style={{ ...headerStyle, textAlign: 'left' }}>{lang === 'ru' ? 'Дата' : 'Date'}</th>
@@ -660,6 +686,7 @@ function ActivityTable({ activity, portfolioType, lang }) {
             {isManual && (
               <th style={{ ...headerStyle, textAlign: 'right' }}>{lang === 'ru' ? 'Цена/шт.' : 'Basis'}</th>
             )}
+            {isManual && <th style={{ ...headerStyle, textAlign: 'right' }} />}
           </tr>
         </thead>
         <tbody>
@@ -673,6 +700,7 @@ function ActivityTable({ activity, portfolioType, lang }) {
             const basisLabel = Number.isFinite(row.basisPerUnit)
               ? formatMoney(row.basisPerUnit, { currency: row.currency === 'rub' || row.currency === 'rur' ? 'rub' : 'usd', digits: 2 })
               : '—';
+            const canDelete = isManual && portfolioId && row.id;
             return (
               <tr key={row.id || `${row.at}-${row.marketHashName}-${row.kind}`}>
                 <td style={{ ...cellStyle, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)', whiteSpace: 'nowrap' }}>
@@ -692,6 +720,21 @@ function ActivityTable({ activity, portfolioType, lang }) {
                 {isManual && (
                   <td style={{ ...cellStyle, textAlign: 'right', fontFamily: 'var(--f-mono)', color: 'var(--fg-2)' }}>
                     {basisLabel}
+                  </td>
+                )}
+                {isManual && (
+                  <td style={{ ...cellStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {canDelete ? (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        disabled={deletingId === row.id}
+                        onClick={() => deleteEvent(row)}
+                        title={lang === 'ru' ? 'Удалить транзакцию и пересчитать позицию' : 'Delete transaction and recalculate position'}
+                      >
+                        {deletingId === row.id ? '...' : (lang === 'ru' ? 'Удалить' : 'Delete')}
+                      </button>
+                    ) : null}
                   </td>
                 )}
               </tr>

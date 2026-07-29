@@ -183,13 +183,18 @@ async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
   const basis = await makeBasisRecord(marketHashName, payload.basisPerUnit, payload.currency);
   const now = new Date().toISOString();
   // Manual table stacks by marketHashName — keep a single row per name so edit/delete match UI totals.
-  const existing = (portfolio.items || []).find((entry) => entry.marketHashName === marketHashName);
+  const siblings = (portfolio.items || []).filter((entry) => entry.marketHashName === marketHashName);
+  const existing = siblings[0];
   if (existing) {
-    const qtyBefore = safeQty(existing.quantity ?? existing.amount);
+    const qtyBefore = siblings.reduce((sum, entry) => sum + safeQty(entry.quantity ?? entry.amount), 0);
     const qtyAfter = qtyBefore + quantity;
+    // Weighted-average cost basis across existing lots + this purchase (do not overwrite).
+    existing.basis = averageBasisRecords([
+      ...siblings.map((entry) => ({ qty: safeQty(entry.quantity ?? entry.amount), basis: entry.basis })),
+      { qty: quantity, basis },
+    ]) || basis;
     existing.quantity = qtyAfter;
     existing.amount = qtyAfter;
-    existing.basis = basis;
     existing.name = String(payload.name || existing.name || marketHashName).trim();
     existing.iconUrl = normalizeOptionalUrl(payload.iconUrl) || existing.iconUrl || null;
     existing.marketUrl = normalizeOptionalUrl(payload.marketUrl) || existing.marketUrl || null;
@@ -198,6 +203,11 @@ async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
     existing.wear = normalizeOptionalString(payload.wear) || existing.wear || null;
     if (Number.isFinite(Number(payload.tier))) existing.tier = Number(payload.tier);
     existing.updatedAt = now;
+    if (siblings.length > 1) {
+      portfolio.items = portfolio.items.filter((entry) => (
+        entry.id === existing.id || entry.marketHashName !== marketHashName
+      ));
+    }
     portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
       at: now,
       kind: 'qty_up',
@@ -278,6 +288,192 @@ async function deleteManualPortfolioItem(ownerId, portfolioId, itemId) {
   portfolio.updatedAt = now;
   await writeManualPortfolioStore(store);
   return true;
+}
+
+async function deleteManualPortfolioEvent(ownerId, portfolioId, eventId) {
+  const id = String(eventId || '').trim();
+  if (!id) {
+    const err = new Error('Event id is required');
+    err.status = 400;
+    err.code = 'missing_event_id';
+    throw err;
+  }
+
+  const store = await readManualPortfolioStore();
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
+  const portfolio = bucket.portfolios.find((entry) => entry.id === portfolioId);
+  if (!portfolio) {
+    const err = new Error('Manual portfolio not found');
+    err.status = 404;
+    err.code = 'portfolio_not_found';
+    throw err;
+  }
+
+  // Ensure backfilled events are materialised before delete.
+  if (!Array.isArray(portfolio.events) || !portfolio.events.length) {
+    portfolio.events = backfillManualEvents(portfolio);
+  }
+
+  const eventIndex = portfolio.events.findIndex((entry) => entry && entry.id === id);
+  if (eventIndex < 0) {
+    const err = new Error('Transaction not found');
+    err.status = 404;
+    err.code = 'event_not_found';
+    throw err;
+  }
+
+  const event = portfolio.events[eventIndex];
+  const marketHashName = String(event.marketHashName || '').trim();
+  const qtyDelta = Number(event.qtyDelta);
+  const now = new Date().toISOString();
+
+  if (marketHashName && Number.isFinite(qtyDelta) && qtyDelta !== 0) {
+    if (qtyDelta > 0) {
+      // Undo a purchase / qty increase: remove that lot from the stack.
+      await applyRemoveLotFromPortfolio(portfolio, {
+        marketHashName,
+        name: event.name || marketHashName,
+        qty: qtyDelta,
+        basisPerUnit: event.basisPerUnit,
+        currency: event.currency,
+        now,
+      });
+    } else {
+      // Undo a sale / qty decrease: restore that lot.
+      await applyRestoreLotToPortfolio(portfolio, {
+        marketHashName,
+        name: event.name || marketHashName,
+        qty: Math.abs(qtyDelta),
+        basisPerUnit: event.basisPerUnit,
+        currency: event.currency,
+        now,
+      });
+    }
+  }
+
+  portfolio.events.splice(eventIndex, 1);
+  portfolio.updatedAt = now;
+  await writeManualPortfolioStore(store);
+  return { ok: true, eventId: id };
+}
+
+async function applyRemoveLotFromPortfolio(portfolio, { marketHashName, qty, basisPerUnit, currency, now }) {
+  const siblings = (portfolio.items || []).filter((item) => item.marketHashName === marketHashName);
+  if (!siblings.length) return;
+
+  const primary = siblings[0];
+  const qtyBefore = siblings.reduce((sum, item) => sum + safeQty(item.quantity ?? item.amount), 0);
+  const removeQty = Math.min(safeQty(qty), qtyBefore);
+  if (removeQty <= 0) return;
+
+  const remainingQty = qtyBefore - removeQty;
+  if (remainingQty <= 0) {
+    portfolio.items = portfolio.items.filter((item) => item.marketHashName !== marketHashName);
+    return;
+  }
+
+  const currentBasis = averageBasisRecords(
+    siblings.map((item) => ({ qty: safeQty(item.quantity ?? item.amount), basis: item.basis })),
+  );
+  let nextBasis = currentBasis;
+  if (currentBasis && Number.isFinite(Number(basisPerUnit))) {
+    const lotBasis = await makeBasisRecord(marketHashName, basisPerUnit, currency || currentBasis.currency || 'usd');
+    nextBasis = subtractLotFromBasis(currentBasis, qtyBefore, removeQty, lotBasis) || currentBasis;
+  }
+
+  primary.quantity = remainingQty;
+  primary.amount = remainingQty;
+  if (nextBasis) primary.basis = nextBasis;
+  primary.updatedAt = now;
+  if (siblings.length > 1) {
+    portfolio.items = portfolio.items.filter((item) => (
+      item.id === primary.id || item.marketHashName !== marketHashName
+    ));
+  }
+}
+
+async function applyRestoreLotToPortfolio(portfolio, { marketHashName, name, qty, basisPerUnit, currency, now }) {
+  const addQty = safeQty(qty);
+  if (addQty <= 0) return;
+
+  const siblings = (portfolio.items || []).filter((item) => item.marketHashName === marketHashName);
+  const lotBasis = Number.isFinite(Number(basisPerUnit))
+    ? await makeBasisRecord(marketHashName, basisPerUnit, currency || 'usd')
+    : null;
+
+  if (!siblings.length) {
+    if (!lotBasis) {
+      const err = new Error('Cannot restore item without a cost basis on the transaction');
+      err.status = 400;
+      err.code = 'missing_event_basis';
+      throw err;
+    }
+    portfolio.items.push({
+      id: `manual-item-${crypto.randomUUID()}`,
+      assetid: `manual-${crypto.randomUUID()}`,
+      marketHashName,
+      name: String(name || marketHashName).trim(),
+      quantity: addQty,
+      amount: addQty,
+      basis: lotBasis,
+      iconUrl: null,
+      marketUrl: null,
+      category: null,
+      rarity: null,
+      wear: null,
+      tier: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return;
+  }
+
+  const primary = siblings[0];
+  const qtyBefore = siblings.reduce((sum, item) => sum + safeQty(item.quantity ?? item.amount), 0);
+  const qtyAfter = qtyBefore + addQty;
+  if (lotBasis) {
+    primary.basis = averageBasisRecords([
+      ...siblings.map((item) => ({ qty: safeQty(item.quantity ?? item.amount), basis: item.basis })),
+      { qty: addQty, basis: lotBasis },
+    ]) || lotBasis;
+  }
+  primary.quantity = qtyAfter;
+  primary.amount = qtyAfter;
+  primary.updatedAt = now;
+  if (siblings.length > 1) {
+    portfolio.items = portfolio.items.filter((item) => (
+      item.id === primary.id || item.marketHashName !== marketHashName
+    ));
+  }
+}
+
+/** Remove one lot from a weighted-average basis record. */
+function subtractLotFromBasis(currentBasis, currentQty, removeQty, lotBasis) {
+  const qty = safeQty(currentQty);
+  const take = safeQty(removeQty);
+  const remaining = qty - take;
+  if (remaining <= 0) return null;
+
+  const current = resolveBasisEntry(currentBasis);
+  const lot = resolveBasisEntry(lotBasis);
+  if (!current.hasBasis || !lot.hasBasis) return currentBasis;
+
+  const totalUsd = current.usdPerUnit * qty - lot.usdPerUnit * take;
+  const usdPerUnit = Math.max(0, totalUsd) / remaining;
+  const sameCurrency = current.currency === lot.currency;
+  const savedAt = new Date().toISOString();
+
+  if (sameCurrency) {
+    const totalAmount = current.originalAmount * qty - lot.originalAmount * take;
+    return {
+      amount: Math.max(0, totalAmount) / remaining,
+      currency: current.currency,
+      usdPerUnit,
+      savedAt,
+    };
+  }
+
+  return { amount: usdPerUnit, currency: 'usd', usdPerUnit, savedAt };
 }
 
 async function updateManualPortfolioItem(ownerId, portfolioId, itemId, payload = {}) {
@@ -653,6 +849,8 @@ function aggregatePortfolioItems(items) {
     const location = item.inStorage ? `storage:${item.storageUnitId || 'unit'}` : 'inventory';
     const key = `${item.marketHashName || item.name || item.assetid}::${location}`;
     const current = grouped.get(key);
+    const itemBasisCurrency = item.basisCurrency === 'rub' ? 'rub' : 'usd';
+    const itemBasisOriginal = item.hasBasis && Number.isFinite(item.basisOriginal) ? item.basisOriginal * item.qty : null;
 
     if (!current) {
       grouped.set(key, {
@@ -664,6 +862,9 @@ function aggregatePortfolioItems(items) {
         marketableQty: item.marketable ? item.qty : 0,
         hasBasis: Boolean(item.hasBasis),
         totalBasis: item.hasBasis ? item.basis * item.qty : 0,
+        basisCurrency: itemBasisCurrency,
+        totalBasisOriginal: itemBasisOriginal,
+        basisOriginalMixed: false,
       });
       continue;
     }
@@ -675,6 +876,12 @@ function aggregatePortfolioItems(items) {
     current.stickers += item.stickers;
     current.hasBasis = current.hasBasis && Boolean(item.hasBasis);
     current.totalBasis += item.hasBasis ? item.basis * item.qty : 0;
+    if (current.basisCurrency !== itemBasisCurrency || itemBasisOriginal == null || current.totalBasisOriginal == null) {
+      current.basisOriginalMixed = true;
+      current.totalBasisOriginal = null;
+    } else {
+      current.totalBasisOriginal += itemBasisOriginal;
+    }
     current.storageQty = (current.storageQty || 0) + (item.inStorage ? item.qty : 0);
     current.tradableQty += item.tradable ? item.qty : 0;
     current.marketableQty += item.marketable ? item.qty : 0;
@@ -691,10 +898,15 @@ function aggregatePortfolioItems(items) {
       const tradable = item.tradableQty === item.qty;
       const marketable = item.marketableQty === item.qty;
       const totalValue = item.value != null ? item.value * item.qty : null;
+      const basisOriginal = !item.basisOriginalMixed && hasBasis && item.qty > 0 && Number.isFinite(item.totalBasisOriginal)
+        ? item.totalBasisOriginal / item.qty
+        : null;
       return {
         ...item,
         basis,
         hasBasis,
+        basisOriginal,
+        basisCurrency: item.basisOriginalMixed ? 'usd' : item.basisCurrency,
         totalBasis: hasBasis ? item.totalBasis : 0,
         totalValue,
         tradable,
@@ -911,10 +1123,61 @@ function normalizeManualBucket(raw) {
         name: String(portfolio.name || 'Manual portfolio').slice(0, 80),
         type: 'manual',
         items: Array.isArray(portfolio.items) ? portfolio.items : [],
+        events: Array.isArray(portfolio.events) ? portfolio.events : [],
         createdAt: portfolio.createdAt || new Date().toISOString(),
         updatedAt: portfolio.updatedAt || portfolio.createdAt || new Date().toISOString(),
       })),
   };
+}
+
+/** Weighted-average cost basis across lots. Lots without a valid basis are skipped. */
+function averageBasisRecords(lots) {
+  let totalQty = 0;
+  let totalUsd = 0;
+  let totalAmount = 0;
+  let currency = null;
+  let sameCurrency = true;
+  let latestSavedAt = null;
+  let sample = null;
+
+  for (const lot of lots) {
+    const qty = safeQty(lot?.qty);
+    if (qty <= 0) continue;
+    const entry = resolveBasisEntry(lot?.basis);
+    if (!entry.hasBasis) continue;
+    totalQty += qty;
+    totalUsd += entry.usdPerUnit * qty;
+    totalAmount += entry.originalAmount * qty;
+    if (currency == null) currency = entry.currency;
+    else if (currency !== entry.currency) sameCurrency = false;
+    const savedAt = lot?.basis?.savedAt;
+    if (typeof savedAt === 'string' && (!latestSavedAt || savedAt > latestSavedAt)) {
+      latestSavedAt = savedAt;
+      sample = lot.basis;
+    } else if (!sample) {
+      sample = lot.basis;
+    }
+  }
+
+  if (totalQty <= 0) return null;
+
+  const usdPerUnit = totalUsd / totalQty;
+  const savedAt = latestSavedAt || new Date().toISOString();
+  if (sameCurrency && currency) {
+    const record = {
+      amount: totalAmount / totalQty,
+      currency,
+      usdPerUnit,
+      savedAt,
+    };
+    if (currency === 'rub' && sample && Number.isFinite(sample.steamRubPrice)) {
+      record.steamRubPrice = sample.steamRubPrice;
+      record.steamUsdPrice = sample.steamUsdPrice;
+    }
+    return record;
+  }
+
+  return { amount: usdPerUnit, currency: 'usd', usdPerUnit, savedAt };
 }
 
 function normalizeManualPortfolioStore(raw) {
@@ -1358,5 +1621,6 @@ module.exports = {
   updateManualPortfolioItem,
   setBasisPerUnitByMarketHashName,
   setManualBasisPerUnitByMarketHashName,
+  deleteManualPortfolioEvent,
   migrateOwnershipToSteam,
 };

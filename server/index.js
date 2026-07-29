@@ -18,6 +18,7 @@ const {
   updateManualPortfolioItem,
   setBasisPerUnitByMarketHashName,
   setManualBasisPerUnitByMarketHashName,
+  deleteManualPortfolioEvent,
   migrateOwnershipToSteam,
 } = require('./services/portfolio');
 const {
@@ -254,6 +255,15 @@ app.delete('/api/portfolios/:portfolioId/items/:itemId', asyncRoute(async (req, 
     return;
   }
   res.json({ ok: true });
+}));
+
+app.delete('/api/portfolios/:portfolioId/events/:eventId', asyncRoute(async (req, res) => {
+  const result = await deleteManualPortfolioEvent(
+    resolveOwnerId(req, { create: true }),
+    req.params.portfolioId,
+    req.params.eventId,
+  );
+  res.json(result);
 }));
 
 app.get('/api/market/snapshot', asyncRoute(async (req, res) => {
