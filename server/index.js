@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs/promises');
 const express = require('express');
 const session = require('express-session');
 const helmet = require('helmet');
@@ -27,6 +28,14 @@ const {
   removeFavoriteProfile,
   migrateFavoriteProfilesToSteam,
 } = require('./services/favorite-profiles');
+const { listPlans, applyItemDisplayLimit, planAllows, getDownloadArtifact } = require('./services/plans');
+const {
+  getOwnerPlanId,
+  getOwnerSubscription,
+  setOwnerPlan,
+  migrateSubscriptionToSteam,
+} = require('./services/subscriptions');
+const { listTopInvestors, upsertTopInvestor } = require('./services/top-investors');
 const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
@@ -125,6 +134,7 @@ app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => 
   await saveSession(req);
   await migrateOwnershipToSteam(priorOwnerId, auth.steamId);
   await migrateFavoriteProfilesToSteam(priorOwnerId, auth.steamId);
+  await migrateSubscriptionToSteam(priorOwnerId, auth.steamId);
   res.redirect('/dashboard');
 }));
 
@@ -134,13 +144,50 @@ app.post('/api/auth/logout', asyncRoute(async (req, res) => {
 }));
 
 app.get('/api/me', asyncRoute(async (req, res) => {
+  const ownerId = resolveOwnerId(req);
+  const subscription = await getOwnerSubscription(ownerId);
   if (!req.session.steamId) {
-    res.json({ connected: false, steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY) });
+    res.json({
+      connected: false,
+      steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY),
+      subscription,
+    });
     return;
   }
 
   const profile = await getSteamProfile(req.session.steamId);
-  res.json({ connected: true, profile, steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY) });
+  res.json({
+    connected: true,
+    profile,
+    steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY),
+    subscription,
+  });
+}));
+
+app.get('/api/plans', asyncRoute(async (req, res) => {
+  res.json({
+    plans: listPlans(),
+    billingReady: false,
+    current: await getOwnerSubscription(resolveOwnerId(req)),
+  });
+}));
+
+app.get('/api/subscription', asyncRoute(async (req, res) => {
+  res.json({ subscription: await getOwnerSubscription(resolveOwnerId(req)), billingReady: false });
+}));
+
+// Temporary manual plan assignment until a payment provider is connected.
+// Requires PLAN_ADMIN_SECRET in the environment.
+app.post('/api/subscription/plan', asyncRoute(async (req, res) => {
+  const adminSecret = String(process.env.PLAN_ADMIN_SECRET || '').trim();
+  const provided = String(req.headers['x-plan-admin-secret'] || req.body?.adminSecret || '').trim();
+  if (!adminSecret || provided !== adminSecret) {
+    res.status(403).json({ error: 'Plan admin secret required.', code: 'plan_admin_forbidden' });
+    return;
+  }
+  const ownerId = resolveOwnerId(req, { create: true });
+  const subscription = await setOwnerPlan(ownerId, req.body?.planId, { source: 'admin' });
+  res.json({ subscription, billingReady: false });
 }));
 
 app.get('/api/portfolio', asyncRoute(async (req, res) => {
@@ -149,12 +196,14 @@ app.get('/api/portfolio', asyncRoute(async (req, res) => {
     return;
   }
 
+  const ownerId = resolveOwnerId(req);
+  const planId = await getOwnerPlanId(ownerId);
   const portfolio = await getPortfolio(req.session.steamId || null, {
     force: req.query.sync === '1',
     portfolioId: req.query.portfolioId,
-    ownerId: resolveOwnerId(req),
+    ownerId,
   });
-  res.json(portfolio);
+  res.json(applyItemDisplayLimit(portfolio, planId));
 }));
 
 app.get('/api/portfolio/public', asyncRoute(async (req, res) => {
@@ -165,13 +214,14 @@ app.get('/api/portfolio/public', asyncRoute(async (req, res) => {
   }
 
   const steamId = await resolveSteamProfileInput(profileInput);
+  const planId = await getOwnerPlanId(resolveOwnerId(req));
   const portfolio = await getPortfolio(steamId, {
     force: req.query.sync === '1',
     includeDesktop: false,
     activitySource: 'public-diff',
   });
 
-  res.json({
+  res.json(applyItemDisplayLimit({
     ...portfolio,
     portfolioId: `public-${steamId}`,
     portfolioName: portfolio.profile?.personaname || `STEAM/${steamId.slice(-6)}`,
@@ -179,7 +229,7 @@ app.get('/api/portfolio/public', asyncRoute(async (req, res) => {
     portfolios: [],
     desktopConnected: false,
     storageItemCount: 0,
-  });
+  }, planId));
 }));
 
 app.patch('/api/portfolio/basis', asyncRoute(async (req, res) => {
@@ -387,8 +437,78 @@ app.get('/api/news/telegram-media/:sourceId/:messageId', asyncRoute(async (req, 
 // --- Desktop client pairing & sync ---
 
 app.post('/api/desktop/pairing-code', authLimiter, requireAuth, asyncRoute(async (req, res) => {
+  const planId = await getOwnerPlanId(resolveOwnerId(req));
+  if (!planAllows(planId, 'desktopDownload')) {
+    res.status(403).json({
+      error: 'Desktop sync requires Plus or Investor plan.',
+      code: 'plan_required',
+      requiredFeature: 'desktopDownload',
+      planId,
+    });
+    return;
+  }
   const code = await createPairingCode(req.session.steamId);
   res.json({ code, expiresIn: 600 });
+}));
+
+app.get('/api/downloads/:artifact', asyncRoute(async (req, res) => {
+  const artifact = getDownloadArtifact(req.params.artifact);
+  if (!artifact) {
+    res.status(404).json({ error: 'Download not found.', code: 'download_not_found' });
+    return;
+  }
+
+  const planId = await getOwnerPlanId(resolveOwnerId(req));
+  if (!planAllows(planId, 'desktopDownload')) {
+    res.status(403).json({
+      error: 'Desktop download requires Plus or Investor plan.',
+      code: 'plan_required',
+      requiredFeature: 'desktopDownload',
+      planId,
+    });
+    return;
+  }
+
+  const filePath = path.join(rootDir, 'downloads', artifact.file);
+  try {
+    await fs.access(filePath);
+  } catch {
+    res.status(404).json({ error: 'Installer file is not available on this server.', code: 'download_missing' });
+    return;
+  }
+
+  res.download(filePath, artifact.file, {
+    headers: { 'Content-Type': artifact.contentType },
+  });
+}));
+
+app.get('/api/top-investors', asyncRoute(async (req, res) => {
+  const planId = await getOwnerPlanId(resolveOwnerId(req));
+  if (!planAllows(planId, 'topInvestors')) {
+    res.status(403).json({
+      error: 'Top investor tracking requires the Investor plan.',
+      code: 'plan_required',
+      requiredFeature: 'topInvestors',
+      planId,
+      preview: await listTopInvestors().then((data) => ({
+        comingSoon: data.comingSoon,
+        count: data.accounts.length,
+      })),
+    });
+    return;
+  }
+  res.json(await listTopInvestors());
+}));
+
+app.post('/api/top-investors', asyncRoute(async (req, res) => {
+  const adminSecret = String(process.env.PLAN_ADMIN_SECRET || '').trim();
+  const provided = String(req.headers['x-plan-admin-secret'] || req.body?.adminSecret || '').trim();
+  if (!adminSecret || provided !== adminSecret) {
+    res.status(403).json({ error: 'Plan admin secret required.', code: 'plan_admin_forbidden' });
+    return;
+  }
+  const account = await upsertTopInvestor(req.body);
+  res.status(201).json({ account });
 }));
 
 app.post('/api/desktop/pair', pairingLimiter, asyncRoute(async (req, res) => {
@@ -478,6 +598,7 @@ app.get('/api/desktop/login', pairingLimiter, asyncRoute(async (req, res) => {
   await saveSession(req);
   await migrateOwnershipToSteam(priorOwnerId, loginSession.steamId);
   await migrateFavoriteProfilesToSteam(priorOwnerId, loginSession.steamId);
+  await migrateSubscriptionToSteam(priorOwnerId, loginSession.steamId);
   res.redirect('/dashboard');
 }));
 
@@ -525,6 +646,10 @@ app.get('/favorites', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));
 });
 
+app.get('/investors', (req, res) => {
+  res.sendFile(path.join(rootDir, appFile));
+});
+
 app.get('/glock-3d', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));
 });
@@ -535,6 +660,19 @@ app.get('/glock3d', (req, res) => {
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));
+});
+
+// Desktop installers are plan-gated via /api/downloads/:artifact — block direct static access.
+app.use('/downloads', (req, res, next) => {
+  if (/\.(dmg|exe|zip|AppImage|blockmap)$/i.test(req.path)) {
+    res.status(403).json({
+      error: 'Desktop download requires Plus or Investor plan. Use /api/downloads/:artifact.',
+      code: 'plan_required',
+      requiredFeature: 'desktopDownload',
+    });
+    return;
+  }
+  next();
 });
 
 app.use(express.static(rootDir, { dotfiles: 'deny' }));

@@ -4,7 +4,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 /* ─────────── i18n ─────────── */
 const I18N = {
   en: {
-    nav: { home: 'Home', dashboard: 'Portfolio', favorites: 'Favorite profiles', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item', currency: 'Currency' },
+    nav: { home: 'Home', dashboard: 'Portfolio', favorites: 'Favorite profiles', investors: 'Top investors', pricing: 'Pricing', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item', currency: 'Currency' },
     hero: {
       eyebrow: 'SkinsHead · CS2 skin portfolio tracker',
       title1: 'Your CS2 skins,',
@@ -32,6 +32,8 @@ const I18N = {
       armory: 'Armory Pass ROI',
       armorySub: 'Rank Armory rewards by star ROI on live Steam prices. See expected value, profit, and days left on the pass.',
       stats: 'What you get',
+      pricing: 'Plans & paid features',
+      pricingSub: 'Start free. Upgrade when you need unlimited inventory, the desktop app, or top investor tracking.',
       faq: 'FAQ',
     },
     news: {
@@ -108,7 +110,7 @@ const I18N = {
     }
   },
   ru: {
-    nav: { home: 'Главная', dashboard: 'Портфель', favorites: 'Избранные профили', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
+    nav: { home: 'Главная', dashboard: 'Портфель', favorites: 'Избранные профили', investors: 'Топ инвесторы', pricing: 'Тарифы', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
     hero: {
       eyebrow: 'SkinsHead · портфель скинов CS2',
       title1: 'Скины CS2 —',
@@ -136,6 +138,8 @@ const I18N = {
       armory: 'ROI Armory Pass',
       armorySub: 'Рейтинг наград Armory по ROI звёзд на live-ценах Steam. Смотри ожидаемую стоимость, профит и сколько дней осталось у пасса.',
       stats: 'Что внутри',
+      pricing: 'Тарифы и платные возможности',
+      pricingSub: 'Начните бесплатно. Перейдите на платный план, когда понадобятся безлимит, desktop или трекинг топ-инвесторов.',
       faq: 'Частые вопросы',
     },
     news: {
@@ -320,6 +324,8 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
             { k: 'home', label: t.nav.home },
             { k: 'dashboard', label: t.nav.dashboard },
             { k: 'favorites', label: t.nav.favorites },
+            { k: 'investors', label: t.nav.investors },
+            { k: 'pricing', label: t.nav.pricing },
             { k: 'news', label: t.nav.news },
             { k: 'armory', label: t.nav.armory },
             { k: 'glock3d', label: t.nav.glock3d },

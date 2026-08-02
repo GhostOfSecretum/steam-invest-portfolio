@@ -168,6 +168,11 @@ a { color: inherit; text-decoration: none; }
 /* Section helpers */
 .section { padding: 120px 64px; position: relative; }
 .section-tight { padding: 64px 64px; }
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
 .container { max-width: 1320px; margin: 0 auto; }
 
 .hero-shell {
@@ -1660,6 +1665,10 @@ button:disabled,
 
   .market-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pricing-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -20,15 +20,28 @@ async function apiFetch(path, options = {}) {
 }
 
 function useAuth() {
-  const [state, setState] = apiUseState({ loading: true, connected: false, profile: null, error: null });
+  const [state, setState] = apiUseState({
+    loading: true,
+    connected: false,
+    profile: null,
+    error: null,
+    subscription: null,
+  });
 
   const refresh = apiUseCallback(async () => {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
       const me = await apiFetch('/api/me');
-      setState({ loading: false, connected: Boolean(me.connected), profile: me.profile || null, error: null, steamApiKeyConfigured: me.steamApiKeyConfigured });
+      setState({
+        loading: false,
+        connected: Boolean(me.connected),
+        profile: me.profile || null,
+        error: null,
+        steamApiKeyConfigured: me.steamApiKeyConfigured,
+        subscription: me.subscription || null,
+      });
     } catch (error) {
-      setState({ loading: false, connected: false, profile: null, error });
+      setState({ loading: false, connected: false, profile: null, error, subscription: null });
     }
   }, []);
 
@@ -36,6 +49,12 @@ function useAuth() {
 
   return {
     ...state,
+    planId: state.subscription?.planId || 'free',
+    entitlements: state.subscription?.entitlements || {
+      itemDisplayLimit: 1000,
+      desktopDownload: false,
+      topInvestors: false,
+    },
     login: () => {
       window.location.href = '/api/auth/steam';
     },
@@ -45,6 +64,54 @@ function useAuth() {
     },
     refresh,
   };
+}
+
+function usePlans() {
+  const [state, setState] = apiUseState({ loading: true, plans: [], current: null, billingReady: false, error: null });
+
+  const reload = apiUseCallback(async () => {
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const data = await apiFetch('/api/plans');
+      setState({
+        loading: false,
+        plans: Array.isArray(data.plans) ? data.plans : [],
+        current: data.current || null,
+        billingReady: Boolean(data.billingReady),
+        error: null,
+      });
+    } catch (error) {
+      setState({ loading: false, plans: [], current: null, billingReady: false, error });
+    }
+  }, []);
+
+  apiUseEffect(() => { reload(); }, [reload]);
+
+  return { ...state, reload };
+}
+
+function useTopInvestors(enabled = true) {
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null, locked: false });
+
+  const reload = apiUseCallback(async () => {
+    if (!enabled) return;
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const data = await apiFetch('/api/top-investors');
+      setState({ loading: false, data, error: null, locked: false });
+    } catch (error) {
+      setState({
+        loading: false,
+        data: null,
+        error,
+        locked: error?.code === 'plan_required',
+      });
+    }
+  }, [enabled]);
+
+  apiUseEffect(() => { reload(); }, [reload]);
+
+  return { ...state, reload };
 }
 
 function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
@@ -405,6 +472,8 @@ Object.assign(window, {
   useAuth,
   usePortfolio,
   useFavoriteProfiles,
+  usePlans,
+  useTopInvestors,
   useMarketSnapshot,
   useMarketCatalog,
   useItemHistory,

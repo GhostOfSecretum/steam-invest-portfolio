@@ -886,7 +886,8 @@ function ArmoryROI() {
   );
 }
 
-function DesktopDownload({ lang }) {
+function DesktopDownload({ lang, auth, onPricing }) {
+  const canDownload = Boolean(auth?.entitlements?.desktopDownload);
   const copy = lang === 'ru'
     ? {
       title: 'Desktop — полный инвентарь и Storage Units',
@@ -896,6 +897,9 @@ function DesktopDownload({ lang }) {
       windows: 'Windows · x64',
       note: 'Установите приложение, откройте портфель на skinshead.pro, нажмите «Код для desktop» и введите 6-значный код. Server URL оставьте https://skinshead.pro.',
       security: 'Только чтение: пароль Steam не запрашивается, токены остаются на компьютере, на сервер уходит только список предметов.',
+      locked: 'Скачивание desktop доступно на тарифах Plus и Investor.',
+      unlock: 'Смотреть тарифы',
+      badge: 'Plus / Investor',
     }
     : {
       title: 'Desktop — full inventory and Storage Units',
@@ -905,16 +909,19 @@ function DesktopDownload({ lang }) {
       windows: 'Windows · x64',
       note: 'Install the app, open your portfolio on skinshead.pro, click “Desktop code”, and enter the 6-digit code. Leave Server URL as https://skinshead.pro.',
       security: 'Read-only: Steam password is never requested, tokens stay on your computer, and only item lists are sent to the server.',
+      locked: 'Desktop download is included with Plus and Investor plans.',
+      unlock: 'View plans',
+      badge: 'Plus / Investor',
     };
 
   const downloads = [
-    { label: copy.macApple, href: '/downloads/Steam-Invest-Portfolio-mac-arm64.dmg' },
-    { label: copy.macIntel, href: '/downloads/Steam-Invest-Portfolio-mac-x64.dmg' },
-    { label: copy.windows, href: '/downloads/Steam-Invest-Portfolio-win-x64.exe' },
+    { label: copy.macApple, key: 'mac-arm64' },
+    { label: copy.macIntel, key: 'mac-x64' },
+    { label: copy.windows, key: 'win-x64' },
   ];
 
   return (
-    <section className="section-tight">
+    <section className="section-tight" id="desktop">
       <div className="container">
         <div className="glass-strong" style={{
           padding: '34px 40px',
@@ -933,7 +940,10 @@ function DesktopDownload({ lang }) {
             pointerEvents: 'none',
           }} />
           <div style={{ position: 'relative' }}>
-            <div className="eyebrow" style={{ color: 'var(--accent)', marginBottom: 12 }}>// DESKTOP CLIENT</div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+              <div className="eyebrow" style={{ color: 'var(--accent)' }}>// DESKTOP CLIENT</div>
+              <span className="chip chip-accent">{copy.badge}</span>
+            </div>
             <h2 className="display" style={{ fontSize: 'clamp(28px, 3.2vw, 44px)', fontWeight: 500, lineHeight: 1.08 }}>
               {copy.title}
             </h2>
@@ -945,17 +955,129 @@ function DesktopDownload({ lang }) {
             </p>
           </div>
           <div style={{ position: 'relative', display: 'grid', gap: 10 }}>
-            {downloads.map((item) => (
-              <a key={item.href} className="btn btn-primary" href={item.href} download style={{ justifyContent: 'space-between' }}>
+            {canDownload ? downloads.map((item) => (
+              <a key={item.key} className="btn btn-primary" href={`/api/downloads/${item.key}`} style={{ justifyContent: 'space-between' }}>
                 <span>{item.label}</span>
                 <span className="mono" style={{ fontSize: 11 }}>DOWNLOAD</span>
               </a>
-            ))}
+            )) : (
+              <>
+                <div className="glass" style={{ padding: 14, color: 'var(--fg-1)', fontSize: 13, lineHeight: 1.55 }}>
+                  {copy.locked}
+                </div>
+                <button type="button" className="btn btn-primary" onClick={() => onPricing && onPricing()}>
+                  {copy.unlock}
+                </button>
+              </>
+            )}
             <div className="glass" style={{ padding: 14, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.55 }}>
               {copy.security}
             </div>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function Pricing({ lang, auth, onInvestors }) {
+  const t = useT(lang);
+  const plansState = usePlans();
+  const currentPlanId = auth?.planId || plansState.current?.planId || 'free';
+  const copy = lang === 'ru'
+    ? {
+      ctaSoon: 'Оплата скоро',
+      current: 'Текущий план',
+      included: 'Входит',
+      notIncluded: 'Не входит',
+      investors: 'Открыть топ-инвесторов',
+      note: 'Платёжная система будет подключена позже. Сейчас тарифы уже ограничивают возможности на сайте: лимит отображения, desktop и трекинг инвесторов.',
+    }
+    : {
+      ctaSoon: 'Billing soon',
+      current: 'Current plan',
+      included: 'Included',
+      notIncluded: 'Not included',
+      investors: 'Open top investors',
+      note: 'Payment will be connected later. Plans already gate site features: display limit, desktop download, and investor tracking.',
+    };
+
+  return (
+    <section className="section" id="pricing">
+      <div className="container">
+        <SectionHeader title={t.sections.pricing} sub={t.sections.pricingSub} num="04" />
+        {plansState.loading && !plansState.plans.length ? (
+          <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>...</div>
+        ) : (
+          <div className="pricing-grid">
+            {plansState.plans.map((plan) => {
+              const isCurrent = plan.id === currentPlanId;
+              const name = plan.name?.[lang] || plan.name?.en || plan.id;
+              const price = plan.price?.[lang] || plan.price?.en;
+              const priceNote = plan.priceNote?.[lang] || plan.priceNote?.en;
+              const bullets = plan.bullets?.[lang] || plan.bullets?.en || [];
+              const missing = plan.missing?.[lang] || plan.missing?.en || [];
+              return (
+                <article
+                  key={plan.id}
+                  className={plan.highlight ? 'glass-strong' : 'glass'}
+                  style={{
+                    padding: 28,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 16,
+                    border: plan.highlight ? '1px solid oklch(0.68 0.22 5 / 0.45)' : undefined,
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {plan.highlight && (
+                    <div style={{
+                      position: 'absolute',
+                      inset: 'auto -20% -70% 30%',
+                      height: 180,
+                      background: 'radial-gradient(circle, oklch(0.68 0.22 5 / 0.2), transparent 70%)',
+                      pointerEvents: 'none',
+                    }} />
+                  )}
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+                      <div className="eyebrow" style={{ color: 'var(--accent)' }}>{name}</div>
+                      {isCurrent && <span className="chip chip-accent">{copy.current}</span>}
+                    </div>
+                    <div className="display" style={{ marginTop: 10, fontSize: 34, fontWeight: 500 }}>{price}</div>
+                    <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{priceNote}</div>
+                  </div>
+                  <ul style={{ listStyle: 'none', display: 'grid', gap: 8, margin: 0, padding: 0, position: 'relative' }}>
+                    {bullets.map((bullet) => (
+                      <li key={bullet} style={{ fontSize: 13.5, color: 'var(--fg-1)', lineHeight: 1.45 }}>
+                        <span style={{ color: 'var(--green)', marginRight: 8 }}>+</span>{bullet}
+                      </li>
+                    ))}
+                    {missing.map((bullet) => (
+                      <li key={bullet} style={{ fontSize: 13, color: 'var(--fg-3)', lineHeight: 1.45 }}>
+                        <span style={{ marginRight: 8 }}>–</span>{bullet}
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ marginTop: 'auto', position: 'relative', display: 'grid', gap: 8 }}>
+                    <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
+                      {plan.id === 'free' ? (lang === 'ru' ? 'Уже доступно' : 'Already available') : copy.ctaSoon}
+                    </button>
+                    {plan.id === 'investor' && (
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onInvestors && onInvestors()}>
+                        {copy.investors}
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+        <p style={{ marginTop: 18, color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.6, maxWidth: 820 }}>
+          {copy.note}
+        </p>
       </div>
     </section>
   );
@@ -967,16 +1089,16 @@ function StatsBand() {
   const t = useT(lang);
   const stats = lang === 'ru'
     ? [
-      { v: 'Steam', l: 'OpenID или публичный профиль' },
-      { v: 'Desktop', l: 'полный инвентарь + Storage Units' },
+      { v: 'Free', l: 'до 1 000 предметов в списке' },
+      { v: 'Plus', l: 'безлимит + desktop-приложение' },
+      { v: 'Investor', l: 'трекинг топ-аккаунтов инвесторов' },
       { v: 'Маркет', l: 'live-цены и история предмета' },
-      { v: 'Armory', l: 'ROI звёзд на ценах Steam' },
     ]
     : [
-      { v: 'Steam', l: 'OpenID or public profile' },
-      { v: 'Desktop', l: 'full inventory + Storage Units' },
+      { v: 'Free', l: 'up to 1,000 items displayed' },
+      { v: 'Plus', l: 'unlimited + desktop app' },
+      { v: 'Investor', l: 'top investor account tracking' },
       { v: 'Market', l: 'live prices and item history' },
-      { v: 'Armory', l: 'star ROI on Steam prices' },
     ];
   return (
     <section className="section-tight">
@@ -1013,7 +1135,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead помогает считать скины CS2 как портфель: live-оценка инвентаря, себестоимость, P&L, распределение по типам и история цен по предметам. Цены собираются со Steam Community Market и сторонних площадок.',
           'Кроме портфеля на сайте есть маркет-эксплорер, лидеры позиций, лента новостей из Telegram и калькулятор ROI Armory Pass. Подключите Steam через OpenID, откройте чужой публичный профиль по ссылке или создайте ручной портфель.',
-          'Для полного инвентаря вместе со Storage Units скачайте desktop-клиент и синхронизируйте его кодом с skinshead.pro. Интерфейс на русском и английском, валюты USD и RUB.',
+          'Бесплатный тариф показывает до 1 000 предметов. Plus открывает безлимитное отображение и desktop для Storage Units. Investor добавляет трекинг топовых аккаунтов инвесторов — список аккаунтов появится позже.',
         ],
       }
     : {
@@ -1022,7 +1144,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead treats CS2 skins as a portfolio: live inventory valuation, cost basis, P&L, allocation by type, and per-item price history. Prices come from the Steam Community Market and major third-party marketplaces.',
           'Beyond the portfolio you get a market explorer, portfolio leaders, Telegram news, and an Armory Pass ROI board. Link Steam via OpenID, open any public profile URL, or keep a manual portfolio.',
-          'For the full inventory including Storage Units, download the desktop client and sync it to skinshead.pro with a one-time code. The UI is available in Russian and English, with USD and RUB.',
+          'The Free plan displays up to 1,000 items. Plus unlocks unlimited display and the desktop app for Storage Units. Investor adds tracking of top investor accounts — the curated list will be added later.',
         ],
       };
 
@@ -1045,21 +1167,23 @@ const FAQ_ITEMS = {
   en: [
     { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin portfolio tracker. It values a Steam inventory with live market prices and shows P&L, cost basis, allocation, market explorer, Armory Pass ROI, and Telegram news in one place.' },
     { q: 'How do I track a portfolio?', a: 'Link Steam with OpenID, paste a public profile URL, or create a manual portfolio and add purchases. SkinsHead prices items and surfaces leaders, 24h change, and inventory breakdown.' },
-    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Storage Units. The desktop client signs into Steam on your computer and syncs the full inventory to your SkinsHead portfolio with a one-time code.' },
+    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Storage Units. The desktop client signs into Steam on your computer and syncs the full inventory to your SkinsHead portfolio with a one-time code. Download and sync require Plus or Investor.' },
     { q: 'Where do prices come from?', a: 'We combine Steam Community Market data with major third-party marketplaces. Each item page shows available offers and price history from the providers we could reach.' },
     { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. The desktop client keeps tokens locally and only sends item lists to the server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
-    { q: 'Is SkinsHead free?', a: 'Yes. Portfolio tracking, market explorer, Armory ROI, news, and the desktop sync flow are available without a paid plan.' },
+    { q: 'Is SkinsHead free?', a: 'There is a Free plan with up to 1,000 items displayed, market explorer, Armory ROI, and news. Plus unlocks unlimited display and desktop download. Investor adds top investor account tracking. Payment will be connected later.' },
+    { q: 'What do paid plans include?', a: 'Plus: unlimited item display and desktop app download/sync. Investor: everything in Plus plus tracking of curated top investor Steam accounts.' },
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
     { q: 'Что такое SkinsHead?', a: 'SkinsHead — трекер портфеля скинов CS2. Сервис оценивает инвентарь Steam по live-ценам и показывает P&L, себестоимость, распределение, маркет, ROI Armory Pass и новости из Telegram в одном месте.' },
     { q: 'Как отслеживать портфель?', a: 'Привяжите Steam через OpenID, вставьте ссылку на публичный профиль или создайте ручной портфель и добавьте покупки. SkinsHead оценит предметы и покажет лидеров, изменение за 24ч и разбивку инвентаря.' },
-    { q: 'Зачем нужен desktop?', a: 'Публичный инвентарь Steam обычно не включает Storage Units. Desktop-клиент входит в Steam на вашем компьютере и синхронизирует полный инвентарь в портфель SkinsHead по одноразовому коду.' },
+    { q: 'Зачем нужен desktop?', a: 'Публичный инвентарь Steam обычно не включает Storage Units. Desktop-клиент входит в Steam на вашем компьютере и синхронизирует полный инвентарь в портфель SkinsHead по одноразовому коду. Скачивание и sync доступны на Plus и Investor.' },
     { q: 'Откуда берутся цены?', a: 'Собираем данные Steam Community Market и крупных сторонних площадок. На карточке предмета видны доступные предложения и история цен из источников, до которых удалось достучаться.' },
     { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. В desktop токены остаются локально, на сервер уходит только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
     { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
-    { q: 'SkinsHead бесплатный?', a: 'Да. Портфель, маркет, Armory ROI, новости и синхронизация через desktop доступны без платной подписки.' },
+    { q: 'SkinsHead бесплатный?', a: 'Есть бесплатный тариф: до 1 000 предметов в списке, маркет, Armory ROI и новости. Plus открывает безлимит и desktop. Investor добавляет трекинг топовых аккаунтов инвесторов. Оплату подключим позже.' },
+    { q: 'Что дают платные тарифы?', a: 'Plus: безлимитное отображение предметов и скачивание desktop-приложения. Investor: всё из Plus плюс трекинг топовых аккаунтов инвесторов из подборки.' },
     { q: 'Вы связаны с Valve?', a: 'Нет. SkinsHead — независимый проект и не аффилирован со Steam, Valve или Counter-Strike.' },
   ],
 };
@@ -1071,16 +1195,16 @@ function FAQ({ lang }) {
   return (
     <section className="section">
       <div className="container">
-        <SectionHeader title={t.sections.faq} num="05" />
+        <SectionHeader title={t.sections.faq} num="06" />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32 }}>
           <div>
             <p style={{ color: 'var(--fg-1)', lineHeight: 1.6, fontSize: 15 }}>
               {lang === 'ru'
-                ? 'Не нашли ответ? Напишите на support@skinshead.pro — разберёмся с портфелем, desktop или ценами.'
-                : 'Still stuck? Email support@skinshead.pro — we can help with portfolio, desktop sync, or pricing.'}
+                ? 'Не нашли ответ? Напишите в Telegram — разберёмся с портфелем, desktop или ценами.'
+                : 'Still stuck? Message us on Telegram — we can help with portfolio, desktop sync, or pricing.'}
             </p>
-            <a className="btn btn-ghost btn-sm" href="mailto:support@skinshead.pro" style={{ marginTop: 16, display: 'inline-flex' }}>
-              support@skinshead.pro →
+            <a className="btn btn-primary btn-sm" href="https://t.me/GhostOfSecretum" target="_blank" rel="noopener noreferrer" style={{ marginTop: 16, display: 'inline-flex' }}>
+              Telegram · @GhostOfSecretum →
             </a>
           </div>
           <div className="glass" style={{ overflow: 'hidden' }}>
@@ -1161,13 +1285,13 @@ function Footer({ lang }) {
   const columns = lang === 'ru'
     ? [
       { h: 'Продукт', items: ['Портфель', 'Маркет CS2', 'Armory Pass', 'Desktop'] },
-      { h: 'Возможности', items: ['Публичный профиль', 'Избранные профили', 'Новости Telegram', 'CSV-экспорт'] },
-      { h: 'SkinsHead', items: ['О сервисе', 'Поддержка', 'USD / RUB', 'RU / EN'] },
+      { h: 'Тарифы', items: ['Free · до 1000 предметов', 'Plus · безлимит + app', 'Investor · топ-аккаунты', 'Оплата скоро'] },
+      { h: 'SkinsHead', items: ['О сервисе', 'Telegram · @GhostOfSecretum', 'USD / RUB', 'RU / EN'] },
     ]
     : [
       { h: 'Product', items: ['Portfolio', 'CS2 market', 'Armory Pass', 'Desktop'] },
-      { h: 'Features', items: ['Public profiles', 'Favorite profiles', 'Telegram news', 'CSV export'] },
-      { h: 'SkinsHead', items: ['About', 'Support', 'USD / RUB', 'RU / EN'] },
+      { h: 'Plans', items: ['Free · up to 1000 items', 'Plus · unlimited + app', 'Investor · top accounts', 'Billing soon'] },
+      { h: 'SkinsHead', items: ['About', 'Telegram · @GhostOfSecretum', 'USD / RUB', 'RU / EN'] },
     ];
 
   return (
@@ -1180,13 +1304,27 @@ function Footer({ lang }) {
               ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI и desktop для Storage Units. Не аффилирован со Steam, Valve или Counter-Strike.'
               : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI, and desktop sync for Storage Units. Not affiliated with Steam, Valve, or Counter-Strike.'}
           </p>
+          <a
+            href="https://t.me/GhostOfSecretum"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'inline-block', marginTop: 14, fontSize: 13, color: 'var(--accent)' }}
+          >
+            Support · @GhostOfSecretum
+          </a>
         </div>
         {columns.map((c, i) => (
           <div key={i}>
             <div className="eyebrow">{c.h}</div>
             <ul style={{ marginTop: 14, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {c.items.map((it, j) => (
-                <li key={j} style={{ fontSize: 13, color: 'var(--fg-1)' }}>{it}</li>
+                <li key={j} style={{ fontSize: 13, color: 'var(--fg-1)' }}>
+                  {String(it).includes('@GhostOfSecretum') ? (
+                    <a href="https://t.me/GhostOfSecretum" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
+                      {it}
+                    </a>
+                  ) : it}
+                </li>
               ))}
             </ul>
           </div>
@@ -1200,4 +1338,4 @@ function Footer({ lang }) {
   );
 }
 
-Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });
+Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, Pricing, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });

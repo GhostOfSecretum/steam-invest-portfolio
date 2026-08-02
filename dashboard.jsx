@@ -287,10 +287,22 @@ function allocationLabel(key, lang) {
   return labels[key] || key;
 }
 
-function DesktopPairingButton({ lang }) {
+function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
   const [code, setCode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  if (!canUseDesktop) {
+    return (
+      <button
+        className="btn btn-sm btn-ghost"
+        onClick={() => onPricing && onPricing()}
+        title={lang === 'ru' ? 'Desktop доступен на Plus / Investor' : 'Desktop requires Plus / Investor'}
+      >
+        {lang === 'ru' ? 'Desktop · Plus' : 'Desktop · Plus'}
+      </button>
+    );
+  }
 
   const generate = async () => {
     setLoading(true);
@@ -316,7 +328,7 @@ function DesktopPairingButton({ lang }) {
   );
 }
 
-function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicProfile }) {
+function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicProfile, onPricing }) {
   const t = useT(lang);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
   const effectivePortfolioId = publicProfileUrl || String(selectedPortfolioId || '').startsWith('public-')
@@ -432,7 +444,13 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {isPublicPortfolio && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--cyan)' }}>● public</span>}
             {!isPublicPortfolio && data.desktopConnected && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--green)' }}>● desktop</span>}
-            {!isPublicPortfolio && auth?.connected && <DesktopPairingButton lang={lang} />}
+            {!isPublicPortfolio && auth?.connected && (
+              <DesktopPairingButton
+                lang={lang}
+                canUseDesktop={Boolean(auth?.entitlements?.desktopDownload)}
+                onPricing={onPricing}
+              />
+            )}
             {isPublicPortfolio && (
               <button
                 className={`btn btn-sm ${isFavorited ? 'btn-ghost' : 'btn-primary'}`}
@@ -539,10 +557,37 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           </div>
         </div>
 
+        {data.itemsLimited && (
+          <div className="glass" style={{
+            padding: '14px 18px',
+            marginBottom: 16,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 16,
+            flexWrap: 'wrap',
+            border: '1px solid oklch(0.68 0.22 5 / 0.35)',
+          }}>
+            <div style={{ fontSize: 13.5, color: 'var(--fg-1)', lineHeight: 1.5 }}>
+              {lang === 'ru'
+                ? `Бесплатный тариф: в списке показаны ${data.visibleInventoryCount || data.itemDisplayLimit} из ${data.totalInventoryCount} предметов. Plus снимает лимит.`
+                : `Free plan: showing ${data.visibleInventoryCount || data.itemDisplayLimit} of ${data.totalInventoryCount} items. Plus removes the limit.`}
+            </div>
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => onPricing && onPricing()}>
+              {lang === 'ru' ? 'Тарифы' : 'Plans'}
+            </button>
+          </div>
+        )}
+
         <div className="glass" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
           <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
             <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
               {filteredItems.length}/{items.length} · {data.totalInventoryCount} {lang === 'ru' ? 'шт.' : 'items'}
+              {data.itemsLimited && (
+                <span style={{ color: 'var(--accent)' }}>
+                  {lang === 'ru' ? ` · лимит ${data.itemDisplayLimit}` : ` · limit ${data.itemDisplayLimit}`}
+                </span>
+              )}
               {data.storageItemCount > 0 && (
                 <span> · {lang === 'ru' ? `хранилище ${data.storageItemCount}` : `storage ${data.storageItemCount}`}</span>
               )}
