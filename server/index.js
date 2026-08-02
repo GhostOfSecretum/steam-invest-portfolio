@@ -30,6 +30,12 @@ const {
 } = require('./services/favorite-profiles');
 const { listPlans, applyItemDisplayLimit, planAllows, getDownloadArtifact } = require('./services/plans');
 const {
+  renderPrivacyPage,
+  renderTermsPage,
+  renderSupportPage,
+  renderPricingPage,
+} = require('./services/legal');
+const {
   getOwnerPlanId,
   getOwnerSubscription,
   setOwnerPlan,
@@ -648,6 +654,23 @@ app.get('/favorites', (req, res) => {
 
 app.get('/investors', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));
+});
+
+// Permanent legal / billing pages for payment provider review (no JS required).
+app.get('/privacy', (req, res) => {
+  res.type('html').send(renderPrivacyPage());
+});
+
+app.get('/terms', (req, res) => {
+  res.type('html').send(renderTermsPage());
+});
+
+app.get('/support', (req, res) => {
+  res.type('html').send(renderSupportPage());
+});
+
+app.get('/pricing', (req, res) => {
+  res.type('html').send(renderPricingPage());
 });
 
 app.get('/glock-3d', (req, res) => {

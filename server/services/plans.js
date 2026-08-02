@@ -2,8 +2,11 @@ const PLANS = [
   {
     id: 'free',
     name: { en: 'Free', ru: 'Бесплатный' },
-    price: { en: 'Free', ru: 'Бесплатно' },
-    priceNote: { en: 'Forever', ru: 'Навсегда' },
+    amountRub: 0,
+    amountUsd: 0,
+    periodDays: null,
+    price: { en: '0 ₽', ru: '0 ₽' },
+    priceNote: { en: 'No payment · forever', ru: 'Без оплаты · навсегда' },
     highlight: false,
     order: 1,
     features: {
@@ -43,8 +46,11 @@ const PLANS = [
   {
     id: 'plus',
     name: { en: 'Plus', ru: 'Plus' },
-    price: { en: 'Paid', ru: 'Платно' },
-    priceNote: { en: 'Billing coming soon', ru: 'Оплата скоро' },
+    amountRub: 499,
+    amountUsd: 5,
+    periodDays: 30,
+    price: { en: '499 ₽ / 30 days', ru: '499 ₽ / 30 дней' },
+    priceNote: { en: '≈ $5 · unlimited items + desktop app', ru: 'безлимит предметов + desktop-приложение' },
     highlight: true,
     order: 2,
     features: {
@@ -78,8 +84,11 @@ const PLANS = [
   {
     id: 'investor',
     name: { en: 'Investor', ru: 'Investor' },
-    price: { en: 'Paid', ru: 'Платно' },
-    priceNote: { en: 'Billing coming soon', ru: 'Оплата скоро' },
+    amountRub: 999,
+    amountUsd: 10,
+    periodDays: 30,
+    price: { en: '999 ₽ / 30 days', ru: '999 ₽ / 30 дней' },
+    priceNote: { en: '≈ $10 · everything in Plus + top investors', ru: 'всё из Plus + трекинг топ-инвесторов' },
     highlight: false,
     order: 3,
     features: {

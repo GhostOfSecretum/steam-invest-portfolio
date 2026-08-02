@@ -986,20 +986,22 @@ function Pricing({ lang, auth, onInvestors }) {
   const currentPlanId = auth?.planId || plansState.current?.planId || 'free';
   const copy = lang === 'ru'
     ? {
-      ctaSoon: 'Оплата скоро',
+      ctaSoon: 'Оплата подключается',
       current: 'Текущий план',
       included: 'Входит',
       notIncluded: 'Не входит',
       investors: 'Открыть топ-инвесторов',
-      note: 'Платёжная система будет подключена позже. Сейчас тарифы уже ограничивают возможности на сайте: лимит отображения, desktop и трекинг инвесторов.',
+      fullPrice: 'Открыть страницу тарифов',
+      note: 'Актуальные цены: Free 0 ₽ · Plus 499 ₽ / 30 дней · Investor 999 ₽ / 30 дней. Постоянная страница для банка и клиентов: /pricing. Поддержка: Telegram @GhostOfSecretum.',
     }
     : {
-      ctaSoon: 'Billing soon',
+      ctaSoon: 'Checkout coming soon',
       current: 'Current plan',
       included: 'Included',
       notIncluded: 'Not included',
       investors: 'Open top investors',
-      note: 'Payment will be connected later. Plans already gate site features: display limit, desktop download, and investor tracking.',
+      fullPrice: 'Open full pricing page',
+      note: 'Current prices: Free 0 ₽ · Plus 499 ₽ / 30 days · Investor 999 ₽ / 30 days. Permanent page: /pricing. Support: Telegram @GhostOfSecretum.',
     };
 
   return (
@@ -1075,7 +1077,13 @@ function Pricing({ lang, auth, onInvestors }) {
             })}
           </div>
         )}
-        <p style={{ marginTop: 18, color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.6, maxWidth: 820 }}>
+        <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+          <a className="btn btn-ghost btn-sm" href="/pricing">{copy.fullPrice}</a>
+          <a className="btn btn-ghost btn-sm" href="/terms">{lang === 'ru' ? 'Соглашение' : 'Terms'}</a>
+          <a className="btn btn-ghost btn-sm" href="/privacy">{lang === 'ru' ? 'Конфиденциальность' : 'Privacy'}</a>
+          <a className="btn btn-ghost btn-sm" href="/support">{lang === 'ru' ? 'Поддержка' : 'Support'}</a>
+        </div>
+        <p style={{ marginTop: 14, color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.6, maxWidth: 820 }}>
           {copy.note}
         </p>
       </div>
@@ -1171,8 +1179,8 @@ const FAQ_ITEMS = {
     { q: 'Where do prices come from?', a: 'We combine Steam Community Market data with major third-party marketplaces. Each item page shows available offers and price history from the providers we could reach.' },
     { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. The desktop client keeps tokens locally and only sends item lists to the server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
-    { q: 'Is SkinsHead free?', a: 'There is a Free plan with up to 1,000 items displayed, market explorer, Armory ROI, and news. Plus unlocks unlimited display and desktop download. Investor adds top investor account tracking. Payment will be connected later.' },
-    { q: 'What do paid plans include?', a: 'Plus: unlimited item display and desktop app download/sync. Investor: everything in Plus plus tracking of curated top investor Steam accounts.' },
+    { q: 'Is SkinsHead free?', a: 'Yes, Free is 0 ₽ with up to 1,000 items displayed, market explorer, Armory ROI, and news. Plus is 499 ₽ / 30 days (unlimited + desktop). Investor is 999 ₽ / 30 days (Plus + top investors). See /pricing.' },
+    { q: 'What do paid plans include?', a: 'Plus (499 ₽ / 30 days): unlimited item display and desktop app download/sync. Investor (999 ₽ / 30 days): everything in Plus plus tracking of curated top investor Steam accounts. Support: Telegram @GhostOfSecretum.' },
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
@@ -1182,8 +1190,8 @@ const FAQ_ITEMS = {
     { q: 'Откуда берутся цены?', a: 'Собираем данные Steam Community Market и крупных сторонних площадок. На карточке предмета видны доступные предложения и история цен из источников, до которых удалось достучаться.' },
     { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. В desktop токены остаются локально, на сервер уходит только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
     { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
-    { q: 'SkinsHead бесплатный?', a: 'Есть бесплатный тариф: до 1 000 предметов в списке, маркет, Armory ROI и новости. Plus открывает безлимит и desktop. Investor добавляет трекинг топовых аккаунтов инвесторов. Оплату подключим позже.' },
-    { q: 'Что дают платные тарифы?', a: 'Plus: безлимитное отображение предметов и скачивание desktop-приложения. Investor: всё из Plus плюс трекинг топовых аккаунтов инвесторов из подборки.' },
+    { q: 'SkinsHead бесплатный?', a: 'Да, Free — 0 ₽: до 1 000 предметов, маркет, Armory ROI и новости. Plus — 499 ₽ / 30 дней (безлимит + desktop). Investor — 999 ₽ / 30 дней (Plus + топ-инвесторы). Прайс: /pricing.' },
+    { q: 'Что дают платные тарифы?', a: 'Plus (499 ₽ / 30 дней): безлимит предметов и desktop. Investor (999 ₽ / 30 дней): всё из Plus плюс трекинг топ-аккаунтов инвесторов. Поддержка: Telegram @GhostOfSecretum.' },
     { q: 'Вы связаны с Valve?', a: 'Нет. SkinsHead — независимый проект и не аффилирован со Steam, Valve или Counter-Strike.' },
   ],
 };
@@ -1284,14 +1292,56 @@ function MarketFilterGroup({ label, value, options, onChange }) {
 function Footer({ lang }) {
   const columns = lang === 'ru'
     ? [
-      { h: 'Продукт', items: ['Портфель', 'Маркет CS2', 'Armory Pass', 'Desktop'] },
-      { h: 'Тарифы', items: ['Free · до 1000 предметов', 'Plus · безлимит + app', 'Investor · топ-аккаунты', 'Оплата скоро'] },
-      { h: 'SkinsHead', items: ['О сервисе', 'Telegram · @GhostOfSecretum', 'USD / RUB', 'RU / EN'] },
+      {
+        h: 'Продукт',
+        items: [
+          { label: 'Портфель', href: '/dashboard' },
+          { label: 'Тарифы и цены', href: '/pricing' },
+          { label: 'Desktop', href: '/#desktop' },
+        ],
+      },
+      {
+        h: 'Цены',
+        items: [
+          { label: 'Free · 0 ₽', href: '/pricing' },
+          { label: 'Plus · 499 ₽ / 30 дней', href: '/pricing' },
+          { label: 'Investor · 999 ₽ / 30 дней', href: '/pricing' },
+        ],
+      },
+      {
+        h: 'Документы',
+        items: [
+          { label: 'Политика конфиденциальности', href: '/privacy' },
+          { label: 'Пользовательское соглашение', href: '/terms' },
+          { label: 'Поддержка · @GhostOfSecretum', href: '/support' },
+        ],
+      },
     ]
     : [
-      { h: 'Product', items: ['Portfolio', 'CS2 market', 'Armory Pass', 'Desktop'] },
-      { h: 'Plans', items: ['Free · up to 1000 items', 'Plus · unlimited + app', 'Investor · top accounts', 'Billing soon'] },
-      { h: 'SkinsHead', items: ['About', 'Telegram · @GhostOfSecretum', 'USD / RUB', 'RU / EN'] },
+      {
+        h: 'Product',
+        items: [
+          { label: 'Portfolio', href: '/dashboard' },
+          { label: 'Pricing', href: '/pricing' },
+          { label: 'Desktop', href: '/#desktop' },
+        ],
+      },
+      {
+        h: 'Prices',
+        items: [
+          { label: 'Free · 0 ₽', href: '/pricing' },
+          { label: 'Plus · 499 ₽ / 30 days', href: '/pricing' },
+          { label: 'Investor · 999 ₽ / 30 days', href: '/pricing' },
+        ],
+      },
+      {
+        h: 'Legal',
+        items: [
+          { label: 'Privacy policy', href: '/privacy' },
+          { label: 'Terms of use', href: '/terms' },
+          { label: 'Support · @GhostOfSecretum', href: '/support' },
+        ],
+      },
     ];
 
   return (
@@ -1305,9 +1355,7 @@ function Footer({ lang }) {
               : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI, and desktop sync for Storage Units. Not affiliated with Steam, Valve, or Counter-Strike.'}
           </p>
           <a
-            href="https://t.me/GhostOfSecretum"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/support"
             style={{ display: 'inline-block', marginTop: 14, fontSize: 13, color: 'var(--accent)' }}
           >
             Support · @GhostOfSecretum
@@ -1319,18 +1367,29 @@ function Footer({ lang }) {
             <ul style={{ marginTop: 14, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {c.items.map((it, j) => (
                 <li key={j} style={{ fontSize: 13, color: 'var(--fg-1)' }}>
-                  {String(it).includes('@GhostOfSecretum') ? (
-                    <a href="https://t.me/GhostOfSecretum" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
-                      {it}
-                    </a>
-                  ) : it}
+                  <a href={it.href} style={{ color: 'inherit' }}>{it.label}</a>
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', fontSize: 11 }}>
+      <div style={{
+        marginTop: 32,
+        padding: '14px 0 0',
+        borderTop: '1px solid var(--line)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 12,
+        fontFamily: 'var(--f-mono)',
+        fontSize: 11,
+      }}>
+        <a href="/pricing" style={{ color: 'var(--fg-2)' }}>{lang === 'ru' ? 'Тарифы' : 'Pricing'}</a>
+        <a href="/privacy" style={{ color: 'var(--fg-2)' }}>{lang === 'ru' ? 'Конфиденциальность' : 'Privacy'}</a>
+        <a href="/terms" style={{ color: 'var(--fg-2)' }}>{lang === 'ru' ? 'Соглашение' : 'Terms'}</a>
+        <a href="/support" style={{ color: 'var(--fg-2)' }}>{lang === 'ru' ? 'Поддержка' : 'Support'}</a>
+      </div>
+      <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', fontSize: 11 }}>
         <span>© 2026 SKINS/HEAD · skinshead.pro</span>
         <span>{lang === 'ru' ? 'не аффилирован с Valve' : 'not affiliated with Valve'}</span>
       </div>

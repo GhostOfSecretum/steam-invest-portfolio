@@ -290,7 +290,11 @@
         window.scrollTo({ top: 0, behavior: 'instant' });
       };
       const onNav = (s) => {
-        if (s === 'news' || s === 'armory' || s === 'pricing' || s === 'desktop') {
+        if (s === 'pricing') {
+          window.location.href = '/pricing';
+          return;
+        }
+        if (s === 'news' || s === 'armory' || s === 'desktop') {
           setPublicProfileUrl('');
           setPendingSection(s);
           setScreen('home');

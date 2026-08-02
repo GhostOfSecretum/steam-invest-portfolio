@@ -32,8 +32,8 @@ const I18N = {
       armory: 'Armory Pass ROI',
       armorySub: 'Rank Armory rewards by star ROI on live Steam prices. See expected value, profit, and days left on the pass.',
       stats: 'What you get',
-      pricing: 'Plans & paid features',
-      pricingSub: 'Start free. Upgrade when you need unlimited inventory, the desktop app, or top investor tracking.',
+      pricing: 'Plans & prices',
+      pricingSub: 'Free is 0 ₽. Plus is 499 ₽ / 30 days. Investor is 999 ₽ / 30 days. Full price list: skinshead.pro/pricing',
       faq: 'FAQ',
     },
     news: {
@@ -138,8 +138,8 @@ const I18N = {
       armory: 'ROI Armory Pass',
       armorySub: 'Рейтинг наград Armory по ROI звёзд на live-ценах Steam. Смотри ожидаемую стоимость, профит и сколько дней осталось у пасса.',
       stats: 'Что внутри',
-      pricing: 'Тарифы и платные возможности',
-      pricingSub: 'Начните бесплатно. Перейдите на платный план, когда понадобятся безлимит, desktop или трекинг топ-инвесторов.',
+      pricing: 'Тарифы и цены',
+      pricingSub: 'Free — 0 ₽. Plus — 499 ₽ / 30 дней. Investor — 999 ₽ / 30 дней. Полный прайс: skinshead.pro/pricing',
       faq: 'Частые вопросы',
     },
     news: {
