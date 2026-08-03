@@ -506,7 +506,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1.25fr) minmax(200px, 0.9fr)', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(200px, 0.9fr)', gap: 12, marginBottom: 24 }}>
           <div className="glass" style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
@@ -526,14 +526,17 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
             <PortfolioChart history={data.history} range={range} lang={lang} />
           </div>
 
-          <PortfolioLeaders
-            leaders={data.leaders}
-            lang={lang}
-            onItemClick={(row) => {
-              const match = items.find((item) => item.marketHashName === row.marketHashName);
-              if (match && onItemClick) onItemClick(match);
-            }}
-          />
+          {/* Portfolio leaders temporarily hidden — keep PortfolioLeaders in code to restore later */}
+          {false && (
+            <PortfolioLeaders
+              leaders={data.leaders}
+              lang={lang}
+              onItemClick={(row) => {
+                const match = items.find((item) => item.marketHashName === row.marketHashName);
+                if (match && onItemClick) onItemClick(match);
+              }}
+            />
+          )}
 
           <div className="glass" style={{ padding: 24 }}>
             <div className="eyebrow">{t.dash.breakdown}</div>

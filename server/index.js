@@ -656,6 +656,14 @@ app.get('/investors', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));
 });
 
+app.get('/market', (req, res) => {
+  res.sendFile(path.join(rootDir, appFile));
+});
+
+app.get('/armory', (req, res) => {
+  res.sendFile(path.join(rootDir, appFile));
+});
+
 // Permanent legal / billing pages for payment provider review (no JS required).
 app.get('/privacy', (req, res) => {
   res.type('html').send(renderPrivacyPage());

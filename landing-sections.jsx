@@ -428,7 +428,7 @@ function MarketCatalog({ onItemClick }) {
   const totalResults = `${totalCount.toLocaleString(locale)} ${marketT.total}`;
 
   return (
-    <section className="section">
+    <section id="market" className="section">
       <div className="container">
         <SectionHeader title={t.sections.market} sub={t.sections.marketSub} num="02" />
 
@@ -1033,7 +1033,7 @@ function Pricing({ lang, auth, onInvestors }) {
     <section className="section" id="pricing">
       <div className="container">
         <div className="pricing-heading">
-          <SectionHeader title={t.sections.pricing} sub={t.sections.pricingSub} num="04" />
+          <SectionHeader title={t.sections.pricing} sub={t.sections.pricingSub} num="01" />
           <div className="pricing-billing" aria-label={lang === 'ru' ? 'Период оплаты' : 'Billing period'}>
             {[
               { key: 'monthly', label: copy.monthly },

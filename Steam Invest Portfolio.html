@@ -167,6 +167,12 @@
       if (path === '/investors') {
         return { screen: 'investors' };
       }
+      if (path === '/market') {
+        return { screen: 'market' };
+      }
+      if (path === '/armory') {
+        return { screen: 'armory' };
+      }
       if (path === '/glock-3d' || path === '/glock3d') {
         return { screen: 'glock3d' };
       }
@@ -179,6 +185,8 @@
     function pathForScreen(screen, item, profileUrl = '') {
       if (screen === 'favorites') return '/favorites';
       if (screen === 'investors') return '/investors';
+      if (screen === 'market') return '/market';
+      if (screen === 'armory') return '/armory';
       if (screen === 'glock3d') return '/glock-3d';
       if (screen === 'dashboard') {
         if (profileUrl) return `/dashboard?profile=${encodeURIComponent(profileUrl)}`;
@@ -290,7 +298,7 @@
         window.scrollTo({ top: 0, behavior: 'instant' });
       };
       const onNav = (s) => {
-        if (s === 'pricing' || s === 'news' || s === 'armory' || s === 'desktop') {
+        if (s === 'pricing' || s === 'news' || s === 'desktop') {
           setPublicProfileUrl('');
           setPendingSection(s);
           setScreen('home');
@@ -350,13 +358,14 @@
                 onItemClick={goItem}
                 auth={auth}
               />
-              <DesktopDownload lang={t.lang} auth={auth} onPricing={() => onNav('pricing')} />
-              <Ticker onItemClick={goItem} />
-              <TopMovers onItemClick={goItem} auth={auth} />
-              <MarketCatalog onItemClick={goItem} />
-              <CaseROI />
-              <ArmoryROI />
               <Pricing lang={t.lang} auth={auth} onInvestors={() => onNav('investors')} />
+              {/* Desktop download block temporarily hidden — keep DesktopDownload in code to restore later */}
+              {false && <DesktopDownload lang={t.lang} auth={auth} onPricing={() => onNav('pricing')} />}
+              <Ticker onItemClick={goItem} />
+              {/* Portfolio leaders temporarily hidden — keep TopMovers in code to restore later */}
+              {false && <TopMovers onItemClick={goItem} auth={auth} />}
+              {/* News block temporarily hidden — keep CaseROI in code to restore later */}
+              {false && <CaseROI />}
               <StatsBand />
               <SeoIntro lang={t.lang} />
               <FAQ lang={t.lang} />
@@ -365,6 +374,18 @@
           )}
           {screen === 'dashboard' && (
             <Dashboard lang={t.lang} onItemClick={goItem} auth={auth} publicProfileUrl={publicProfileUrl} onPublicProfile={openPublicProfile} onPricing={() => onNav('pricing')} />
+          )}
+          {screen === 'market' && (
+            <>
+              <MarketCatalog onItemClick={goItem} />
+              <Footer lang={t.lang} />
+            </>
+          )}
+          {screen === 'armory' && (
+            <>
+              <ArmoryROI />
+              <Footer lang={t.lang} />
+            </>
           )}
           {screen === 'favorites' && (
             <FavoriteProfiles lang={t.lang} onOpenProfile={openPublicProfile} />

@@ -4,13 +4,13 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 /* ─────────── i18n ─────────── */
 const I18N = {
   en: {
-    nav: { home: 'Home', dashboard: 'Portfolio', favorites: 'Favorite profiles', investors: 'Top investors', pricing: 'Pricing', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item', currency: 'Currency' },
+    nav: { home: 'Home', dashboard: 'Portfolio', market: 'Market', favorites: 'Favorite profiles', investors: 'Top investors', pricing: 'Pricing', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item', currency: 'Currency' },
     hero: {
       eyebrow: 'SkinsHead · CS2 skin portfolio tracker',
-      title1: 'Your CS2 skins,',
-      title2: 'priced and',
-      title3: 'tracked.',
-      sub: 'Link Steam or paste a public profile. SkinsHead shows live portfolio value, P&L, cost basis, allocation, market explorer, Armory Pass ROI, and Telegram market news — plus a desktop app for the full inventory including Storage Units.',
+      title1: 'Track and manage',
+      title2: 'your CS2 skin',
+      title3: 'portfolio.',
+      sub: 'Link Steam or paste a public profile. SkinsHead keeps your inventory valued live — P&L, cost basis, allocation, and position tracking in one place.',
       cta1: 'Link Steam',
       profileUrlCta: 'Open profile',
       profileUrlPlaceholder: 'https://steamcommunity.com/id/...',
@@ -110,13 +110,13 @@ const I18N = {
     }
   },
   ru: {
-    nav: { home: 'Главная', dashboard: 'Портфель', favorites: 'Избранные профили', investors: 'Топ инвесторы', pricing: 'Тарифы', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
+    nav: { home: 'Главная', dashboard: 'Портфель', market: 'Маркет', favorites: 'Избранные профили', investors: 'Топ инвесторы', pricing: 'Тарифы', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
     hero: {
       eyebrow: 'SkinsHead · портфель скинов CS2',
-      title1: 'Скины CS2 —',
-      title2: 'с ценой и',
-      title3: 'аналитикой.',
-      sub: 'Привяжи Steam или вставь публичный профиль. SkinsHead покажет live-стоимость портфеля, P&L, себестоимость, распределение, маркет, ROI Armory Pass и новости из Telegram — плюс desktop-приложение для полного инвентаря вместе со Storage Units.',
+      title1: 'Портфель скинов CS2 —',
+      title2: 'веди и',
+      title3: 'отслеживай.',
+      sub: 'Привяжи Steam или вставь публичный профиль — и веди портфель в одном месте: live-стоимость, P&L, себестоимость и распределение позиций.',
       cta1: 'Привязать Steam',
       profileUrlCta: 'Открыть профиль',
       profileUrlPlaceholder: 'https://steamcommunity.com/id/...',
@@ -327,11 +327,13 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
           {[
             { k: 'home', label: t.nav.home },
             { k: 'dashboard', label: t.nav.dashboard },
+            { k: 'market', label: t.nav.market },
+            { k: 'armory', label: t.nav.armory },
             { k: 'favorites', label: t.nav.favorites },
             { k: 'investors', label: t.nav.investors },
             { k: 'pricing', label: t.nav.pricing },
-            { k: 'news', label: t.nav.news },
-            { k: 'armory', label: t.nav.armory },
+            // News nav temporarily hidden with the news section
+            // { k: 'news', label: t.nav.news },
             { k: 'glock3d', label: t.nav.glock3d },
           ].map(it => (
             <button key={it.k} className="nav-link" data-active={screen === it.k} onClick={() => onNav(it.k)}>{it.label}</button>
