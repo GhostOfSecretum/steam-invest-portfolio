@@ -30,7 +30,7 @@ function renderShell({ title, description, active, bodyHtml }) {
 <title>${escapeHtml(title)} · SkinsHead</title>
 <meta name="description" content="${escapeHtml(description)}" />
 <link rel="canonical" href="${SITE_URL}${nav.find((item) => item.id === active)?.href || ''}" />
-<link rel="icon" type="image/png" href="/logo-variant-08-favicon.png" />
+<link rel="icon" type="image/png" href="/logo-cs2-candles-favicon.png" />
 <style>
   :root {
     --bg: #f6f4ef;
