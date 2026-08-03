@@ -340,6 +340,8 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
   const [favoriteError, setFavoriteError] = useState(null);
   const [range, setRange] = useState('30d');
   const [query, setQuery] = useState('');
+  const [activeSection, setActiveSection] = useState('overview');
+  const [controlsOpen, setControlsOpen] = useState(false);
   const prevConnectedRef = useRef(null);
   const data = portfolio.data;
   const items = data?.items || [];
@@ -428,32 +430,41 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
     ? historyMeta.sources.join(' + ')
     : (lang === 'ru' ? 'нет истории' : 'no history');
   const historySubtitle = lang === 'ru'
-    ? `USD · реальные price history · покрытие ${historyMeta.coveragePct || 0}% · ${historySources}`
+    ? `USD · история реальных цен · покрытие ${historyMeta.coveragePct || 0}% · ${historySources}`
     : `USD · real price history · ${historyMeta.coveragePct || 0}% coverage · ${historySources}`;
+  const activePortfolio = portfolios.find((entry) => String(entry.id) === String(activePortfolioId));
+  const portfolioTitle = isPublicPortfolio
+    ? (data.profile?.personaname || data.profile?.name || (lang === 'ru' ? 'Публичный портфель' : 'Public portfolio'))
+    : (activePortfolio?.name || (isSteamPortfolio ? (lang === 'ru' ? 'Steam-инвентарь' : 'Steam inventory') : t.dash.title));
+  const sections = [
+    { id: 'overview', label: lang === 'ru' ? 'Обзор' : 'Overview' },
+    { id: 'items', label: lang === 'ru' ? 'Предметы' : 'Items', count: data.totalInventoryCount },
+    { id: 'activity', label: lang === 'ru' ? 'История' : 'Activity' },
+  ];
 
   return (
     <div className="dash-page">
       <div className="container">
         <div className="dash-head">
-          <div>
+          <div className="dash-head-copy">
             <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--accent)' }}>
-              // PORTFOLIO · {data.totalInventoryCount} ITEMS · {data.uniqueInventoryCount} UNIQUE
+              // {lang === 'ru' ? 'ПОРТФЕЛЬ' : 'PORTFOLIO'} · {data.totalInventoryCount} {lang === 'ru' ? 'ПРЕДМЕТОВ' : 'ITEMS'}
             </div>
-            <h1 className="display dash-title">{t.dash.title}</h1>
+            <h1 className="display dash-title">{portfolioTitle}</h1>
+            <div className="dash-sync-meta">
+              <span className={`dash-source-dot ${isPublicPortfolio ? 'is-public' : 'is-live'}`}></span>
+              {isPublicPortfolio
+                ? (lang === 'ru' ? 'Публичный профиль' : 'Public profile')
+                : inventorySourceLabel(data.inventoryProvider, lang)}
+              {data.syncedAt && (
+                <span>· {lang === 'ru' ? 'обновлено' : 'updated'} {new Date(data.syncedAt).toLocaleString()}</span>
+              )}
+            </div>
           </div>
           <div className="dash-head-actions">
-            {isPublicPortfolio && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--cyan)' }}>● public</span>}
-            {!isPublicPortfolio && data.desktopConnected && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--green)' }}>● desktop</span>}
-            {!isPublicPortfolio && auth?.connected && (
-              <DesktopPairingButton
-                lang={lang}
-                canUseDesktop={Boolean(auth?.entitlements?.desktopDownload)}
-                onPricing={onPricing}
-              />
-            )}
             {isPublicPortfolio && (
               <button
-                className={`btn btn-sm ${isFavorited ? 'btn-ghost' : 'btn-primary'}`}
+                className="btn btn-sm btn-ghost"
                 onClick={toggleFavorite}
                 disabled={favoriteBusy || favorites.loading}
                 title={lang === 'ru' ? 'Сохранить профиль в избранное' : 'Save profile to favorites'}
@@ -465,186 +476,247 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
                     : (lang === 'ru' ? 'В избранное' : 'Add to favorites')}
               </button>
             )}
+            {!isPublicPortfolio && (
+              <button
+                type="button"
+                className={`btn btn-sm ${controlsOpen ? 'btn-ghost' : 'btn-primary'}`}
+                onClick={() => setControlsOpen((open) => !open)}
+                aria-expanded={controlsOpen}
+              >
+                {controlsOpen
+                  ? (lang === 'ru' ? 'Закрыть' : 'Close')
+                  : (lang === 'ru' ? '+ Добавить' : '+ Add')}
+              </button>
+            )}
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}
+              title={lang === 'ru' ? 'Обновить данные портфеля' : 'Refresh portfolio data'}
+            >
+              {portfolio.loading ? '...' : (lang === 'ru' ? 'Обновить' : 'Refresh')}
+            </button>
           </div>
         </div>
         {favoriteError && (
           <div style={{ marginBottom: 16, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red)' }}>{favoriteError}</div>
         )}
 
-        {!isPublicPortfolio && (
-          <PortfolioControls
-            lang={lang}
-            auth={auth}
-            portfolios={portfolios}
-            activePortfolioId={activePortfolioId}
-            portfolioType={data.portfolioType}
-            onSelect={(id) => setSelectedPortfolioId(id)}
-            onChanged={(id) => {
-              if (id) setSelectedPortfolioId(id);
-              portfolio.reload(false);
-            }}
-            onPublicProfile={onPublicProfile}
-          />
-        )}
-
-        <div className="dash-stats">
-          <StatCard accent label={t.dash.total} value={compactUsd(data.totalValue)} delta={`${data.pricedCount}/${data.totalInventoryCount} priced`} sub={`${data.uniqueInventoryCount} unique rows`} />
-          <StatCard label={t.dash.pnl} value={`${data.pnl >= 0 ? '+' : ''}${compactUsd(data.pnl)}`} delta={`${data.pnlPct.toFixed(2)}% all-time`} deltaColor={pnlColor} sub={`Cost basis ${compactUsd(data.totalBasis)}`} />
-          <StatCard
-            label={lang === 'ru' ? 'ДОСТУПНО К ПРОДАЖЕ' : 'SELLABLE NOW'}
-            value={compactUsd(marketableValue)}
-            delta={`${marketableQty}/${data.totalInventoryCount} marketable`}
-            deltaColor="var(--cyan)"
-            sub={`${notMarketableQty} locked or storage`}
-          />
-          <StatCard
-            label={lang === 'ru' ? 'КОНЦЕНТРАЦИЯ' : 'CONCENTRATION'}
-            value={topItem ? `${topItemPct.toFixed(0)}%` : '0%'}
-            delta={topItem ? topItem.name : 'No priced items'}
-            deltaColor="var(--amber)"
-            sub={`Top 5 = ${topFivePct.toFixed(0)}% of portfolio`}
-          />
-        </div>
-
-        <div className="dash-chart-row">
-          <div className="glass dash-panel">
-            <div className="dash-chart-toolbar">
-              <div>
-                <div className="eyebrow">VALUE OVER TIME</div>
-                <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{historySubtitle}</div>
+        {!isPublicPortfolio && controlsOpen && (
+          <div className="dash-management">
+            {auth?.connected && (
+              <div className="dash-management-desktop">
+                <span className="eyebrow">{lang === 'ru' ? 'СИНХРОНИЗАЦИЯ' : 'SYNC'}</span>
+                {data.desktopConnected && <span className="dash-connected-label">● desktop</span>}
+                <DesktopPairingButton
+                  lang={lang}
+                  canUseDesktop={Boolean(auth?.entitlements?.desktopDownload)}
+                  onPricing={onPricing}
+                />
               </div>
-              <div className="dash-range-switch">
-                {['7d', '30d', '90d', 'ALL'].map(r => (
-                  <button key={r} onClick={() => setRange(r)} style={{
-                    padding: '6px 12px', fontFamily: 'var(--f-mono)', fontSize: 11,
-                    color: range === r ? 'var(--fg-0)' : 'var(--fg-3)',
-                    background: range === r ? 'rgba(255,255,255,0.06)' : 'transparent',
-                  }}>{r}</button>
-                ))}
-              </div>
-            </div>
-            <PortfolioChart history={data.history} range={range} lang={lang} />
-          </div>
-
-          {/* Portfolio leaders temporarily hidden — keep PortfolioLeaders in code to restore later */}
-          {false && (
-            <PortfolioLeaders
-              leaders={data.leaders}
+            )}
+            <PortfolioControls
               lang={lang}
-              onItemClick={(row) => {
-                const match = items.find((item) => item.marketHashName === row.marketHashName);
-                if (match && onItemClick) onItemClick(match);
+              auth={auth}
+              portfolios={portfolios}
+              activePortfolioId={activePortfolioId}
+              portfolioType={data.portfolioType}
+              onSelect={(id) => setSelectedPortfolioId(id)}
+              onChanged={(id) => {
+                if (id) setSelectedPortfolioId(id);
+                portfolio.reload(false);
               }}
+              onPublicProfile={onPublicProfile}
             />
-          )}
-
-          <div className="glass dash-panel">
-            <div className="eyebrow">{t.dash.breakdown}</div>
-            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {(data.allocation || []).length === 0 ? (
-                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                  {lang === 'ru' ? 'Нет оценённых предметов' : 'No priced items'}
-                </div>
-              ) : (data.allocation || []).map((b, i) => (
-                <div key={`${b.l}-${i}`}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                    <span style={{ color: 'var(--fg-1)' }}>{allocationLabel(b.l, lang)}</span>
-                    <span style={{ fontFamily: 'var(--f-mono)', color: 'var(--fg-2)' }}>{compactUsd(b.v)} · {b.p}%</span>
-                  </div>
-                  <div style={{ height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(100, Math.max(0, b.p))}%`, height: '100%', background: b.c, borderRadius: 3, opacity: 0.85 }}></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {data.itemsLimited && (
-          <div className="glass" style={{
-            padding: '14px 18px',
-            marginBottom: 16,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 16,
-            flexWrap: 'wrap',
-            border: '1px solid oklch(0.68 0.22 5 / 0.35)',
-          }}>
-            <div style={{ fontSize: 13.5, color: 'var(--fg-1)', lineHeight: 1.5 }}>
-              {lang === 'ru'
-                ? `Бесплатный тариф: в списке показаны ${data.visibleInventoryCount || data.itemDisplayLimit} из ${data.totalInventoryCount} предметов. Plus снимает лимит.`
-                : `Free plan: showing ${data.visibleInventoryCount || data.itemDisplayLimit} of ${data.totalInventoryCount} items. Plus removes the limit.`}
-            </div>
-            <button type="button" className="btn btn-sm btn-primary" onClick={() => onPricing && onPricing()}>
-              {lang === 'ru' ? 'Тарифы' : 'Plans'}
-            </button>
           </div>
         )}
 
-        <div className="glass dash-inventory">
-          <div className="dash-inventory-toolbar">
-            <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-              {filteredItems.length}/{items.length} · {data.totalInventoryCount} {lang === 'ru' ? 'шт.' : 'items'}
-              {data.itemsLimited && (
-                <span style={{ color: 'var(--accent)' }}>
-                  {lang === 'ru' ? ` · лимит ${data.itemDisplayLimit}` : ` · limit ${data.itemDisplayLimit}`}
-                </span>
-              )}
-              {data.storageItemCount > 0 && (
-                <span> · {lang === 'ru' ? `хранилище ${data.storageItemCount}` : `storage ${data.storageItemCount}`}</span>
-              )}
-              <span style={{ color: 'var(--fg-3)', opacity: 0.7 }}> · {inventorySourceLabel(data.inventoryProvider, lang)}</span>
+        <div className="dash-section-tabs" role="tablist" aria-label={lang === 'ru' ? 'Разделы портфеля' : 'Portfolio sections'}>
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              role="tab"
+              aria-selected={activeSection === section.id}
+              className="dash-section-tab"
+              data-active={activeSection === section.id}
+              onClick={() => setActiveSection(section.id)}
+            >
+              {section.label}
+              {Number.isFinite(section.count) && <span>{section.count}</span>}
+            </button>
+          ))}
+        </div>
+
+        {activeSection === 'overview' && (
+          <div className="dash-section-panel" role="tabpanel">
+            <div className="dash-stats">
+              <StatCard
+                accent
+                label={t.dash.total}
+                value={compactUsd(data.totalValue)}
+                delta={lang === 'ru' ? `${data.pricedCount} из ${data.totalInventoryCount} оценено` : `${data.pricedCount} of ${data.totalInventoryCount} priced`}
+                sub={lang === 'ru' ? `${data.uniqueInventoryCount} уникальных позиций` : `${data.uniqueInventoryCount} unique positions`}
+              />
+              <StatCard
+                label={t.dash.pnl}
+                value={`${data.pnl >= 0 ? '+' : ''}${compactUsd(data.pnl)}`}
+                delta={`${data.pnlPct >= 0 ? '+' : ''}${data.pnlPct.toFixed(2)}%`}
+                deltaColor={pnlColor}
+                sub={lang === 'ru' ? `Себестоимость ${compactUsd(data.totalBasis)}` : `Cost basis ${compactUsd(data.totalBasis)}`}
+              />
+              <StatCard
+                label={lang === 'ru' ? 'ДОСТУПНО К ПРОДАЖЕ' : 'SELLABLE NOW'}
+                value={compactUsd(marketableValue)}
+                delta={lang === 'ru' ? `${marketableQty} из ${data.totalInventoryCount} доступны` : `${marketableQty} of ${data.totalInventoryCount} marketable`}
+                deltaColor="var(--cyan)"
+                sub={lang === 'ru' ? `${notMarketableQty} заблокировано или в хранилище` : `${notMarketableQty} locked or in storage`}
+              />
+              <StatCard
+                label={lang === 'ru' ? 'КОНЦЕНТРАЦИЯ' : 'CONCENTRATION'}
+                value={topItem ? `${topItemPct.toFixed(0)}%` : '0%'}
+                delta={topItem ? topItem.name : (lang === 'ru' ? 'Нет оценённых предметов' : 'No priced items')}
+                deltaColor="var(--amber)"
+                sub={lang === 'ru' ? `Топ-5 = ${topFivePct.toFixed(0)}% портфеля` : `Top 5 = ${topFivePct.toFixed(0)}% of portfolio`}
+              />
             </div>
-            <div className="dash-inventory-actions">
-              <button
-                className="btn btn-sm btn-ghost"
-                onClick={() => downloadPortfolioCsv(items)}
-                title={lang === 'ru' ? 'Экспорт CSV' : 'Export CSV'}
-              >
-                CSV
-              </button>
-              <button
-                className="btn btn-sm btn-ghost"
-                onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}
-                title={lang === 'ru'
-                  ? `Обновить · ${new Date(data.syncedAt).toLocaleString()}`
-                  : `Refresh · ${new Date(data.syncedAt).toLocaleString()}`}
-              >
-                {portfolio.loading ? '...' : ((isSteamPortfolio || isPublicPortfolio) ? 'Sync' : 'Refresh')}
-              </button>
-              <input
-                className="dash-inventory-search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={lang === 'ru' ? 'Поиск...' : 'Search...'}
+
+            <div className="dash-chart-row">
+              <div className="glass dash-panel">
+                <div className="dash-chart-toolbar">
+                  <div>
+                    <div className="eyebrow">{lang === 'ru' ? 'СТОИМОСТЬ ВО ВРЕМЕНИ' : 'VALUE OVER TIME'}</div>
+                    <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{historySubtitle}</div>
+                  </div>
+                  <div className="dash-range-switch">
+                    {['7d', '30d', '90d', 'ALL'].map(r => (
+                      <button key={r} onClick={() => setRange(r)} style={{
+                        padding: '6px 12px', fontFamily: 'var(--f-mono)', fontSize: 11,
+                        color: range === r ? 'var(--fg-0)' : 'var(--fg-3)',
+                        background: range === r ? 'rgba(255,255,255,0.06)' : 'transparent',
+                      }}>{r === 'ALL' && lang === 'ru' ? 'ВСЁ' : r}</button>
+                    ))}
+                  </div>
+                </div>
+                <PortfolioChart history={data.history} range={range} lang={lang} />
+              </div>
+
+              <div className="glass dash-panel dash-allocation-panel">
+                <div className="eyebrow">{t.dash.breakdown}</div>
+                <div className="dash-risk-summary">
+                  <div>
+                    <span>{lang === 'ru' ? 'Крупнейшая позиция' : 'Largest position'}</span>
+                    <strong>{topItem ? `${topItemPct.toFixed(0)}%` : '—'}</strong>
+                  </div>
+                  <div>
+                    <span>{lang === 'ru' ? 'Доля топ-5' : 'Top 5 share'}</span>
+                    <strong>{topFivePct.toFixed(0)}%</strong>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {(data.allocation || []).length === 0 ? (
+                    <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                      {lang === 'ru' ? 'Нет оценённых предметов' : 'No priced items'}
+                    </div>
+                  ) : (data.allocation || []).map((b, i) => (
+                    <div key={`${b.l}-${i}`}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+                        <span style={{ color: 'var(--fg-1)' }}>{allocationLabel(b.l, lang)}</span>
+                        <span style={{ fontFamily: 'var(--f-mono)', color: 'var(--fg-2)' }}>{compactUsd(b.v)} · {b.p}%</span>
+                      </div>
+                      <div style={{ height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(100, Math.max(0, b.p))}%`, height: '100%', background: b.c, borderRadius: 3, opacity: 0.85 }}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeSection === 'items' && (
+          <div className="dash-section-panel" role="tabpanel">
+            {data.itemsLimited && (
+              <div className="glass dash-limit-notice">
+                <div style={{ fontSize: 13.5, color: 'var(--fg-1)', lineHeight: 1.5 }}>
+                  {lang === 'ru'
+                    ? `Бесплатный тариф: показаны ${data.visibleInventoryCount || data.itemDisplayLimit} из ${data.totalInventoryCount} предметов. Plus снимает лимит.`
+                    : `Free plan: showing ${data.visibleInventoryCount || data.itemDisplayLimit} of ${data.totalInventoryCount} items. Plus removes the limit.`}
+                </div>
+                <button type="button" className="btn btn-sm btn-primary" onClick={() => onPricing && onPricing()}>
+                  {lang === 'ru' ? 'Тарифы' : 'Plans'}
+                </button>
+              </div>
+            )}
+
+            <div className="glass dash-inventory">
+              <div className="dash-inventory-toolbar">
+                <div>
+                  <div className="eyebrow">{lang === 'ru' ? 'ПРЕДМЕТЫ ПОРТФЕЛЯ' : 'PORTFOLIO ITEMS'}</div>
+                  <div className="dash-inventory-meta">
+                    {filteredItems.length}/{items.length} · {data.totalInventoryCount} {lang === 'ru' ? 'шт.' : 'items'}
+                    {data.itemsLimited && (
+                      <span style={{ color: 'var(--accent)' }}>
+                        {lang === 'ru' ? ` · лимит ${data.itemDisplayLimit}` : ` · limit ${data.itemDisplayLimit}`}
+                      </span>
+                    )}
+                    {data.storageItemCount > 0 && (
+                      <span> · {lang === 'ru' ? `хранилище ${data.storageItemCount}` : `storage ${data.storageItemCount}`}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="dash-inventory-actions">
+                  <input
+                    className="dash-inventory-search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={lang === 'ru' ? 'Найти предмет...' : 'Find an item...'}
+                    aria-label={lang === 'ru' ? 'Поиск по предметам' : 'Search items'}
+                  />
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => downloadPortfolioCsv(items)}
+                    title={lang === 'ru' ? 'Экспортировать все предметы в CSV' : 'Export all items to CSV'}
+                  >
+                    {lang === 'ru' ? 'Экспорт CSV' : 'Export CSV'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="dash-inventory-scroll">
+                <InventoryTable
+                  items={filteredItems}
+                  onItemClick={onItemClick}
+                  lang={lang}
+                  portfolioId={activePortfolioId}
+                  portfolioType={data.portfolioType}
+                  onBasisSaved={() => portfolio.reload(false)}
+                  onItemDeleted={() => portfolio.reload(false)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeSection === 'activity' && (
+          <div className="dash-section-panel" role="tabpanel">
+            <div className="glass dash-activity-panel">
+              <div className="eyebrow">{t.dash.activity}</div>
+              <div className="dash-section-description">
+                {lang === 'ru'
+                  ? 'Покупки, продажи и изменения количества предметов.'
+                  : 'Purchases, sales, and item quantity changes.'}
+              </div>
+              <ActivityTable
+                activity={data.activity}
+                portfolioId={activePortfolioId}
+                portfolioType={data.portfolioType}
+                lang={lang}
+                onEventDeleted={() => portfolio.reload(false)}
               />
             </div>
           </div>
-
-          <div className="dash-inventory-scroll">
-            <InventoryTable
-              items={filteredItems}
-              onItemClick={onItemClick}
-              lang={lang}
-              portfolioId={activePortfolioId}
-              portfolioType={data.portfolioType}
-              onBasisSaved={() => portfolio.reload(false)}
-              onItemDeleted={() => portfolio.reload(false)}
-            />
-          </div>
-        </div>
-
-        <div className="glass" style={{ padding: 20 }}>
-          <div className="eyebrow">{t.dash.activity}</div>
-          <ActivityTable
-            activity={data.activity}
-            portfolioId={activePortfolioId}
-            portfolioType={data.portfolioType}
-            lang={lang}
-            onEventDeleted={() => portfolio.reload(false)}
-          />
-        </div>
+        )}
       </div>
     </div>
   );
@@ -1354,16 +1426,16 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
     <>
       <div className="inv-grid inv-grid-head">
         <div>#</div><div></div>
-        <SortHeader label="Item" column="name" />
-        <SortHeader label="Qty" column="qty" />
+        <SortHeader label={lang === 'ru' ? 'Предмет' : 'Item'} column="name" />
+        <SortHeader label={lang === 'ru' ? 'Кол-во' : 'Qty'} column="qty" />
         <SortHeader
-          label="Basis"
+          label={lang === 'ru' ? 'Покупка' : 'Basis'}
           column="basis"
           title={lang === 'ru' ? 'Себестоимость за 1 шт. Меняется через кнопку Изменить.' : 'Cost per unit. Change it from the Edit button.'}
         />
-        <SortHeader label="Value" column="value" />
-        <SortHeader label="P&L" column="pnl" />
-        <div>Source</div>
+        <SortHeader label={lang === 'ru' ? 'Стоимость' : 'Value'} column="value" />
+        <SortHeader label={lang === 'ru' ? 'Доход' : 'P&L'} column="pnl" />
+        <div>{lang === 'ru' ? 'Источник' : 'Source'}</div>
       </div>
       {sortedItems.map((h, i) => {
         const change = (h.spark || [0, 0]).at(-1) - (h.spark || [0, 0]).at(-2);
@@ -1372,8 +1444,8 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
         const lockLabel = h.tradableQty === h.qty
           ? null
           : h.tradableQty > 0
-            ? `${h.qty - h.tradableQty} restricted`
-            : 'restricted';
+            ? (lang === 'ru' ? `${h.qty - h.tradableQty} заблок.` : `${h.qty - h.tradableQty} restricted`)
+            : (lang === 'ru' ? 'заблокировано' : 'restricted');
         return (
           <div
             key={h.marketHashName || String(h.assetid || i)}
@@ -1390,8 +1462,8 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
             <div className="inv-item-cell">
               <div className="inv-item-name">{h.name}</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center' }}>
-                {h.marketableQty > 0 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--green)' }}>marketable</span>}
-                {h.assetIds?.length > 1 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>{h.assetIds.length} stacks merged</span>}
+                {h.marketableQty > 0 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--green)' }}>{lang === 'ru' ? 'можно продать' : 'marketable'}</span>}
+                {h.assetIds?.length > 1 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>{lang === 'ru' ? `${h.assetIds.length} объединено` : `${h.assetIds.length} stacks merged`}</span>}
                 {(h.inStorage || h.storageQty > 0) && (
                   <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--cyan)' }} title={h.storageUnitName || ''}>
                     {lang === 'ru' ? 'хранилище' : 'storage'}{h.storageUnitName ? ` · ${h.storageUnitName}` : ''}

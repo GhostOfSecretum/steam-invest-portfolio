@@ -669,11 +669,61 @@ function HeroConcept_Operators({ lang, onItemClick }) {
   );
 }
 
+function HeroPortfolioPreview({ lang, data }) {
+  const totalValue = Number.isFinite(data?.totalValue) && data.totalValue > 0 ? data.totalValue : 12840;
+  const pnl = Number.isFinite(data?.pnl) ? data.pnl : 2140;
+  const pnlPct = Number.isFinite(data?.pnlPct) ? data.pnlPct : 20;
+  const items = Array.isArray(data?.items) && data.items.length
+    ? data.items.slice(0, 3)
+    : [
+      { name: 'AK-47 | Redline', totalValue: 2840, pnlPct: 18.4 },
+      { name: 'Karambit | Doppler', totalValue: 1985, pnlPct: 7.2 },
+      { name: 'AWP | Asiimov', totalValue: 1240, pnlPct: -2.1 },
+    ];
+
+  return (
+    <div className="hero-portfolio-preview" aria-hidden="true">
+      <div className="hero-preview-head">
+        <span>{lang === 'ru' ? 'МОЙ ПОРТФЕЛЬ' : 'MY PORTFOLIO'}</span>
+        <i>{lang === 'ru' ? 'ОБНОВЛЕНО' : 'LIVE'}</i>
+      </div>
+      <div className="hero-preview-value">{compactUsd(totalValue)}</div>
+      <div className="hero-preview-delta" data-positive={pnl >= 0}>
+        {pnl >= 0 ? '+' : ''}{compactUsd(pnl)} · {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%
+      </div>
+      <svg className="hero-preview-chart" viewBox="0 0 320 72" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="heroPreviewFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d="M0 61 C32 58 42 45 70 49 S116 36 143 40 S178 18 205 29 S252 17 320 6 L320 72 L0 72 Z" fill="url(#heroPreviewFill)" />
+        <path d="M0 61 C32 58 42 45 70 49 S116 36 143 40 S178 18 205 29 S252 17 320 6" fill="none" stroke="var(--accent)" strokeWidth="2" />
+      </svg>
+      <div className="hero-preview-items">
+        {items.map((item) => {
+          const value = Number.isFinite(item.totalValue) ? item.totalValue : (Number(item.value) || 0);
+          const change = Number.isFinite(item.pnlPct) ? item.pnlPct : 0;
+          return (
+            <div key={item.marketHashName || item.name}>
+              <span>{item.name || item.marketHashName}</span>
+              <b>{compactUsd(value)}</b>
+              <i data-positive={change >= 0}>{change >= 0 ? '+' : ''}{change.toFixed(1)}%</i>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* Hero stage: Operators concept */
 function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
   const t = useT(lang);
   const [profileUrl, setProfileUrl] = useState('');
   const [profileUrlError, setProfileUrlError] = useState('');
+  const [profileOpen, setProfileOpen] = useState(false);
   const portfolio = usePortfolio(auth);
   const market = useMarketSnapshot({ ticker: [], cases: [] });
   const catalog = useMarketCatalog({ page: 1, pageSize: 1, sort: 'name-asc' });
@@ -744,6 +794,7 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
       <div className="container hero-layout">
         {/* Left: copy */}
         <div className="fade-up hero-copy">
+          <div className="eyebrow hero-eyebrow">{t.hero.eyebrow}</div>
           <h1 className="display hero-title" style={{ fontWeight: 500, letterSpacing: '-0.04em' }}>
             {t.hero.title1}<br />
             {t.hero.title2}{' '}
@@ -757,9 +808,24 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
           </p>
           <div className="hero-actions">
             <button className="btn btn-primary" onClick={onLink}>
-              <SteamGlyph /> {t.hero.cta1}
+              <SteamGlyph /> {auth?.connected ? t.hero.ctaConnected : t.hero.cta1}
             </button>
-            <button className="btn btn-ghost" onClick={onLink}>{t.nav.dashboard}</button>
+            <button
+              className="btn btn-ghost"
+              type="button"
+              aria-expanded={profileOpen}
+              onClick={() => {
+                setProfileOpen((open) => !open);
+                setProfileUrlError('');
+              }}
+            >
+              {t.hero.profileToggle}
+            </button>
+          </div>
+          <div className="hero-trust-line">
+            <span>✓</span> {t.hero.trust}
+          </div>
+          {profileOpen && (
             <form className="hero-profile-form" onSubmit={submitProfileUrl}>
               <input
                 value={profileUrl}
@@ -773,7 +839,7 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
               <button className="btn btn-ghost" type="submit">{t.hero.profileUrlCta}</button>
               {profileUrlError && <div className="hero-profile-error">{profileUrlError}</div>}
             </form>
-          </div>
+          )}
 
           <div className="hero-stats">
             {heroCopy.map((s) => (
@@ -788,6 +854,7 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
         {/* Right: 3D stage */}
         <div className="hero-stage-wrap">
           {stage}
+          {/* Portfolio preview temporarily hidden */}
         </div>
       </div>
 

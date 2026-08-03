@@ -327,6 +327,15 @@
         syncAppUrl('dashboard', null, { profileUrl: nextUrl });
         window.scrollTo({top: 0, behavior: 'instant'});
       };
+      const openOwnPortfolio = () => {
+        setPublicProfileUrl('');
+        if (auth?.connected) {
+          onNav('dashboard');
+          return;
+        }
+        if (auth?.login) auth.login();
+        else onNav('dashboard');
+      };
 
       return (
         <div data-screen-label={`01 ${screen}`}>
@@ -345,30 +354,25 @@
             <>
               <Hero
                 lang={t.lang}
-                onLink={() => {
-                  setPublicProfileUrl('');
-                  if (auth?.connected) {
-                    onNav('dashboard');
-                    return;
-                  }
-                  if (auth?.login) auth.login();
-                  else onNav('dashboard');
-                }}
+                onLink={openOwnPortfolio}
                 onPublicProfile={openPublicProfile}
                 onItemClick={goItem}
                 auth={auth}
               />
+              <HowItWorks lang={t.lang} />
+              <ProductShowcase lang={t.lang} />
+              <StatsBand />
+              <Ticker onItemClick={goItem} />
               <Pricing lang={t.lang} auth={auth} onInvestors={() => onNav('investors')} />
               {/* Desktop download block temporarily hidden — keep DesktopDownload in code to restore later */}
               {false && <DesktopDownload lang={t.lang} auth={auth} onPricing={() => onNav('pricing')} />}
-              <Ticker onItemClick={goItem} />
               {/* Portfolio leaders temporarily hidden — keep TopMovers in code to restore later */}
               {false && <TopMovers onItemClick={goItem} auth={auth} />}
               {/* News block temporarily hidden — keep CaseROI in code to restore later */}
               {false && <CaseROI />}
-              <StatsBand />
               <SeoIntro lang={t.lang} />
               <FAQ lang={t.lang} />
+              <FinalCta lang={t.lang} auth={auth} onPrimary={openOwnPortfolio} />
               <Footer lang={t.lang} />
             </>
           )}

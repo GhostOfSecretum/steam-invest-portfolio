@@ -1134,6 +1134,179 @@ function Pricing({ lang, auth, onInvestors }) {
   );
 }
 
+function HowItWorks({ lang }) {
+  const copy = lang === 'ru'
+    ? {
+      eyebrow: '// БЕЗ ЛИШНИХ ТАБЛИЦ',
+      title: 'От инвентаря до понятного портфеля',
+      sub: 'Подключение занимает пару минут. После этого стоимость и структура портфеля обновляются в одном месте.',
+      steps: [
+        { n: '01', title: 'Подключите Steam', text: 'Войдите через безопасный Steam OpenID или откройте любой публичный профиль по ссылке.' },
+        { n: '02', title: 'Получите оценку', text: 'SkinsHead сопоставит предметы с рынком и посчитает актуальную стоимость инвентаря.' },
+        { n: '03', title: 'Следите за результатом', text: 'Добавьте цены покупки, чтобы видеть прибыль, концентрацию и историю изменений.' },
+      ],
+    }
+    : {
+      eyebrow: '// NO SPREADSHEETS REQUIRED',
+      title: 'From inventory to a clear portfolio',
+      sub: 'Setup takes a couple of minutes. Your value and portfolio structure then stay together in one place.',
+      steps: [
+        { n: '01', title: 'Connect Steam', text: 'Sign in through secure Steam OpenID or open any public profile by URL.' },
+        { n: '02', title: 'Get a valuation', text: 'SkinsHead matches your items to the market and calculates their current value.' },
+        { n: '03', title: 'Track the result', text: 'Add purchase prices to see profit, concentration, and portfolio history.' },
+      ],
+    };
+
+  return (
+    <section className="section landing-how">
+      <div className="container">
+        <div className="landing-centered-head">
+          <div className="eyebrow">{copy.eyebrow}</div>
+          <h2 className="display">{copy.title}</h2>
+          <p>{copy.sub}</p>
+        </div>
+        <div className="landing-steps">
+          {copy.steps.map((step, index) => (
+            <article className="landing-step glass" key={step.n}>
+              <div className="landing-step-num">{step.n}</div>
+              <div className="landing-step-icon">
+                {index === 0 ? '↗' : index === 1 ? '◇' : '⌁'}
+              </div>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProductShowcase({ lang }) {
+  const copy = lang === 'ru'
+    ? {
+      eyebrow: '// РЕЗУЛЬТАТ, А НЕ ПРОСТО ЦЕНЫ',
+      title: 'Сразу видно, что происходит с деньгами',
+      sub: 'Главный экран отвечает на четыре вопроса: сколько стоит портфель, сколько вы заработали, что можно продать и где слишком высокая концентрация.',
+      features: [
+        ['Актуальная оценка', 'Стоимость всего инвентаря и каждой позиции отдельно.'],
+        ['Прибыль и себестоимость', 'P&L считается относительно ваших реальных цен покупки.'],
+        ['Структура и риски', 'Распределение по категориям и доля крупнейших позиций.'],
+        ['История и экспорт', 'Изменения состава портфеля и выгрузка данных в CSV.'],
+      ],
+      value: 'Стоимость',
+      profit: 'Прибыль',
+      sellable: 'Можно продать',
+      allocation: 'Распределение',
+    }
+    : {
+      eyebrow: '// OUTCOMES, NOT JUST PRICES',
+      title: 'See what is happening with your money',
+      sub: 'The main screen answers four questions: portfolio value, profit, sellable value, and concentration risk.',
+      features: [
+        ['Live valuation', 'Total inventory value and every individual position.'],
+        ['Profit and cost basis', 'P&L calculated against your actual purchase prices.'],
+        ['Structure and risk', 'Allocation by category and largest-position share.'],
+        ['History and export', 'Portfolio changes over time with CSV export.'],
+      ],
+      value: 'Value',
+      profit: 'Profit',
+      sellable: 'Sellable now',
+      allocation: 'Allocation',
+    };
+
+  return (
+    <section className="section landing-showcase">
+      <div className="container landing-showcase-grid">
+        <div className="landing-product-frame glass-strong">
+          <div className="landing-product-topbar">
+            <span>SKINSHEAD / PORTFOLIO</span>
+            <i>● LIVE</i>
+          </div>
+          <div className="landing-product-metrics">
+            <div><span>{copy.value}</span><strong>$12,840</strong><i>148 items</i></div>
+            <div><span>{copy.profit}</span><strong className="is-positive">+$2,140</strong><i>+20.0%</i></div>
+            <div><span>{copy.sellable}</span><strong>$9,320</strong><i>112 items</i></div>
+          </div>
+          <div className="landing-product-body">
+            <div className="landing-product-chart">
+              <div className="eyebrow">90 DAYS</div>
+              <svg viewBox="0 0 600 190" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="landingChartFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0.34" />
+                    <stop offset="100%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path d="M0 162 C50 154 72 130 118 138 S188 112 235 122 S304 74 348 91 S418 68 470 76 S536 31 600 20 L600 190 L0 190 Z" fill="url(#landingChartFill)" />
+                <path d="M0 162 C50 154 72 130 118 138 S188 112 235 122 S304 74 348 91 S418 68 470 76 S536 31 600 20" fill="none" stroke="var(--accent)" strokeWidth="3" />
+              </svg>
+            </div>
+            <div className="landing-product-allocation">
+              <div className="eyebrow">{copy.allocation}</div>
+              {[
+                ['Rifles', 42, 'var(--accent)'],
+                ['Knives', 28, 'var(--cyan)'],
+                ['Cases', 18, 'var(--amber)'],
+                ['Other', 12, 'var(--fg-3)'],
+              ].map(([label, value, color]) => (
+                <div className="landing-allocation-row" key={label}>
+                  <span>{label}</span><b>{value}%</b>
+                  <i><em style={{ width: `${value}%`, background: color }}></em></i>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="landing-showcase-copy">
+          <div className="eyebrow">{copy.eyebrow}</div>
+          <h2 className="display">{copy.title}</h2>
+          <p className="landing-showcase-sub">{copy.sub}</p>
+          <div className="landing-benefit-list">
+            {copy.features.map(([title, text], index) => (
+              <div key={title}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <div><h3>{title}</h3><p>{text}</p></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCta({ lang, auth, onPrimary }) {
+  const connected = Boolean(auth?.connected);
+  return (
+    <section className="section-tight landing-final">
+      <div className="container">
+        <div className="landing-final-card glass-strong">
+          <div>
+            <div className="eyebrow">// {lang === 'ru' ? 'ВАШ ИНВЕНТАРЬ УЖЕ МОЖНО ОЦЕНИТЬ' : 'YOUR INVENTORY IS READY TO VALUE'}</div>
+            <h2 className="display">
+              {connected
+                ? (lang === 'ru' ? 'Вернитесь к своему портфелю' : 'Return to your portfolio')
+                : (lang === 'ru' ? 'Посмотрите на скины как на инвестиции' : 'See your skins as investments')}
+            </h2>
+            <p>
+              {lang === 'ru'
+                ? 'Подключение через Steam OpenID. Пароль и коды аутентификатора не передаются SkinsHead.'
+                : 'Connect through Steam OpenID. Your password and authenticator codes are never shared with SkinsHead.'}
+            </p>
+          </div>
+          <button type="button" className="btn btn-primary" onClick={onPrimary}>
+            {connected
+              ? (lang === 'ru' ? 'Открыть мой портфель' : 'Open my portfolio')
+              : (lang === 'ru' ? 'Оценить мой инвентарь' : 'Value my inventory')}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* Stats band — product pillars, not vanity metrics */
 function StatsBand() {
   const lang = window.__lang || 'en';
@@ -1143,20 +1316,17 @@ function StatsBand() {
       { v: 'Free', l: 'до 1 000 предметов в списке' },
       { v: 'Plus', l: 'безлимит + desktop-приложение' },
       { v: 'Investor', l: 'трекинг топ-аккаунтов инвесторов' },
-      { v: 'Маркет', l: 'live-цены и история предмета' },
     ]
     : [
       { v: 'Free', l: 'up to 1,000 items displayed' },
       { v: 'Plus', l: 'unlimited + desktop app' },
       { v: 'Investor', l: 'top investor account tracking' },
-      { v: 'Market', l: 'live prices and item history' },
     ];
   return (
     <section className="section-tight">
       <div className="container">
-        <div className="glass-strong" style={{
+        <div className="glass-strong landing-stats-band" style={{
           padding: '48px 56px',
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24,
           position: 'relative', overflow: 'hidden',
         }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2 }}>
@@ -1247,7 +1417,7 @@ function FAQ({ lang }) {
     <section className="section">
       <div className="container">
         <SectionHeader title={t.sections.faq} num="06" />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32 }}>
+        <div className="landing-faq-layout">
           <div>
             <p style={{ color: 'var(--fg-1)', lineHeight: 1.6, fontSize: 15 }}>
               {lang === 'ru'
@@ -1288,7 +1458,7 @@ function FAQ({ lang }) {
 function SectionHeader({ title, sub, num }) {
   const isNewsRuTitle = title === 'CS2 · новости';
   return (
-    <div style={{ marginBottom: 40, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 32 }}>
+    <div className="section-header">
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
           {num && <span style={{
@@ -1389,7 +1559,7 @@ function Footer({ lang }) {
 
   return (
     <footer style={{ padding: '64px 64px 48px', borderTop: '1px solid var(--line)' }}>
-      <div className="container" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 32 }}>
+      <div className="container landing-footer-grid">
         <div>
           <Logo />
           <p style={{ marginTop: 16, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.6, maxWidth: 320 }}>
@@ -1440,4 +1610,4 @@ function Footer({ lang }) {
   );
 }
 
-Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, Pricing, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });
+Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, Pricing, HowItWorks, ProductShowcase, FinalCta, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });
