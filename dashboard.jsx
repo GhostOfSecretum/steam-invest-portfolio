@@ -246,12 +246,12 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
 
 function StatCard({ label, value, delta, deltaColor, sub, accent }) {
   return (
-    <div className="glass" style={{ padding: 20, position: 'relative', overflow: 'hidden' }}>
-      {accent && <div style={{ position: 'absolute', top: 0, left: 0, width: 2, height: '100%', background: 'var(--accent)' }}></div>}
+    <div className="glass dash-stat-card">
+      {accent && <div className="dash-stat-accent" />}
       <div className="eyebrow">{label}</div>
-      <div className="display" style={{ fontSize: 30, fontWeight: 500, letterSpacing: '-0.02em', marginTop: 10, lineHeight: 1 }}>{value}</div>
-      {delta && <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: deltaColor || 'var(--green)' }}>{delta}</div>}
-      {sub && <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--fg-3)' }}>{sub}</div>}
+      <div className="display dash-stat-value">{value}</div>
+      {delta && <div className="dash-stat-delta" style={{ color: deltaColor || 'var(--green)' }}>{delta}</div>}
+      {sub && <div className="dash-stat-sub">{sub}</div>}
     </div>
   );
 }
@@ -432,16 +432,16 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
     : `USD · real price history · ${historyMeta.coveragePct || 0}% coverage · ${historySources}`;
 
   return (
-    <div style={{ padding: '40px 64px 80px' }}>
+    <div className="dash-page">
       <div className="container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28 }}>
+        <div className="dash-head">
           <div>
             <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--accent)' }}>
               // PORTFOLIO · {data.totalInventoryCount} ITEMS · {data.uniqueInventoryCount} UNIQUE
             </div>
-            <h1 className="display" style={{ fontSize: 44, fontWeight: 500, letterSpacing: '-0.02em' }}>{t.dash.title}</h1>
+            <h1 className="display dash-title">{t.dash.title}</h1>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="dash-head-actions">
             {isPublicPortfolio && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--cyan)' }}>● public</span>}
             {!isPublicPortfolio && data.desktopConnected && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--green)' }}>● desktop</span>}
             {!isPublicPortfolio && auth?.connected && (
@@ -487,7 +487,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           />
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        <div className="dash-stats">
           <StatCard accent label={t.dash.total} value={compactUsd(data.totalValue)} delta={`${data.pricedCount}/${data.totalInventoryCount} priced`} sub={`${data.uniqueInventoryCount} unique rows`} />
           <StatCard label={t.dash.pnl} value={`${data.pnl >= 0 ? '+' : ''}${compactUsd(data.pnl)}`} delta={`${data.pnlPct.toFixed(2)}% all-time`} deltaColor={pnlColor} sub={`Cost basis ${compactUsd(data.totalBasis)}`} />
           <StatCard
@@ -506,14 +506,14 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(200px, 0.9fr)', gap: 12, marginBottom: 24 }}>
-          <div className="glass" style={{ padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className="dash-chart-row">
+          <div className="glass dash-panel">
+            <div className="dash-chart-toolbar">
               <div>
                 <div className="eyebrow">VALUE OVER TIME</div>
                 <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{historySubtitle}</div>
               </div>
-              <div style={{ display: 'flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+              <div className="dash-range-switch">
                 {['7d', '30d', '90d', 'ALL'].map(r => (
                   <button key={r} onClick={() => setRange(r)} style={{
                     padding: '6px 12px', fontFamily: 'var(--f-mono)', fontSize: 11,
@@ -538,7 +538,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
             />
           )}
 
-          <div className="glass" style={{ padding: 24 }}>
+          <div className="glass dash-panel">
             <div className="eyebrow">{t.dash.breakdown}</div>
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
               {(data.allocation || []).length === 0 ? (
@@ -582,8 +582,8 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           </div>
         )}
 
-        <div className="glass" style={{ padding: 0, overflow: 'hidden', marginBottom: 24 }}>
-          <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
+        <div className="glass dash-inventory">
+          <div className="dash-inventory-toolbar">
             <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
               {filteredItems.length}/{items.length} · {data.totalInventoryCount} {lang === 'ru' ? 'шт.' : 'items'}
               {data.itemsLimited && (
@@ -596,7 +596,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
               )}
               <span style={{ color: 'var(--fg-3)', opacity: 0.7 }}> · {inventorySourceLabel(data.inventoryProvider, lang)}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="dash-inventory-actions">
               <button
                 className="btn btn-sm btn-ghost"
                 onClick={() => downloadPortfolioCsv(items)}
@@ -613,23 +613,26 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
               >
                 {portfolio.loading ? '...' : ((isSteamPortfolio || isPublicPortfolio) ? 'Sync' : 'Refresh')}
               </button>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={lang === 'ru' ? 'Поиск...' : 'Search...'} style={{
-                padding: '6px 12px', borderRadius: 7, fontSize: 12,
-                background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)', color: 'var(--fg-0)',
-                fontFamily: 'var(--f-body)', outline: 'none', width: 200,
-              }} />
+              <input
+                className="dash-inventory-search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={lang === 'ru' ? 'Поиск...' : 'Search...'}
+              />
             </div>
           </div>
 
-          <InventoryTable
-            items={filteredItems}
-            onItemClick={onItemClick}
-            lang={lang}
-            portfolioId={activePortfolioId}
-            portfolioType={data.portfolioType}
-            onBasisSaved={() => portfolio.reload(false)}
-            onItemDeleted={() => portfolio.reload(false)}
-          />
+          <div className="dash-inventory-scroll">
+            <InventoryTable
+              items={filteredItems}
+              onItemClick={onItemClick}
+              lang={lang}
+              portfolioId={activePortfolioId}
+              portfolioType={data.portfolioType}
+              onBasisSaved={() => portfolio.reload(false)}
+              onItemDeleted={() => portfolio.reload(false)}
+            />
+          </div>
         </div>
 
         <div className="glass" style={{ padding: 20 }}>
@@ -1349,12 +1352,7 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
 
   return (
     <>
-      <div style={{
-        display: 'grid', gridTemplateColumns: '40px 60px 2fr 90px 100px 110px 100px 160px',
-        padding: '12px 20px', gap: 12, alignItems: 'center', fontSize: 11,
-        color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', letterSpacing: '0.06em', textTransform: 'uppercase',
-        borderBottom: '1px solid var(--line)',
-      }}>
+      <div className="inv-grid inv-grid-head">
         <div>#</div><div></div>
         <SortHeader label="Item" column="name" />
         <SortHeader label="Qty" column="qty" />
@@ -1377,19 +1375,20 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
             ? `${h.qty - h.tradableQty} restricted`
             : 'restricted';
         return (
-          <div key={h.marketHashName || String(h.assetid || i)} onClick={() => onItemClick && onItemClick(h)} style={{
-            display: 'grid', gridTemplateColumns: '40px 60px 2fr 90px 100px 110px 100px 160px',
-            padding: '14px 20px', gap: 12, alignItems: 'center',
-            borderBottom: i < sortedItems.length - 1 ? '1px solid var(--line)' : 'none',
-            cursor: 'default', transition: 'background 120ms',
-          }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+          <div
+            key={h.marketHashName || String(h.assetid || i)}
+            className="inv-grid inv-grid-row"
+            data-last={i >= sortedItems.length - 1}
+            onClick={() => onItemClick && onItemClick(h)}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
             <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{String(i + 1).padStart(2, '0')}</div>
             {h.iconUrl
               ? <img src={h.iconUrl} alt="" style={{ width: 50, height: 32, objectFit: 'contain', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--line)' }} />
               : <div style={{ width: 50, height: 32, borderRadius: 6, background: `linear-gradient(135deg, var(--rar-${h.tier}), #0a0c11)`, opacity: 0.8, border: '1px solid var(--line)' }}></div>}
-            <div>
-              <div style={{ fontFamily: 'var(--f-display)', fontSize: 13, fontWeight: 500 }}>{h.name}</div>
+            <div className="inv-item-cell">
+              <div className="inv-item-name">{h.name}</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center' }}>
                 {h.marketableQty > 0 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--green)' }}>marketable</span>}
                 {h.assetIds?.length > 1 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>{h.assetIds.length} stacks merged</span>}
