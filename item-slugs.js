@@ -203,7 +203,7 @@
       title,
       description,
       descriptionRu,
-      ogImage: iconUrl || `${siteUrl}/logo-variant-08.png`,
+      ogImage: iconUrl || `${siteUrl}/logo-cs2-candles-variant-02.png`,
     };
   }
 

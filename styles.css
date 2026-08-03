@@ -1515,10 +1515,43 @@ button:disabled,
   line-height: 1;
   flex: 0 0 auto;
 }
-.nav-logo > span {
+.nav-logo-wordmark {
   display: flex;
   align-items: center;
   height: 51px;
+  gap: 4px;
+  font-family: var(--f-display);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+  transform: skewX(-8deg);
+  filter: drop-shadow(0 0 10px rgba(255, 42, 142, 0.14));
+}
+.nav-logo-wordmark-silver,
+.nav-logo-wordmark-pink {
+  display: inline-block;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.nav-logo-wordmark-silver {
+  background-image: linear-gradient(180deg, #ffffff 0%, #d8dde6 42%, #7d8491 52%, #ffffff 100%);
+  text-shadow:
+    0 1px 0 rgba(255,255,255,0.34),
+    0 8px 18px rgba(0,0,0,0.5);
+}
+.nav-logo-wordmark-pink {
+  background-image: linear-gradient(180deg, #ff5fb0 0%, #ff1684 44%, #a20f58 54%, #ff4aa3 100%);
+  text-shadow:
+    0 0 10px rgba(255, 36, 143, 0.35),
+    0 8px 18px rgba(0,0,0,0.5);
+}
+.nav-logo-wordmark-divider {
+  color: rgba(255,255,255,0.5);
+  font-weight: 500;
+  transform: skewX(8deg);
 }
 .nav-logo-mark {
   width: 118px; height: 42px;
@@ -1811,8 +1844,9 @@ button:disabled,
     gap: 10px;
   }
 
-  .nav-logo > span {
+  .nav-logo-wordmark {
     height: 44px;
+    font-size: 16px;
   }
 
   .nav-logo-mark {

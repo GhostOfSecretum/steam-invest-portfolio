@@ -221,9 +221,13 @@ function Logo() {
   return (
     <div className="nav-logo">
       <div className="nav-logo-mark">
-        <img src="logo-variant-08.png" alt="" />
+        <img src="logo-cs2-candles-variant-02.png" alt="" />
       </div>
-      <span>SKINS<span style={{ opacity: 0.55, fontWeight: 400 }}>/</span>HEAD</span>
+      <span className="nav-logo-wordmark" aria-label="SkinsHead">
+        <span className="nav-logo-wordmark-silver">SKINS</span>
+        <span className="nav-logo-wordmark-divider">/</span>
+        <span className="nav-logo-wordmark-pink">HEAD</span>
+      </span>
     </div>
   );
 }

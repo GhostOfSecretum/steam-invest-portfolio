@@ -1415,6 +1415,8 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue) {
     if (!history || history.provider === 'synthetic') return null;
     const points = realHistoryPoints(history);
     if (points.length < 2) return null;
+    const cleaned = filterPriceOutliers(points);
+    if (cleaned.length < 2) return null;
     return {
       marketHashName: item.marketHashName,
       name: item.name || item.marketHashName,
@@ -1423,7 +1425,7 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue) {
       qty: item.qty,
       currentValue: item.value * item.qty,
       provider: history.provider || 'unknown',
-      points,
+      points: cleaned,
     };
   }))).filter(Boolean);
 
@@ -1438,10 +1440,17 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue) {
   };
 }
 
+const LEADER_RANGE_DAYS = {
+  '1d': 1,
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+};
+
 function buildPeriodLeaders(histories) {
-  const ranges = ['7d', '30d', '90d'];
+  const ranges = Object.keys(LEADER_RANGE_DAYS);
   return histories.map((history) => {
-    const endPrice = history.points[history.points.length - 1]?.price;
+    const endPrice = robustPriceAtDate(history.points, history.points[history.points.length - 1]?.date);
     const changes = {};
     for (const range of ranges) {
       const entry = periodPositionChange(history.points, endPrice, history.qty, range);
@@ -1464,12 +1473,13 @@ function periodPositionChange(points, endPrice, qty, range) {
     return null;
   }
 
-  const days = range === '7d' ? 7 : range === '90d' ? 90 : 30;
+  const days = LEADER_RANGE_DAYS[range] || 30;
   const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
   // Require real coverage back to the period start.
   if (points[0].date > cutoff) return null;
 
-  const startPrice = priceAtDate(points, cutoff);
+  // Median over a small window — single CSFloat spike days otherwise invent -90% movers.
+  const startPrice = robustPriceAtDate(points, cutoff);
   if (!Number.isFinite(startPrice) || startPrice <= 0) return null;
 
   // Keep start/end inside the same history series so FX/provider mismatch does not invent PnL.
@@ -1478,6 +1488,60 @@ function periodPositionChange(points, endPrice, qty, range) {
   const change = Math.round(unitChange * amount * 100) / 100;
   const pct = Math.round((unitChange / startPrice) * 10000) / 100;
   return { pct, change, startPrice, endPrice };
+}
+
+function medianNumbers(values) {
+  const nums = (Array.isArray(values) ? values : []).filter((value) => Number.isFinite(value));
+  if (!nums.length) return null;
+  const sorted = nums.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function shiftDateString(date, deltaDays) {
+  const base = new Date(`${date}T12:00:00.000Z`);
+  if (!Number.isFinite(base.getTime())) return null;
+  base.setUTCDate(base.getUTCDate() + deltaDays);
+  return base.toISOString().slice(0, 10);
+}
+
+// Drop sparse sale spikes (e.g. one day at $20 on a $2 skin) before chart/leaders math.
+function filterPriceOutliers(points, { maxRatio = 2.5, radius = 7 } = {}) {
+  if (!Array.isArray(points) || points.length < 5) return points;
+  return points.filter((point, index) => {
+    const from = Math.max(0, index - radius);
+    const to = Math.min(points.length, index + radius + 1);
+    const sample = [];
+    for (let i = from; i < to; i += 1) {
+      if (i === index) continue;
+      sample.push(points[i].price);
+    }
+    if (sample.length < 3) return true;
+    const med = medianNumbers(sample);
+    if (!Number.isFinite(med) || med <= 0) return true;
+    return point.price <= med * maxRatio && point.price >= med / maxRatio;
+  });
+}
+
+function robustPriceAtDate(points, date, { windowDays = 3, maxRatio = 2.5 } = {}) {
+  if (!Array.isArray(points) || !points.length || !date) return null;
+  const from = shiftDateString(date, -windowDays) || date;
+  let window = points
+    .filter((point) => point.date >= from && point.date <= date)
+    .map((point) => point.price)
+    .filter((price) => Number.isFinite(price) && price > 0);
+
+  if (!window.length) {
+    const fallback = priceAtDate(points, date);
+    return Number.isFinite(fallback) && fallback > 0 ? fallback : null;
+  }
+
+  const med = medianNumbers(window);
+  if (Number.isFinite(med) && med > 0) {
+    const filtered = window.filter((price) => price <= med * maxRatio && price >= med / maxRatio);
+    if (filtered.length) window = filtered;
+  }
+  return medianNumbers(window);
 }
 
 function composePortfolioHistory(histories, untrackedValue, trackedValue, totalValue) {

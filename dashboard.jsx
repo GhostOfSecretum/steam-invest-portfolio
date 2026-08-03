@@ -220,7 +220,7 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
           </div>
         </div>
         <div style={{ display: 'flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-          {['7d', '30d', '90d'].map((r) => (
+          {['1d', '7d', '30d', '90d'].map((r) => (
             <button
               key={r}
               type="button"
