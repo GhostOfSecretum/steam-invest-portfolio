@@ -317,28 +317,103 @@ function AnimNum({ value, prefix = '', suffix = '', decimals = 0, duration = 900
 function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) {
   const connected = Boolean(auth?.connected);
   const profile = auth?.profile;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const menuCloseTimer = useRef(null);
+  const navItems = [
+    { k: 'home', label: t.nav.home },
+    { k: 'dashboard', label: t.nav.dashboard },
+    { k: 'market', label: t.nav.market },
+    { k: 'armory', label: t.nav.armory },
+    { k: 'favorites', label: t.nav.favorites },
+    { k: 'investors', label: t.nav.investors },
+    { k: 'pricing', label: t.nav.pricing },
+    // News nav temporarily hidden with the news section
+    // { k: 'news', label: t.nav.news },
+    { k: 'glock3d', label: t.nav.glock3d },
+  ];
+  const activeNav = navItems.find((item) => item.k === screen) || navItems[0];
+
+  const clearMenuCloseTimer = () => {
+    if (menuCloseTimer.current) {
+      window.clearTimeout(menuCloseTimer.current);
+      menuCloseTimer.current = null;
+    }
+  };
+  const openMenu = () => {
+    clearMenuCloseTimer();
+    setMenuOpen(true);
+  };
+  const scheduleCloseMenu = () => {
+    clearMenuCloseTimer();
+    menuCloseTimer.current = window.setTimeout(() => setMenuOpen(false), 180);
+  };
+  const closeMenu = () => {
+    clearMenuCloseTimer();
+    setMenuOpen(false);
+  };
+
+  useEffect(() => () => clearMenuCloseTimer(), []);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) closeMenu();
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') closeMenu();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [menuOpen]);
+
   return (
     <header className="nav">
       <div className="nav-main">
         <Logo />
       </div>
       <div className="nav-controls">
-        <nav className="nav-links">
-          {[
-            { k: 'home', label: t.nav.home },
-            { k: 'dashboard', label: t.nav.dashboard },
-            { k: 'market', label: t.nav.market },
-            { k: 'armory', label: t.nav.armory },
-            { k: 'favorites', label: t.nav.favorites },
-            { k: 'investors', label: t.nav.investors },
-            { k: 'pricing', label: t.nav.pricing },
-            // News nav temporarily hidden with the news section
-            // { k: 'news', label: t.nav.news },
-            { k: 'glock3d', label: t.nav.glock3d },
-          ].map(it => (
-            <button key={it.k} className="nav-link" data-active={screen === it.k} onClick={() => onNav(it.k)}>{it.label}</button>
-          ))}
-        </nav>
+        <div
+          className="nav-menu"
+          ref={menuRef}
+          data-open={menuOpen}
+          onMouseEnter={openMenu}
+          onMouseLeave={scheduleCloseMenu}
+        >
+          <button
+            type="button"
+            className="nav-menu-trigger"
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            onClick={() => (menuOpen ? closeMenu() : openMenu())}
+          >
+            <span className="nav-menu-trigger-current">{activeNav.label}</span>
+            <span className="nav-menu-trigger-label">{lang === 'ru' ? 'Меню' : 'Menu'}</span>
+            <span className="nav-menu-chevron" aria-hidden="true" />
+          </button>
+          <nav className="nav-links nav-menu-panel" aria-label={lang === 'ru' ? 'Навигация' : 'Navigation'}>
+            <div className="nav-menu-panel-card">
+              {navItems.map((it) => (
+                <button
+                  key={it.k}
+                  type="button"
+                  className="nav-link"
+                  data-active={screen === it.k}
+                  onClick={() => {
+                    closeMenu();
+                    onNav(it.k);
+                  }}
+                >
+                  {it.label}
+                </button>
+              ))}
+            </div>
+          </nav>
+        </div>
         <div className="nav-segment">
           {['en', 'ru'].map(l => (
             <button key={l} onClick={() => onLang(l)} style={{
