@@ -550,7 +550,7 @@ app.post('/api/desktop/inventory-sync', pairingLimiter, asyncRoute(async (req, r
   }
 
   const sumPieces = (list) => list.reduce((sum, item) => sum + Number(item.amount || 1), 0);
-  // When a background sync omits Storage Units, keep the previously synced storage
+  // When a background sync omits Хранилища, keep the previously synced storage
   // items instead of wiping them out of the portfolio.
   const includeStorage = req.body?.includeStorage !== false;
   let mergedItems = items;

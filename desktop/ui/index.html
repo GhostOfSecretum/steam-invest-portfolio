@@ -84,7 +84,7 @@
 
       <button class="btn btn-ghost" id="btn-steam-login">1. Войти в Steam (инвентарь)</button>
       <div id="gc-consent" class="notice">
-        <strong>Storage Units — опционально и только просмотр.</strong><br>
+        <strong>Хранилища — опционально и только просмотр.</strong><br>
         Для содержимого хранилищ Steam нужен локальный вход в CS2 Game Coordinator.
         Токен хранится только на этом компьютере через защищённое хранилище ОС; на сервер отправляется только список предметов.
         Перемещение, трейды, продажа, удаление и переименование не поддерживаются.
@@ -189,7 +189,7 @@
     $('btn-gc-connect').addEventListener('click', async () => {
       if (!$('gc-consent-check').checked) {
         $('gc-status').className = 'status err';
-        $('gc-status').textContent = 'Подтвердите read-only подключение Storage Units галочкой выше.';
+        $('gc-status').textContent = 'Подтвердите read-only подключение Хранилищ галочкой выше.';
         return;
       }
       $('gc-status').className = 'status';

@@ -31,7 +31,7 @@
 1. **Реальные секреты в локальном `.env`** — рабочий Steam API key, полный Telegram session string (эквивалент пароля от аккаунта), Telegram API hash. Требуется немедленная ротация. (`.env` корректно в `.gitignore` и не отслеживается git — утечки в репозиторий нет, но ключи живые.)
 2. **Отсутствие авторизации** на CRUD ручных портфелей и глобальный файл basis — любой клиент без сессии может читать/менять/удалять данные всех пользователей.
 3. **Ошибки в денежных расчётах** — Armory ROI в рублях считается в смешанных валютах (завышение на порядок), история портфеля подставляет текущую стоимость в прошлые даты, fallback basis = рыночная цена (маскирует реальный P&L).
-4. **Auto-sync desktop затирает предметы из Storage Units** — предметы исчезают из портфеля после фоновой синхронизации.
+4. **Auto-sync desktop затирает предметы из Хранилищ** — предметы исчезают из портфеля после фоновой синхронизации.
 5. **Уязвимые зависимости** — axios (SSRF/prototype pollution, high), electron 33.x (множество CVE).
 
 ---
@@ -96,7 +96,7 @@
 При `currency=rub` цены Steam берутся в RUB, но делятся на `baseAnchorUsd` (эталон в USD) → коэффициент ~92×, затем ещё раз умножается на курс. EV/ROI завышаются на порядок.
 *Исправление:* считать EV в одной валюте (всегда USD с конвертацией в конце, либо хранить `baseAnchorRub`).
 
-**2.2. Auto-sync desktop затирает предметы из Storage Units** — `desktop/main.js:163,204–231`
+**2.2. Auto-sync desktop затирает предметы из Хранилищ** — `desktop/main.js:163,204–231`
 `autoSyncIfNeeded` вызывает `runInventorySync(..., { includeStorage: false })` → `storageItems=[]` перезаписывает кэш, storage-предметы исчезают из портфеля после фоновой синхронизации.
 *Исправление:* не перезаписывать storage при `includeStorage: false` (мержить с предыдущим снимком).
 
@@ -261,7 +261,7 @@ CWE-352. Cookie `sameSite: 'lax'` при top-level GET → session swapping (п�
 1. **Немедленно (секреты):** ротировать `STEAM_API_KEY`, `TELEGRAM_SESSION`, `TELEGRAM_API_HASH`; отозвать старые Telegram-сессии.
 2. **Авторизация и изоляция данных:** привязать ручные портфели, basis и desktop-sync к `steamId`; проверять владельца на мутациях (баги 3.1, 3.6, 4.11).
 3. **Денежные расчёты:** Armory ROI в RUB (2.1), история портфеля (2.3), fallback basis (2.5), BasisCell при смене валюты (2.6).
-4. **Desktop storage:** auto-sync не должен затирать Storage Units (2.2); корректный `storageItemCount` (2.8).
+4. **Desktop storage:** auto-sync не должен затирать Хранилища (2.2); корректный `storageItemCount` (2.8).
 5. **Перед публикацией в сеть:** HTTPS + reverse proxy, strong `SESSION_SECRET` без fallback (3.3), `Secure` cookie, rate limiting (3.2/3.9), ограничить static root (3.8), убрать device token из URL + CSRF-защита (3.4/3.7), уменьшить body limit (3.10).
 6. **Зависимости:** обновить electron (≥39.x) и axios (≥1.16), `npm audit fix`.
 7. **Docker:** non-root user, pin digest образа xray, Docker secrets.

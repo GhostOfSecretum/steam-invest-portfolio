@@ -158,7 +158,7 @@ async function mapGcItem(gcItem, storageUnitId, storageUnitName) {
     tags: [],
     inStorage: true,
     storageUnitId: String(storageUnitId),
-    storageUnitName: storageUnitName || 'Storage Unit',
+    storageUnitName: storageUnitName || 'Хранилище',
   };
 }
 
@@ -181,11 +181,11 @@ async function fetchStorageContents(refreshToken, expectedSteamId) {
       (item) => item.def_index === STORAGE_UNIT_DEF_INDEX && (item.casket_contained_item_count || 0) > 0,
     );
 
-    console.log(`[gc-storage] found ${caskets.length} storage unit(s) with contents`);
+    console.log(`[gc-storage] found ${caskets.length} Хранилищ with contents`);
     const results = [];
 
     for (const casket of caskets) {
-      const unitName = casket.custom_name || 'Storage Unit';
+      const unitName = casket.custom_name || 'Хранилище';
       const contents = await getCasketContentsAsync(csgo, casket.id);
       console.log(`[gc-storage] unit "${unitName}" (${casket.id}): ${contents.length} items`);
       for (const item of contents) {

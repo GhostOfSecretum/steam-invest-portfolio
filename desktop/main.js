@@ -230,7 +230,7 @@ async function runInventorySync(steamId, steamSession, deviceToken, { includeSto
         setGcRefreshToken(gcResult.refreshToken);
       }
       store.set('lastStorageSync', new Date().toISOString());
-      console.log(`[gc-storage] synced ${storageItems.length} items from storage units`);
+      console.log(`[gc-storage] synced ${storageItems.length} items from Хранилищ`);
     } catch (err) {
       gcStorageError = err.message || String(err);
       console.warn('[gc-storage] sync skipped:', gcStorageError);
@@ -243,7 +243,7 @@ async function runInventorySync(steamId, steamSession, deviceToken, { includeSto
   const response = await fetch(`${serverUrl}/api/desktop/inventory-sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Device-Token': deviceToken },
-    // includeStorage tells the server whether this sync carries Storage Units. When
+    // includeStorage tells the server whether this sync carries Хранилища. When
     // false (background sync), the server keeps the previously synced storage items.
     body: JSON.stringify({ items, storageItemCount, includeStorage }),
   });
@@ -300,13 +300,13 @@ function buildAppMenu() {
           },
         },
         {
-          label: 'Connect Storage Units (Read-Only)',
+          label: 'Connect Хранилища (Read-Only)',
           click: async () => {
             try { await openGcQrLoginWindow({ skipConsent: false }); } catch (e) { console.error('[menu] gc login error:', e.message); }
           },
         },
         {
-          label: 'Disconnect Storage Units',
+          label: 'Disconnect Хранилища',
           click: () => {
             clearGcState();
           },
@@ -454,8 +454,8 @@ async function confirmStorageSyncConsent() {
     buttons: ['Подключить только просмотр', 'Отмена'],
     cancelId: 1,
     defaultId: 1,
-    title: 'Подключение Storage Units',
-    message: 'Storage Units требуют локального подключения к CS2 Game Coordinator.',
+    title: 'Подключение Хранилищ',
+    message: 'Хранилища требуют локального подключения к CS2 Game Coordinator.',
     detail: [
       'Это опциональная read-only функция.',
       'Мы не запрашиваем пароль Steam.',

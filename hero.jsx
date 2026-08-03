@@ -416,8 +416,8 @@ const HERO_AGENT_PRICE_CARDS = [
     type: 'Agent',
   },
   {
-    label: 'Sir Bloody Darryl Royale',
-    marketHashName: 'Sir Bloody Darryl Royale | The Professionals',
+    label: 'Sir Bloody Miami Darryl',
+    marketHashName: 'Sir Bloody Miami Darryl | The Professionals',
     category: 'agents',
     type: 'Agent',
   },

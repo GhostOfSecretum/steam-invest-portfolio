@@ -989,8 +989,8 @@ function DesktopDownload({ lang, auth, onPricing }) {
   const canDownload = Boolean(auth?.entitlements?.desktopDownload);
   const copy = lang === 'ru'
     ? {
-      title: 'Desktop — полный инвентарь и Storage Units',
-      sub: 'Публичный Steam показывает только основной инвентарь. Desktop-клиент SkinsHead заходит в Steam локально и подтягивает полный портфель, включая содержимое Storage Units.',
+      title: 'Desktop — полный инвентарь и Хранилища',
+      sub: 'Публичный Steam показывает только основной инвентарь. Desktop-клиент SkinsHead заходит в Steam локально и подтягивает полный портфель, включая содержимое Хранилищ.',
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
       windows: 'Windows · x64',
@@ -1001,8 +1001,8 @@ function DesktopDownload({ lang, auth, onPricing }) {
       badge: 'Plus / Investor',
     }
     : {
-      title: 'Desktop — full inventory and Storage Units',
-      sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client signs into Steam locally and syncs the full portfolio, including Storage Units.',
+      title: 'Desktop — full inventory and Хранилища',
+      sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client signs into Steam locally and syncs the full portfolio, including Хранилища.',
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
       windows: 'Windows · x64',
@@ -1094,10 +1094,10 @@ function Pricing({ lang, auth, onInvestors }) {
       fullPrice: 'Открыть страницу тарифов',
       monthly: '30 дней',
       annual: 'Год',
-      annualBadge: 'Годом выгоднее',
-      annualNote: '2 месяца бесплатно · экономия 17%',
+      annualBadge: '-17%',
       perYear: '₽ / год',
-      note: 'Актуальные цены: Free 0 ₽ · Plus 499 ₽ / 30 дней или 4 990 ₽ / год · Investor 999 ₽ / 30 дней или 9 990 ₽ / год. Постоянная страница для банка и клиентов: /pricing. Поддержка: Telegram @GhostOfSecretum.',
+      perMonth: '₽ / мес',
+      annualNote: (monthly, saved) => `≈ ${monthly} · экономия ${saved}`,
     }
     : {
       ctaSoon: 'Checkout coming soon',
@@ -1108,23 +1108,34 @@ function Pricing({ lang, auth, onInvestors }) {
       fullPrice: 'Open full pricing page',
       monthly: '30 days',
       annual: 'Annual',
-      annualBadge: 'Annual saves more',
-      annualNote: '2 months free · 17% cheaper',
+      annualBadge: '-17%',
       perYear: '₽ / year',
-      note: 'Current prices: Free 0 ₽ · Plus 499 ₽ / 30 days or 4,990 ₽ / year · Investor 999 ₽ / 30 days or 9,990 ₽ / year. Permanent page: /pricing. Support: Telegram @GhostOfSecretum.',
+      perMonth: '₽ / mo',
+      annualNote: (monthly, saved) => `≈ ${monthly} · save ${saved}`,
     };
 
   const formatRub = (value) => Math.round(value).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US');
+  const getAnnualRub = (plan) => (
+    Number.isFinite(plan.annualAmountRub) ? plan.annualAmountRub : (Number(plan.amountRub) || 0) * 10
+  );
   const getDisplayPrice = (plan) => {
     if (plan.id === 'free' || billingCycle === 'monthly') {
       return plan.price?.[lang] || plan.price?.en;
     }
-    const annualRub = Number.isFinite(plan.annualAmountRub) ? plan.annualAmountRub : (Number(plan.amountRub) || 0) * 10;
-    return `${formatRub(annualRub)} ${copy.perYear}`;
+    return `${formatRub(getAnnualRub(plan))} ${copy.perYear}`;
   };
   const getDisplayPriceNote = (plan) => {
     if (plan.id === 'free') return plan.priceNote?.[lang] || plan.priceNote?.en;
-    if (billingCycle === 'annual') return copy.annualNote;
+    if (billingCycle === 'annual') {
+      const monthlyRub = Number(plan.amountRub) || 0;
+      const annualRub = getAnnualRub(plan);
+      const monthlyEquivalent = annualRub / 12;
+      const savedRub = Math.max(0, monthlyRub * 12 - annualRub);
+      return copy.annualNote(
+        `${formatRub(monthlyEquivalent)} ${copy.perMonth}`,
+        `${formatRub(savedRub)} ₽`,
+      );
+    }
     return plan.priceNote?.[lang] || plan.priceNote?.en;
   };
 
@@ -1225,9 +1236,6 @@ function Pricing({ lang, auth, onInvestors }) {
           <a className="btn btn-ghost btn-sm" href="/privacy">{lang === 'ru' ? 'Конфиденциальность' : 'Privacy'}</a>
           <a className="btn btn-ghost btn-sm" href="/support">{lang === 'ru' ? 'Поддержка' : 'Support'}</a>
         </div>
-        <p style={{ marginTop: 14, color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.6, maxWidth: 820 }}>
-          {copy.note}
-        </p>
       </div>
     </section>
   );
@@ -1455,7 +1463,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead помогает считать скины CS2 как портфель: live-оценка инвентаря, себестоимость, P&L, распределение по типам и история цен по предметам. Цены собираются со Steam Community Market и сторонних площадок.',
           'Кроме портфеля на сайте есть маркет-эксплорер, лидеры позиций, лента новостей из Telegram и калькулятор ROI Armory Pass. Подключите Steam через OpenID, откройте чужой публичный профиль по ссылке или создайте ручной портфель.',
-          'Бесплатный тариф показывает до 1 000 предметов. Plus открывает безлимитное отображение и desktop для Storage Units. Investor добавляет трекинг топовых аккаунтов инвесторов — список аккаунтов появится позже.',
+          'Бесплатный тариф показывает до 1 000 предметов. Plus открывает безлимитное отображение и desktop для Хранилищ. Investor добавляет трекинг топовых аккаунтов инвесторов — список аккаунтов появится позже.',
         ],
       }
     : {
@@ -1464,7 +1472,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead treats CS2 skins as a portfolio: live inventory valuation, cost basis, P&L, allocation by type, and per-item price history. Prices come from the Steam Community Market and major third-party marketplaces.',
           'Beyond the portfolio you get a market explorer, portfolio leaders, Telegram news, and an Armory Pass ROI board. Link Steam via OpenID, open any public profile URL, or keep a manual portfolio.',
-          'The Free plan displays up to 1,000 items. Plus unlocks unlimited display and the desktop app for Storage Units. Investor adds tracking of top investor accounts — the curated list will be added later.',
+          'The Free plan displays up to 1,000 items. Plus unlocks unlimited display and the desktop app for Хранилища. Investor adds tracking of top investor accounts — the curated list will be added later.',
         ],
       };
 
@@ -1487,7 +1495,7 @@ const FAQ_ITEMS = {
   en: [
     { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin portfolio tracker. It values a Steam inventory with live market prices and shows P&L, cost basis, allocation, market explorer, Armory Pass ROI, and Telegram news in one place.' },
     { q: 'How do I track a portfolio?', a: 'Link Steam with OpenID, paste a public profile URL, or create a manual portfolio and add purchases. SkinsHead prices items and surfaces leaders, 24h change, and inventory breakdown.' },
-    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Storage Units. The desktop client signs into Steam on your computer and syncs the full inventory to your SkinsHead portfolio with a one-time code. Download and sync require Plus or Investor.' },
+    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Хранилища. The desktop client signs into Steam on your computer and syncs the full inventory to your SkinsHead portfolio with a one-time code. Download and sync require Plus or Investor.' },
     { q: 'Where do prices come from?', a: 'We combine Steam Community Market data with major third-party marketplaces. Each item page shows available offers and price history from the providers we could reach.' },
     { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. The desktop client keeps tokens locally and only sends item lists to the server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
@@ -1498,7 +1506,7 @@ const FAQ_ITEMS = {
   ru: [
     { q: 'Что такое SkinsHead?', a: 'SkinsHead — трекер портфеля скинов CS2. Сервис оценивает инвентарь Steam по live-ценам и показывает P&L, себестоимость, распределение, маркет, ROI Armory Pass и новости из Telegram в одном месте.' },
     { q: 'Как отслеживать портфель?', a: 'Привяжите Steam через OpenID, вставьте ссылку на публичный профиль или создайте ручной портфель и добавьте покупки. SkinsHead оценит предметы и покажет лидеров, изменение за 24ч и разбивку инвентаря.' },
-    { q: 'Зачем нужен desktop?', a: 'Публичный инвентарь Steam обычно не включает Storage Units. Desktop-клиент входит в Steam на вашем компьютере и синхронизирует полный инвентарь в портфель SkinsHead по одноразовому коду. Скачивание и sync доступны на Plus и Investor.' },
+    { q: 'Зачем нужен desktop?', a: 'Публичный инвентарь Steam обычно не включает Хранилища. Desktop-клиент входит в Steam на вашем компьютере и синхронизирует полный инвентарь в портфель SkinsHead по одноразовому коду. Скачивание и sync доступны на Plus и Investor.' },
     { q: 'Откуда берутся цены?', a: 'Собираем данные Steam Community Market и крупных сторонних площадок. На карточке предмета видны доступные предложения и история цен из источников, до которых удалось достучаться.' },
     { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. В desktop токены остаются локально, на сервер уходит только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
     { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
@@ -1613,14 +1621,6 @@ function Footer({ lang }) {
         ],
       },
       {
-        h: 'Цены',
-        items: [
-          { label: 'Free · 0 ₽', href: '/pricing' },
-          { label: 'Plus · 499 ₽ / 30 дней', href: '/pricing' },
-          { label: 'Investor · 999 ₽ / 30 дней', href: '/pricing' },
-        ],
-      },
-      {
         h: 'Документы',
         items: [
           { label: 'Политика конфиденциальности', href: '/privacy' },
@@ -1636,14 +1636,6 @@ function Footer({ lang }) {
           { label: 'Portfolio', href: '/dashboard' },
           { label: 'Pricing', href: '/pricing' },
           { label: 'Desktop', href: '/#desktop' },
-        ],
-      },
-      {
-        h: 'Prices',
-        items: [
-          { label: 'Free · 0 ₽', href: '/pricing' },
-          { label: 'Plus · 499 ₽ / 30 days', href: '/pricing' },
-          { label: 'Investor · 999 ₽ / 30 days', href: '/pricing' },
         ],
       },
       {
@@ -1663,8 +1655,8 @@ function Footer({ lang }) {
           <Logo />
           <p style={{ marginTop: 16, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.6, maxWidth: 320 }}>
             {lang === 'ru'
-              ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI и desktop для Storage Units. Не аффилирован со Steam, Valve или Counter-Strike.'
-              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI, and desktop sync for Storage Units. Not affiliated with Steam, Valve, or Counter-Strike.'}
+              ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI и desktop для Хранилищ. Не аффилирован со Steam, Valve или Counter-Strike.'
+              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI, and desktop sync for Хранилища. Not affiliated with Steam, Valve, or Counter-Strike.'}
           </p>
           <a
             href="/support"

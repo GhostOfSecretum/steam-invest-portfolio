@@ -65,13 +65,13 @@ const PLANS = [
         'Everything in Free',
         'Unlimited items displayed',
         'Desktop app for full inventory',
-        'Storage Units sync',
+        'Синхронизация Хранилищ',
       ],
       ru: [
         'Всё из Free',
         'Безлимитное отображение предметов',
         'Desktop-приложение для полного инвентаря',
-        'Синхронизация Storage Units',
+        'Синхронизация Хранилищ',
       ],
     },
     missing: {
