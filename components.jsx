@@ -325,41 +325,37 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
   const profile = auth?.profile;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const menuCloseTimer = useRef(null);
-  const navItems = [
-    { k: 'home', label: t.nav.home },
-    { k: 'dashboard', label: t.nav.dashboard },
-    { k: 'market', label: t.nav.market },
-    { k: 'armory', label: t.nav.armory },
-    { k: 'favorites', label: t.nav.favorites },
-    { k: 'investors', label: t.nav.investors },
-    { k: 'pricing', label: t.nav.pricing },
-    // News nav temporarily hidden with the news section
-    // { k: 'news', label: t.nav.news },
-    { k: 'glock3d', label: t.nav.glock3d },
+  const navGroups = [
+    {
+      label: lang === 'ru' ? 'Основное' : 'Main',
+      items: [
+        { k: 'home', label: t.nav.home, icon: '⌂', desc: lang === 'ru' ? 'Возможности SkinsHead' : 'Explore SkinsHead' },
+        { k: 'dashboard', label: t.nav.dashboard, icon: '▣', desc: lang === 'ru' ? 'Стоимость и предметы' : 'Value and inventory' },
+        { k: 'market', label: t.nav.market, icon: '⌕', desc: lang === 'ru' ? 'Поиск и рыночные цены' : 'Search and market prices' },
+      ],
+    },
+    {
+      label: lang === 'ru' ? 'Инструменты' : 'Tools',
+      items: [
+        { k: 'armory', label: t.nav.armory, icon: '◈', desc: lang === 'ru' ? 'Расчёт доходности наград' : 'Reward ROI calculator' },
+        { k: 'glock3d', label: t.nav.glock3d, icon: '◇', desc: lang === 'ru' ? 'Интерактивная модель' : 'Interactive item model' },
+      ],
+    },
+    {
+      label: lang === 'ru' ? 'Сообщество' : 'Community',
+      items: [
+        { k: 'favorites', label: t.nav.favorites, icon: '♡', desc: lang === 'ru' ? 'Сохранённые профили' : 'Saved profiles' },
+        { k: 'investors', label: t.nav.investors, icon: '↗', desc: lang === 'ru' ? 'Портфели инвесторов' : 'Investor portfolios' },
+      ],
+    },
+    {
+      label: lang === 'ru' ? 'Сервис' : 'Service',
+      items: [
+        { k: 'pricing', label: t.nav.pricing, icon: '◎', desc: lang === 'ru' ? 'Возможности тарифов' : 'Compare plan features' },
+      ],
+    },
   ];
-  const activeNav = navItems.find((item) => item.k === screen) || navItems[0];
-
-  const clearMenuCloseTimer = () => {
-    if (menuCloseTimer.current) {
-      window.clearTimeout(menuCloseTimer.current);
-      menuCloseTimer.current = null;
-    }
-  };
-  const openMenu = () => {
-    clearMenuCloseTimer();
-    setMenuOpen(true);
-  };
-  const scheduleCloseMenu = () => {
-    clearMenuCloseTimer();
-    menuCloseTimer.current = window.setTimeout(() => setMenuOpen(false), 180);
-  };
-  const closeMenu = () => {
-    clearMenuCloseTimer();
-    setMenuOpen(false);
-  };
-
-  useEffect(() => () => clearMenuCloseTimer(), []);
+  const closeMenu = () => setMenuOpen(false);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -380,88 +376,135 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
   return (
     <header className="nav">
       <div className="nav-main">
-        <Logo />
+        <button
+          type="button"
+          className="nav-logo-button"
+          onClick={() => onNav('home')}
+          aria-label={lang === 'ru' ? 'На главную' : 'Go to home'}
+        >
+          <Logo />
+        </button>
       </div>
       <div className="nav-controls">
         <div
           className="nav-menu"
           ref={menuRef}
           data-open={menuOpen}
-          onMouseEnter={openMenu}
-          onMouseLeave={scheduleCloseMenu}
         >
           <button
             type="button"
             className="nav-menu-trigger"
             aria-expanded={menuOpen}
             aria-haspopup="menu"
-            onClick={() => (menuOpen ? closeMenu() : openMenu())}
+            onClick={() => setMenuOpen((open) => !open)}
           >
-            <span className="nav-menu-trigger-current">{activeNav.label}</span>
-            <span className="nav-menu-trigger-label">{lang === 'ru' ? 'Меню' : 'Menu'}</span>
+            <span className="nav-menu-trigger-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span className="nav-menu-trigger-current">{lang === 'ru' ? 'Меню' : 'Menu'}</span>
             <span className="nav-menu-chevron" aria-hidden="true" />
           </button>
           <nav className="nav-links nav-menu-panel" aria-label={lang === 'ru' ? 'Навигация' : 'Navigation'}>
             <div className="nav-menu-panel-card">
-              {navItems.map((it) => (
+              <div className="nav-menu-profile">
+                {connected ? (
+                  <>
+                    {profile?.avatarmedium
+                      ? <img src={profile.avatarmedium} alt="" />
+                      : <div className="nav-menu-profile-fallback">{String(profile?.personaname || 'S').slice(0, 1).toUpperCase()}</div>}
+                    <div>
+                      <strong>{profile?.personaname || 'Steam'}</strong>
+                      <span><i></i>{lang === 'ru' ? 'Steam подключён' : 'Steam connected'}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="nav-menu-profile-fallback">S</div>
+                    <div>
+                      <strong>{lang === 'ru' ? 'Гостевой режим' : 'Guest mode'}</strong>
+                      <span>{lang === 'ru' ? 'Подключите Steam для портфеля' : 'Connect Steam for your portfolio'}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="nav-menu-groups" role="menu">
+                {navGroups.map((group) => (
+                  <div className="nav-menu-group" key={group.label}>
+                    <div className="nav-menu-group-label">{group.label}</div>
+                    {group.items.map((it) => (
+                      <button
+                        key={it.k}
+                        type="button"
+                        role="menuitem"
+                        className="nav-link"
+                        data-active={screen === it.k}
+                        onClick={() => {
+                          closeMenu();
+                          onNav(it.k);
+                        }}
+                      >
+                        <span className="nav-link-icon">{it.icon}</span>
+                        <span className="nav-link-copy">
+                          <strong>{it.label}</strong>
+                          <small>{it.desc}</small>
+                        </span>
+                        <span className="nav-link-arrow">→</span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              <div className="nav-menu-settings">
+                <div>
+                  <span>{lang === 'ru' ? 'Язык' : 'Language'}</span>
+                  <div className="nav-menu-setting-options">
+                    {['en', 'ru'].map((value) => (
+                      <button key={value} type="button" data-active={lang === value} onClick={() => onLang(value)}>
+                        {value.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span>{t.nav.currency}</span>
+                  <div className="nav-menu-setting-options">
+                    {['usd', 'rub'].map((value) => (
+                      <button key={value} type="button" data-active={currency === value} onClick={() => onCurrency(value)}>
+                        {value.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {connected ? (
                 <button
-                  key={it.k}
                   type="button"
-                  className="nav-link"
-                  data-active={screen === it.k}
+                  className="nav-menu-account-action"
                   onClick={() => {
                     closeMenu();
-                    onNav(it.k);
+                    auth.logout();
                   }}
                 >
-                  {it.label}
+                  {lang === 'ru' ? 'Выйти из аккаунта' : 'Sign out'}
                 </button>
-              ))}
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-primary nav-menu-connect"
+                  onClick={() => {
+                    closeMenu();
+                    if (auth?.login) auth.login();
+                  }}
+                >
+                  {lang === 'ru' ? 'Подключить Steam' : 'Connect Steam'}
+                </button>
+              )}
             </div>
           </nav>
         </div>
-        <div className="nav-segment">
-          {['en', 'ru'].map(l => (
-            <button key={l} onClick={() => onLang(l)} style={{
-              padding: '6px 10px', fontFamily: 'var(--f-mono)', fontSize: 11, letterSpacing: '0.06em',
-              textTransform: 'uppercase', color: lang === l ? 'var(--fg-0)' : 'var(--fg-3)',
-              background: lang === l ? 'rgba(255,255,255,0.06)' : 'transparent',
-            }}>{l}</button>
-          ))}
-        </div>
-        <div
-          title={t.nav.currency}
-          className="nav-segment"
-        >
-          {[
-            { key: 'usd', label: 'USD' },
-            { key: 'rub', label: 'RUB' },
-          ].map((item) => (
-            <button
-              key={item.key}
-              onClick={() => onCurrency(item.key)}
-              style={{
-                padding: '6px 10px',
-                fontFamily: 'var(--f-mono)',
-                fontSize: 11,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                color: currency === item.key ? 'var(--fg-0)' : 'var(--fg-3)',
-                background: currency === item.key ? 'rgba(255,255,255,0.06)' : 'transparent',
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        {connected && profile?.avatarmedium && (
-          <img src={profile.avatarmedium} alt="" style={{ width: 26, height: 26, borderRadius: 13, border: '1px solid var(--line-strong)' }} />
-        )}
-        {connected && (
-          <button className="btn btn-sm btn-ghost" onClick={() => auth.logout()}>{profile?.personaname || 'Steam'} · Logout</button>
-        )}
         {!connected && (
-          <button className="btn btn-sm btn-primary" onClick={() => auth?.login && auth.login()}>
+          <button className="btn btn-sm btn-primary nav-steam-connect" onClick={() => auth?.login && auth.login()}>
             {lang === 'ru' ? 'Подключить Steam' : 'Link Steam'}
           </button>
         )}
