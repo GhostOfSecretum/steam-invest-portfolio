@@ -984,6 +984,7 @@ function Pricing({ lang, auth, onInvestors }) {
   const t = useT(lang);
   const plansState = usePlans();
   const currentPlanId = auth?.planId || plansState.current?.planId || 'free';
+  const [billingCycle, setBillingCycle] = useState('monthly');
   const copy = lang === 'ru'
     ? {
       ctaSoon: 'Оплата подключается',
@@ -992,7 +993,12 @@ function Pricing({ lang, auth, onInvestors }) {
       notIncluded: 'Не входит',
       investors: 'Открыть топ-инвесторов',
       fullPrice: 'Открыть страницу тарифов',
-      note: 'Актуальные цены: Free 0 ₽ · Plus 499 ₽ / 30 дней · Investor 999 ₽ / 30 дней. Постоянная страница для банка и клиентов: /pricing. Поддержка: Telegram @GhostOfSecretum.',
+      monthly: '30 дней',
+      annual: 'Год',
+      annualBadge: 'Годом выгоднее',
+      annualNote: '2 месяца бесплатно · экономия 17%',
+      perYear: '₽ / год',
+      note: 'Актуальные цены: Free 0 ₽ · Plus 499 ₽ / 30 дней или 4 990 ₽ / год · Investor 999 ₽ / 30 дней или 9 990 ₽ / год. Постоянная страница для банка и клиентов: /pricing. Поддержка: Telegram @GhostOfSecretum.',
     }
     : {
       ctaSoon: 'Checkout coming soon',
@@ -1001,13 +1007,51 @@ function Pricing({ lang, auth, onInvestors }) {
       notIncluded: 'Not included',
       investors: 'Open top investors',
       fullPrice: 'Open full pricing page',
-      note: 'Current prices: Free 0 ₽ · Plus 499 ₽ / 30 days · Investor 999 ₽ / 30 days. Permanent page: /pricing. Support: Telegram @GhostOfSecretum.',
+      monthly: '30 days',
+      annual: 'Annual',
+      annualBadge: 'Annual saves more',
+      annualNote: '2 months free · 17% cheaper',
+      perYear: '₽ / year',
+      note: 'Current prices: Free 0 ₽ · Plus 499 ₽ / 30 days or 4,990 ₽ / year · Investor 999 ₽ / 30 days or 9,990 ₽ / year. Permanent page: /pricing. Support: Telegram @GhostOfSecretum.',
     };
+
+  const formatRub = (value) => Math.round(value).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US');
+  const getDisplayPrice = (plan) => {
+    if (plan.id === 'free' || billingCycle === 'monthly') {
+      return plan.price?.[lang] || plan.price?.en;
+    }
+    const annualRub = Number.isFinite(plan.annualAmountRub) ? plan.annualAmountRub : (Number(plan.amountRub) || 0) * 10;
+    return `${formatRub(annualRub)} ${copy.perYear}`;
+  };
+  const getDisplayPriceNote = (plan) => {
+    if (plan.id === 'free') return plan.priceNote?.[lang] || plan.priceNote?.en;
+    if (billingCycle === 'annual') return copy.annualNote;
+    return plan.priceNote?.[lang] || plan.priceNote?.en;
+  };
 
   return (
     <section className="section" id="pricing">
       <div className="container">
-        <SectionHeader title={t.sections.pricing} sub={t.sections.pricingSub} num="04" />
+        <div className="pricing-heading">
+          <SectionHeader title={t.sections.pricing} sub={t.sections.pricingSub} num="04" />
+          <div className="pricing-billing" aria-label={lang === 'ru' ? 'Период оплаты' : 'Billing period'}>
+            {[
+              { key: 'monthly', label: copy.monthly },
+              { key: 'annual', label: copy.annual },
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className="pricing-billing-option"
+                data-active={billingCycle === item.key}
+                onClick={() => setBillingCycle(item.key)}
+              >
+                {item.label}
+                {item.key === 'annual' && <span>{copy.annualBadge}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
         {plansState.loading && !plansState.plans.length ? (
           <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>...</div>
         ) : (
@@ -1015,36 +1059,35 @@ function Pricing({ lang, auth, onInvestors }) {
             {plansState.plans.map((plan) => {
               const isCurrent = plan.id === currentPlanId;
               const name = plan.name?.[lang] || plan.name?.en || plan.id;
-              const price = plan.price?.[lang] || plan.price?.en;
-              const priceNote = plan.priceNote?.[lang] || plan.priceNote?.en;
+              const price = getDisplayPrice(plan);
+              const priceNote = getDisplayPriceNote(plan);
               const bullets = plan.bullets?.[lang] || plan.bullets?.en || [];
               const missing = plan.missing?.[lang] || plan.missing?.en || [];
               return (
                 <article
                   key={plan.id}
-                  className={plan.highlight ? 'glass-strong' : 'glass'}
+                  className={`pricing-card pricing-card-${plan.id} ${plan.highlight ? 'glass-strong' : 'glass'}`}
                   style={{
                     padding: 28,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 16,
-                    border: plan.highlight ? '1px solid oklch(0.68 0.22 5 / 0.45)' : undefined,
                     position: 'relative',
                     overflow: 'hidden',
                   }}
                 >
-                  {plan.highlight && (
+                  {plan.id !== 'free' && (
                     <div style={{
                       position: 'absolute',
                       inset: 'auto -20% -70% 30%',
                       height: 180,
-                      background: 'radial-gradient(circle, oklch(0.68 0.22 5 / 0.2), transparent 70%)',
+                      background: 'radial-gradient(circle, var(--plan-glow), transparent 70%)',
                       pointerEvents: 'none',
                     }} />
                   )}
                   <div style={{ position: 'relative' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-                      <div className="eyebrow" style={{ color: 'var(--accent)' }}>{name}</div>
+                      <div className="eyebrow pricing-plan-name">{name}</div>
                       {isCurrent && <span className="chip chip-accent">{copy.current}</span>}
                     </div>
                     <div className="display" style={{ marginTop: 10, fontSize: 34, fontWeight: 500 }}>{price}</div>

@@ -33,7 +33,7 @@ const I18N = {
       armorySub: 'Rank Armory rewards by star ROI on live Steam prices. See expected value, profit, and days left on the pass.',
       stats: 'What you get',
       pricing: 'Plans & prices',
-      pricingSub: 'Free is 0 ₽. Plus is 499 ₽ / 30 days. Investor is 999 ₽ / 30 days. Full price list: skinshead.pro/pricing',
+      pricingSub: 'Free is 0 ₽. Plus and Investor support 30-day or annual payment — annual is cheaper.',
       faq: 'FAQ',
     },
     news: {
@@ -139,7 +139,7 @@ const I18N = {
       armorySub: 'Рейтинг наград Armory по ROI звёзд на live-ценах Steam. Смотри ожидаемую стоимость, профит и сколько дней осталось у пасса.',
       stats: 'Что внутри',
       pricing: 'Тарифы и цены',
-      pricingSub: 'Free — 0 ₽. Plus — 499 ₽ / 30 дней. Investor — 999 ₽ / 30 дней. Полный прайс: skinshead.pro/pricing',
+      pricingSub: 'Free — 0 ₽. Plus и Investor можно оплатить на 30 дней или сразу на год — годом выгоднее.',
       faq: 'Частые вопросы',
     },
     news: {
