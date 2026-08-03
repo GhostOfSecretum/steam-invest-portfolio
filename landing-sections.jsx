@@ -334,6 +334,7 @@ function MarketCatalog({ onItemClick }) {
   const [wear, setWear] = useState('all');
   const [special, setSpecial] = useState('all');
   const [sort, setSort] = useState('popular');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [loadedItems, setLoadedItems] = useState([]);
   const debouncedQuery = useDebouncedValue(query);
@@ -424,18 +425,42 @@ function MarketCatalog({ onItemClick }) {
     ? (loadedItems.length ? loadedItems : (catalog.data.items || []))
     : (fallbackData.items || []);
   const totalCount = data.filteredCount ?? data.totalCount ?? items.length;
-  const shownResults = `${items.length.toLocaleString(locale)} ${marketT.loaded}`;
-  const totalResults = `${totalCount.toLocaleString(locale)} ${marketT.total}`;
+  const advancedFilterCount = Number(wear !== 'all') + Number(special !== 'all');
+  const hasActiveFilters = Boolean(query.trim() || category !== 'all' || advancedFilterCount);
+  const showInitialLoading = catalog.loading && !catalog.data;
+  const resetFilters = () => {
+    setQuery('');
+    setCategory('all');
+    setWear('all');
+    setSpecial('all');
+    setSort('popular');
+    setFiltersOpen(false);
+  };
+  const activeFilters = [
+    category !== 'all' ? { key: 'category', label: categoryLabelMap[category], clear: () => setCategory('all') } : null,
+    wear !== 'all' ? { key: 'wear', label: wear.toUpperCase(), clear: () => setWear('all') } : null,
+    special !== 'all' ? { key: 'special', label: specialLabelMap[special], clear: () => setSpecial('all') } : null,
+  ].filter(Boolean);
 
   return (
-    <section id="market" className="section">
+    <section id="market" className="section market-page">
       <div className="container">
-        <SectionHeader title={t.sections.market} sub={t.sections.marketSub} num="02" />
+        <div className="market-page-head">
+          <div>
+            <div className="eyebrow" style={{ color: 'var(--accent)' }}>// {lang === 'ru' ? 'КАТАЛОГ CS2' : 'CS2 CATALOG'}</div>
+            <h1 className="display">{t.sections.market}</h1>
+            <p>{t.sections.marketSub}</p>
+          </div>
+          <div className="market-result-total">
+            <strong>{totalCount.toLocaleString(locale)}</strong>
+            <span>{lang === 'ru' ? 'предметов найдено' : 'items found'}</span>
+          </div>
+        </div>
 
         <div className="glass market-toolbar">
           <div className="market-toolbar-top">
-            <label className="market-search">
-              <span className="eyebrow">{marketT.searchPlaceholder}</span>
+            <div className="market-search">
+              <span className="market-search-icon" aria-hidden="true">⌕</span>
               <input
                 type="search"
                 value={query}
@@ -443,25 +468,86 @@ function MarketCatalog({ onItemClick }) {
                 placeholder={marketT.searchPlaceholder}
                 className="market-search-input"
               />
+              {query && (
+                <button type="button" className="market-search-clear" onClick={() => setQuery('')} aria-label={lang === 'ru' ? 'Очистить поиск' : 'Clear search'}>
+                  ×
+                </button>
+              )}
+            </div>
+
+            <label className="market-sort-control">
+              <span>{marketT.sort}</span>
+              <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
             </label>
 
-            <div className="market-toolbar-meta">
-              <span className="chip">{shownResults}</span>
-              <span className="chip">{totalResults}</span>
-              <span className="chip">{`${(data.scanned || 0).toLocaleString(locale)} ${marketT.scanned}`}</span>
-              {catalog.loading && <span className="chip chip-accent">{marketT.loading}</span>}
-            </div>
+            <button
+              type="button"
+              className="market-advanced-trigger"
+              data-active={filtersOpen || advancedFilterCount > 0}
+              onClick={() => setFiltersOpen((open) => !open)}
+              aria-expanded={filtersOpen}
+            >
+              <span>≡</span>
+              {lang === 'ru' ? 'Фильтры' : 'Filters'}
+              {advancedFilterCount > 0 && <b>{advancedFilterCount}</b>}
+            </button>
           </div>
 
-          <div className="market-filter-stack">
-            <MarketFilterGroup label={marketT.category} value={category} options={categoryOptions} onChange={setCategory} />
-            <MarketFilterGroup label={marketT.wear} value={wear} options={wearOptions} onChange={setWear} />
-            <MarketFilterGroup label={marketT.special} value={special} options={specialOptions} onChange={setSpecial} />
-            <MarketFilterGroup label={marketT.sort} value={sort} options={sortOptions} onChange={setSort} />
+          <div className="market-category-row" aria-label={marketT.category}>
+            {categoryOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                data-active={category === option.value}
+                onClick={() => setCategory(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
+
+          {filtersOpen && (
+            <div className="market-advanced-panel">
+              <MarketFilterGroup label={marketT.wear} value={wear} options={wearOptions} onChange={setWear} />
+              <MarketFilterGroup label={marketT.special} value={special} options={specialOptions} onChange={setSpecial} />
+            </div>
+          )}
+
+          {(activeFilters.length > 0 || catalog.loading) && (
+            <div className="market-active-row">
+              <div className="market-active-filters">
+                {activeFilters.map((filter) => (
+                  <button key={filter.key} type="button" onClick={filter.clear}>
+                    {filter.label}<span>×</span>
+                  </button>
+                ))}
+              </div>
+              <div className="market-active-actions">
+                {catalog.loading && <span className="market-loading-label">{marketT.loading}</span>}
+                {hasActiveFilters && (
+                  <button type="button" className="market-reset-button" onClick={resetFilters}>
+                    {lang === 'ru' ? 'Сбросить всё' : 'Reset all'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {items.length
+        {showInitialLoading ? (
+          <div className="market-grid" aria-label={marketT.loading}>
+            {Array.from({ length: 6 }, (_, index) => (
+              <div className="market-card market-card-skeleton" key={index}>
+                <div className="market-skeleton-line is-short"></div>
+                <div className="market-skeleton-art"></div>
+                <div className="market-skeleton-line"></div>
+                <div className="market-skeleton-line is-price"></div>
+              </div>
+            ))}
+          </div>
+        ) : items.length
           ? (
             <>
               <div className="market-grid">
@@ -504,7 +590,7 @@ function MarketCatalog({ onItemClick }) {
 
                       <div className="market-card-footer">
                         <div>
-                          <div className="eyebrow">PRICE</div>
+                          <div className="eyebrow">{lang === 'ru' ? 'ЦЕНА' : 'PRICE'}</div>
                           <div className="display market-card-price">{formatItemPrice(item, item.price)}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -512,15 +598,25 @@ function MarketCatalog({ onItemClick }) {
                           <div className="market-card-listings">{(item.sellListings || 0).toLocaleString(locale)}</div>
                         </div>
                       </div>
+                      <div className="market-card-open">
+                        <span>{lang === 'ru' ? 'Подробнее' : 'View details'}</span>
+                        <i>→</i>
+                      </div>
                     </div>
                   </button>
                 ))}
               </div>
 
               <div className="market-pagination">
-                <button type="button" className="btn btn-sm btn-primary" disabled={!data.hasMore || catalog.loading} onClick={() => setPage((value) => value + 1)}>
-                  {marketT.more}
-                </button>
+                <div className="market-pagination-progress">
+                  <span>{items.length.toLocaleString(locale)} {lang === 'ru' ? 'из' : 'of'} {totalCount.toLocaleString(locale)}</span>
+                  <i><b style={{ width: `${Math.min(100, totalCount > 0 ? (items.length / totalCount) * 100 : 0)}%` }}></b></i>
+                </div>
+                {data.hasMore && (
+                  <button type="button" className="btn btn-sm btn-primary" disabled={catalog.loading} onClick={() => setPage((value) => value + 1)}>
+                    {catalog.loading ? '...' : marketT.more}
+                  </button>
+                )}
               </div>
             </>
           )
@@ -532,6 +628,9 @@ function MarketCatalog({ onItemClick }) {
                   ? 'Попробуй убрать часть фильтров или изменить поисковый запрос. Для узких фильтров мы сканируем рынок батчами, поэтому результаты могут быть неполными до следующей страницы.'
                   : 'Try removing some filters or changing the search query. Narrow combinations are scanned in batches, so the current slice may not represent the full market yet.'}
               </p>
+              <button type="button" className="btn btn-primary" style={{ marginTop: 20 }} onClick={resetFilters}>
+                {lang === 'ru' ? 'Сбросить фильтры' : 'Reset filters'}
+              </button>
             </div>
           )}
       </div>

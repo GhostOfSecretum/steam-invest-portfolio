@@ -73,27 +73,29 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
     setChartHover(null);
   }, [baseName]);
 
-  // Default the chart to every existing quality (Steam shows them overlaid) — re-runs when the
-  // StatTrak flavor changes because that re-fetches the variant set.
+  // Keep the chart focused on the active quality. Other qualities can be added explicitly
+  // from the comparison controls below the chart heading.
   detailUseEffect(() => {
     if (!variantsState.data) return;
     if (variantsState.data.hasWear) {
-      setSelectedWears(variantsState.data.variants.filter(v => v.exists).map(v => v.marketHashName));
+      const available = variantsState.data.variants.filter(v => v.exists);
+      const selected = available.find(v => v.marketHashName === activeName) || available[0];
+      setSelectedWears(selected ? [selected.marketHashName] : []);
     } else {
       setSelectedWears([activeName].filter(Boolean));
     }
-  }, [variantsState.data]);
+  }, [variantsState.data, activeName]);
 
   const chartNames = (selectedWears && selectedWears.length) ? selectedWears : [activeName].filter(Boolean);
   const multiState = useMultiWearHistory(chartNames, fetchDays, activeCurrency);
 
   if (loading) {
     return (
-      <div style={{ padding: '80px 64px' }}>
+      <div className="item-detail-state">
         <div className="container">
-          <div className="glass" style={{ padding: 32, maxWidth: 620 }}>
-            <button onClick={onBack} className="btn btn-sm btn-ghost" style={{ marginBottom: 24 }}>{t.item.back}</button>
-            <h1 className="display" style={{ fontSize: 34, fontWeight: 500 }}>{lang === 'ru' ? 'Загружаем предмет...' : 'Loading item...'}</h1>
+          <div className="glass item-detail-state-card">
+            <button onClick={onBack} className="btn btn-sm btn-ghost">{t.item.back}</button>
+            <h1 className="display">{lang === 'ru' ? 'Загружаем предмет...' : 'Loading item...'}</h1>
           </div>
         </div>
       </div>
@@ -102,12 +104,12 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
 
   if (error) {
     return (
-      <div style={{ padding: '80px 64px' }}>
+      <div className="item-detail-state">
         <div className="container">
-          <div className="glass" style={{ padding: 32, maxWidth: 620 }}>
-            <button onClick={onBack} className="btn btn-sm btn-ghost" style={{ marginBottom: 24 }}>{t.item.back}</button>
-            <h1 className="display" style={{ fontSize: 34, fontWeight: 500 }}>{lang === 'ru' ? 'Предмет не найден' : 'Item not found'}</h1>
-            <p style={{ marginTop: 12, color: 'var(--fg-1)', lineHeight: 1.6 }}>
+          <div className="glass item-detail-state-card">
+            <button onClick={onBack} className="btn btn-sm btn-ghost">{t.item.back}</button>
+            <h1 className="display">{lang === 'ru' ? 'Предмет не найден' : 'Item not found'}</h1>
+            <p>
               {lang === 'ru' ? 'Проверьте ссылку или откройте предмет из маркета или портфеля.' : 'Check the URL or open an item from the market or portfolio.'}
             </p>
           </div>
@@ -118,12 +120,12 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
 
   if (!item) {
     return (
-      <div style={{ padding: '80px 64px' }}>
+      <div className="item-detail-state">
         <div className="container">
-          <div className="glass" style={{ padding: 32, maxWidth: 620 }}>
-            <button onClick={onBack} className="btn btn-sm btn-ghost" style={{ marginBottom: 24 }}>{t.item.back}</button>
-            <h1 className="display" style={{ fontSize: 34, fontWeight: 500 }}>{lang === 'ru' ? 'Предмет не выбран' : 'No item selected'}</h1>
-            <p style={{ marginTop: 12, color: 'var(--fg-1)', lineHeight: 1.6 }}>
+          <div className="glass item-detail-state-card">
+            <button onClick={onBack} className="btn btn-sm btn-ghost">{t.item.back}</button>
+            <h1 className="display">{lang === 'ru' ? 'Предмет не выбран' : 'No item selected'}</h1>
+            <p>
               {lang === 'ru' ? 'Открой предмет из таблицы портфеля после синхронизации Steam inventory.' : 'Open an item from the portfolio table after syncing Steam inventory.'}
             </p>
           </div>
@@ -209,6 +211,17 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
     : (parsedActive.wearLabel
       ? parsedActive.wearLabel.split(/[- ]/).map((part) => part[0]).join('').toUpperCase()
       : 'N/A');
+  const offers = offersState.data?.offers || [];
+  const offerValue = (offer) => activeCurrency === 'rub'
+    ? (Number.isFinite(offer.priceRub) ? offer.priceRub : null)
+    : offer.price;
+  const bestOffer = offers
+    .filter(offer => offer.hasPrice && Number.isFinite(offerValue(offer)))
+    .reduce((best, offer) => !best || offerValue(offer) < offerValue(best) ? offer : best, null);
+  const primaryUrl = bestOffer?.url || item.marketUrl || null;
+  const primaryLabel = bestOffer
+    ? `${lang === 'ru' ? 'Лучшая цена на' : 'Best price at'} ${(MARKETPLACE_META[bestOffer.provider] || {}).label || bestOffer.label}`
+    : (lang === 'ru' ? 'Открыть в Steam Market' : 'Open on Steam Market');
 
   const onMove = (e) => {
     if (!chartRef.current || !chart) return;
@@ -230,75 +243,65 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
   };
 
   return (
-    <div style={{ padding: '40px 64px 80px' }}>
+    <main className="item-detail-page">
       <div className="container">
-        <button onClick={onBack} className="btn btn-sm btn-ghost" style={{ marginBottom: 24 }}>{t.item.back}</button>
+        <button onClick={onBack} className="btn btn-sm btn-ghost item-detail-back">{t.item.back}</button>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 24, marginBottom: 24 }}>
-          <div className="glass" style={{ padding: 28, position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-              <div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-                  <span className="chip chip-accent">TIER {item.tier || '—'} · {item.rarity || 'UNKNOWN'}</span>
-                  <span className="chip">{displayWear}</span>
-                  <span className="chip">{item.marketable === false ? 'not marketable' : 'marketable'}</span>
-                </div>
-                <h1 className="display" style={{ fontSize: 36, fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{item.name}</h1>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div className="eyebrow">{lang === 'ru' ? 'ЦЕНА STEAM' : 'STEAM PRICE'}</div>
-                <div className="display" style={{ fontSize: 32, fontWeight: 500, marginTop: 4 }}>{headerPrice}</div>
-                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)', marginTop: 4 }}>
-                  {parsedActive.wearLabel || (lang === 'ru' ? 'без качества' : 'no exterior')}{stattrak ? ' · StatTrak™' : ''}
-                </div>
-              </div>
+        <header className="item-detail-head">
+          <div>
+            <div className="item-detail-tags">
+              <span className="chip chip-accent">{lang === 'ru' ? 'УРОВЕНЬ' : 'TIER'} {item.tier || '—'} · {item.rarity || (lang === 'ru' ? 'НЕИЗВЕСТНО' : 'UNKNOWN')}</span>
+              <span className="chip">{displayWear}</span>
+              <span className="chip">{item.marketable === false ? (lang === 'ru' ? 'не продаётся' : 'not marketable') : (lang === 'ru' ? 'продаётся' : 'marketable')}</span>
             </div>
+            <h1 className="display item-detail-title">{item.name}</h1>
+            <p className="item-detail-subtitle">
+              {parsedActive.wearLabel || (lang === 'ru' ? 'Без качества' : 'No exterior')}{stattrak ? ' · StatTrak™' : ''}
+            </p>
+          </div>
+        </header>
 
+        <div className="item-detail-primary-grid">
+          <section className="glass item-detail-visual">
             {item.iconUrl
-              ? <div className="item-art" style={{ aspectRatio: '16/9', display: 'grid', placeItems: 'center', padding: 24 }}>
-                  <img
-                    src={withSteamImageSize(item.iconUrl, 720, 405)}
-                    alt=""
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'block',
-                      objectFit: 'contain',
-                      objectPosition: 'center center',
-                      filter: 'drop-shadow(0 24px 42px rgba(0,0,0,0.55))',
-                    }}
-                  />
+              ? <div className="item-art item-detail-art">
+                  <img src={withSteamImageSize(item.iconUrl, 720, 405)} alt={item.name} />
                 </div>
               : <ItemArt label={item.name} tier={item.tier} style={{ aspectRatio: '16/9' }} />}
-
             <WearBar wear={item.wear} floatValue={item.floatValue} />
+          </section>
+
+          <aside className="item-detail-decision">
+            <section className="glass item-detail-price-card">
+              <div className="item-detail-price-head">
+                <div>
+                  <div className="eyebrow">{lang === 'ru' ? 'ТЕКУЩАЯ ЦЕНА STEAM' : 'CURRENT STEAM PRICE'}</div>
+                  <div className="display item-detail-price">{headerPrice}</div>
+                </div>
+                <span className="item-detail-live"><span className="live-dot" /> live</span>
+              </div>
+              {primaryUrl && (
+                <a href={primaryUrl} target="_blank" rel="noreferrer" className="btn btn-primary item-detail-primary-action">
+                  {primaryLabel} <span>↗</span>
+                </a>
+              )}
+            </section>
 
             {hasWear && (
-              <div style={{ marginTop: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div className="eyebrow">{lang === 'ru' ? 'Качество' : 'Exterior'}</div>
+              <section className="glass item-detail-variants">
+                <div className="item-detail-section-head">
+                  <div>
+                    <div className="eyebrow">{lang === 'ru' ? 'ВЫБЕРИТЕ КАЧЕСТВО' : 'SELECT EXTERIOR'}</div>
+                    <p>{lang === 'ru' ? 'Цена и предложения обновятся автоматически' : 'Price and offers update automatically'}</p>
+                  </div>
                   {!parsedBase.isSouvenir && (
-                    <button
-                      onClick={toggleStattrak}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                        background: 'transparent', border: 'none', padding: 0,
-                        fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 600,
-                        color: stattrak ? '#cf6a32' : 'var(--fg-3)',
-                      }}
-                    >
+                    <button onClick={toggleStattrak} className="item-detail-stattrak" data-active={stattrak}>
                       StatTrak™
-                      <span style={{
-                        width: 30, height: 16, borderRadius: 9, padding: 2, transition: 'all .15s ease',
-                        background: stattrak ? '#cf6a32' : 'rgba(255,255,255,0.12)',
-                        display: 'inline-flex', justifyContent: stattrak ? 'flex-end' : 'flex-start',
-                      }}>
-                        <span style={{ width: 12, height: 12, borderRadius: 6, background: '#fff' }} />
-                      </span>
+                      <span><i /></span>
                     </button>
                   )}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${variants.length}, 1fr)`, gap: 8 }}>
+                <div className="item-detail-variant-grid" style={{ '--variant-count': variants.length }}>
                   {variants.map((v) => {
                     const isActive = v.marketHashName === activeName;
                     const priceText = activeCurrency === 'rub' && Number.isFinite(v.priceRub)
@@ -311,131 +314,61 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
                         onClick={() => v.exists && setActiveName(v.marketHashName)}
                         disabled={!v.exists}
                         title={v.wearLabel}
-                        style={{
-                          textAlign: 'center', padding: '8px 4px', borderRadius: 8, cursor: v.exists ? 'pointer' : 'default',
-                          background: isActive ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-                          border: `1px solid ${isActive ? (WEAR_COLORS[v.wear] || 'var(--accent)') : 'var(--line)'}`,
-                          opacity: v.exists ? 1 : 0.4, transition: 'all .15s ease',
-                        }}
+                        className="item-detail-variant"
+                        data-active={isActive}
+                        style={{ '--wear-color': WEAR_COLORS[v.wear] || 'var(--accent)' }}
                       >
-                        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 700, color: WEAR_COLORS[v.wear] || 'var(--fg-2)' }}>{v.wear}</div>
-                        <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-1)', marginTop: 4 }}>{priceText}</div>
+                        <strong>{v.wear}</strong>
+                        <span>{priceText}</span>
                       </button>
                     );
                   })}
                 </div>
-                {variantsState.loading && (
-                  <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                    {lang === 'ru' ? 'обновляю цены качеств…' : 'refreshing exterior prices…'}
-                  </div>
-                )}
-              </div>
+                {variantsState.loading && <div className="item-detail-loading">{lang === 'ru' ? 'обновляю цены качеств…' : 'refreshing exterior prices…'}</div>}
+              </section>
             )}
-          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {isPortfolioHolding ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {[
-                { l: t.item.buy, v: formatItemMoney(totalBasis, item.currencyCode) },
-                { l: 'Qty', v: item.qty },
-                { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, c: pnlColor },
-                { l: t.item.tradelock, v: tradableQty === item.qty ? 'open' : (tradableQty > 0 ? 'partial' : 'restricted') },
-              ].map((s, i) => (
-                <div key={i} className="glass" style={{ padding: 16 }}>
-                  <div className="eyebrow">{s.l}</div>
-                  <div className="display" style={{ fontSize: 22, fontWeight: 500, marginTop: 8, color: s.c || 'var(--fg-0)' }}>{s.v}</div>
+            <section className="glass item-detail-offers">
+              <div className="item-detail-section-head">
+                <div>
+                  <div className="eyebrow">{lang === 'ru' ? 'СРАВНЕНИЕ ПЛОЩАДОК' : 'MARKETPLACE COMPARISON'}</div>
+                  <p>{lang === 'ru' ? 'Переход откроется в новой вкладке' : 'Links open in a new tab'}</p>
                 </div>
-              ))}
-            </div>
-            ) : (
-            <div className="glass" style={{ padding: 20 }}>
-              <div className="eyebrow">{lang === 'ru' ? 'Публичная карточка' : 'Public item page'}</div>
-              <div style={{ marginTop: 12, color: 'var(--fg-1)', fontSize: 13, lineHeight: 1.6 }}>
-                {lang === 'ru'
-                  ? 'Цена, история и предложения маркетплейсов для Counter-Strike 2. Чтобы видеть P&L и себестоимость, откройте предмет из своего портфеля.'
-                  : 'Live Counter-Strike 2 price, history, and marketplace offers. Open an item from your portfolio to see P&L and cost basis.'}
+                {offersState.loading && <span className="item-detail-loading">{lang === 'ru' ? 'загрузка…' : 'loading…'}</span>}
               </div>
-              {item.marketUrl && (
-                <a href={item.marketUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-ghost" style={{ marginTop: 16 }}>
-                  {lang === 'ru' ? 'Открыть в Steam Market' : 'Open on Steam Market'} →
-                </a>
-              )}
-            </div>
-            )}
-
-            <div className="glass" style={{ padding: 20 }}>
-              <div className="eyebrow">{t.item.stickers}</div>
-              <div style={{ marginTop: 12, color: 'var(--fg-1)', fontSize: 13, lineHeight: 1.6 }}>
-                {item.stickers
-                  ? (lang === 'ru'
-                    ? `Обнаружено ${item.stickers} строк(и) описания Steam, связанных с наклейками. Для точной оценки наклеек требуется провайдер float/sticker.`
-                    : `${item.stickers} sticker-related Steam description line(s) detected. Exact sticker valuation requires a float/sticker provider.`)
-                  : (lang === 'ru'
-                    ? 'Steam inventory не предоставил данных об оценке наклеек для этого предмета.'
-                    : 'Steam inventory endpoint did not expose applied sticker valuation for this item.')}
-              </div>
-            </div>
-
-            <div className="glass" style={{ padding: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <div className="eyebrow">{lang === 'ru' ? 'Цены на площадках' : 'Marketplace prices'}</div>
-                {offersState.loading && (
-                  <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                    {lang === 'ru' ? 'загрузка…' : 'loading…'}
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {(offersState.data?.offers || []).map((offer) => {
+              <div className="item-detail-offer-list">
+                {offers.map((offer) => {
                   const meta = MARKETPLACE_META[offer.provider] || { label: offer.label, color: 'var(--accent)' };
+                  const isBest = bestOffer?.provider === offer.provider;
                   const priceText = offer.hasPrice
                     ? (activeCurrency === 'rub' && Number.isFinite(offer.priceRub)
                         ? formatMoney(offer.priceRub, { digits: 2, currency: 'rub' })
                         : formatMoney(offer.price, { digits: 2 }))
-                    : (lang === 'ru' ? 'смотреть →' : 'view →');
+                    : (lang === 'ru' ? 'смотреть' : 'view');
                   return (
-                    <a
-                      key={offer.provider}
-                      href={offer.url || '#'}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="offer-row"
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '10px 12px', borderRadius: 10, textDecoration: 'none',
-                        background: 'rgba(255,255,255,0.02)',
-                        border: `1px solid var(--line)`, borderLeft: `3px solid ${meta.color}`,
-                      }}
-                    >
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: 4, background: meta.color }} />
-                        <span style={{ color: 'var(--fg-1)', fontSize: 13, fontWeight: 500 }}>{meta.label}</span>
+                    <a key={offer.provider} href={offer.url || '#'} target="_blank" rel="noreferrer"
+                       className="offer-row item-detail-offer" data-best={isBest}
+                       style={{ '--market-color': meta.color }}>
+                      <span className="item-detail-offer-name">
+                        <i />
+                        <span>{meta.label}</span>
+                        {isBest && <b>{lang === 'ru' ? 'ЛУЧШАЯ' : 'BEST'}</b>}
                       </span>
-                      <span style={{
-                        fontFamily: 'var(--f-mono)', fontSize: 14, fontWeight: 600,
-                        color: offer.hasPrice ? 'var(--fg-0)' : 'var(--fg-3)',
-                      }}>
-                        {priceText}
-                      </span>
+                      <span className="item-detail-offer-price">{priceText} <i>↗</i></span>
                     </a>
                   );
                 })}
-                {!offersState.loading && !(offersState.data?.offers || []).length && (
-                  <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
-                    {lang === 'ru' ? 'Нет данных по площадкам.' : 'No marketplace data.'}
-                  </div>
-                )}
+                {!offersState.loading && !offers.length && <div className="item-detail-empty">{lang === 'ru' ? 'Нет данных по площадкам.' : 'No marketplace data.'}</div>}
               </div>
-            </div>
-          </div>
+            </section>
+          </aside>
         </div>
 
-        <div className="glass" style={{ padding: 24, marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <section className="glass item-detail-chart-card">
+          <div className="item-detail-chart-head">
             <div>
               <div className="eyebrow">{lang === 'ru' ? 'Медиана цен' : 'Price history'}</div>
-              <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
+              <div className="item-detail-chart-meta">
                 {multiState.loading
                   ? (lang === 'ru' ? 'загрузка…' : 'loading…')
                   : (lang === 'ru'
@@ -443,7 +376,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
                       : `${chartSeries.length} exterior(s) · ${historyProviders[0] || 'no data'}`)}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3 }}>
+            <div className="item-detail-periods">
               {PERIOD_OPTIONS.map(p => (
                 <button
                   key={p.key}
@@ -451,13 +384,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
                     setChartHover(null);
                     setPeriod(p.key);
                   }}
-                  style={{
-                    padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 600,
-                    background: period === p.key ? 'var(--accent)' : 'transparent',
-                    color: period === p.key ? '#000' : 'var(--fg-2)',
-                    transition: 'all 0.15s ease',
-                  }}
+                  data-active={period === p.key}
                 >
                   {p.label}
                 </button>
@@ -466,7 +393,8 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
           </div>
 
           {hasWear && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            <div className="item-detail-compare">
+              <span>{lang === 'ru' ? 'Сравнить:' : 'Compare:'}</span>
               {variants.filter(v => v.exists).map((v) => {
                 const shown = chartNames.includes(v.marketHashName);
                 const color = WEAR_COLORS[v.wear] || 'var(--accent)';
@@ -474,21 +402,17 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
                   <button
                     key={v.wear}
                     onClick={() => toggleWearLine(v.marketHashName)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-                      padding: '4px 10px', borderRadius: 999, border: `1px solid ${shown ? color : 'var(--line)'}`,
-                      background: shown ? 'rgba(255,255,255,0.04)' : 'transparent',
-                      opacity: shown ? 1 : 0.5, transition: 'all .15s ease',
-                    }}
+                    data-active={shown}
+                    style={{ '--wear-color': color }}
                   >
-                    <span style={{ width: 10, height: 3, borderRadius: 2, background: color }} />
-                    <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, fontWeight: 600, color: shown ? 'var(--fg-1)' : 'var(--fg-3)' }}>{v.wearLabel}</span>
+                    <i />
+                    <span>{v.wear}</span>
                   </button>
                 );
               })}
             </div>
           )}
-          <div ref={chartRef} style={{ position: 'relative', width: '100%', height: 300 }}
+          <div ref={chartRef} className="item-detail-chart"
                onMouseMove={onMove} onMouseLeave={() => setChartHover(null)}>
             {hasHistory ? (
               <svg viewBox={`0 0 ${chart.w} ${chart.h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
@@ -581,10 +505,44 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
               </div>
             )}
           </div>
-        </div>
+        </section>
 
+        {isPortfolioHolding && (
+          <section className="item-detail-holdings">
+            {[
+              { l: t.item.buy, v: formatItemMoney(totalBasis, item.currencyCode) },
+              { l: lang === 'ru' ? 'Количество' : 'Quantity', v: item.qty },
+              { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, c: pnlColor },
+              { l: t.item.tradelock, v: tradableQty === item.qty ? (lang === 'ru' ? 'открыт' : 'open') : (tradableQty > 0 ? (lang === 'ru' ? 'частично' : 'partial') : (lang === 'ru' ? 'ограничен' : 'restricted')) },
+            ].map((s, i) => (
+              <div key={i} className="glass item-detail-stat">
+                <div className="eyebrow">{s.l}</div>
+                <div className="display" style={{ color: s.c || 'var(--fg-0)' }}>{s.v}</div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        <details className="glass item-detail-details">
+          <summary>
+            <span>
+              <span className="eyebrow">{lang === 'ru' ? 'ДОПОЛНИТЕЛЬНЫЕ ДАННЫЕ' : 'ADDITIONAL DATA'}</span>
+              <strong>{t.item.stickers}</strong>
+            </span>
+            <i>+</i>
+          </summary>
+          <p>
+            {item.stickers
+              ? (lang === 'ru'
+                ? `Обнаружено ${item.stickers} строк(и) описания Steam, связанных с наклейками. Для точной оценки наклеек требуется провайдер float/sticker.`
+                : `${item.stickers} sticker-related Steam description line(s) detected. Exact sticker valuation requires a float/sticker provider.`)
+              : (lang === 'ru'
+                ? 'Steam inventory не предоставил данных об оценке наклеек для этого предмета.'
+                : 'Steam inventory endpoint did not expose applied sticker valuation for this item.')}
+          </p>
+        </details>
       </div>
-    </div>
+    </main>
   );
 }
 
