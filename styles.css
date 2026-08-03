@@ -1206,14 +1206,6 @@ a { color: inherit; text-decoration: none; }
   color: var(--green);
 }
 
-.hero-stats {
-  margin-top: 56px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  max-width: 520px;
-}
-
 .hero-stage-wrap {
   position: relative;
   min-width: 0;
@@ -3768,12 +3760,6 @@ button:disabled,
   .pricing-billing-option {
     flex: 1;
     min-width: 0;
-  }
-
-  .hero-stats {
-    margin-top: 36px;
-    grid-template-columns: 1fr;
-    gap: 18px;
   }
 
   .hero-stage-wrap {

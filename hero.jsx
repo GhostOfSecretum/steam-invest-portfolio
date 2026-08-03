@@ -724,54 +724,6 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
   const [profileUrl, setProfileUrl] = useState('');
   const [profileUrlError, setProfileUrlError] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
-  const portfolio = usePortfolio(auth);
-  const market = useMarketSnapshot({ ticker: [], cases: [] });
-  const catalog = useMarketCatalog({ page: 1, pageSize: 1, sort: 'name-asc' });
-
-  const heroCopy = useMemo(() => {
-    const catalogTotal = Number(catalog.data?.totalCount);
-    const ticker = Array.isArray(market.data?.ticker) ? market.data.ticker : [];
-    const cases = Array.isArray(market.data?.cases) ? market.data.cases : [];
-    const watchlistVolume = ticker.reduce((sum, item) => {
-      const price = Number(item.price);
-      const volume = Number(item.volume24h);
-      if (!Number.isFinite(price) || !Number.isFinite(volume) || price <= 0 || volume <= 0) return sum;
-      return sum + price * volume;
-    }, 0);
-    const portfolioValue = Number(portfolio.data?.totalValue);
-    const hasPortfolio = Boolean(auth?.connected) && Number.isFinite(portfolioValue) && portfolioValue > 0;
-
-    const formatCount = (value) => {
-      if (!Number.isFinite(value) || value <= 0) return '—';
-      if (value >= 1e6) return `${(value / 1e6).toFixed(1).replace(/\.0$/, '')}M`;
-      if (value >= 1e3) return `${(value / 1e3).toFixed(value >= 10000 ? 0 : 1).replace(/\.0$/, '')}K`;
-      return String(Math.round(value));
-    };
-
-    return [
-      {
-        key: 'stat-1',
-        v: formatCount(catalogTotal),
-        l: t.hero.stat1,
-      },
-      {
-        key: 'stat-2',
-        v: watchlistVolume > 0 ? compactUsd(watchlistVolume, { digits: 1, compact: true }) : '—',
-        l: t.hero.stat2,
-      },
-      hasPortfolio
-        ? {
-          key: 'stat-3',
-          v: compactUsd(portfolioValue, { digits: 1, compact: true }),
-          l: t.hero.stat3,
-        }
-        : {
-          key: 'stat-3',
-          v: formatCount(cases.length),
-          l: t.hero.stat3Fallback,
-        },
-    ];
-  }, [auth?.connected, catalog.data?.totalCount, market.data, portfolio.data?.totalValue, t.hero]);
 
   const stage = useMemo(
     () => <HeroConcept_Operators lang={lang} onItemClick={onItemClick} />,
@@ -841,14 +793,6 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
             </form>
           )}
 
-          <div className="hero-stats">
-            {heroCopy.map((s) => (
-              <div key={s.key}>
-                <div className="display" style={{ fontSize: 28, fontWeight: 500 }}>{s.v}</div>
-                <div className="eyebrow" style={{ marginTop: 6 }}>{s.l}</div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Right: 3D stage */}
