@@ -156,7 +156,7 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) 72px 64px',
+          gridTemplateColumns: 'minmax(0, 1fr) 72px',
           gap: 8,
           padding: '0 0 8px',
           fontFamily: 'var(--f-mono)',
@@ -168,7 +168,6 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
         }}>
           <div>{t.dash.trendsItem}</div>
           <div style={{ textAlign: 'right' }}>{t.dash.trendsPercent}</div>
-          <div style={{ textAlign: 'right' }}>{t.dash.trendsChange}</div>
         </div>
 
         {!visible.length ? (
@@ -181,7 +180,7 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
             onClick={() => onItemClick && onItemClick(row)}
             style={{
               display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) 72px 64px',
+              gridTemplateColumns: 'minmax(0, 1fr) 72px',
               gap: 8,
               alignItems: 'center',
               padding: '8px 0',
@@ -203,7 +202,6 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
               }} title={row.name}>{row.name}</div>
             </div>
             <div className="mono" style={{ fontSize: 12, textAlign: 'right', color }}>{`${row.pct >= 0 ? '+' : ''}${row.pct.toFixed(1)}%`}</div>
-            <div className="mono" style={{ fontSize: 12, textAlign: 'right', color }}>{`${row.change >= 0 ? '+' : '-'}${compactUsd(Math.abs(row.change))}`}</div>
           </div>
         ))}
       </div>
@@ -211,7 +209,7 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
   };
 
   return (
-    <div className="glass" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16, minHeight: 0 }}>
+    <div className="glass dash-panel dash-leaders-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16, minHeight: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div>
           <div className="eyebrow">{t.dash.leaders}</div>
@@ -219,7 +217,7 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
             {t.dash.leadersHint}
           </div>
         </div>
-        <div style={{ display: 'flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+        <div className="dash-range-switch" style={{ flexShrink: 0 }}>
           {['1d', '7d', '30d', '90d'].map((r) => (
             <button
               key={r}
@@ -260,31 +258,6 @@ function inventorySourceLabel(source, lang) {
   if (source === 'desktop') return lang === 'ru' ? 'desktop · полный инвентарь' : 'desktop · full inventory';
   if (source === 'manual') return lang === 'ru' ? 'ручной ввод' : 'manual input';
   return lang === 'ru' ? 'публичный Steam' : 'public Steam';
-}
-
-function allocationLabel(key, lang) {
-  if (lang !== 'ru') return key;
-  const labels = {
-    Knives: 'Ножи',
-    Gloves: 'Перчатки',
-    Rifles: 'Винтовки',
-    Snipers: 'Снайперки',
-    SMGs: 'ПП',
-    Shotguns: 'Дробовики',
-    Machineguns: 'Пулемёты',
-    Pistols: 'Пистолеты',
-    Agents: 'Агенты',
-    Stickers: 'Стикеры',
-    Cases: 'Кейсы',
-    Capsules: 'Капсулы',
-    Graffiti: 'Граффити',
-    Patches: 'Патчи',
-    Charms: 'Брелоки',
-    Music: 'Music Kit',
-    Tools: 'Инструменты',
-    Other: 'Прочее',
-  };
-  return labels[key] || key;
 }
 
 function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
@@ -600,36 +573,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
                 <PortfolioChart history={data.history} range={range} lang={lang} />
               </div>
 
-              <div className="glass dash-panel dash-allocation-panel">
-                <div className="eyebrow">{t.dash.breakdown}</div>
-                <div className="dash-risk-summary">
-                  <div>
-                    <span>{lang === 'ru' ? 'Крупнейшая позиция' : 'Largest position'}</span>
-                    <strong>{topItem ? `${topItemPct.toFixed(0)}%` : '—'}</strong>
-                  </div>
-                  <div>
-                    <span>{lang === 'ru' ? 'Доля топ-5' : 'Top 5 share'}</span>
-                    <strong>{topFivePct.toFixed(0)}%</strong>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {(data.allocation || []).length === 0 ? (
-                    <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                      {lang === 'ru' ? 'Нет оценённых предметов' : 'No priced items'}
-                    </div>
-                  ) : (data.allocation || []).map((b, i) => (
-                    <div key={`${b.l}-${i}`}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                        <span style={{ color: 'var(--fg-1)' }}>{allocationLabel(b.l, lang)}</span>
-                        <span style={{ fontFamily: 'var(--f-mono)', color: 'var(--fg-2)' }}>{compactUsd(b.v)} · {b.p}%</span>
-                      </div>
-                      <div style={{ height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(100, Math.max(0, b.p))}%`, height: '100%', background: b.c, borderRadius: 3, opacity: 0.85 }}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <PortfolioLeaders leaders={data.leaders} lang={lang} onItemClick={onItemClick} />
             </div>
           </div>
         )}

@@ -1474,12 +1474,18 @@ function periodPositionChange(points, endPrice, qty, range) {
   }
 
   const days = LEADER_RANGE_DAYS[range] || 30;
-  const cutoff = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
-  // Require real coverage back to the period start.
-  if (points[0].date > cutoff) return null;
+  // Anchor to the last real history day — CSFloat/take.skin often lag 1–3 days behind "today".
+  const endDate = points[points.length - 1]?.date;
+  const endTime = endDate ? new Date(`${endDate}T12:00:00.000Z`).getTime() : NaN;
+  if (!Number.isFinite(endTime)) return null;
+  const cutoff = new Date(endTime - days * 86400000).toISOString().slice(0, 10);
+  // Prefer the period start; if real history is shorter (new stickers / take.skin ~30d),
+  // use the earliest available point instead of dropping the item from leaders.
+  const startDate = points[0].date > cutoff ? points[0].date : cutoff;
+  if (startDate >= endDate) return null;
 
   // Median over a small window — single CSFloat spike days otherwise invent -90% movers.
-  const startPrice = robustPriceAtDate(points, cutoff);
+  const startPrice = robustPriceAtDate(points, startDate);
   if (!Number.isFinite(startPrice) || startPrice <= 0) return null;
 
   // Keep start/end inside the same history series so FX/provider mismatch does not invent PnL.
@@ -1496,6 +1502,25 @@ function medianNumbers(values) {
   const sorted = nums.slice().sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function weightedMedianPrice(points) {
+  const rows = (Array.isArray(points) ? points : [])
+    .map((point) => ({
+      price: Number(point.price),
+      weight: Math.max(1, Number(point.volume) || 1),
+    }))
+    .filter((point) => Number.isFinite(point.price) && point.price > 0)
+    .sort((a, b) => a.price - b.price);
+  if (!rows.length) return null;
+
+  const totalWeight = rows.reduce((sum, point) => sum + point.weight, 0);
+  let cumulative = 0;
+  for (const point of rows) {
+    cumulative += point.weight;
+    if (cumulative >= totalWeight / 2) return point.price;
+  }
+  return rows[rows.length - 1].price;
 }
 
 function shiftDateString(date, deltaDays) {
@@ -1523,25 +1548,24 @@ function filterPriceOutliers(points, { maxRatio = 2.5, radius = 7 } = {}) {
   });
 }
 
-function robustPriceAtDate(points, date, { windowDays = 3, maxRatio = 2.5 } = {}) {
+function robustPriceAtDate(points, date, { windowDays = 7, maxRatio = 2.5 } = {}) {
   if (!Array.isArray(points) || !points.length || !date) return null;
   const from = shiftDateString(date, -windowDays) || date;
   let window = points
     .filter((point) => point.date >= from && point.date <= date)
-    .map((point) => point.price)
-    .filter((price) => Number.isFinite(price) && price > 0);
+    .filter((point) => Number.isFinite(point.price) && point.price > 0);
 
   if (!window.length) {
     const fallback = priceAtDate(points, date);
     return Number.isFinite(fallback) && fallback > 0 ? fallback : null;
   }
 
-  const med = medianNumbers(window);
+  const med = weightedMedianPrice(window);
   if (Number.isFinite(med) && med > 0) {
-    const filtered = window.filter((price) => price <= med * maxRatio && price >= med / maxRatio);
+    const filtered = window.filter((point) => point.price <= med * maxRatio && point.price >= med / maxRatio);
     if (filtered.length) window = filtered;
   }
-  return medianNumbers(window);
+  return weightedMedianPrice(window);
 }
 
 function composePortfolioHistory(histories, untrackedValue, trackedValue, totalValue) {
@@ -1648,6 +1672,9 @@ function normalizeHistoryPoints(points) {
       return {
         date: new Date(time).toISOString().slice(0, 10),
         price,
+        volume: Number.isFinite(Number(point.volume)) && Number(point.volume) > 0
+          ? Number(point.volume)
+          : 1,
       };
     })
     .filter(Boolean)

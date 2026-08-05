@@ -488,7 +488,15 @@ async function getCSFloatGraphHistory(marketHashName, currency = 'usd') {
     headers: { Accept: 'application/json' },
   }).catch(() => null);
 
-  if (!Array.isArray(rows) || !rows.length) return null;
+  // Rate limits / brief outages: keep a recent real graph instead of falling through to synthetic.
+  if (!Array.isArray(rows) || !rows.length) {
+    const stale = await getCachedEntry(cacheKey).catch(() => null);
+    const staleHistory = stale?.value;
+    if (staleHistory?.data?.length && !historyLooksStale(staleHistory, 14)) {
+      return { ...staleHistory, cached: true };
+    }
+    return null;
+  }
 
   let data = rows
     .map((bucket) => {
@@ -552,7 +560,8 @@ async function getSkinportSalesHistory(marketHashName, currency = 'usd') {
   }).catch(() => null);
 
   const rows = Array.isArray(json) ? json : [];
-  const exact = rows.find((row) => row.market_hash_name === marketHashName) || rows[0];
+  // Never substitute another wear/variant: percentages must match the exact inventory item.
+  const exact = rows.find((row) => row.market_hash_name === marketHashName);
   if (!exact) return null;
 
   const now = Date.now();
@@ -611,9 +620,16 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
   // v3: charts use free CSFloat graph only (CSMarketAPI kept for catalog/listings).
   const key = `history:v3:${marketHashName}:${requestedCurrency}:full`;
   const cached = await getCached(key, HISTORY_MAX_AGE_MS);
-  let history = cached && Array.isArray(cached.data) && cached.data.length && !historyLooksStale(cached, 3)
-    ? cached
-    : null;
+  // Synthetic series must not block retries — leaders/charts need real CSFloat/take.skin data.
+  const cachedIsUsable = Boolean(
+    cached
+    && Array.isArray(cached.data)
+    && cached.data.length
+    && cached.provider
+    && cached.provider !== 'synthetic'
+    && !historyLooksStale(cached, 3)
+  );
+  let history = cachedIsUsable ? cached : null;
   let usedCached = Boolean(history);
 
   // Prefer a slightly stale real series over inventing synthetic data when providers
