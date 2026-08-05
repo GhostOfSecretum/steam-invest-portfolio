@@ -46,7 +46,7 @@ const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItem
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
-const { getItemPageData, renderItemHtml, buildSitemapXml } = require('./services/items');
+const { getItemPageData, renderItemHtml, renderAppShellHtml, SITE_URL, buildSitemapXml } = require('./services/items');
 const {
   createPairingCode,
   redeemPairingCode,
@@ -84,6 +84,21 @@ app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
 }));
+
+// Collapse www → apex so Google does not pick www.*/favorites over the homepage.
+try {
+  const canonicalHost = new URL(SITE_URL).hostname.toLowerCase();
+  app.use((req, res, next) => {
+    const host = String(req.hostname || '').toLowerCase();
+    if (host === `www.${canonicalHost}`) {
+      res.redirect(301, `${SITE_URL}${req.originalUrl || '/'}`);
+      return;
+    }
+    next();
+  });
+} catch {
+  // SITE_URL misconfigured — skip host redirect.
+}
 
 // Default body limit is small; the large limit only applies to inventory sync.
 // This runs first, marks the body as parsed, so the global parser skips it.
@@ -644,25 +659,30 @@ app.get('/item/:slug', asyncRoute(async (req, res) => {
   res.type('html').send(html);
 }));
 
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(rootDir, appFile));
-});
+async function sendAppShell(res) {
+  const html = await renderAppShellHtml(path.join(rootDir, appFile));
+  res.type('html').send(html);
+}
 
-app.get('/favorites', (req, res) => {
-  res.sendFile(path.join(rootDir, appFile));
-});
+app.get('/dashboard', asyncRoute(async (req, res) => {
+  await sendAppShell(res);
+}));
 
-app.get('/investors', (req, res) => {
-  res.sendFile(path.join(rootDir, appFile));
-});
+app.get('/favorites', asyncRoute(async (req, res) => {
+  await sendAppShell(res);
+}));
 
-app.get('/market', (req, res) => {
-  res.sendFile(path.join(rootDir, appFile));
-});
+app.get('/investors', asyncRoute(async (req, res) => {
+  await sendAppShell(res);
+}));
 
-app.get('/armory', (req, res) => {
-  res.sendFile(path.join(rootDir, appFile));
-});
+app.get('/market', asyncRoute(async (req, res) => {
+  await sendAppShell(res);
+}));
+
+app.get('/armory', asyncRoute(async (req, res) => {
+  await sendAppShell(res);
+}));
 
 // Permanent legal / billing pages for payment provider review (no JS required).
 app.get('/privacy', (req, res) => {
@@ -681,9 +701,9 @@ app.get('/pricing', (req, res) => {
   res.type('html').send(renderPricingPage());
 });
 
-app.get('/glock-3d', (req, res) => {
-  res.sendFile(path.join(rootDir, appFile));
-});
+app.get('/glock-3d', asyncRoute(async (req, res) => {
+  await sendAppShell(res);
+}));
 
 app.get('/glock3d', (req, res) => {
   res.redirect(301, '/glock-3d');

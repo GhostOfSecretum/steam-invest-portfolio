@@ -1,4 +1,8 @@
 # Caddy reverse proxy with automatic HTTPS (Let's Encrypt).
+www.skinshead.pro {
+	redir https://skinshead.pro{uri} permanent
+}
+
 skinshead.pro {
 	encode gzip
 	# The app runs on the same host, plain HTTP, bound to localhost.

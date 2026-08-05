@@ -151,6 +151,20 @@ async function renderItemHtml(appFilePath, seo) {
   return injectItemSeo(html, seo);
 }
 
+/** App shell routes share the SPA HTML — keep them out of Google as duplicates of /. */
+function injectAppRouteSeo(html) {
+  let next = html;
+  next = upsertMetaTag(next, 'name', 'robots', 'noindex, follow');
+  next = upsertLinkTag(next, 'canonical', `${SITE_URL}/`);
+  next = upsertMetaTag(next, 'property', 'og:url', `${SITE_URL}/`);
+  return next;
+}
+
+async function renderAppShellHtml(appFilePath) {
+  const html = await fs.readFile(appFilePath, 'utf8');
+  return injectAppRouteSeo(html);
+}
+
 function buildSitemapXml() {
   const today = new Date().toISOString().slice(0, 10);
   const urls = [
@@ -180,6 +194,8 @@ module.exports = {
   resolveItemBySlug,
   getItemPageData,
   renderItemHtml,
+  renderAppShellHtml,
   injectItemSeo,
+  injectAppRouteSeo,
   buildSitemapXml,
 };

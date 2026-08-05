@@ -120,13 +120,37 @@
       node.setAttribute('href', url);
     }
 
+    const APP_ROUTE_SEO = {
+      favorites: { ru: 'Избранные профили · SkinsHead', en: 'Favorite profiles · SkinsHead' },
+      dashboard: { ru: 'Портфель · SkinsHead', en: 'Portfolio · SkinsHead' },
+      investors: { ru: 'Топ инвесторы · SkinsHead', en: 'Top investors · SkinsHead' },
+      market: { ru: 'Маркет · SkinsHead', en: 'Market · SkinsHead' },
+      armory: { ru: 'Armory Pass · SkinsHead', en: 'Armory Pass · SkinsHead' },
+      glock3d: { ru: '3D Glock · SkinsHead', en: '3D Glock · SkinsHead' },
+    };
+
     function applyHomeSeo(lang) {
       const copy = HOME_SEO[lang] || HOME_SEO.en;
       document.title = copy.title;
       upsertMeta('name', 'description', copy.description);
+      upsertMeta('name', 'robots', 'index, follow, max-image-preview:large');
       upsertCanonical(`${SITE_URL}/`);
       upsertMeta('property', 'og:title', copy.title);
       upsertMeta('property', 'og:description', copy.description);
+      upsertMeta('property', 'og:url', `${SITE_URL}/`);
+      upsertMeta('property', 'og:type', 'website');
+    }
+
+    function applyAppRouteSeo(lang, screen) {
+      const titles = APP_ROUTE_SEO[screen];
+      const title = titles?.[lang] || titles?.en || 'SkinsHead';
+      const home = HOME_SEO[lang] || HOME_SEO.en;
+      document.title = title;
+      upsertMeta('name', 'description', home.description);
+      upsertMeta('name', 'robots', 'noindex, follow');
+      upsertCanonical(`${SITE_URL}/`);
+      upsertMeta('property', 'og:title', title);
+      upsertMeta('property', 'og:description', home.description);
       upsertMeta('property', 'og:url', `${SITE_URL}/`);
       upsertMeta('property', 'og:type', 'website');
     }
@@ -146,6 +170,7 @@
       const description = lang === 'ru' ? seo.descriptionRu : seo.description;
       document.title = title;
       upsertMeta('name', 'description', description);
+      upsertMeta('name', 'robots', 'index, follow, max-image-preview:large');
       upsertCanonical(seo.url);
       upsertMeta('property', 'og:title', title);
       upsertMeta('property', 'og:description', description);
@@ -248,7 +273,8 @@
       useEffect(() => {
         document.documentElement.lang = t.lang === 'ru' ? 'ru' : 'en';
         if (screen === 'item' && activeItem) applyItemSeo(activeItem, t.lang);
-        else applyHomeSeo(t.lang);
+        else if (screen === 'home') applyHomeSeo(t.lang);
+        else applyAppRouteSeo(t.lang, screen);
       }, [t.lang, screen, activeItem]);
       useEffect(() => {
         if (screen !== 'item' || !slugItem.data) return;
@@ -316,6 +342,7 @@
         }
         syncAppUrl(s, null, { profileUrl: s === 'dashboard' ? publicProfileUrl : '' });
         if (s === 'home') applyHomeSeo(t.lang);
+        else if (s !== 'item') applyAppRouteSeo(t.lang, s);
         window.scrollTo({top: 0, behavior: 'instant'});
       };
       const openPublicProfile = (profileUrl) => {
