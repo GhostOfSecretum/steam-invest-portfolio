@@ -805,6 +805,20 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   flex-wrap: wrap;
 }
+.dash-controls-trigger {
+  gap: 9px;
+}
+.dash-controls-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 180ms ease;
+}
+.dash-controls-trigger[aria-expanded="true"] .dash-controls-chevron {
+  transform: translateY(2px) rotate(225deg);
+}
 .dash-sync-meta {
   display: flex;
   align-items: center;
@@ -827,21 +841,132 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 0 10px color-mix(in oklch, var(--cyan), transparent 45%);
 }
 .dash-management {
+  position: relative;
+  z-index: 5;
   margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.035), transparent 42%),
+    rgba(10,12,18,0.88);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.28);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
   animation: fadeUp 240ms ease both;
 }
-.dash-management-desktop {
+.dash-management-head {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  margin-bottom: 8px;
+  gap: 24px;
+  margin-bottom: 14px;
+  padding: 0 2px;
+}
+.dash-management-head p {
+  margin: 7px 0 0;
+  color: var(--fg-3);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.dash-management-close {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 8px;
+  color: var(--fg-3);
+  background: rgba(255,255,255,0.025);
+  font-size: 20px;
+  line-height: 1;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+.dash-management-close:hover {
+  color: var(--fg-0);
+  border-color: var(--line-strong);
+  background: rgba(255,255,255,0.06);
+}
+.dash-portfolio-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.dash-control-section {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
   background: rgba(255,255,255,0.02);
 }
+.dash-control-section--sync {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.dash-control-section--manual {
+  position: relative;
+  z-index: 2;
+  grid-column: 1 / -1;
+}
+.dash-control-section-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-width: 0;
+}
+.dash-control-index {
+  padding-top: 2px;
+  color: var(--accent);
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+.dash-control-section h3 {
+  margin: 0;
+  color: var(--fg-1);
+  font-family: var(--f-display);
+  font-size: 13px;
+  font-weight: 500;
+}
+.dash-control-section p {
+  margin: 5px 0 0;
+  color: var(--fg-3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.dash-control-section-actions,
+.dash-control-fields,
+.dash-control-inline-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.dash-control-section-actions {
+  flex: 0 0 auto;
+}
+.dash-control-fields {
+  margin-top: 13px;
+}
+.dash-control-inline-form {
+  flex: 1 1 100%;
+}
+.dash-control-error {
+  flex: 1 1 100%;
+  color: var(--amber);
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+}
+.dash-manual-item-form {
+  margin-top: 13px;
+}
+.dash-manual-item-form .dash-control-fields {
+  margin-top: 0;
+}
 .dash-connected-label {
-  margin-left: auto;
   color: var(--green);
   font-family: var(--f-mono);
   font-size: 10.5px;
@@ -1451,7 +1576,7 @@ a { color: inherit; text-decoration: none; }
   margin-top: 10px;
 }
 .landing-product-chart,
-.landing-product-allocation {
+.landing-product-leaders {
   min-width: 0;
   padding: 13px;
   border: 1px solid var(--line);
@@ -1464,34 +1589,57 @@ a { color: inherit; text-decoration: none; }
   height: 190px;
   margin-top: 8px;
 }
-.landing-product-allocation {
+.landing-product-leaders {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 0;
 }
-.landing-allocation-row {
+.landing-product-leaders-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.landing-product-leaders-head > span {
+  padding: 3px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--fg-2);
+  background: rgba(255,255,255,0.03);
+  font-family: var(--f-mono);
+  font-size: 8px;
+}
+.landing-leader-row {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px;
+  grid-template-columns: 19px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  border-bottom: 1px solid rgba(255,255,255,0.045);
   color: var(--fg-2);
   font-size: 10px;
 }
-.landing-allocation-row b {
-  color: var(--fg-1);
+.landing-leader-row:last-child {
+  border-bottom: 0;
+}
+.landing-leader-row i {
+  color: var(--fg-3);
   font-family: var(--f-mono);
-  font-weight: 400;
+  font-size: 8px;
+  font-style: normal;
 }
-.landing-allocation-row i {
-  grid-column: 1 / -1;
-  height: 4px;
+.landing-leader-row span {
   overflow: hidden;
-  border-radius: 99px;
-  background: rgba(255,255,255,0.05);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
-.landing-allocation-row em {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
+.landing-leader-row b {
+  color: var(--green);
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 400;
 }
 .landing-showcase-copy > .eyebrow {
   color: var(--accent);
@@ -4013,9 +4161,35 @@ button:disabled,
     line-height: 1.5;
   }
 
-  .dash-management-desktop {
+  .dash-management {
+    padding: 14px;
+  }
+
+  .dash-management-head {
     align-items: flex-start;
-    flex-wrap: wrap;
+  }
+
+  .dash-portfolio-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .dash-control-section--manual {
+    grid-column: auto;
+  }
+
+  .dash-control-section--sync {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dash-control-section-actions,
+  .dash-control-fields {
+    width: 100%;
+  }
+
+  .dash-control-section-actions .btn,
+  .dash-control-fields > .btn {
+    justify-content: center;
   }
 
   .dash-connected-label {

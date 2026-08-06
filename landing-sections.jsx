@@ -1294,32 +1294,32 @@ function ProductShowcase({ lang }) {
     ? {
       eyebrow: '// РЕЗУЛЬТАТ, А НЕ ПРОСТО ЦЕНЫ',
       title: 'Сразу видно, что происходит с деньгами',
-      sub: 'Главный экран отвечает на четыре вопроса: сколько стоит портфель, сколько вы заработали, что можно продать и где слишком высокая концентрация.',
+      sub: 'Главный экран отвечает на четыре вопроса: сколько стоит портфель, сколько вы заработали, что можно продать и какие позиции растут быстрее остальных.',
       features: [
         ['Актуальная оценка', 'Стоимость всего инвентаря и каждой позиции отдельно.'],
         ['Прибыль и себестоимость', 'P&L считается относительно ваших реальных цен покупки.'],
-        ['Структура и риски', 'Распределение по категориям и доля крупнейших позиций.'],
+        ['Лидеры роста и падения', 'Сразу видно, какие предметы сильнее всего изменились в цене.'],
         ['История и экспорт', 'Изменения состава портфеля и выгрузка данных в CSV.'],
       ],
       value: 'Стоимость',
       profit: 'Прибыль',
       sellable: 'Можно продать',
-      allocation: 'Распределение',
+      leaders: 'Лидеры роста',
     }
     : {
       eyebrow: '// OUTCOMES, NOT JUST PRICES',
       title: 'See what is happening with your money',
-      sub: 'The main screen answers four questions: portfolio value, profit, sellable value, and concentration risk.',
+      sub: 'The main screen answers four questions: portfolio value, profit, sellable value, and which positions are growing fastest.',
       features: [
         ['Live valuation', 'Total inventory value and every individual position.'],
         ['Profit and cost basis', 'P&L calculated against your actual purchase prices.'],
-        ['Structure and risk', 'Allocation by category and largest-position share.'],
+        ['Top gainers and losers', 'See which items moved the most at a glance.'],
         ['History and export', 'Portfolio changes over time with CSV export.'],
       ],
       value: 'Value',
       profit: 'Profit',
       sellable: 'Sellable now',
-      allocation: 'Allocation',
+      leaders: 'Top gainers',
     };
 
   return (
@@ -1349,17 +1349,21 @@ function ProductShowcase({ lang }) {
                 <path d="M0 162 C50 154 72 130 118 138 S188 112 235 122 S304 74 348 91 S418 68 470 76 S536 31 600 20" fill="none" stroke="var(--accent)" strokeWidth="3" />
               </svg>
             </div>
-            <div className="landing-product-allocation">
-              <div className="eyebrow">{copy.allocation}</div>
+            <div className="landing-product-leaders">
+              <div className="landing-product-leaders-head">
+                <div className="eyebrow">{copy.leaders}</div>
+                <span>30D</span>
+              </div>
               {[
-                ['Rifles', 42, 'var(--accent)'],
-                ['Knives', 28, 'var(--cyan)'],
-                ['Cases', 18, 'var(--amber)'],
-                ['Other', 12, 'var(--fg-3)'],
-              ].map(([label, value, color]) => (
-                <div className="landing-allocation-row" key={label}>
-                  <span>{label}</span><b>{value}%</b>
-                  <i><em style={{ width: `${value}%`, background: color }}></em></i>
+                ['AK-47 | Redline', '+18.4%'],
+                ['Karambit | Doppler', '+12.7%'],
+                ['Breakout Case', '+9.6%'],
+                ['Desert Eagle | Printstream', '+7.1%'],
+              ].map(([label, value], index) => (
+                <div className="landing-leader-row" key={label}>
+                  <i>{String(index + 1).padStart(2, '0')}</i>
+                  <span title={label}>{label}</span>
+                  <b>{value}</b>
                 </div>
               ))}
             </div>

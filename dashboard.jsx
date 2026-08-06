@@ -452,13 +452,13 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
             {!isPublicPortfolio && (
               <button
                 type="button"
-                className={`btn btn-sm ${controlsOpen ? 'btn-ghost' : 'btn-primary'}`}
+                className={`btn btn-sm dash-controls-trigger ${controlsOpen ? 'btn-ghost' : 'btn-primary'}`}
                 onClick={() => setControlsOpen((open) => !open)}
                 aria-expanded={controlsOpen}
+                aria-controls="portfolio-management"
               >
-                {controlsOpen
-                  ? (lang === 'ru' ? 'Закрыть' : 'Close')
-                  : (lang === 'ru' ? '+ Добавить' : '+ Add')}
+                <span>{lang === 'ru' ? 'Управлять портфелем' : 'Manage portfolio'}</span>
+                <span className="dash-controls-chevron" aria-hidden="true" />
               </button>
             )}
             <button
@@ -475,16 +475,42 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
         )}
 
         {!isPublicPortfolio && controlsOpen && (
-          <div className="dash-management">
+          <div className="dash-management" id="portfolio-management">
+            <div className="dash-management-head">
+              <div>
+                <div className="eyebrow">{lang === 'ru' ? 'УПРАВЛЕНИЕ ПОРТФЕЛЕМ' : 'PORTFOLIO MANAGEMENT'}</div>
+                <p>
+                  {lang === 'ru'
+                    ? 'Выберите, откуда получить данные, или добавьте предмет вручную.'
+                    : 'Choose where to get data from, or add an item manually.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="dash-management-close"
+                onClick={() => setControlsOpen(false)}
+                aria-label={lang === 'ru' ? 'Закрыть управление портфелем' : 'Close portfolio management'}
+              >
+                ×
+              </button>
+            </div>
             {auth?.connected && (
-              <div className="dash-management-desktop">
-                <span className="eyebrow">{lang === 'ru' ? 'СИНХРОНИЗАЦИЯ' : 'SYNC'}</span>
-                {data.desktopConnected && <span className="dash-connected-label">● desktop</span>}
-                <DesktopPairingButton
-                  lang={lang}
-                  canUseDesktop={Boolean(auth?.entitlements?.desktopDownload)}
-                  onPricing={onPricing}
-                />
+              <div className="dash-control-section dash-control-section--sync">
+                <div className="dash-control-section-copy">
+                  <span className="dash-control-index">01</span>
+                  <div>
+                    <h3>{lang === 'ru' ? 'Синхронизация Steam' : 'Steam sync'}</h3>
+                    <p>{lang === 'ru' ? 'Загрузите полный инвентарь через Desktop.' : 'Import your full inventory through Desktop.'}</p>
+                  </div>
+                </div>
+                <div className="dash-control-section-actions">
+                  {data.desktopConnected && <span className="dash-connected-label">● desktop</span>}
+                  <DesktopPairingButton
+                    lang={lang}
+                    canUseDesktop={Boolean(auth?.entitlements?.desktopDownload)}
+                    onPricing={onPricing}
+                  />
+                </div>
               </div>
             )}
             <PortfolioControls
@@ -851,122 +877,123 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
     if (onPublicProfile) onPublicProfile(nextProfileUrl);
   };
 
-  const sectionLabel = {
-    fontFamily: 'var(--f-mono)',
-    fontSize: 10,
-    letterSpacing: '0.16em',
-    textTransform: 'uppercase',
-    color: 'var(--fg-3)',
-    whiteSpace: 'nowrap',
-    minWidth: 88,
-  };
-
   return (
-    <div
-      className="glass"
-      style={{
-        padding: '14px 16px',
-        marginBottom: 16,
-        position: 'relative',
-        zIndex: 10,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 0,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minHeight: 33 }}>
-        <span style={sectionLabel}>{lang === 'ru' ? 'Портфель' : 'Portfolio'}</span>
-        {!auth?.connected && (
-          <button className="btn btn-sm btn-primary" onClick={() => auth?.login && auth.login()}>
-            {lang === 'ru' ? 'Подключить Steam' : 'Link Steam'}
-          </button>
-        )}
-        {naming ? (
-          <>
-            <input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') createPortfolio();
-                if (e.key === 'Escape') {
+    <div className="dash-portfolio-controls">
+      <section className="dash-control-section">
+        <div className="dash-control-section-copy">
+          <span className="dash-control-index">{auth?.connected ? '02' : '01'}</span>
+          <div>
+            <h3>{lang === 'ru' ? 'Мои портфели' : 'My portfolios'}</h3>
+            <p>{lang === 'ru' ? 'Переключитесь на существующий или создайте ручной портфель.' : 'Switch portfolios or create a manual one.'}</p>
+          </div>
+        </div>
+        <div className="dash-control-fields">
+          {!auth?.connected && (
+            <button className="btn btn-sm btn-primary" onClick={() => auth?.login && auth.login()}>
+              {lang === 'ru' ? 'Подключить Steam' : 'Link Steam'}
+            </button>
+          )}
+          <select
+            value={activePortfolioId || ''}
+            onChange={(e) => onSelect(e.target.value || null)}
+            aria-label={lang === 'ru' ? 'Выбрать портфель' : 'Choose portfolio'}
+            style={portfolioInputStyle({ flex: '1 1 220px', minWidth: 180, height: 34 })}
+          >
+            {!activePortfolioId && <option value="">{lang === 'ru' ? 'Выберите портфель' : 'Choose a portfolio'}</option>}
+            {portfolios.map((portfolio) => (
+              <option key={portfolio.id} value={portfolio.id}>
+                {portfolio.type === 'steam' ? 'Steam · ' : ''}{portfolio.name}{portfolio.itemCount != null ? ` (${portfolio.itemCount})` : ''}
+              </option>
+            ))}
+          </select>
+          {naming ? (
+            <div className="dash-control-inline-form">
+              <input
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') createPortfolio();
+                  if (e.key === 'Escape') {
+                    setNaming(false);
+                    setName('');
+                  }
+                }}
+                placeholder={lang === 'ru' ? 'Название портфеля' : 'Portfolio name'}
+                aria-label={lang === 'ru' ? 'Название нового портфеля' : 'New portfolio name'}
+                style={portfolioInputStyle({ flex: '1 1 180px', minWidth: 150, height: 34 })}
+              />
+              <button className="btn btn-sm btn-primary" onClick={createPortfolio} disabled={creating}>
+                {creating ? '...' : (lang === 'ru' ? 'Создать' : 'Create')}
+              </button>
+              <button
+                className="btn btn-sm btn-ghost"
+                type="button"
+                onClick={() => {
                   setNaming(false);
                   setName('');
-                }
-              }}
-              placeholder={lang === 'ru' ? 'Название нового портфеля' : 'New portfolio name'}
-              style={portfolioInputStyle({ flex: '1 1 180px', minWidth: 160, height: 31 })}
-            />
-            <button className="btn btn-sm btn-primary" onClick={createPortfolio} disabled={creating}>
-              {creating ? '...' : (lang === 'ru' ? 'Создать' : 'Create')}
+                }}
+              >
+                {lang === 'ru' ? 'Отмена' : 'Cancel'}
+              </button>
+            </div>
+          ) : (
+            <button className="btn btn-sm btn-ghost" type="button" onClick={() => setNaming(true)}>
+              {lang === 'ru' ? '+ Новый ручной' : '+ New manual'}
             </button>
-            <button
-              className="btn btn-sm btn-ghost"
-              type="button"
-              onClick={() => {
-                setNaming(false);
-                setName('');
-              }}
-            >
-              {lang === 'ru' ? 'Отмена' : 'Cancel'}
-            </button>
-          </>
-        ) : (
-          <button className="btn btn-sm btn-ghost" onClick={() => setNaming(true)}>
-            {lang === 'ru' ? 'Создать вручную' : 'Create manually'}
+          )}
+        </div>
+      </section>
+
+      <section className="dash-control-section">
+        <div className="dash-control-section-copy">
+          <span className="dash-control-index">{auth?.connected ? '03' : '02'}</span>
+          <div>
+            <h3>{lang === 'ru' ? 'Открыть Steam-профиль' : 'Open Steam profile'}</h3>
+            <p>{lang === 'ru' ? 'Посмотрите публичный инвентарь, не меняя свои портфели.' : 'View a public inventory without changing your portfolios.'}</p>
+          </div>
+        </div>
+        <form onSubmit={submitProfileUrl} className="dash-control-fields">
+          <input
+            value={profileUrl}
+            onChange={(e) => {
+              setProfileUrl(e.target.value);
+              if (profileUrlError) setProfileUrlError('');
+            }}
+            placeholder={t.hero.profileUrlPlaceholder}
+            aria-label={t.hero.profileUrlCta}
+            style={portfolioInputStyle({ flex: '1 1 260px', minWidth: 180, height: 34 })}
+          />
+          <button className="btn btn-sm btn-ghost" type="submit">
+            {lang === 'ru' ? 'Открыть' : 'Open'}
           </button>
-        )}
-        <select
-          value={activePortfolioId || ''}
-          onChange={(e) => onSelect(e.target.value || null)}
-          style={portfolioInputStyle({ minWidth: 200, height: 31 })}
-        >
-          {!activePortfolioId && <option value="">{lang === 'ru' ? 'Создай ручной портфель' : 'Create a manual portfolio'}</option>}
-          {portfolios.map((portfolio) => (
-            <option key={portfolio.id} value={portfolio.id}>
-              {portfolio.type === 'steam' ? 'Steam · ' : ''}{portfolio.name}{portfolio.itemCount != null ? ` (${portfolio.itemCount})` : ''}
-            </option>
-          ))}
-        </select>
-      </div>
+          {profileUrlError && <span className="dash-control-error">{profileUrlError}</span>}
+        </form>
+      </section>
 
-      <div style={{ height: 1, background: 'var(--line)', margin: '12px 0' }} />
-
-      <form onSubmit={submitProfileUrl} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={sectionLabel}>{lang === 'ru' ? 'Профиль' : 'Profile'}</span>
-        <input
-          value={profileUrl}
-          onChange={(e) => {
-            setProfileUrl(e.target.value);
-            if (profileUrlError) setProfileUrlError('');
-          }}
-          placeholder={t.hero.profileUrlPlaceholder}
-          aria-label={t.hero.profileUrlCta}
-          style={portfolioInputStyle({ flex: '1 1 240px', minWidth: 180, height: 31 })}
+      <section className="dash-control-section dash-control-section--manual">
+        <div className="dash-control-section-copy">
+          <span className="dash-control-index">{auth?.connected ? '04' : '03'}</span>
+          <div>
+            <h3>{lang === 'ru' ? 'Добавить предмет вручную' : 'Add an item manually'}</h3>
+            <p>
+              {manualActive
+                ? (lang === 'ru' ? 'Найдите предмет, укажите количество и цену покупки.' : 'Find an item, then enter quantity and purchase price.')
+                : (lang === 'ru' ? 'Сначала выберите или создайте ручной портфель.' : 'Choose or create a manual portfolio first.')}
+            </p>
+          </div>
+        </div>
+        <ManualItemForm
+          lang={lang}
+          portfolioId={manualActive ? activePortfolioId : null}
+          onSaved={() => onChanged(activePortfolioId)}
         />
-        <button className="btn btn-sm btn-ghost" type="submit">
-          {t.hero.profileUrlCta}
-        </button>
-        {profileUrlError && (
-          <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--amber)', width: '100%', marginLeft: 98 }}>
-            {profileUrlError}
-          </span>
-        )}
-      </form>
-
-      <div style={{ height: 1, background: 'var(--line)', margin: '12px 0' }} />
-
-      <ManualItemForm
-        lang={lang}
-        portfolioId={manualActive ? activePortfolioId : null}
-        onSaved={() => onChanged(activePortfolioId)}
-        sectionLabel={sectionLabel}
-      />
+      </section>
     </div>
   );
 }
 
-function ManualItemForm({ lang, portfolioId, onSaved, sectionLabel }) {
+function ManualItemForm({ lang, portfolioId, onSaved }) {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [basisPerUnit, setBasisPerUnit] = useState('');
@@ -1055,9 +1082,8 @@ function ManualItemForm({ lang, portfolioId, onSaved, sectionLabel }) {
   };
 
   return (
-    <form onSubmit={submit}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={sectionLabel || undefined}>{lang === 'ru' ? 'Предмет' : 'Item'}</span>
+    <form onSubmit={submit} className="dash-manual-item-form">
+      <div className="dash-control-fields">
         <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 160, zIndex: 1 }}>
           <input
             value={name}
@@ -1069,8 +1095,9 @@ function ManualItemForm({ lang, portfolioId, onSaved, sectionLabel }) {
             onFocus={() => setSuggestionsOpen(true)}
             onBlur={() => setTimeout(() => setSuggestionsOpen(false), 120)}
             placeholder={lang === 'ru' ? 'AK-47 | Redline (Field-Tested)' : 'AK-47 | Redline (Field-Tested)'}
+            aria-label={lang === 'ru' ? 'Название предмета' : 'Item name'}
             disabled={!portfolioId}
-            style={portfolioInputStyle({ width: '100%', height: 31 })}
+            style={portfolioInputStyle({ width: '100%', height: 34 })}
           />
           {portfolioId && suggestionsOpen && (suggestionsLoading || suggestions.length > 0) && (
             <div style={{
@@ -1138,14 +1165,16 @@ function ManualItemForm({ lang, portfolioId, onSaved, sectionLabel }) {
           step="1"
           disabled={!portfolioId}
           title={lang === 'ru' ? 'Количество' : 'Quantity'}
-          style={portfolioInputStyle({ width: 72, height: 31 })}
+          aria-label={lang === 'ru' ? 'Количество' : 'Quantity'}
+          style={portfolioInputStyle({ width: 80, height: 34 })}
         />
         <input
           value={basisPerUnit}
           onChange={(e) => setBasisPerUnit(e.target.value)}
           placeholder={currency === 'rub' ? '₽ / шт.' : '$ / item'}
           disabled={!portfolioId}
-          style={portfolioInputStyle({ width: 110, height: 31 })}
+          aria-label={lang === 'ru' ? 'Цена покупки за штуку' : 'Purchase price per item'}
+          style={portfolioInputStyle({ width: 120, height: 34 })}
         />
         <button className="btn btn-sm btn-primary" disabled={!portfolioId || saving}>
           {saving ? '...' : (lang === 'ru' ? 'Добавить' : 'Add')}
