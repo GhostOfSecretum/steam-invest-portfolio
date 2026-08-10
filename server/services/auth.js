@@ -131,6 +131,7 @@ async function authenticateSteam(req) {
 }
 
 module.exports = {
+  resolveBaseUrl,
   getSteamRedirectUrl,
   authenticateSteam,
 };

@@ -1083,10 +1083,16 @@ function Pricing({ lang, auth, onInvestors }) {
   const t = useT(lang);
   const plansState = usePlans();
   const currentPlanId = auth?.planId || plansState.current?.planId || 'free';
+  const billingReady = Boolean(plansState.billingReady);
   const [billingCycle, setBillingCycle] = useState('monthly');
+  const [checkoutBusy, setCheckoutBusy] = useState(null);
+  const [checkoutError, setCheckoutError] = useState(null);
   const copy = lang === 'ru'
     ? {
       ctaSoon: 'Оплата подключается',
+      ctaPay: 'Оплатить',
+      ctaLogin: 'Войти через Steam',
+      ctaBusy: 'Переход к оплате…',
       current: 'Текущий план',
       included: 'Входит',
       notIncluded: 'Не входит',
@@ -1101,6 +1107,9 @@ function Pricing({ lang, auth, onInvestors }) {
     }
     : {
       ctaSoon: 'Checkout coming soon',
+      ctaPay: 'Pay now',
+      ctaLogin: 'Sign in with Steam',
+      ctaBusy: 'Redirecting…',
       current: 'Current plan',
       included: 'Included',
       notIncluded: 'Not included',
@@ -1113,6 +1122,28 @@ function Pricing({ lang, auth, onInvestors }) {
       perMonth: '₽ / mo',
       annualNote: (monthly, saved) => `≈ ${monthly} · save ${saved}`,
     };
+
+  const startCheckout = async (planId) => {
+    setCheckoutError(null);
+    if (!billingReady || planId === 'free') return;
+    if (!auth?.connected) {
+      auth.login();
+      return;
+    }
+    setCheckoutBusy(planId);
+    try {
+      const data = await apiFetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, cycle: billingCycle }),
+      });
+      if (!data?.redirectUrl) throw new Error(lang === 'ru' ? 'Платёжная ссылка не получена.' : 'Payment link missing.');
+      window.location.href = data.redirectUrl;
+    } catch (error) {
+      setCheckoutError(error.message || (lang === 'ru' ? 'Не удалось начать оплату.' : 'Checkout failed.'));
+      setCheckoutBusy(null);
+    }
+  };
 
   const formatRub = (value) => Math.round(value).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US');
   const getAnnualRub = (plan) => (
@@ -1216,9 +1247,37 @@ function Pricing({ lang, auth, onInvestors }) {
                     ))}
                   </ul>
                   <div style={{ marginTop: 'auto', position: 'relative', display: 'grid', gap: 8 }}>
-                    <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
-                      {plan.id === 'free' ? (lang === 'ru' ? 'Уже доступно' : 'Already available') : copy.ctaSoon}
-                    </button>
+                    {(() => {
+                      if (plan.id === 'free') {
+                        return (
+                          <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
+                            {lang === 'ru' ? 'Уже доступно' : 'Already available'}
+                          </button>
+                        );
+                      }
+                      if (!billingReady) {
+                        return (
+                          <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
+                            {copy.ctaSoon}
+                          </button>
+                        );
+                      }
+                      const busy = checkoutBusy === plan.id;
+                      let label = copy.ctaPay;
+                      if (!auth?.connected) label = copy.ctaLogin;
+                      else if (busy) label = copy.ctaBusy;
+                      else if (isCurrent) label = lang === 'ru' ? 'Продлить' : 'Renew';
+                      return (
+                        <button
+                          type="button"
+                          className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`}
+                          disabled={Boolean(checkoutBusy)}
+                          onClick={() => startCheckout(plan.id)}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })()}
                     {plan.id === 'investor' && (
                       <button type="button" className="btn btn-ghost btn-sm" onClick={() => onInvestors && onInvestors()}>
                         {copy.investors}
@@ -1228,6 +1287,11 @@ function Pricing({ lang, auth, onInvestors }) {
                 </article>
               );
             })}
+          </div>
+        )}
+        {checkoutError && (
+          <div style={{ marginTop: 14, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #c44)' }}>
+            {checkoutError}
           </div>
         )}
         <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>

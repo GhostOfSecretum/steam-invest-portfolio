@@ -41,6 +41,12 @@ const {
   setOwnerPlan,
   migrateSubscriptionToSteam,
 } = require('./services/subscriptions');
+const {
+  isBillingReady,
+  createCheckout,
+  handlePlategaCallback,
+  syncPaymentByQuery,
+} = require('./services/billing');
 const { listTopInvestors, upsertTopInvestor } = require('./services/top-investors');
 const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
@@ -131,6 +137,13 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many requests. Try again later.', code: 'rate_limited' },
 });
+const checkoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many checkout attempts. Try again later.', code: 'rate_limited' },
+});
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -186,18 +199,20 @@ app.get('/api/me', asyncRoute(async (req, res) => {
 }));
 
 app.get('/api/plans', asyncRoute(async (req, res) => {
+  const billingReady = isBillingReady();
   res.json({
     plans: listPlans(),
-    billingReady: false,
+    billingReady,
     current: await getOwnerSubscription(resolveOwnerId(req)),
   });
 }));
 
 app.get('/api/subscription', asyncRoute(async (req, res) => {
-  res.json({ subscription: await getOwnerSubscription(resolveOwnerId(req)), billingReady: false });
+  const billingReady = isBillingReady();
+  res.json({ subscription: await getOwnerSubscription(resolveOwnerId(req)), billingReady });
 }));
 
-// Temporary manual plan assignment until a payment provider is connected.
+// Temporary manual plan assignment (admin). Billing uses POST /api/billing/checkout.
 // Requires PLAN_ADMIN_SECRET in the environment.
 app.post('/api/subscription/plan', asyncRoute(async (req, res) => {
   const adminSecret = String(process.env.PLAN_ADMIN_SECRET || '').trim();
@@ -208,8 +223,61 @@ app.post('/api/subscription/plan', asyncRoute(async (req, res) => {
   }
   const ownerId = resolveOwnerId(req, { create: true });
   const subscription = await setOwnerPlan(ownerId, req.body?.planId, { source: 'admin' });
-  res.json({ subscription, billingReady: false });
+  res.json({ subscription, billingReady: isBillingReady() });
 }));
+
+app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async (req, res) => {
+  const ownerId = resolveOwnerId(req);
+  const checkout = await createCheckout({
+    ownerId,
+    steamId: req.session.steamId,
+    planId: req.body?.planId,
+    cycle: req.body?.cycle,
+    req,
+  });
+  res.json(checkout);
+}));
+
+app.post('/api/billing/platega/callback', asyncRoute(async (req, res) => {
+  await handlePlategaCallback(req);
+  res.status(200).json({ ok: true });
+}));
+
+app.get('/api/billing/sync', checkoutLimiter, asyncRoute(async (req, res) => {
+  const result = await syncPaymentByQuery({
+    paymentId: req.query.payment,
+    transactionId: req.query.tx,
+  });
+  res.json({
+    payment: {
+      id: result.payment.id,
+      status: result.payment.status,
+      planId: result.payment.planId,
+      cycle: result.payment.cycle,
+      amountRub: result.payment.amountRub,
+      expiresAt: result.payment.expiresAt,
+    },
+    subscription: result.subscription,
+  });
+}));
+
+app.get('/billing/success', asyncRoute(async (req, res) => {
+  try {
+    if (req.query.payment || req.query.tx) {
+      await syncPaymentByQuery({
+        paymentId: req.query.payment,
+        transactionId: req.query.tx,
+      });
+    }
+  } catch (error) {
+    console.warn('[billing] success sync failed:', error.message);
+  }
+  res.redirect('/dashboard?billing=success');
+}));
+
+app.get('/billing/fail', (req, res) => {
+  res.redirect('/dashboard?billing=fail');
+});
 
 app.get('/api/portfolio', asyncRoute(async (req, res) => {
   if (req.query.sync === '1' && !req.session.steamId) {

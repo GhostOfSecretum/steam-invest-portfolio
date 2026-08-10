@@ -1,6 +1,7 @@
 const fs = require('fs/promises');
 const path = require('path');
 const { DEFAULT_PLAN_ID, getPlan } = require('./plans');
+const { isPlategaConfigured } = require('./platega');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const SUBSCRIPTIONS_FILE = path.join(DATA_DIR, 'subscriptions.json');
@@ -53,12 +54,18 @@ function normalizePlanId(planId) {
   return plan.id;
 }
 
+function isExpired(entry) {
+  if (!entry?.expiresAt) return false;
+  const ts = Date.parse(entry.expiresAt);
+  return Number.isFinite(ts) && ts < Date.now();
+}
+
 async function getOwnerPlanId(ownerId) {
   if (!ownerId) return DEFAULT_PLAN_ID;
   if (hasFullAccess(ownerId)) return FULL_ACCESS_PLAN_ID;
   const store = await readStore();
   const entry = store.owners[ownerId];
-  if (!entry) return DEFAULT_PLAN_ID;
+  if (!entry || isExpired(entry)) return DEFAULT_PLAN_ID;
   return normalizePlanId(entry.planId);
 }
 
@@ -67,14 +74,20 @@ async function getOwnerSubscription(ownerId) {
   const plan = getPlan(planId);
   let updatedAt = null;
   let source = 'default';
+  let expiresAt = null;
   if (hasFullAccess(ownerId)) {
     source = 'full_access_exception';
   } else if (ownerId) {
     const store = await readStore();
     const entry = store.owners[ownerId];
-    if (entry) {
+    if (entry && !isExpired(entry)) {
       updatedAt = entry.updatedAt || null;
       source = entry.source || 'manual';
+      expiresAt = entry.expiresAt || null;
+    } else if (entry && isExpired(entry)) {
+      source = 'expired';
+      updatedAt = entry.updatedAt || null;
+      expiresAt = entry.expiresAt || null;
     }
   }
   return {
@@ -83,11 +96,16 @@ async function getOwnerSubscription(ownerId) {
     entitlements: { ...plan.features },
     source,
     updatedAt,
-    billingReady: false,
+    expiresAt,
+    billingReady: isPlategaConfigured(),
   };
 }
 
-async function setOwnerPlan(ownerId, planId, { source = 'manual' } = {}) {
+async function setOwnerPlan(ownerId, planId, {
+  source = 'manual',
+  expiresAt = null,
+  paymentId = null,
+} = {}) {
   if (!ownerId) {
     const err = new Error('Missing subscription owner.');
     err.status = 400;
@@ -96,10 +114,25 @@ async function setOwnerPlan(ownerId, planId, { source = 'manual' } = {}) {
   }
   const nextPlanId = normalizePlanId(planId);
   const store = await readStore();
+  const prev = store.owners[ownerId] || null;
+  let nextExpiresAt = expiresAt || null;
+
+  // Renewals of the same (or higher) paid plan extend from the current expiry when still active.
+  if (nextExpiresAt && prev && !isExpired(prev) && normalizePlanId(prev.planId) === nextPlanId && prev.expiresAt) {
+    const prevTs = Date.parse(prev.expiresAt);
+    const nextTs = Date.parse(nextExpiresAt);
+    const periodMs = nextTs - Date.now();
+    if (Number.isFinite(prevTs) && Number.isFinite(periodMs) && periodMs > 0 && prevTs > Date.now()) {
+      nextExpiresAt = new Date(prevTs + periodMs).toISOString();
+    }
+  }
+
   store.owners[ownerId] = {
     planId: nextPlanId,
     source: String(source || 'manual'),
     updatedAt: new Date().toISOString(),
+    expiresAt: nextExpiresAt,
+    paymentId: paymentId || prev?.paymentId || null,
   };
   await writeStore(store);
   return getOwnerSubscription(ownerId);
