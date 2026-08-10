@@ -13,7 +13,7 @@ const { resolveBaseUrl } = require('./auth');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const PAYMENTS_FILE = path.join(DATA_DIR, 'payments.json');
-const PAID_PLAN_IDS = new Set(['plus', 'investor']);
+const PAID_PLAN_IDS = new Set(['plus', 'investor', 'test']);
 const CYCLE_DAYS = { monthly: 30, annual: 365 };
 
 async function ensureDataDir() {
@@ -44,6 +44,7 @@ function normalizeCycle(cycle) {
 }
 
 function resolveCheckoutAmount(plan, cycle) {
+  if (plan.test) return Number(plan.amountRub) || 0;
   if (cycle === 'annual') {
     const annual = Number(plan.annualAmountRub);
     if (Number.isFinite(annual) && annual > 0) return annual;
@@ -54,7 +55,10 @@ function resolveCheckoutAmount(plan, cycle) {
 }
 
 function computeExpiresAt(planId, cycle, fromDate = new Date()) {
-  const days = CYCLE_DAYS[cycle] || CYCLE_DAYS.monthly;
+  const plan = getPlan(planId);
+  const days = plan.test
+    ? (Number(plan.periodDays) || 1)
+    : (CYCLE_DAYS[cycle] || CYCLE_DAYS.monthly);
   const start = fromDate instanceof Date ? fromDate.getTime() : Date.now();
   return new Date(start + days * 24 * 60 * 60 * 1000).toISOString();
 }
@@ -102,7 +106,7 @@ async function createCheckout({ ownerId, steamId, planId, cycle, req }) {
     throw err;
   }
 
-  const billingCycle = normalizeCycle(cycle);
+  const billingCycle = plan.test ? 'monthly' : normalizeCycle(cycle);
   const amountRub = resolveCheckoutAmount(plan, billingCycle);
   if (!(amountRub > 0)) {
     const err = new Error('Invalid plan price.');
@@ -114,7 +118,9 @@ async function createCheckout({ ownerId, steamId, planId, cycle, req }) {
   const paymentId = crypto.randomUUID();
   const baseUrl = resolveBaseUrl(req);
   const planName = plan.name?.ru || plan.name?.en || plan.id;
-  const cycleLabel = billingCycle === 'annual' ? '12 мес' : '30 дней';
+  const cycleLabel = plan.test
+    ? `${Number(plan.periodDays) || 1} день`
+    : (billingCycle === 'annual' ? '12 мес' : '30 дней');
   const description = `SkinsHead ${planName} · ${cycleLabel}`;
 
   const created = {

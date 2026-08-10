@@ -1197,7 +1197,7 @@ function Pricing({ lang, auth, onInvestors }) {
           <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>...</div>
         ) : (
           <div className="pricing-grid">
-            {plansState.plans.map((plan) => {
+            {plansState.plans.filter((plan) => !plan.test).map((plan) => {
               const isCurrent = plan.id === currentPlanId;
               const name = plan.name?.[lang] || plan.name?.en || plan.id;
               const price = getDisplayPrice(plan);
@@ -1289,6 +1289,46 @@ function Pricing({ lang, auth, onInvestors }) {
             })}
           </div>
         )}
+        {(() => {
+          const testPlan = plansState.plans.find((plan) => plan.test);
+          if (!testPlan || !billingReady) return null;
+          const busy = checkoutBusy === testPlan.id;
+          let label = copy.ctaPay;
+          if (!auth?.connected) label = copy.ctaLogin;
+          else if (busy) label = copy.ctaBusy;
+          else if (currentPlanId === testPlan.id) label = lang === 'ru' ? 'Продлить тест' : 'Renew test';
+          return (
+            <div
+              className="glass"
+              style={{
+                marginTop: 14,
+                padding: '14px 16px',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 12,
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div className="eyebrow" style={{ color: 'var(--fg-3)' }}>
+                  {lang === 'ru' ? 'Временный тест оплаты' : 'Temporary payment test'}
+                </div>
+                <div style={{ marginTop: 4, fontSize: 14, color: 'var(--fg-1)' }}>
+                  {lang === 'ru' ? 'Тест · 10 ₽ · 1 день Plus' : 'Test · 10 ₽ · 1 day Plus'}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={Boolean(checkoutBusy)}
+                onClick={() => startCheckout(testPlan.id)}
+              >
+                {label}
+              </button>
+            </div>
+          );
+        })()}
         {checkoutError && (
           <div style={{ marginTop: 14, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #c44)' }}>
             {checkoutError}

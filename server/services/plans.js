@@ -119,13 +119,42 @@ const PLANS = [
       ru: [],
     },
   },
+  // Temporary: remove after Platega payment smoke-test.
+  {
+    id: 'test',
+    name: { en: 'Test', ru: 'Тест' },
+    amountRub: 10,
+    amountUsd: 0.1,
+    periodDays: 1,
+    price: { en: '10 ₽', ru: '10 ₽' },
+    priceNote: { en: 'Temporary payment test · 1 day Plus access', ru: 'Временный тест оплаты · 1 день доступа Plus' },
+    highlight: false,
+    order: 99,
+    test: true,
+    features: {
+      itemDisplayLimit: null,
+      desktopDownload: true,
+      topInvestors: false,
+    },
+    bullets: {
+      en: ['Payment smoke-test only', 'Unlocks Plus features for 1 day'],
+      ru: ['Только для проверки оплаты', 'Открывает Plus на 1 день'],
+    },
+    missing: {
+      en: [],
+      ru: [],
+    },
+  },
 ];
 
 const PLAN_BY_ID = Object.fromEntries(PLANS.map((plan) => [plan.id, plan]));
 const DEFAULT_PLAN_ID = 'free';
 
-function listPlans() {
-  return PLANS.slice().sort((a, b) => a.order - b.order);
+function listPlans({ includeTest = false } = {}) {
+  return PLANS
+    .filter((plan) => includeTest || !plan.test)
+    .slice()
+    .sort((a, b) => a.order - b.order);
 }
 
 function getPlan(planId) {

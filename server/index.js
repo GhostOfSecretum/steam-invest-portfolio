@@ -201,7 +201,8 @@ app.get('/api/me', asyncRoute(async (req, res) => {
 app.get('/api/plans', asyncRoute(async (req, res) => {
   const billingReady = isBillingReady();
   res.json({
-    plans: listPlans(),
+    // Include temporary test plan only while billing is live.
+    plans: listPlans({ includeTest: billingReady }),
     billingReady,
     current: await getOwnerSubscription(resolveOwnerId(req)),
   });
