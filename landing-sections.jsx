@@ -1085,7 +1085,7 @@ function Pricing({ lang, auth, onInvestors }) {
   const currentPlanId = auth?.planId || plansState.current?.planId || 'free';
   const beta = plansState.beta || auth?.beta || null;
   const betaMode = Boolean(beta?.beta);
-  const billingReady = Boolean(plansState.billingReady) && !betaMode;
+  const billingReady = Boolean(plansState.billingReady);
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [checkoutBusy, setCheckoutBusy] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
@@ -1095,7 +1095,7 @@ function Pricing({ lang, auth, onInvestors }) {
   const channelUsername = beta?.channelUsername || 'cs2skinshead';
   const botUsername = beta?.botUsername || null;
   const unlockReady = Boolean(beta?.unlockReady && botUsername);
-  const hasBetaAccess = currentPlanId === 'investor' || currentPlanId === 'plus';
+  const hasPlusAccess = currentPlanId === 'investor' || currentPlanId === 'plus';
   const copy = lang === 'ru'
     ? {
       ctaSoon: 'Оплата подключается',
@@ -1113,16 +1113,16 @@ function Pricing({ lang, auth, onInvestors }) {
       perYear: '₽ / год',
       perMonth: '₽ / мес',
       annualNote: (monthly, saved) => `≈ ${monthly} · экономия ${saved}`,
-      betaEyebrow: 'Beta · доступ за подписку',
-      betaText: `Оплата Plus и Investor временно отключена. На время беты полный доступ открывается бесплатно за подписку на канал @${channelUsername}. Цены ниже — ориентир после релиза.`,
+      betaEyebrow: 'Beta · Plus за подписку',
+      betaText: `Во время беты Plus открывается бесплатно за подписку на канал @${channelUsername}. Тариф Investor оплачивается отдельно.`,
       betaJoin: 'Открыть канал',
       betaLoginSteam: 'Войти через Steam',
       betaUnlockHint: 'Затем подтвердите вход через Telegram ниже',
       betaUnlockBusy: 'Проверяю подписку…',
-      betaActive: 'Доступ открыт',
+      betaActive: 'Plus открыт',
       betaRenew: 'Продлить через Telegram',
       betaNotReady: 'Telegram-бот ещё настраивается',
-      betaCta: 'Получить доступ',
+      betaCta: 'Получить Plus',
     }
     : {
       ctaSoon: 'Checkout coming soon',
@@ -1140,16 +1140,16 @@ function Pricing({ lang, auth, onInvestors }) {
       perYear: '₽ / year',
       perMonth: '₽ / mo',
       annualNote: (monthly, saved) => `≈ ${monthly} · save ${saved}`,
-      betaEyebrow: 'Beta · unlock via subscription',
-      betaText: `Plus and Investor payments are paused. During beta, full access unlocks free when you subscribe to @${channelUsername}. Prices below are the post-beta reference.`,
+      betaEyebrow: 'Beta · Plus via subscription',
+      betaText: `During beta, Plus unlocks free when you subscribe to @${channelUsername}. Investor is paid separately.`,
       betaJoin: 'Open channel',
       betaLoginSteam: 'Sign in with Steam',
       betaUnlockHint: 'Then confirm with Telegram login below',
       betaUnlockBusy: 'Checking subscription…',
-      betaActive: 'Access unlocked',
+      betaActive: 'Plus unlocked',
       betaRenew: 'Renew via Telegram',
       betaNotReady: 'Telegram bot is still being configured',
-      betaCta: 'Unlock access',
+      betaCta: 'Unlock Plus',
     };
 
   const finishBetaUnlock = async (telegramUser) => {
@@ -1193,7 +1193,8 @@ function Pricing({ lang, auth, onInvestors }) {
 
   const startCheckout = async (planId) => {
     setCheckoutError(null);
-    if (betaMode || !billingReady || planId === 'free') return;
+    if (!billingReady || planId === 'free') return;
+    if (betaMode && planId === 'plus') return;
     if (!auth?.connected) {
       auth.login();
       return;
@@ -1352,8 +1353,9 @@ function Pricing({ lang, auth, onInvestors }) {
                           </button>
                         );
                       }
-                      if (betaMode) {
-                        if (hasBetaAccess) {
+                      // Beta: Plus is free via Telegram; Investor uses normal checkout.
+                      if (betaMode && plan.id === 'plus') {
+                        if (hasPlusAccess) {
                           return (
                             <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
                               {copy.betaActive}

@@ -335,9 +335,9 @@ function renderPricingPage() {
   const beta = getBetaPublicConfig();
   const betaNotice = isBetaMode()
     ? `<div class="card">
-      <strong>Beta:</strong> оплата тарифов временно отключена. На время бета-тестирования полный доступ (Plus и Investor) можно получить бесплатно за подписку на канал
+      <strong>Beta:</strong> тариф Plus можно получить бесплатно за подписку на канал
       <a href="${escapeHtml(beta.channelUrl)}" target="_blank" rel="noopener noreferrer">@${escapeHtml(beta.channelUsername)}</a>
-      после входа через Steam на сайте. Цены ниже — ориентир на период после беты.
+      после входа через Steam на сайте. Тариф Investor оплачивается по цене ниже.
     </div>`
     : `<div class="card">
       Ниже указаны актуальные тарифы Сервиса: сколько стоит каждый план и какие функции он открывает.

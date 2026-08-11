@@ -36,7 +36,7 @@ const I18N = {
       armorySub: 'Rank Armory rewards by star ROI on live Steam prices. See expected value, profit, and days left on the pass.',
       stats: 'What you get',
       pricing: 'Plans & prices',
-      pricingSub: 'Free is 0 ₽. Listed Plus and Investor prices stay as a reference — during beta, full access unlocks via the Telegram channel.',
+      pricingSub: 'Free is 0 ₽. During beta, Plus unlocks free via the Telegram channel; Investor is paid.',
       faq: 'FAQ',
     },
     news: {
@@ -145,7 +145,7 @@ const I18N = {
       armorySub: 'Рейтинг наград Armory по ROI звёзд на live-ценах Steam. Смотри ожидаемую стоимость, профит и сколько дней осталось у пасса.',
       stats: 'Что внутри',
       pricing: 'Тарифы и цены',
-      pricingSub: 'Free — 0 ₽. Цены Plus и Investor остаются ориентиром — во время беты полный доступ открывается за подписку на Telegram-канал.',
+      pricingSub: 'Free — 0 ₽. Во время беты Plus бесплатно за подписку на Telegram-канал; Investor оплачивается.',
       faq: 'Частые вопросы',
     },
     news: {

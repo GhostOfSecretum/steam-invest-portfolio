@@ -163,7 +163,8 @@ const betaUnlockLimiter = rateLimit({
 });
 
 function effectiveBillingReady() {
-  return isBillingReady() && !isBetaMode();
+  // Investor stays purchasable during beta; Plus unlocks free via Telegram.
+  return isBillingReady();
 }
 
 function withBillingFlags(subscription) {
@@ -290,10 +291,11 @@ app.post('/api/subscription/plan', asyncRoute(async (req, res) => {
 }));
 
 app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async (req, res) => {
-  if (isBetaMode()) {
+  const planId = String(req.body?.planId || '').trim().toLowerCase();
+  if (isBetaMode() && planId === 'plus') {
     res.status(503).json({
-      error: 'Payments are disabled during beta. Unlock access via the Telegram channel.',
-      code: 'beta_payments_disabled',
+      error: 'Plus is free during beta. Unlock it via the Telegram channel.',
+      code: 'beta_plus_free',
       channelUrl: getBetaPublicConfig().channelUrl,
     });
     return;
@@ -302,7 +304,7 @@ app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async
   const checkout = await createCheckout({
     ownerId,
     steamId: req.session.steamId,
-    planId: req.body?.planId,
+    planId,
     cycle: req.body?.cycle,
     req,
   });

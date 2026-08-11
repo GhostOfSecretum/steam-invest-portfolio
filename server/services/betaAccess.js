@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { setOwnerPlan } = require('./subscriptions');
 
-const BETA_PLAN_ID = 'investor';
+const BETA_PLAN_ID = 'plus';
 const BETA_ACCESS_DAYS = 30;
 const LOGIN_MAX_AGE_SEC = 24 * 60 * 60;
 const MEMBER_STATUSES = new Set(['creator', 'administrator', 'member']);
