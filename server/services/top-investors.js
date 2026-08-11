@@ -1,11 +1,12 @@
 const fs = require('fs/promises');
 const path = require('path');
-const { resolveSteamProfileInput, getSteamProfile } = require('./steam');
+const { resolveSteamProfileInput, getSteamProfile, getSteamInventory } = require('./steam');
 const {
   getInventoryActivityForSteamId,
   listInventoryActivityForSteamIds,
+  syncInventoryDiffActivity,
+  isStructuredActivity,
 } = require('./activity');
-const { getPortfolio } = require('./portfolio');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const TOP_INVESTORS_FILE = path.join(DATA_DIR, 'top-investors.json');
@@ -102,15 +103,17 @@ async function getTopInvestorActivity(steamId, { sync = false } = {}) {
 
   if (sync) {
     try {
-      const portfolio = await getPortfolio(account.steamId, {
-        force: true,
-        includeDesktop: false,
-        activitySource: 'public-diff',
-      });
-      const activity = Array.isArray(portfolio.activity) ? portfolio.activity : [];
+      const inventory = await getSteamInventory(account.steamId, { force: true });
+      const items = Array.isArray(inventory.items) ? inventory.items : [];
+      const syncedAt = inventory.syncedAt || new Date().toISOString();
+      const activity = (await syncInventoryDiffActivity(account.steamId, items, {
+        source: 'public-diff',
+        syncedAt,
+      })).filter(isStructuredActivity).slice().reverse();
+
       return {
         ...account,
-        syncedAt: portfolio.syncedAt || null,
+        syncedAt,
         hasBaseline: true,
         baselineOnly: activity.length === 0,
         activity,

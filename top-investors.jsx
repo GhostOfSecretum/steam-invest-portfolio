@@ -110,7 +110,6 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
       noEvents: 'Пока нет изменений. Нажмите «Обновить», чтобы снять снимок инвентаря.',
       baselineOnly: 'Базовая точка сохранена. Изменения появятся после следующего обновления с другим составом инвентаря.',
       feedEmpty: 'Общая лента пуста — события появятся после обновления аккаунтов.',
-      privateHint: 'Инвентарь может быть скрыт в Steam — тогда дифф недоступен.',
     }
     : {
       title: 'Top investor accounts',
@@ -130,7 +129,6 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
       noEvents: 'No changes yet. Press Refresh to take an inventory snapshot.',
       baselineOnly: 'Baseline saved. Changes will appear after the next refresh with a different inventory.',
       feedEmpty: 'Watchlist feed is empty — events appear after accounts are refreshed.',
-      privateHint: 'Inventory may be private on Steam — diffs are unavailable then.',
     };
 
   return (
@@ -262,11 +260,11 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
                     <div style={{ fontFamily: 'var(--f-display)', fontSize: 20, fontWeight: 500 }}>
                       {selectedAccount?.personaname || copy.selected}
                     </div>
-                    <div style={{ marginTop: 4, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                      {selectedActivity.data?.syncedAt
-                        ? `${lang === 'ru' ? 'Синк' : 'Synced'}: ${new Date(selectedActivity.data.syncedAt).toLocaleString()}`
-                        : copy.privateHint}
-                    </div>
+                    {selectedActivity.data?.syncedAt ? (
+                      <div style={{ marginTop: 4, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                        {lang === 'ru' ? 'Синк' : 'Synced'}: {new Date(selectedActivity.data.syncedAt).toLocaleString()}
+                      </div>
+                    ) : null}
                   </div>
                   <button
                     type="button"
