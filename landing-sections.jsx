@@ -1,4 +1,4 @@
-/* global React */
+/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo */
 const { useState, useEffect, useRef, useMemo } = React;
 
 /* ───────────────────────────────────────────────────
@@ -1083,10 +1083,19 @@ function Pricing({ lang, auth, onInvestors }) {
   const t = useT(lang);
   const plansState = usePlans();
   const currentPlanId = auth?.planId || plansState.current?.planId || 'free';
-  const billingReady = Boolean(plansState.billingReady);
+  const beta = plansState.beta || auth?.beta || null;
+  const betaMode = Boolean(beta?.beta);
+  const billingReady = Boolean(plansState.billingReady) && !betaMode;
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [checkoutBusy, setCheckoutBusy] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
+  const [unlockBusy, setUnlockBusy] = useState(false);
+  const telegramWidgetRef = useRef(null);
+  const channelUrl = beta?.channelUrl || 'https://t.me/cs2skinshead';
+  const channelUsername = beta?.channelUsername || 'cs2skinshead';
+  const botUsername = beta?.botUsername || null;
+  const unlockReady = Boolean(beta?.unlockReady && botUsername);
+  const hasBetaAccess = currentPlanId === 'investor' || currentPlanId === 'plus';
   const copy = lang === 'ru'
     ? {
       ctaSoon: 'Оплата подключается',
@@ -1104,6 +1113,16 @@ function Pricing({ lang, auth, onInvestors }) {
       perYear: '₽ / год',
       perMonth: '₽ / мес',
       annualNote: (monthly, saved) => `≈ ${monthly} · экономия ${saved}`,
+      betaEyebrow: 'Beta · доступ за подписку',
+      betaText: `Оплата Plus и Investor временно отключена. На время беты полный доступ открывается бесплатно за подписку на канал @${channelUsername}. Цены ниже — ориентир после релиза.`,
+      betaJoin: 'Открыть канал',
+      betaLoginSteam: 'Войти через Steam',
+      betaUnlockHint: 'Затем подтвердите вход через Telegram ниже',
+      betaUnlockBusy: 'Проверяю подписку…',
+      betaActive: 'Доступ открыт',
+      betaRenew: 'Продлить через Telegram',
+      betaNotReady: 'Telegram-бот ещё настраивается',
+      betaCta: 'Получить доступ',
     }
     : {
       ctaSoon: 'Checkout coming soon',
@@ -1121,11 +1140,60 @@ function Pricing({ lang, auth, onInvestors }) {
       perYear: '₽ / year',
       perMonth: '₽ / mo',
       annualNote: (monthly, saved) => `≈ ${monthly} · save ${saved}`,
+      betaEyebrow: 'Beta · unlock via subscription',
+      betaText: `Plus and Investor payments are paused. During beta, full access unlocks free when you subscribe to @${channelUsername}. Prices below are the post-beta reference.`,
+      betaJoin: 'Open channel',
+      betaLoginSteam: 'Sign in with Steam',
+      betaUnlockHint: 'Then confirm with Telegram login below',
+      betaUnlockBusy: 'Checking subscription…',
+      betaActive: 'Access unlocked',
+      betaRenew: 'Renew via Telegram',
+      betaNotReady: 'Telegram bot is still being configured',
+      betaCta: 'Unlock access',
     };
+
+  const finishBetaUnlock = async (telegramUser) => {
+    setCheckoutError(null);
+    setUnlockBusy(true);
+    try {
+      await unlockBetaViaTelegram(telegramUser);
+      if (auth?.refresh) await auth.refresh();
+      if (plansState.reload) await plansState.reload();
+    } catch (error) {
+      const fallback = lang === 'ru'
+        ? 'Не удалось проверить подписку. Подпишитесь на канал и попробуйте снова.'
+        : 'Could not verify the subscription. Join the channel and try again.';
+      setCheckoutError(error.message || fallback);
+    } finally {
+      setUnlockBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!betaMode || !auth?.connected || !unlockReady || !telegramWidgetRef.current) return undefined;
+    const host = telegramWidgetRef.current;
+    host.innerHTML = '';
+    window.onSkinsHeadTelegramAuth = (user) => {
+      finishBetaUnlock(user);
+    };
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    script.setAttribute('data-telegram-login', botUsername);
+    script.setAttribute('data-size', 'medium');
+    script.setAttribute('data-radius', '8');
+    script.setAttribute('data-request-access', 'write');
+    script.setAttribute('data-onauth', 'onSkinsHeadTelegramAuth(user)');
+    host.appendChild(script);
+    return () => {
+      if (window.onSkinsHeadTelegramAuth) delete window.onSkinsHeadTelegramAuth;
+      host.innerHTML = '';
+    };
+  }, [betaMode, auth?.connected, unlockReady, botUsername, lang]);
 
   const startCheckout = async (planId) => {
     setCheckoutError(null);
-    if (!billingReady || planId === 'free') return;
+    if (betaMode || !billingReady || planId === 'free') return;
     if (!auth?.connected) {
       auth.login();
       return;
@@ -1193,11 +1261,40 @@ function Pricing({ lang, auth, onInvestors }) {
             ))}
           </div>
         </div>
+        {betaMode && (
+          <div className="glass pricing-beta-banner">
+            <div style={{ minWidth: 0 }}>
+              <div className="eyebrow" style={{ color: 'var(--accent)' }}>{copy.betaEyebrow}</div>
+              <p>{copy.betaText}</p>
+              {auth?.connected && unlockReady && (
+                <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                  {unlockBusy ? copy.betaUnlockBusy : copy.betaUnlockHint}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'grid', gap: 8, justifyItems: 'start' }}>
+              <a className="btn btn-ghost btn-sm" href={channelUrl} target="_blank" rel="noopener noreferrer">
+                {copy.betaJoin}
+              </a>
+              {!auth?.connected ? (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => auth?.login && auth.login()}>
+                  {copy.betaLoginSteam}
+                </button>
+              ) : unlockReady ? (
+                <div className="pricing-telegram-widget" ref={telegramWidgetRef} />
+              ) : (
+                <button type="button" className="btn btn-ghost btn-sm" disabled>
+                  {copy.betaNotReady}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {plansState.loading && !plansState.plans.length ? (
           <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>...</div>
         ) : (
           <div className="pricing-grid">
-            {plansState.plans.filter((plan) => !plan.test).map((plan) => {
+            {plansState.plans.map((plan) => {
               const isCurrent = plan.id === currentPlanId;
               const name = plan.name?.[lang] || plan.name?.en || plan.id;
               const price = getDisplayPrice(plan);
@@ -1255,6 +1352,36 @@ function Pricing({ lang, auth, onInvestors }) {
                           </button>
                         );
                       }
+                      if (betaMode) {
+                        if (hasBetaAccess) {
+                          return (
+                            <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
+                              {copy.betaActive}
+                            </button>
+                          );
+                        }
+                        if (!auth?.connected) {
+                          return (
+                            <button
+                              type="button"
+                              className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`}
+                              onClick={() => auth?.login && auth.login()}
+                            >
+                              {copy.betaLoginSteam}
+                            </button>
+                          );
+                        }
+                        return (
+                          <a
+                            className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`}
+                            href={channelUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {copy.betaCta}
+                          </a>
+                        );
+                      }
                       if (!billingReady) {
                         return (
                           <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
@@ -1289,46 +1416,6 @@ function Pricing({ lang, auth, onInvestors }) {
             })}
           </div>
         )}
-        {(() => {
-          const testPlan = plansState.plans.find((plan) => plan.test);
-          if (!testPlan || !billingReady) return null;
-          const busy = checkoutBusy === testPlan.id;
-          let label = copy.ctaPay;
-          if (!auth?.connected) label = copy.ctaLogin;
-          else if (busy) label = copy.ctaBusy;
-          else if (currentPlanId === testPlan.id) label = lang === 'ru' ? 'Продлить тест' : 'Renew test';
-          return (
-            <div
-              className="glass"
-              style={{
-                marginTop: 14,
-                padding: '14px 16px',
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 12,
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div className="eyebrow" style={{ color: 'var(--fg-3)' }}>
-                  {lang === 'ru' ? 'Временный тест оплаты' : 'Temporary payment test'}
-                </div>
-                <div style={{ marginTop: 4, fontSize: 14, color: 'var(--fg-1)' }}>
-                  {lang === 'ru' ? 'Тест · 10 ₽ · 1 день Plus' : 'Test · 10 ₽ · 1 day Plus'}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={Boolean(checkoutBusy)}
-                onClick={() => startCheckout(testPlan.id)}
-              >
-                {label}
-              </button>
-            </div>
-          );
-        })()}
         {checkoutError && (
           <div style={{ marginTop: 14, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #c44)' }}>
             {checkoutError}

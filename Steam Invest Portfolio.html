@@ -237,7 +237,7 @@
       "skin": "cyber",
       "glass": 2,
       "lang": "ru",
-      "currency": "usd"
+      "currency": "rub"
     }/*EDITMODE-END*/;
     function App() {
       const initialRoute = parseAppRoute();
@@ -261,7 +261,7 @@
       // Set lang/currency globally so child components without prop access can read it
       useEffect(() => { window.__lang = t.lang; }, [t.lang]);
       useEffect(() => {
-        window.__currency = t.currency || 'usd';
+        window.__currency = t.currency || 'rub';
         window.dispatchEvent(new Event('currency-change'));
       }, [t.currency]);
 
@@ -311,7 +311,7 @@
       }, [screen, pendingSection]);
       const i18n = useT(t.lang);
       window.__lang = t.lang;
-      window.__currency = t.currency || 'usd';
+      window.__currency = t.currency || 'rub';
 
       const goItem = (item) => {
         const slug = window.ItemSlugs?.marketHashNameToSlug(item.marketHashName);
@@ -371,7 +371,7 @@
             onNav={onNav}
             lang={t.lang}
             onLang={(l) => setTweak('lang', l)}
-            currency={t.currency || 'usd'}
+            currency={t.currency || 'rub'}
             onCurrency={(value) => setTweak('currency', value)}
             t={i18n}
             auth={auth}
@@ -473,10 +473,10 @@
             />
             <TweakRadio
               label="Currency"
-              value={t.currency || 'usd'}
+              value={t.currency || 'rub'}
               options={[
-                { value: 'usd', label: 'USD' },
                 { value: 'rub', label: 'RUB' },
+                { value: 'usd', label: 'USD' },
               ]}
               onChange={(v) => setTweak('currency', v)}
             />

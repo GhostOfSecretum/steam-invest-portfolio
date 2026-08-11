@@ -47,6 +47,11 @@ const {
   handlePlategaCallback,
   syncPaymentByQuery,
 } = require('./services/billing');
+const {
+  isBetaMode,
+  getBetaPublicConfig,
+  unlockBetaAccess,
+} = require('./services/betaAccess');
 const { listTopInvestors, upsertTopInvestor } = require('./services/top-investors');
 const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
@@ -144,6 +149,25 @@ const checkoutLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many checkout attempts. Try again later.', code: 'rate_limited' },
 });
+const betaUnlockLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many unlock attempts. Try again later.', code: 'rate_limited' },
+});
+
+function effectiveBillingReady() {
+  return isBillingReady() && !isBetaMode();
+}
+
+function withBillingFlags(subscription) {
+  return {
+    ...(subscription || {}),
+    billingReady: effectiveBillingReady(),
+    beta: getBetaPublicConfig(),
+  };
+}
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -179,12 +203,15 @@ app.post('/api/auth/logout', asyncRoute(async (req, res) => {
 
 app.get('/api/me', asyncRoute(async (req, res) => {
   const ownerId = resolveOwnerId(req);
-  const subscription = await getOwnerSubscription(ownerId);
+  const subscription = withBillingFlags(await getOwnerSubscription(ownerId));
+  const beta = getBetaPublicConfig();
   if (!req.session.steamId) {
     res.json({
       connected: false,
       steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY),
       subscription,
+      beta,
+      billingReady: effectiveBillingReady(),
     });
     return;
   }
@@ -195,22 +222,52 @@ app.get('/api/me', asyncRoute(async (req, res) => {
     profile,
     steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY),
     subscription,
+    beta,
+    billingReady: effectiveBillingReady(),
   });
 }));
 
+app.get('/api/beta', (req, res) => {
+  res.json(getBetaPublicConfig());
+});
+
+app.post('/api/beta/telegram-unlock', betaUnlockLimiter, requireAuth, asyncRoute(async (req, res) => {
+  const ownerId = resolveOwnerId(req);
+  try {
+    const result = await unlockBetaAccess(ownerId, req.body || {});
+    res.json({
+      ok: true,
+      ...result,
+      beta: getBetaPublicConfig(),
+      billingReady: effectiveBillingReady(),
+    });
+  } catch (error) {
+    const status = Number(error?.status) || 500;
+    res.status(status).json({
+      error: error.message || 'Beta unlock failed.',
+      code: error.code || 'beta_unlock_failed',
+      channelUrl: error.channelUrl || getBetaPublicConfig().channelUrl,
+    });
+  }
+}));
+
 app.get('/api/plans', asyncRoute(async (req, res) => {
-  const billingReady = isBillingReady();
+  const beta = getBetaPublicConfig();
   res.json({
-    // Include temporary test plan only while billing is live.
-    plans: listPlans({ includeTest: billingReady }),
-    billingReady,
-    current: await getOwnerSubscription(resolveOwnerId(req)),
+    plans: listPlans(),
+    billingReady: effectiveBillingReady(),
+    beta,
+    current: withBillingFlags(await getOwnerSubscription(resolveOwnerId(req))),
   });
 }));
 
 app.get('/api/subscription', asyncRoute(async (req, res) => {
-  const billingReady = isBillingReady();
-  res.json({ subscription: await getOwnerSubscription(resolveOwnerId(req)), billingReady });
+  const beta = getBetaPublicConfig();
+  res.json({
+    subscription: withBillingFlags(await getOwnerSubscription(resolveOwnerId(req))),
+    billingReady: effectiveBillingReady(),
+    beta,
+  });
 }));
 
 // Temporary manual plan assignment (admin). Billing uses POST /api/billing/checkout.
@@ -224,10 +281,18 @@ app.post('/api/subscription/plan', asyncRoute(async (req, res) => {
   }
   const ownerId = resolveOwnerId(req, { create: true });
   const subscription = await setOwnerPlan(ownerId, req.body?.planId, { source: 'admin' });
-  res.json({ subscription, billingReady: isBillingReady() });
+  res.json({ subscription, billingReady: effectiveBillingReady(), beta: getBetaPublicConfig() });
 }));
 
 app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async (req, res) => {
+  if (isBetaMode()) {
+    res.status(503).json({
+      error: 'Payments are disabled during beta. Unlock access via the Telegram channel.',
+      code: 'beta_payments_disabled',
+      channelUrl: getBetaPublicConfig().channelUrl,
+    });
+    return;
+  }
   const ownerId = resolveOwnerId(req);
   const checkout = await createCheckout({
     ownerId,

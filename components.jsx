@@ -36,7 +36,7 @@ const I18N = {
       armorySub: 'Rank Armory rewards by star ROI on live Steam prices. See expected value, profit, and days left on the pass.',
       stats: 'What you get',
       pricing: 'Plans & prices',
-      pricingSub: 'Free is 0 ₽. Plus and Investor support 30-day or annual payment — annual is cheaper.',
+      pricingSub: 'Free is 0 ₽. Listed Plus and Investor prices stay as a reference — during beta, full access unlocks via the Telegram channel.',
       faq: 'FAQ',
     },
     news: {
@@ -145,7 +145,7 @@ const I18N = {
       armorySub: 'Рейтинг наград Armory по ROI звёзд на live-ценах Steam. Смотри ожидаемую стоимость, профит и сколько дней осталось у пасса.',
       stats: 'Что внутри',
       pricing: 'Тарифы и цены',
-      pricingSub: 'Free — 0 ₽. Plus и Investor можно оплатить на 30 дней или сразу на год — годом выгоднее.',
+      pricingSub: 'Free — 0 ₽. Цены Plus и Investor остаются ориентиром — во время беты полный доступ открывается за подписку на Telegram-канал.',
       faq: 'Частые вопросы',
     },
     news: {
@@ -323,6 +323,7 @@ function AnimNum({ value, prefix = '', suffix = '', decimals = 0, duration = 900
 function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) {
   const connected = Boolean(auth?.connected);
   const profile = auth?.profile;
+  const showBeta = Boolean(auth?.beta?.beta);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const navGroups = [
@@ -384,6 +385,11 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
         >
           <Logo />
         </button>
+        {showBeta && (
+          <span className="nav-beta-badge" title={lang === 'ru' ? 'Бета-тестирование' : 'Beta testing'}>
+            Beta
+          </span>
+        )}
       </div>
       <div className="nav-controls">
         <div

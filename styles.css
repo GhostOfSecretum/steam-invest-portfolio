@@ -3330,6 +3330,45 @@ button:disabled,
   text-align: left;
   cursor: pointer;
 }
+.nav-beta-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 42, 142, 0.45);
+  border-radius: 6px;
+  background: rgba(255, 42, 142, 0.12);
+  color: #ff7ab8;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.pricing-beta-banner {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+.pricing-beta-banner p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--fg-1);
+  line-height: 1.45;
+  max-width: 62ch;
+}
+.pricing-telegram-widget {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
 .nav-logo {
   display: flex; align-items: center; gap: 14px;
   min-width: 250px;

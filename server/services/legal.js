@@ -1,4 +1,5 @@
 const { listPlans } = require('./plans');
+const { isBetaMode, getBetaPublicConfig } = require('./betaAccess');
 
 const SITE_URL = 'https://skinshead.pro';
 const SUPPORT_TELEGRAM = '@GhostOfSecretum';
@@ -331,13 +332,22 @@ function renderPricingPage() {
     `;
   }).join('');
 
+  const beta = getBetaPublicConfig();
+  const betaNotice = isBetaMode()
+    ? `<div class="card">
+      <strong>Beta:</strong> оплата тарифов временно отключена. На время бета-тестирования полный доступ (Plus и Investor) можно получить бесплатно за подписку на канал
+      <a href="${escapeHtml(beta.channelUrl)}" target="_blank" rel="noopener noreferrer">@${escapeHtml(beta.channelUsername)}</a>
+      после входа через Steam на сайте. Цены ниже — ориентир на период после беты.
+    </div>`
+    : `<div class="card">
+      Ниже указаны актуальные тарифы Сервиса: сколько стоит каждый план и какие функции он открывает.
+      Оплата подключаемых платных тарифов производится через платёжного провайдера. После оплаты доступ активируется для аккаунта Steam, с которого выполнен вход на сайте.
+    </div>`;
+
   const bodyHtml = `
     <h1>Тарифы и цены</h1>
     <div class="meta">Сервис SkinsHead · ${SITE_URL}<br>Дата актуальной редакции: ${DOCS_UPDATED_AT}</div>
-    <div class="card">
-      Ниже указаны актуальные тарифы Сервиса: сколько стоит каждый план и какие функции он открывает.
-      Оплата подключаемых платных тарифов производится через платёжного провайдера. После оплаты доступ активируется для аккаунта Steam, с которого выполнен вход на сайте.
-    </div>
+    ${betaNotice}
 
     <div class="plans">${cards}</div>
 

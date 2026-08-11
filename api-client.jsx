@@ -26,6 +26,8 @@ function useAuth() {
     profile: null,
     error: null,
     subscription: null,
+    beta: null,
+    billingReady: false,
   });
 
   const refresh = apiUseCallback(async () => {
@@ -39,9 +41,19 @@ function useAuth() {
         error: null,
         steamApiKeyConfigured: me.steamApiKeyConfigured,
         subscription: me.subscription || null,
+        beta: me.beta || me.subscription?.beta || null,
+        billingReady: Boolean(me.billingReady),
       });
     } catch (error) {
-      setState({ loading: false, connected: false, profile: null, error, subscription: null });
+      setState({
+        loading: false,
+        connected: false,
+        profile: null,
+        error,
+        subscription: null,
+        beta: null,
+        billingReady: false,
+      });
     }
   }, []);
 
@@ -66,8 +78,57 @@ function useAuth() {
   };
 }
 
+async function unlockBetaViaTelegram(payload) {
+  return apiFetch('/api/beta/telegram-unlock', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+function useBetaConfig() {
+  const [state, setState] = apiUseState({
+    loading: true,
+    beta: false,
+    channelUrl: 'https://t.me/cs2skinshead',
+    channelUsername: 'cs2skinshead',
+    botUsername: null,
+    unlockReady: false,
+    error: null,
+  });
+
+  const reload = apiUseCallback(async () => {
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const data = await apiFetch('/api/beta');
+      setState({
+        loading: false,
+        beta: Boolean(data.beta),
+        channelUrl: data.channelUrl || 'https://t.me/cs2skinshead',
+        channelUsername: data.channelUsername || 'cs2skinshead',
+        botUsername: data.botUsername || null,
+        unlockReady: Boolean(data.unlockReady),
+        error: null,
+      });
+    } catch (error) {
+      setState((current) => ({ ...current, loading: false, error }));
+    }
+  }, []);
+
+  apiUseEffect(() => { reload(); }, [reload]);
+
+  return { ...state, reload };
+}
+
 function usePlans() {
-  const [state, setState] = apiUseState({ loading: true, plans: [], current: null, billingReady: false, error: null });
+  const [state, setState] = apiUseState({
+    loading: true,
+    plans: [],
+    current: null,
+    billingReady: false,
+    beta: null,
+    error: null,
+  });
 
   const reload = apiUseCallback(async () => {
     setState((current) => ({ ...current, loading: true, error: null }));
@@ -78,10 +139,11 @@ function usePlans() {
         plans: Array.isArray(data.plans) ? data.plans : [],
         current: data.current || null,
         billingReady: Boolean(data.billingReady),
+        beta: data.beta || null,
         error: null,
       });
     } catch (error) {
-      setState({ loading: false, plans: [], current: null, billingReady: false, error });
+      setState({ loading: false, plans: [], current: null, billingReady: false, beta: null, error });
     }
   }, []);
 
@@ -349,8 +411,8 @@ const CURRENCY_META = {
 };
 
 function getActiveCurrency() {
-  const key = String(window.__currency || 'usd').toLowerCase();
-  return CURRENCY_META[key] ? key : 'usd';
+  const key = String(window.__currency || 'rub').toLowerCase();
+  return CURRENCY_META[key] ? key : 'rub';
 }
 
 function normalizeCurrencyCode(value) {
@@ -475,6 +537,8 @@ function useFavoriteProfiles() {
 Object.assign(window, {
   apiFetch,
   useAuth,
+  unlockBetaViaTelegram,
+  useBetaConfig,
   usePortfolio,
   useFavoriteProfiles,
   usePlans,
