@@ -6,7 +6,7 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
   const copy = lang === 'ru'
     ? {
       title: 'Топ-аккаунты инвесторов',
-      sub: 'Подборка ценных Steam-портфелей для отслеживания. Список аккаунтов будет добавлен позже.',
+      sub: 'Подборка Steam-портфелей для отслеживания на тарифе Investor.',
       lockedTitle: 'Доступно на тарифе Investor',
       lockedBody: 'Трекинг топовых аккаунтов инвесторов входит в тариф Investor. Plus даёт безлимит и desktop; Investor добавляет эту подборку.',
       viewPlans: 'Смотреть тарифы',
@@ -16,7 +16,7 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
     }
     : {
       title: 'Top investor accounts',
-      sub: 'A curated set of high-value Steam portfolios to watch. The account list will be added later.',
+      sub: 'A curated set of Steam portfolios to watch on the Investor plan.',
       lockedTitle: 'Included with Investor',
       lockedBody: 'Top investor tracking is part of the Investor plan. Plus unlocks unlimited display and desktop; Investor adds this watchlist.',
       viewPlans: 'View plans',
