@@ -344,8 +344,16 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
   const data = portfolio.data;
   const items = data?.items || [];
   const portfolios = data?.portfolios || [];
-  const activePortfolioId = data?.portfolioId || effectivePortfolioId;
-  const isSteamPortfolio = data?.portfolioType === 'steam';
+  // Prefer the user's selection so the dropdown does not snap back to the previous
+  // portfolio while a slow switch request is still in flight.
+  const activePortfolioId = effectivePortfolioId || data?.portfolioId;
+  const isSwitchingPortfolio = Boolean(
+    portfolio.loading
+    && data
+    && effectivePortfolioId
+    && String(data.portfolioId) !== String(effectivePortfolioId)
+  );
+  const isSteamPortfolio = !isSwitchingPortfolio && data?.portfolioType === 'steam';
   const isPublicPortfolio = Boolean(publicProfileUrl);
   const publicSteamId = data?.profile?.steamId && /^\d{17}$/.test(String(data.profile.steamId))
     ? String(data.profile.steamId)
@@ -372,15 +380,19 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
     prevConnectedRef.current = connected;
   }, [auth?.connected, auth?.loading, publicProfileUrl, setSelectedPortfolioId]);
 
+  // Keep the dashboard mounted while switching portfolios so "Manage portfolio" stays open.
   if (portfolio.loading && !portfolio.data) {
     return <DashboardState lang={lang} title={t.dash.title} loading message={lang === 'ru' ? 'Загружаем портфель и цены...' : 'Loading portfolio and prices...'} />;
   }
 
-  if (portfolio.error) {
+  if (portfolio.error && !portfolio.data) {
     return <DashboardState lang={lang} title={t.dash.title} error={portfolio.error} onRetry={() => portfolio.reload(true)} />;
   }
 
   if (!data) return null;
+
+  const selectedPortfolioName = portfolios.find((entry) => String(entry.id) === String(activePortfolioId))?.name
+    || (activePortfolioId === 'steam' ? (lang === 'ru' ? 'Steam-инвентарь' : 'Steam inventory') : null);
 
   const toggleFavorite = async () => {
     if (!isPublicPortfolio || favoriteBusy) return;
@@ -430,20 +442,24 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
   const activePortfolio = portfolios.find((entry) => String(entry.id) === String(activePortfolioId));
   const portfolioTitle = isPublicPortfolio
     ? (data.profile?.personaname || data.profile?.name || (lang === 'ru' ? 'Публичный портфель' : 'Public portfolio'))
-    : (activePortfolio?.name || (isSteamPortfolio ? (lang === 'ru' ? 'Steam-инвентарь' : 'Steam inventory') : t.dash.title));
+    : (selectedPortfolioName
+      || activePortfolio?.name
+      || (isSteamPortfolio ? (lang === 'ru' ? 'Steam-инвентарь' : 'Steam inventory') : t.dash.title));
   const sections = [
     { id: 'overview', label: lang === 'ru' ? 'Обзор' : 'Overview' },
-    { id: 'items', label: lang === 'ru' ? 'Предметы' : 'Items', count: data.totalInventoryCount },
+    { id: 'items', label: lang === 'ru' ? 'Предметы' : 'Items', count: isSwitchingPortfolio ? null : data.totalInventoryCount },
     { id: 'activity', label: lang === 'ru' ? 'История' : 'Activity' },
   ];
 
   return (
-    <div className="dash-page">
+    <div className="dash-page" data-switching={isSwitchingPortfolio ? 'true' : 'false'}>
       <div className="container">
         <div className="dash-head">
           <div className="dash-head-copy">
             <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--accent)' }}>
-              // {lang === 'ru' ? 'ПОРТФЕЛЬ' : 'PORTFOLIO'} · {data.totalInventoryCount} {lang === 'ru' ? 'ПРЕДМЕТОВ' : 'ITEMS'}
+              // {lang === 'ru' ? 'ПОРТФЕЛЬ' : 'PORTFOLIO'}
+              {!isSwitchingPortfolio && <> · {data.totalInventoryCount} {lang === 'ru' ? 'ПРЕДМЕТОВ' : 'ITEMS'}</>}
+              {isSwitchingPortfolio && <> · {lang === 'ru' ? 'ЗАГРУЗКА…' : 'LOADING…'}</>}
             </div>
             <h1 className="display dash-title">{portfolioTitle}</h1>
             <div className="dash-sync-meta">
@@ -540,7 +556,8 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
               auth={auth}
               portfolios={portfolios}
               activePortfolioId={activePortfolioId}
-              portfolioType={data.portfolioType}
+              portfolioType={isSwitchingPortfolio ? (activePortfolioId === 'steam' ? 'steam' : 'manual') : data.portfolioType}
+              switching={isSwitchingPortfolio}
               onSelect={(id) => setSelectedPortfolioId(id)}
               onChanged={(id) => {
                 if (id) setSelectedPortfolioId(id);
@@ -551,6 +568,15 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
           </div>
         )}
 
+        {isSwitchingPortfolio && (
+          <div className="dash-switching-banner" role="status" aria-live="polite">
+            {lang === 'ru'
+              ? `Загружаем портфель${selectedPortfolioName ? ` «${selectedPortfolioName}»` : ''}…`
+              : `Loading${selectedPortfolioName ? ` “${selectedPortfolioName}”` : ' portfolio'}…`}
+          </div>
+        )}
+
+        <div className="dash-body" data-switching={isSwitchingPortfolio ? 'true' : 'false'}>
         <div className="dash-section-tabs" role="tablist" aria-label={lang === 'ru' ? 'Разделы портфеля' : 'Portfolio sections'}>
           {sections.map((section) => (
             <button
@@ -709,6 +735,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
@@ -861,7 +888,7 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
   );
 }
 
-function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfolioType, onSelect, onChanged, onPublicProfile }) {
+function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfolioType, switching = false, onSelect, onChanged, onPublicProfile }) {
   const t = useT(lang);
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -919,7 +946,13 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
             value={activePortfolioId || ''}
             onChange={(e) => onSelect(e.target.value || null)}
             aria-label={lang === 'ru' ? 'Выбрать портфель' : 'Choose portfolio'}
-            style={portfolioInputStyle({ flex: '1 1 220px', minWidth: 180, height: 34 })}
+            aria-busy={switching ? 'true' : 'false'}
+            style={portfolioInputStyle({
+              flex: '1 1 220px',
+              minWidth: 180,
+              height: 34,
+              borderColor: switching ? 'var(--accent)' : undefined,
+            })}
           >
             {!activePortfolioId && <option value="">{lang === 'ru' ? 'Выберите портфель' : 'Choose a portfolio'}</option>}
             {portfolios.map((portfolio) => (

@@ -187,9 +187,11 @@ async function getPrices(marketHashNames, limit = 24, options = {}) {
   const safeLimit = Number.isFinite(limit) ? limit : Number.MAX_SAFE_INTEGER;
   const unique = [...new Set(marketHashNames.filter(Boolean))].slice(0, safeLimit);
   const result = {};
+  // Larger batches make big portfolio switches much faster when most prices are cached.
+  const concurrency = Math.max(4, Math.min(24, Number(options.concurrency) || 16));
 
-  for (let i = 0; i < unique.length; i += 4) {
-    const batch = unique.slice(i, i + 4);
+  for (let i = 0; i < unique.length; i += concurrency) {
+    const batch = unique.slice(i, i + concurrency);
     const priced = await Promise.all(batch.map((name) => getPrice(name, options)));
     for (const item of priced) result[item.marketHashName] = item;
   }

@@ -1,5 +1,5 @@
 /* global React */
-const { useState: apiUseState, useEffect: apiUseEffect, useCallback: apiUseCallback } = React;
+const { useState: apiUseState, useEffect: apiUseEffect, useCallback: apiUseCallback, useRef: apiUseRef } = React;
 
 async function apiFetch(path, options = {}) {
   const response = await fetch(path, {
@@ -116,8 +116,10 @@ function useTopInvestors(enabled = true) {
 
 function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
   const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+  const requestSeq = apiUseRef(0);
 
   const load = apiUseCallback(async (sync = false) => {
+    const seq = ++requestSeq.current;
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
       const params = new URLSearchParams();
@@ -130,9 +132,12 @@ function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
       const suffix = params.toString() ? `?${params.toString()}` : '';
       const endpoint = publicProfileUrl ? '/api/portfolio/public' : '/api/portfolio';
       const data = await apiFetch(`${endpoint}${suffix}`);
+      // Ignore outdated responses when the user switches portfolios quickly.
+      if (seq !== requestSeq.current) return;
       setState({ loading: false, data, error: null });
     } catch (error) {
-      setState({ loading: false, data: null, error });
+      if (seq !== requestSeq.current) return;
+      setState((current) => ({ loading: false, data: current.data, error }));
     }
   }, [auth?.connected, portfolioId, publicProfileUrl]);
 

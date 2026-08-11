@@ -17,6 +17,45 @@ const BASIS_FILE = path.join(DATA_DIR, 'portfolio.json');
 const MANUAL_PORTFOLIOS_FILE = path.join(DATA_DIR, 'manual-portfolios.json');
 const LEGACY_OWNER = '__legacy__';
 const iconRefreshes = new Set();
+const PORTFOLIO_VIEW_TTL_MS = 45 * 1000;
+const portfolioViewCache = new Map();
+
+function readPortfolioViewCache(key) {
+  const entry = portfolioViewCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    portfolioViewCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function writePortfolioViewCache(key, value) {
+  portfolioViewCache.set(key, { expiresAt: Date.now() + PORTFOLIO_VIEW_TTL_MS, value });
+}
+
+function clearPortfolioViewCache() {
+  portfolioViewCache.clear();
+}
+
+async function mapPool(items, concurrency, mapper) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return [];
+  const limit = Math.max(1, Math.min(concurrency, list.length));
+  const results = new Array(list.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < list.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await mapper(list[index], index);
+    }
+  }
+
+  await Promise.all(Array.from({ length: limit }, () => worker()));
+  return results;
+}
 
 async function getPortfolio(steamId, options = {}) {
   const ownerId = options.ownerId || (steamId ? `steam:${steamId}` : null);
@@ -30,6 +69,12 @@ async function getPortfolio(steamId, options = {}) {
     const bucket = resolveOwnerBucketForRead(store, ownerId);
     const active = resolveActiveManualPortfolio(bucket, portfolioId);
     return active ? getManualPortfolio(ownerId, active.id, null) : buildEmptyManualPortfolio(bucket, null, ownerId);
+  }
+
+  const steamCacheKey = `steam:${steamId}`;
+  if (!options.force) {
+    const cachedView = readPortfolioViewCache(steamCacheKey);
+    if (cachedView) return { ...cachedView, cached: true };
   }
 
   const includeDesktop = options.includeDesktop !== false;
@@ -72,7 +117,7 @@ async function getPortfolio(steamId, options = {}) {
     syncedAt: inventory.syncedAt,
   });
 
-  return {
+  const result = {
     portfolioId: 'steam',
     portfolioName: 'Steam inventory',
     portfolioType: 'steam',
@@ -99,6 +144,8 @@ async function getPortfolio(steamId, options = {}) {
     items,
     activity: activity.filter(isStructuredActivity).slice().reverse(),
   };
+  if (!options.force) writePortfolioViewCache(steamCacheKey, result);
+  return result;
 }
 
 async function listPortfolios(ownerId = null, steamId = null) {
@@ -613,6 +660,10 @@ async function migrateOwnershipToSteam(anonOwnerId, steamId) {
 }
 
 async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
+  const cacheKey = `manual:${ownerId || 'anon'}:${portfolioId}`;
+  const cachedView = readPortfolioViewCache(cacheKey);
+  if (cachedView) return { ...cachedView, cached: true };
+
   const store = await readManualPortfolioStore();
   const bucket = resolveOwnerBucketForRead(store, ownerId);
   const portfolio = resolveActiveManualPortfolio(bucket, portfolioId);
@@ -643,7 +694,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     }
   }
 
-  return {
+  const result = {
     portfolioId: portfolio.id,
     portfolioName: portfolio.name,
     portfolioType: 'manual',
@@ -670,6 +721,8 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     items,
     activity: activity.slice().reverse(),
   };
+  writePortfolioViewCache(cacheKey, result);
+  return result;
 }
 
 function buildEmptyManualPortfolio(bucket, steamId = null, ownerId = null) {
@@ -1108,6 +1161,7 @@ async function readManualPortfolioStore() {
 }
 
 async function writeManualPortfolioStore(store) {
+  clearPortfolioViewCache();
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(MANUAL_PORTFOLIOS_FILE, JSON.stringify(normalizeManualPortfolioStore(store), null, 2), 'utf8');
 }
@@ -1407,7 +1461,8 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue) {
     .filter((item) => !chartNames.has(item.marketHashName))
     .reduce((sum, item) => sum + item.value * item.qty, 0);
 
-  const histories = (await Promise.all(leaderTracked.map(async (item) => {
+  // Bound concurrency so portfolio switches don't stampede price-history providers.
+  const histories = (await mapPool(leaderTracked, 8, async (item) => {
     const history = await getPriceHistory(item.marketHashName, 365, {
       anchorPrice: item.value,
       currency: 'usd',
@@ -1427,7 +1482,7 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue) {
       provider: history.provider || 'unknown',
       points: cleaned,
     };
-  }))).filter(Boolean);
+  })).filter(Boolean);
 
   const chartHistories = histories.filter((history) => chartNames.has(history.marketHashName));
   const history = chartHistories.length
