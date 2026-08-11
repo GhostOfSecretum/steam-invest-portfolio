@@ -262,12 +262,12 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
         </header>
 
         <div className="item-detail-primary-grid">
-          <section className="glass item-detail-visual">
+          <section className={`glass item-detail-visual${!parsedBase.hasWear ? ' item-detail-visual--compact' : ''}`}>
             {item.iconUrl
               ? <div className="item-art item-detail-art">
                   <img src={withSteamImageSize(item.iconUrl, 720, 405)} alt={item.name} />
                 </div>
-              : <ItemArt label={item.name} tier={item.tier} style={{ aspectRatio: '16/9' }} />}
+              : <ItemArt label={item.name} tier={item.tier} style={{ aspectRatio: parsedBase.hasWear ? '16/10' : '1/1' }} />}
             <WearBar wear={item.wear} floatValue={item.floatValue} />
           </section>
 
@@ -362,150 +362,150 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
               </div>
             </section>
           </aside>
-        </div>
 
-        <section className="glass item-detail-chart-card">
-          <div className="item-detail-chart-head">
-            <div>
-              <div className="eyebrow">{lang === 'ru' ? 'Медиана цен' : 'Price history'}</div>
-              <div className="item-detail-chart-meta">
-                {multiState.loading
-                  ? (lang === 'ru' ? 'загрузка…' : 'loading…')
-                  : (lang === 'ru'
-                      ? `${chartSeries.length} кач. · ${historyProviders[0] || 'нет данных'}`
-                      : `${chartSeries.length} exterior(s) · ${historyProviders[0] || 'no data'}`)}
+          <section className="glass item-detail-chart-card">
+            <div className="item-detail-chart-head">
+              <div>
+                <div className="eyebrow">{lang === 'ru' ? 'Медиана цен' : 'Price history'}</div>
+                <div className="item-detail-chart-meta">
+                  {multiState.loading
+                    ? (lang === 'ru' ? 'загрузка…' : 'loading…')
+                    : (lang === 'ru'
+                        ? `${chartSeries.length} кач. · ${historyProviders[0] || 'нет данных'}`
+                        : `${chartSeries.length} exterior(s) · ${historyProviders[0] || 'no data'}`)}
+                </div>
+              </div>
+              <div className="item-detail-periods">
+                {PERIOD_OPTIONS.map(p => (
+                  <button
+                    key={p.key}
+                    onClick={() => {
+                      setChartHover(null);
+                      setPeriod(p.key);
+                    }}
+                    data-active={period === p.key}
+                  >
+                    {p.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="item-detail-periods">
-              {PERIOD_OPTIONS.map(p => (
-                <button
-                  key={p.key}
-                  onClick={() => {
-                    setChartHover(null);
-                    setPeriod(p.key);
-                  }}
-                  data-active={period === p.key}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {hasWear && (
-            <div className="item-detail-compare">
-              <span>{lang === 'ru' ? 'Сравнить:' : 'Compare:'}</span>
-              {variants.filter(v => v.exists).map((v) => {
-                const shown = chartNames.includes(v.marketHashName);
-                const color = WEAR_COLORS[v.wear] || 'var(--accent)';
-                return (
-                  <button
-                    key={v.wear}
-                    onClick={() => toggleWearLine(v.marketHashName)}
-                    data-active={shown}
-                    style={{ '--wear-color': color }}
-                  >
-                    <i />
-                    <span>{v.wear}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <div ref={chartRef} className="item-detail-chart"
-               onMouseMove={onMove} onMouseLeave={() => setChartHover(null)}>
-            {hasHistory ? (
-              <svg viewBox={`0 0 ${chart.w} ${chart.h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
-                {/* horizontal grid + Y axis labels */}
-                {chart.yTicks.map((tick, i) => (
-                  <g key={`y-${i}`}>
-                    <line x1={chart.padX} x2={chart.w - chart.padXRight} y1={tick.y} y2={tick.y}
-                          stroke="rgba(255,255,255,0.05)" strokeDasharray="2 4" />
-                    <text x={chart.w - chart.padXRight + 8} y={tick.y + 3}
+            {hasWear && (
+              <div className="item-detail-compare">
+                <span>{lang === 'ru' ? 'Сравнить:' : 'Compare:'}</span>
+                {variants.filter(v => v.exists).map((v) => {
+                  const shown = chartNames.includes(v.marketHashName);
+                  const color = WEAR_COLORS[v.wear] || 'var(--accent)';
+                  return (
+                    <button
+                      key={v.wear}
+                      onClick={() => toggleWearLine(v.marketHashName)}
+                      data-active={shown}
+                      style={{ '--wear-color': color }}
+                    >
+                      <i />
+                      <span>{v.wear}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div ref={chartRef} className="item-detail-chart"
+                 onMouseMove={onMove} onMouseLeave={() => setChartHover(null)}>
+              {hasHistory ? (
+                <svg viewBox={`0 0 ${chart.w} ${chart.h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
+                  {/* horizontal grid + Y axis labels */}
+                  {chart.yTicks.map((tick, i) => (
+                    <g key={`y-${i}`}>
+                      <line x1={chart.padX} x2={chart.w - chart.padXRight} y1={tick.y} y2={tick.y}
+                            stroke="rgba(255,255,255,0.05)" strokeDasharray="2 4" />
+                      <text x={chart.w - chart.padXRight + 8} y={tick.y + 3}
+                            fill="var(--fg-3)" fontFamily="var(--f-mono)" fontSize="10">
+                        {tick.label}
+                      </text>
+                    </g>
+                  ))}
+
+                  {/* X axis labels */}
+                  {chart.xTicks.map((tick, i) => (
+                    <text key={`x-${i}`} x={tick.x} y={chart.h - 6}
+                          textAnchor="middle"
                           fill="var(--fg-3)" fontFamily="var(--f-mono)" fontSize="10">
                       {tick.label}
                     </text>
-                  </g>
-                ))}
+                  ))}
 
-                {/* X axis labels */}
-                {chart.xTicks.map((tick, i) => (
-                  <text key={`x-${i}`} x={tick.x} y={chart.h - 6}
-                        textAnchor="middle"
-                        fill="var(--fg-3)" fontFamily="var(--f-mono)" fontSize="10">
-                    {tick.label}
-                  </text>
-                ))}
+                  {/* one line per visible quality */}
+                  {chart.series.map((s) => (
+                    <path key={s.wear || s.marketHashName} d={s.d}
+                          stroke={s.color}
+                          strokeWidth="2"
+                          fill="none"
+                          strokeLinejoin="round"
+                          strokeLinecap="round" />
+                  ))}
 
-                {/* one line per visible quality */}
-                {chart.series.map((s) => (
-                  <path key={s.wear || s.marketHashName} d={s.d}
-                        stroke={s.color}
-                        strokeWidth="2"
-                        fill="none"
-                        strokeLinejoin="round"
-                        strokeLinecap="round" />
-                ))}
-
-                {chartHover && (
-                  <g>
-                    <line x1={chartHover.x} x2={chartHover.x}
-                          y1={chart.padY} y2={chart.h - chart.padYBottom}
-                          stroke="rgba(255,255,255,0.2)" strokeDasharray="2 3" />
-                    {chartHover.rows.map((row, i) => (
-                      <circle key={i} cx={row.x} cy={row.y} r="4"
-                              fill={row.color} stroke="#fff" strokeWidth="1.5" />
-                    ))}
-                  </g>
-                )}
-              </svg>
-            ) : (
-              <div style={{
-                height: '100%',
-                display: 'grid',
-                placeItems: 'center',
-                border: '1px dashed var(--line)',
-                borderRadius: 12,
-                color: 'var(--fg-2)',
-                textAlign: 'center',
-                padding: 24,
-              }}>
-                <div>
-                  <div className="display" style={{ fontSize: 18, fontWeight: 500 }}>
-                    {multiState.loading
-                      ? (lang === 'ru' ? 'Загружаю историю...' : 'Loading history...')
-                      : (lang === 'ru' ? 'Нет данных для графика' : 'No chart data')}
-                  </div>
-                  <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
-                    {lang === 'ru'
-                      ? 'Ни провайдер, ни цена не дали достаточно точек.'
-                      : 'Neither the provider nor the live price returned enough points.'}
+                  {chartHover && (
+                    <g>
+                      <line x1={chartHover.x} x2={chartHover.x}
+                            y1={chart.padY} y2={chart.h - chart.padYBottom}
+                            stroke="rgba(255,255,255,0.2)" strokeDasharray="2 3" />
+                      {chartHover.rows.map((row, i) => (
+                        <circle key={i} cx={row.x} cy={row.y} r="4"
+                                fill={row.color} stroke="#fff" strokeWidth="1.5" />
+                      ))}
+                    </g>
+                  )}
+                </svg>
+              ) : (
+                <div style={{
+                  height: '100%',
+                  display: 'grid',
+                  placeItems: 'center',
+                  border: '1px dashed var(--line)',
+                  borderRadius: 12,
+                  color: 'var(--fg-2)',
+                  textAlign: 'center',
+                  padding: 24,
+                }}>
+                  <div>
+                    <div className="display" style={{ fontSize: 18, fontWeight: 500 }}>
+                      {multiState.loading
+                        ? (lang === 'ru' ? 'Загружаю историю...' : 'Loading history...')
+                        : (lang === 'ru' ? 'Нет данных для графика' : 'No chart data')}
+                    </div>
+                    <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>
+                      {lang === 'ru'
+                        ? 'Ни провайдер, ни цена не дали достаточно точек.'
+                        : 'Neither the provider nor the live price returned enough points.'}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            {chartHover && chart && (
-              <div style={{
-                position: 'absolute',
-                left: `${(chartHover.x / chart.w) * 100}%`,
-                top: 8,
-                transform: 'translateX(-50%)',
-                padding: '8px 12px', borderRadius: 8, background: 'rgba(0,0,0,0.88)',
-                border: '1px solid var(--line-strong)', fontFamily: 'var(--f-mono)', fontSize: 12, whiteSpace: 'nowrap',
-                pointerEvents: 'none',
-              }}>
-                <div style={{ color: 'var(--fg-3)', fontSize: 10 }}>{formatHistoryDate(chartHover.date, lang)}</div>
-                {chartHover.rows.map((row, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                    <span style={{ width: 8, height: 3, borderRadius: 2, background: row.color }} />
-                    {row.wear && <span style={{ color: row.color, fontSize: 11 }}>{row.wear}</span>}
-                    <span style={{ color: 'var(--fg-0)' }}>{formatChartMoney(row.point.price)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+              )}
+              {chartHover && chart && (
+                <div style={{
+                  position: 'absolute',
+                  left: `${(chartHover.x / chart.w) * 100}%`,
+                  top: 8,
+                  transform: 'translateX(-50%)',
+                  padding: '8px 12px', borderRadius: 8, background: 'rgba(0,0,0,0.88)',
+                  border: '1px solid var(--line-strong)', fontFamily: 'var(--f-mono)', fontSize: 12, whiteSpace: 'nowrap',
+                  pointerEvents: 'none',
+                }}>
+                  <div style={{ color: 'var(--fg-3)', fontSize: 10 }}>{formatHistoryDate(chartHover.date, lang)}</div>
+                  {chartHover.rows.map((row, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                      <span style={{ width: 8, height: 3, borderRadius: 2, background: row.color }} />
+                      {row.wear && <span style={{ color: row.color, fontSize: 11 }}>{row.wear}</span>}
+                      <span style={{ color: 'var(--fg-0)' }}>{formatChartMoney(row.point.price)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
 
         {isPortfolioHolding && (
           <section className="item-detail-holdings">

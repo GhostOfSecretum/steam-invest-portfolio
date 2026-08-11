@@ -188,25 +188,36 @@ a { color: inherit; text-decoration: none; }
 .item-detail-primary-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(390px, 0.95fr);
+  grid-template-areas:
+    "visual decision"
+    "chart decision";
   align-items: start;
-  gap: 18px;
+  gap: 12px 18px;
   margin-bottom: 18px;
 }
 .item-detail-visual {
-  position: sticky;
-  top: 24px;
-  padding: 26px;
+  grid-area: visual;
+  padding: 18px;
 }
-.item-detail-art {
+.item-detail-visual .item-detail-art {
   display: grid;
   place-items: center;
-  aspect-ratio: 16 / 9;
-  padding: 28px;
+  aspect-ratio: 16 / 10;
+  max-height: 280px;
+  padding: 16px;
+}
+.item-detail-visual--compact .item-detail-art {
+  aspect-ratio: 1 / 1;
+  max-width: 260px;
+  max-height: 240px;
+  margin-inline: auto;
+  padding: 12px;
 }
 .item-detail-art img {
   display: block;
   width: 100%;
   height: 100%;
+  max-height: 100%;
   object-fit: contain;
   object-position: center;
   filter: drop-shadow(0 28px 46px rgba(0,0,0,0.58));
@@ -217,6 +228,9 @@ a { color: inherit; text-decoration: none; }
   filter: drop-shadow(0 34px 54px rgba(0,0,0,0.68));
 }
 .item-detail-decision {
+  grid-area: decision;
+  position: sticky;
+  top: 24px;
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -441,12 +455,13 @@ a { color: inherit; text-decoration: none; }
   font-style: normal;
 }
 .item-detail-chart-card {
-  margin-bottom: 18px;
-  padding: 24px;
+  grid-area: chart;
+  margin-bottom: 0;
+  padding: 18px 20px;
 }
 .item-detail-chart-head {
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .item-detail-chart-meta {
   margin-top: 6px;
@@ -521,7 +536,7 @@ a { color: inherit; text-decoration: none; }
 .item-detail-chart {
   position: relative;
   width: 100%;
-  height: 300px;
+  height: 260px;
 }
 .item-detail-holdings {
   display: grid;
@@ -583,8 +598,12 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 1100px) {
   .item-detail-primary-grid {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "visual"
+      "decision"
+      "chart";
   }
-  .item-detail-visual {
+  .item-detail-decision {
     position: relative;
     top: auto;
   }
@@ -626,8 +645,13 @@ a { color: inherit; text-decoration: none; }
   .item-detail-visual {
     padding: 14px;
   }
-  .item-detail-art {
+  .item-detail-visual .item-detail-art {
     padding: 10px;
+    max-height: 220px;
+  }
+  .item-detail-visual--compact .item-detail-art {
+    max-width: 200px;
+    max-height: 200px;
   }
   .item-detail-price-card,
   .item-detail-variants,

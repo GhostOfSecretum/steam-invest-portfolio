@@ -1,5 +1,5 @@
 /* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd */
-const { useState, useRef, useMemo, useEffect } = React;
+const { useState, useRef, useMemo, useEffect, useCallback } = React;
 
 /* ───────────────────────────────────────────────────
    PORTFOLIO DASHBOARD — API backed
@@ -301,9 +301,34 @@ function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
   );
 }
 
+const SELECTED_PORTFOLIO_KEY = 'skinshead:selectedPortfolioId';
+
+function readSelectedPortfolioId() {
+  try {
+    return window.sessionStorage.getItem(SELECTED_PORTFOLIO_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSelectedPortfolioId(id) {
+  try {
+    if (id) window.sessionStorage.setItem(SELECTED_PORTFOLIO_KEY, String(id));
+    else window.sessionStorage.removeItem(SELECTED_PORTFOLIO_KEY);
+  } catch {
+    // Ignore storage failures (private mode / blocked storage).
+  }
+}
+
 function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicProfile, onPricing }) {
   const t = useT(lang);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState(null);
+  // Keep the last portfolio across item-detail remounts (Dashboard unmounts on /item).
+  const [selectedPortfolioId, setSelectedPortfolioIdState] = useState(() => readSelectedPortfolioId());
+  const setSelectedPortfolioId = useCallback((id) => {
+    const next = id || null;
+    setSelectedPortfolioIdState(next);
+    if (!String(next || '').startsWith('public-')) writeSelectedPortfolioId(next);
+  }, []);
   const effectivePortfolioId = publicProfileUrl || String(selectedPortfolioId || '').startsWith('public-')
     ? null
     : selectedPortfolioId;
@@ -333,12 +358,9 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
   }, [items, query]);
 
   useEffect(() => {
-    if (publicProfileUrl) {
-      if (selectedPortfolioId) setSelectedPortfolioId(null);
-      return;
-    }
+    if (publicProfileUrl) return;
     if (!selectedPortfolioId && data?.portfolioId) setSelectedPortfolioId(data.portfolioId);
-  }, [data?.portfolioId, publicProfileUrl, selectedPortfolioId]);
+  }, [data?.portfolioId, publicProfileUrl, selectedPortfolioId, setSelectedPortfolioId]);
 
   // After a successful Steam OpenID login, land on the Steam inventory — not the last manual portfolio.
   useEffect(() => {
@@ -348,7 +370,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
       setSelectedPortfolioId('steam');
     }
     prevConnectedRef.current = connected;
-  }, [auth?.connected, auth?.loading, publicProfileUrl]);
+  }, [auth?.connected, auth?.loading, publicProfileUrl, setSelectedPortfolioId]);
 
   if (portfolio.loading && !portfolio.data) {
     return <DashboardState lang={lang} title={t.dash.title} loading message={lang === 'ru' ? 'Загружаем портфель и цены...' : 'Loading portfolio and prices...'} />;

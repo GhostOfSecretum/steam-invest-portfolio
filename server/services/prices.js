@@ -1090,12 +1090,22 @@ function resolveMarketCatalogProvider() {
 async function getCSMarketAPIItems() {
   if (!process.env.CSMARKET_API_KEY) return [];
 
-  const cached = await remember('csmarketapi:items', CSMARKET_ITEMS_MAX_AGE_MS, async () => {
-    const params = new URLSearchParams({ key: process.env.CSMARKET_API_KEY });
-    const json = await fetchJson(`https://api.csmarketapi.com/v1/items/?${params}`, { timeoutMs: 120000 });
-    return Array.isArray(json) ? json : [];
-  });
-  return cached.value;
+  try {
+    const cached = await remember('csmarketapi:items', CSMARKET_ITEMS_MAX_AGE_MS, async () => {
+      const params = new URLSearchParams({ key: process.env.CSMARKET_API_KEY });
+      const json = await fetchJson(`https://api.csmarketapi.com/v1/items/?${params}`, { timeoutMs: 120000 });
+      return Array.isArray(json) ? json : [];
+    });
+    return cached.value;
+  } catch (error) {
+    // Dump refresh often 500s; keep serving the last good snapshot instead of blocking search for ~2 minutes.
+    const stale = await getCached('csmarketapi:items', 30 * 24 * 60 * 60 * 1000);
+    if (Array.isArray(stale) && stale.length) {
+      console.warn('[catalog] CSMarketAPI items refresh failed, using stale dump:', error.message);
+      return stale;
+    }
+    throw error;
+  }
 }
 
 function mapCSMarketQualityToRarity(quality, marketHashName) {
@@ -1459,6 +1469,22 @@ async function getMarketCatalogFromSteam(options = {}) {
 }
 
 async function getMarketCatalog(options = {}) {
+  const query = String(options.query || '').trim();
+
+  // Name lookup must use Steam: the CSMarketAPI dump can omit stickers/commodities
+  // (e.g. "Sticker | Rainbow Route (Holo)" while only "Sticker Slab | ..." is present).
+  if (query) {
+    try {
+      return await getMarketCatalogFromSteam(options);
+    } catch (error) {
+      console.warn('[catalog] Steam search failed, trying CSMarketAPI:', error.message);
+      if (resolveMarketCatalogProvider() === 'csmarketapi') {
+        return getMarketCatalogFromCSMarketAPI(options);
+      }
+      throw error;
+    }
+  }
+
   if (resolveMarketCatalogProvider() === 'csmarketapi') {
     try {
       return await getMarketCatalogFromCSMarketAPI(options);
@@ -1479,6 +1505,20 @@ async function hydrateCatalogPrices(items) {
     const batch = items.slice(i, i + 6);
     const pricedBatch = await Promise.all(batch.map(async (item) => {
       if (!shouldResolveExactCatalogPrice(item)) return item;
+
+      // Steam search already returns sell_price; skip priceoverview (rate-limited) for autocomplete speed.
+      if (Number.isFinite(item.price) && item.price > 0 && item.priceProvider === 'steam-market') {
+        let priceRub = Number.isFinite(item.priceRub) ? item.priceRub : null;
+        let medianPriceRub = Number.isFinite(item.medianPriceRub) ? item.medianPriceRub : null;
+        if (priceRub == null || medianPriceRub == null) {
+          const rate = await rubPerUsdPromise;
+          if (Number.isFinite(rate) && rate > 0) {
+            if (priceRub == null) priceRub = Math.round(item.price * rate * 100) / 100;
+            if (medianPriceRub == null) medianPriceRub = priceRub;
+          }
+        }
+        return { ...item, priceRub, medianPriceRub };
+      }
 
       // Fetch USD and RUB in parallel so the UI shows exact Steam prices for each currency.
       const [exactUsd, exactRub] = await Promise.all([
