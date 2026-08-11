@@ -127,7 +127,7 @@ async function fetchPlayerSummaries(steamIds) {
         profileUrl: player?.profileurl || `https://steamcommunity.com/profiles/${entry.steamId}`,
         personaname: player?.personaname || `STEAM/${entry.steamId.slice(-6)}`,
         avatar: player?.avatarmedium || player?.avatar || null,
-        note: `Mentions in Telegram topic: ${entry.count}`,
+        note: '',
         tags: ['telegram-topic-5189'],
         addedAt: now,
         updatedAt: now,
@@ -138,7 +138,7 @@ async function fetchPlayerSummaries(steamIds) {
 
   const store = {
     updatedAt: now,
-    note: 'Imported from Telegram topic https://t.me/c/1968710853/5189',
+    note: 'Curated investor Steam accounts.',
     accounts,
   };
 

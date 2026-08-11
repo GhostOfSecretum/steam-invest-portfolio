@@ -1,9 +1,15 @@
 const fs = require('fs/promises');
 const path = require('path');
 const { resolveSteamProfileInput, getSteamProfile } = require('./steam');
+const {
+  getInventoryActivityForSteamId,
+  listInventoryActivityForSteamIds,
+} = require('./activity');
+const { getPortfolio } = require('./portfolio');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const TOP_INVESTORS_FILE = path.join(DATA_DIR, 'top-investors.json');
+const FEED_LIMIT = 100;
 
 async function ensureDataDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -56,6 +62,77 @@ async function listTopInvestors() {
   };
 }
 
+function findTopInvestorAccount(store, steamId) {
+  const id = String(steamId || '').trim();
+  if (!/^\d{17}$/.test(id)) return null;
+  return store.accounts.map(normalizeAccount).filter(Boolean).find((entry) => entry.steamId === id) || null;
+}
+
+async function listTopInvestorsActivityFeed({ limit = FEED_LIMIT } = {}) {
+  const listed = await listTopInvestors();
+  const accountsById = new Map(listed.accounts.map((account) => [account.steamId, account]));
+  const events = await listInventoryActivityForSteamIds(
+    listed.accounts.map((account) => account.steamId),
+    { limit },
+  );
+
+  return {
+    updatedAt: listed.updatedAt,
+    events: events.map((event) => {
+      const account = accountsById.get(event.steamId);
+      return {
+        ...event,
+        personaname: account?.personaname || null,
+        avatar: account?.avatar || null,
+        profileUrl: account?.profileUrl || `https://steamcommunity.com/profiles/${event.steamId}`,
+      };
+    }),
+  };
+}
+
+async function getTopInvestorActivity(steamId, { sync = false } = {}) {
+  const store = await readStore();
+  const account = findTopInvestorAccount(store, steamId);
+  if (!account) {
+    const err = new Error('Top investor account not found.');
+    err.status = 404;
+    err.code = 'top_investor_not_found';
+    throw err;
+  }
+
+  if (sync) {
+    try {
+      const portfolio = await getPortfolio(account.steamId, {
+        force: true,
+        includeDesktop: false,
+        activitySource: 'public-diff',
+      });
+      const activity = Array.isArray(portfolio.activity) ? portfolio.activity : [];
+      return {
+        ...account,
+        syncedAt: portfolio.syncedAt || null,
+        hasBaseline: true,
+        baselineOnly: activity.length === 0,
+        activity,
+      };
+    } catch (error) {
+      const err = new Error(error.message || 'Failed to sync investor inventory.');
+      err.status = error.status || 502;
+      err.code = error.code || 'investor_sync_failed';
+      throw err;
+    }
+  }
+
+  const stored = await getInventoryActivityForSteamId(account.steamId);
+  return {
+    ...account,
+    syncedAt: stored.syncedAt,
+    hasBaseline: stored.hasBaseline,
+    baselineOnly: stored.hasBaseline && stored.events.length === 0,
+    activity: stored.events,
+  };
+}
+
 async function upsertTopInvestor(input) {
   const profileInput = String(input?.profileUrl || input?.steamId || '').trim();
   if (!profileInput) {
@@ -94,4 +171,6 @@ async function upsertTopInvestor(input) {
 module.exports = {
   listTopInvestors,
   upsertTopInvestor,
+  listTopInvestorsActivityFeed,
+  getTopInvestorActivity,
 };

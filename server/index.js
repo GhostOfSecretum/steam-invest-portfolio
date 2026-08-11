@@ -52,7 +52,12 @@ const {
   getBetaPublicConfig,
   unlockBetaAccess,
 } = require('./services/betaAccess');
-const { listTopInvestors, upsertTopInvestor } = require('./services/top-investors');
+const {
+  listTopInvestors,
+  upsertTopInvestor,
+  listTopInvestorsActivityFeed,
+  getTopInvestorActivity,
+} = require('./services/top-investors');
 const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
@@ -637,7 +642,7 @@ app.get('/api/downloads/:artifact', asyncRoute(async (req, res) => {
   });
 }));
 
-app.get('/api/top-investors', asyncRoute(async (req, res) => {
+async function requireTopInvestorsAccess(req, res) {
   const planId = await getOwnerPlanId(resolveOwnerId(req));
   if (!planAllows(planId, 'topInvestors')) {
     res.status(403).json({
@@ -650,9 +655,36 @@ app.get('/api/top-investors', asyncRoute(async (req, res) => {
         count: data.accounts.length,
       })),
     });
+    return null;
+  }
+  return planId;
+}
+
+app.get('/api/top-investors', asyncRoute(async (req, res) => {
+  if (!(await requireTopInvestorsAccess(req, res))) return;
+  res.json(await listTopInvestors());
+}));
+
+app.get('/api/top-investors/activity', asyncRoute(async (req, res) => {
+  if (!(await requireTopInvestorsAccess(req, res))) return;
+  res.json(await listTopInvestorsActivityFeed());
+}));
+
+app.get('/api/top-investors/:steamId/activity', asyncRoute(async (req, res) => {
+  if (!(await requireTopInvestorsAccess(req, res))) return;
+  const steamId = String(req.params.steamId || '').trim();
+  if (!/^\d{17}$/.test(steamId)) {
+    res.status(400).json({ error: 'Valid SteamID64 is required.', code: 'invalid_steam_id' });
     return;
   }
-  res.json(await listTopInvestors());
+  try {
+    res.json(await getTopInvestorActivity(steamId, { sync: req.query.sync === '1' }));
+  } catch (error) {
+    res.status(error.status || 500).json({
+      error: error.message || 'Failed to load investor activity.',
+      code: error.code || 'investor_activity_failed',
+    });
+  }
 }));
 
 app.post('/api/top-investors', asyncRoute(async (req, res) => {

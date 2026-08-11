@@ -176,6 +176,64 @@ function useTopInvestors(enabled = true) {
   return { ...state, reload };
 }
 
+function useTopInvestorsActivityFeed(enabled = true) {
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+
+  const reload = apiUseCallback(async () => {
+    if (!enabled) return;
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const data = await apiFetch('/api/top-investors/activity');
+      setState({ loading: false, data, error: null });
+    } catch (error) {
+      setState({ loading: false, data: null, error });
+    }
+  }, [enabled]);
+
+  apiUseEffect(() => { reload(); }, [reload]);
+
+  return { ...state, reload };
+}
+
+function useTopInvestorActivity(steamId, enabled = true) {
+  const [state, setState] = apiUseState({ loading: false, syncing: false, data: null, error: null });
+  const requestSeq = apiUseRef(0);
+
+  const load = apiUseCallback(async ({ sync = false } = {}) => {
+    const id = String(steamId || '').trim();
+    if (!enabled || !/^\d{17}$/.test(id)) {
+      setState({ loading: false, syncing: false, data: null, error: null });
+      return;
+    }
+
+    const seq = ++requestSeq.current;
+    setState((current) => ({
+      ...current,
+      loading: true,
+      syncing: Boolean(sync),
+      error: null,
+    }));
+
+    try {
+      const suffix = sync ? '?sync=1' : '';
+      const data = await apiFetch(`/api/top-investors/${encodeURIComponent(id)}/activity${suffix}`);
+      if (seq !== requestSeq.current) return;
+      setState({ loading: false, syncing: false, data, error: null });
+    } catch (error) {
+      if (seq !== requestSeq.current) return;
+      setState({ loading: false, syncing: false, data: null, error });
+    }
+  }, [enabled, steamId]);
+
+  apiUseEffect(() => {
+    load({ sync: false });
+  }, [load]);
+
+  const sync = apiUseCallback(() => load({ sync: true }), [load]);
+
+  return { ...state, reload: () => load({ sync: false }), sync };
+}
+
 function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
   const [state, setState] = apiUseState({ loading: false, data: null, error: null });
   const requestSeq = apiUseRef(0);
@@ -543,6 +601,8 @@ Object.assign(window, {
   useFavoriteProfiles,
   usePlans,
   useTopInvestors,
+  useTopInvestorsActivityFeed,
+  useTopInvestorActivity,
   useMarketSnapshot,
   useMarketCatalog,
   useItemHistory,

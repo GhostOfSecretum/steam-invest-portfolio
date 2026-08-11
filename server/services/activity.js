@@ -180,6 +180,48 @@ async function syncInventoryDiffActivity(steamId, items, { source = 'steam-diff'
   return events;
 }
 
+async function getInventoryActivityForSteamId(steamId) {
+  const key = String(steamId || '').trim();
+  if (!/^\d{17}$/.test(key)) {
+    return {
+      steamId: key,
+      syncedAt: null,
+      hasBaseline: false,
+      events: [],
+    };
+  }
+
+  const store = await readInventoryActivityStore();
+  const entry = store[key] || null;
+  return {
+    steamId: key,
+    syncedAt: entry?.syncedAt || null,
+    hasBaseline: Boolean(entry?.snapshot && typeof entry.snapshot === 'object'),
+    events: trimEvents(entry?.events || []).filter(isStructuredActivity),
+  };
+}
+
+async function listInventoryActivityForSteamIds(steamIds, { limit = 100 } = {}) {
+  const ids = [...new Set((Array.isArray(steamIds) ? steamIds : []).map((id) => String(id || '').trim()).filter((id) => /^\d{17}$/.test(id)))];
+  const store = await readInventoryActivityStore();
+  const events = [];
+
+  for (const steamId of ids) {
+    const entry = store[steamId];
+    if (!entry) continue;
+    for (const event of trimEvents(entry.events || []).filter(isStructuredActivity)) {
+      events.push({
+        ...event,
+        steamId,
+      });
+    }
+  }
+
+  events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  const cap = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 300) : 100;
+  return events.slice(0, cap);
+}
+
 module.exports = {
   MAX_EVENTS,
   makeActivityEvent,
@@ -190,4 +232,6 @@ module.exports = {
   diffSnapshots,
   backfillManualEvents,
   syncInventoryDiffActivity,
+  getInventoryActivityForSteamId,
+  listInventoryActivityForSteamIds,
 };
