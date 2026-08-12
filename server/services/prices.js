@@ -389,50 +389,17 @@ async function getCSFloatPrice(marketHashName) {
   return result;
 }
 
-function extractLisSkinsListingPrice(entry, currency = 'usd') {
+function extractLisSkinsListingPrice(entry) {
   if (!entry) return null;
-  const wantRub = normalizeCurrency(currency) === 'rub';
-  if (wantRub) {
-    const nativeRub = Number(entry.price_rub ?? entry.rub_price ?? entry.priceRub ?? entry.price_in_rub);
-    if (Number.isFinite(nativeRub) && nativeRub > 0) return nativeRub;
-  }
+  // Public search/export always quote USD in `price` (currency=RUB is ignored by the API).
   const usd = Number(entry.price_usd ?? entry.price);
   return Number.isFinite(usd) && usd > 0 ? usd : null;
 }
 
-function looksLikeNativeRubQuote(usdPrice, rubPrice) {
-  if (!Number.isFinite(usdPrice) || !Number.isFinite(rubPrice) || usdPrice <= 0) return false;
-  const ratio = rubPrice / usdPrice;
-  return ratio >= 40 && ratio <= 150;
-}
-
-async function getLisSkinsRubPerUsd() {
-  const key = 'fx:lisskins-rub-per-usd';
-  const cached = await getCached(key, FX_RATE_MAX_AGE_MS);
-  if (Number.isFinite(cached)) return cached;
-
-  const configured = Number(process.env.LISSKINS_RUB_PER_USD);
-  if (Number.isFinite(configured) && configured > 0) {
-    await setCached(key, configured);
-    return configured;
-  }
-
-  const marketRate = await getMarketUsdRubRate().catch(() => null);
-  return Number.isFinite(marketRate) && marketRate > 0 ? marketRate : null;
-}
-
-async function rememberLisSkinsRubPerUsd(usdPrice, rubPrice) {
-  if (!looksLikeNativeRubQuote(usdPrice, rubPrice)) return null;
-  const rate = rubPrice / usdPrice;
-  await setCached('fx:lisskins-rub-per-usd', rate);
-  return rate;
-}
-
-async function getLisSkinsPrice(marketHashName, currency = 'usd') {
+async function getLisSkinsPrice(marketHashName) {
   if (!process.env.LISSKINS_API_KEY) return null;
 
-  const normalizedCurrency = normalizeCurrency(currency);
-  const cacheKey = `lisskins:price:${marketHashName}:${normalizedCurrency}`;
+  const cacheKey = `lisskins:price:${marketHashName}:usd`;
   const cached = await getCached(cacheKey, LISSKINS_MAX_AGE_MS);
   if (cached) return cached;
 
@@ -440,7 +407,6 @@ async function getLisSkinsPrice(marketHashName, currency = 'usd') {
     game: 'csgo',
     sort_by: 'lowest_price',
   });
-  if (normalizedCurrency === 'rub') params.set('currency', 'RUB');
   params.append('names[]', marketHashName);
 
   const json = await fetchJson(`https://api.lis-skins.com/v1/market/search?${params}`, {
@@ -452,7 +418,7 @@ async function getLisSkinsPrice(marketHashName, currency = 'usd') {
   const exact = rows.filter((entry) => entry?.name === marketHashName);
   const source = exact.length ? exact : rows;
   const prices = source
-    .map((entry) => extractLisSkinsListingPrice(entry, normalizedCurrency))
+    .map((entry) => extractLisSkinsListingPrice(entry))
     .filter((value) => Number.isFinite(value) && value > 0)
     .sort((a, b) => a - b);
 
@@ -464,7 +430,7 @@ async function getLisSkinsPrice(marketHashName, currency = 'usd') {
     medianPrice: Math.round(prices[Math.floor(prices.length / 2)] * 100) / 100,
     volume24h: prices.length,
     provider: 'lisskins',
-    currencyCode: normalizedCurrency === 'rub' ? 'RUB' : 'USD',
+    currencyCode: 'USD',
     updatedAt: new Date().toISOString(),
   };
 
@@ -2041,18 +2007,16 @@ function buildMarketplaceUrl(provider, marketHashName) {
 
 // Third-party marketplaces quote USD; Steam has native RUB. Use CBR for non-Steam RUB display.
 async function getItemOffers(marketHashName, currency = 'usd') {
-  const [steamUsd, steamRub, skinportList, csgomarketList, lisskinsList, csfloat, lisskinsUsdApi, lisskinsRubApi, steamRate, marketRate, lisskinsFxRate] = await Promise.all([
+  const [steamUsd, steamRub, skinportList, csgomarketList, lisskinsList, csfloat, lisskinsUsdApi, steamRate, marketRate] = await Promise.all([
     getSteamMarketPrice(marketHashName, 'usd').catch(() => null),
     getSteamMarketPrice(marketHashName, 'rub').catch(() => null),
     getSkinportPriceList().catch(() => ({})),
     getMarketCsgoPriceList().catch(() => ({})),
     getLisSkinsPriceList().catch(() => ({})),
     getCSFloatPrice(marketHashName).catch(() => null),
-    getLisSkinsPrice(marketHashName, 'usd').catch(() => null),
-    process.env.LISSKINS_API_KEY ? getLisSkinsPrice(marketHashName, 'rub').catch(() => null) : null,
+    getLisSkinsPrice(marketHashName).catch(() => null),
     getSteamRubRate().catch(() => null),
     getMarketUsdRubRate().catch(() => null),
-    getLisSkinsRubPerUsd().catch(() => null),
   ]);
 
   const steamRubPerUsd = Number.isFinite(steamRate) && steamRate > 0 ? steamRate : null;
@@ -2063,25 +2027,11 @@ async function getItemOffers(marketHashName, currency = 'usd') {
   const toMarketRub = (usd) => Number.isFinite(usd) && marketRubPerUsd
     ? Math.round(usd * marketRubPerUsd * 100) / 100
     : null;
-  const lisskinsRubPerUsd = Number.isFinite(lisskinsFxRate) && lisskinsFxRate > 0
-    ? lisskinsFxRate
-    : marketRubPerUsd;
-  const toLisSkinsRub = (usd) => Number.isFinite(usd) && lisskinsRubPerUsd
-    ? Math.round(usd * lisskinsRubPerUsd * 100) / 100
-    : null;
   const lisskinsEntry = lisskinsList[marketHashName];
   const lisskinsPrice = Number.isFinite(lisskinsUsdApi?.price)
     ? lisskinsUsdApi.price
     : (lisskinsEntry?.price ?? null);
   const lisskinsUrl = lisskinsEntry?.url || buildMarketplaceUrl('lisskins', marketHashName);
-  if (looksLikeNativeRubQuote(lisskinsPrice, lisskinsRubApi?.price)) {
-    await rememberLisSkinsRubPerUsd(lisskinsPrice, lisskinsRubApi.price).catch(() => null);
-  }
-  const lisskinsPriceRub = looksLikeNativeRubQuote(lisskinsPrice, lisskinsRubApi?.price)
-    ? lisskinsRubApi.price
-    : (lisskinsRubApi?.currencyCode === 'RUB' && Number.isFinite(lisskinsRubApi?.price)
-        ? lisskinsRubApi.price
-        : toLisSkinsRub(lisskinsPrice));
 
   const offers = [
     {
@@ -2106,7 +2056,7 @@ async function getItemOffers(marketHashName, currency = 'usd') {
       provider: 'lisskins',
       label: 'LIS-Skins',
       price: lisskinsPrice,
-      priceRub: lisskinsPriceRub,
+      priceRub: toMarketRub(lisskinsPrice),
       url: lisskinsUrl,
     },
     {
