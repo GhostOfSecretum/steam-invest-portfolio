@@ -105,21 +105,31 @@ async function migrateLargeEntries(cache) {
   return changed;
 }
 
-async function loadCache(force = false) {
-  const mtimeMs = await getCacheMtimeMs();
-  if (!force && memoryCache && memoryCacheMtimeMs === mtimeMs) {
-    return memoryCache;
-  }
+let loadCacheInflight = null;
 
-  const cache = await readCacheFromDisk();
-  const migrated = await migrateLargeEntries(cache);
-  memoryCache = cache;
-  if (migrated) {
-    await writeCacheNow(cache);
-  } else {
-    memoryCacheMtimeMs = mtimeMs;
-  }
-  return memoryCache;
+async function loadCache(force = false) {
+  // Single-process app: once memory is warm, keep serving it. Re-reading the multi-MB
+  // cache.json on every setCached mtime bump made portfolio pricing take 20s+.
+  if (!force && memoryCache) return memoryCache;
+  if (!force && loadCacheInflight) return loadCacheInflight;
+
+  loadCacheInflight = (async () => {
+    if (!force && memoryCache) return memoryCache;
+
+    const cache = await readCacheFromDisk();
+    const migrated = await migrateLargeEntries(cache);
+    memoryCache = cache;
+    if (migrated) {
+      await writeCacheNow(cache);
+    } else {
+      memoryCacheMtimeMs = await getCacheMtimeMs();
+    }
+    return memoryCache;
+  })().finally(() => {
+    loadCacheInflight = null;
+  });
+
+  return loadCacheInflight;
 }
 
 async function writeCacheNow(cache) {
