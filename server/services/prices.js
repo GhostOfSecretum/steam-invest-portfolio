@@ -159,7 +159,8 @@ function isSteamSourcedPrice(price) {
   const provider = String(price?.provider || '');
   return provider === 'steam-market'
     || provider === 'csmarketapi'
-    || provider.startsWith('steam-market-');
+    || provider.startsWith('steam-market-')
+    || provider.startsWith('csmarketapi-');
 }
 
 // Steam RUB/USD is typically ~70–120. Near-parity means a USD quote leaked into priceRub
