@@ -18,6 +18,19 @@
 
   const WEAR_LABEL_TO_SLUG = Object.fromEntries(WEAR_SLUGS.map(([slug, label]) => [label, slug]));
 
+  // Sticker / patch / charm finishes living in trailing parentheses (not weapon wear).
+  const FINISH_SLUGS = [
+    ['lenticular', 'Lenticular'],
+    ['glitter', 'Glitter'],
+    ['holo', 'Holo'],
+    ['foil', 'Foil'],
+    ['gold', 'Gold'],
+  ];
+
+  const FINISH_LABEL_TO_SLUG = Object.fromEntries(FINISH_SLUGS.map(([slug, label]) => [label, slug]));
+  const FINISH_LABEL_PATTERN = FINISH_SLUGS.map(([, label]) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const FINISH_PAREN_RE = new RegExp(`\\((${FINISH_LABEL_PATTERN})\\)$`, 'i');
+
   const CURATED_MARKET_HASH_NAMES = [
     'AK-47 | Redline (Field-Tested)',
     'M4A4 | Asiimov (Battle-Scarred)',
@@ -82,6 +95,19 @@
       name = name.replace(/\s*\([^)]+\)\s*$/, '').trim();
     }
 
+    let finishSlug = '';
+    const finishMatch = name.match(new RegExp(`\\s*\\((${FINISH_LABEL_PATTERN})\\)\\s*`, 'i'));
+    if (finishMatch) {
+      const finishLabel = FINISH_SLUGS.find(([, label]) => label.toLowerCase() === finishMatch[1].toLowerCase())?.[1];
+      finishSlug = finishLabel ? (FINISH_LABEL_TO_SLUG[finishLabel] || '') : '';
+      name = name
+        .replace(finishMatch[0], ' ')
+        .replace(/\s*\|\s*\|/g, ' | ')
+        .replace(/\s+/g, ' ')
+        .replace(/\s*\|\s*$/g, '')
+        .trim();
+    }
+
     const core = name
       .toLowerCase()
       .replace(/'/g, '')
@@ -90,7 +116,10 @@
       .replace(/^-+|-+$/g, '')
       .replace(/-+/g, '-');
 
-    return wearSlug ? `${prefix}${core}-${wearSlug}` : `${prefix}${core}`;
+    let slug = `${prefix}${core}`;
+    if (finishSlug) slug += `-${finishSlug}`;
+    if (wearSlug) slug += `-${wearSlug}`;
+    return slug;
   }
 
   function parseSlug(slug) {
@@ -115,7 +144,16 @@
       }
     }
 
-    return { prefix, wear, core: value };
+    let finish = null;
+    for (const [finishSlug, finishLabel] of FINISH_SLUGS) {
+      if (value.endsWith(`-${finishSlug}`)) {
+        finish = finishLabel;
+        value = value.slice(0, -(finishSlug.length + 1));
+        break;
+      }
+    }
+
+    return { prefix, wear, finish, core: value };
   }
 
   function splitCoreSlug(core) {
@@ -166,6 +204,7 @@
     if (parsed.prefix === 'souvenir') prefix = 'Souvenir ';
 
     let name = skinName ? `${weaponName} | ${skinName}` : weaponName;
+    if (parsed.finish) name += ` (${parsed.finish})`;
     if (parsed.wear) name += ` (${parsed.wear})`;
     return `${prefix}${name}`;
   }

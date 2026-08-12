@@ -22,8 +22,18 @@ async function resolveItemBySlug(slug) {
   const candidate = slugToMarketHashName(normalized);
   if (candidate) {
     const priced = await getPrice(candidate).catch(() => null);
-    if (priced && marketHashNameToSlug(priced.marketHashName) === normalized) {
+    // Require a real quote — unpriced placeholders still echo the candidate name and
+    // previously made broken sticker slugs (missing "(Holo)") look "resolved".
+    if (
+      priced
+      && Number.isFinite(priced.price)
+      && marketHashNameToSlug(priced.marketHashName) === normalized
+    ) {
       return priced.marketHashName;
+    }
+    // Even without a live quote, trust a round-trippable candidate (finish-aware slugs).
+    if (marketHashNameToSlug(candidate) === normalized) {
+      return candidate;
     }
   }
 

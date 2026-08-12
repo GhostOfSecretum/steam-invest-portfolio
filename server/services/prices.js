@@ -182,7 +182,11 @@ async function getPrice(marketHashName, options = {}) {
   const preferSteam = options.preferSteam !== false;
   const skipNativeRub = options.skipNativeRub === true;
   const cached = maxAgeMs > 0 ? await getCached(key, maxAgeMs) : null;
-  if (cached) return { ...cached, cached: true };
+  // Never short-circuit on a cached third-party quote when we prefer Steam — take.skin
+  // (and friends) can be 2× Steam ask and poison portfolio P&L for 30 minutes.
+  if (cached && (!preferSteam || isSteamSourcedPrice(cached))) {
+    return { ...cached, cached: true };
+  }
 
   const staleCached = await getCached(key, STEAM_PRICE_STALE_MAX_AGE_MS);
   const legacyCached = await getCached(`price:${marketHashName}`, STEAM_PRICE_STALE_MAX_AGE_MS);
@@ -252,7 +256,9 @@ async function getTakeSkinPrice(marketHashName) {
   const params = new URLSearchParams({ page: '0', limit: '10', search: marketHashName });
   const json = await fetchJson(`https://take.skin/api/public/v1/skins?${params}`);
   const matches = Array.isArray(json.data) ? json.data : [];
-  const exact = matches.find((item) => item.marketHashName === marketHashName) || matches[0];
+  // Exact name only — search ranking often returns a nearby sticker/skin at a very
+  // different ask (e.g. Rainbow Route Holo at 2× Steam when the query was mangled).
+  const exact = matches.find((item) => item.marketHashName === marketHashName);
   if (!exact || exact.price == null) return null;
 
   const parsedPrice = parseMoney(exact.price);
