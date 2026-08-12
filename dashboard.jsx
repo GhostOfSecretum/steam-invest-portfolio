@@ -1258,8 +1258,13 @@ function BasisCell({ basisPerUnit, basisOriginal, basisCurrency, hasBasis, qty, 
   const inputCurrency = getActiveCurrency();
 
   const editHint = editable ? (lang === 'ru' ? ' · клик, чтобы изменить' : ' · click to edit') : '';
-  const title = (hasBasis && qty > 1 && Number.isFinite(totalBasis)
-    ? (lang === 'ru' ? `Всего: ${formatUsd(totalBasis)} · за шт.` : `Total: ${formatUsd(totalBasis)} · per unit`)
+  const titleTotal = hasBasis && qty > 1
+    ? (basisCurrency === 'rub' && Number.isFinite(basisOriginal)
+      ? formatMoney(basisOriginal * qty, { currency: 'rub' })
+      : (Number.isFinite(totalBasis) ? formatUsd(totalBasis) : null))
+    : null;
+  const title = (titleTotal
+    ? (lang === 'ru' ? `Всего: ${titleTotal} · за шт.` : `Total: ${titleTotal} · per unit`)
     : (lang === 'ru' ? 'Цена покупки за шт.' : 'Buy price per item')) + editHint;
 
   // basisOriginal keeps the exact amount the user typed in its original currency.

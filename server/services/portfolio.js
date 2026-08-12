@@ -113,7 +113,9 @@ async function getPortfolio(steamId, options = {}) {
   const totalValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
   const totalBasis = items.reduce((sum, item) => sum + item.basis * item.qty, 0);
   // P&L must ignore cost of still-unpriced rows, otherwise Steam 429s fake a deep loss.
+  // Sum per-position P&L so RUB-entered bases aren't distorted by historical USD FX.
   const pricedBasis = pricedItems.reduce((sum, item) => sum + item.basis * item.qty, 0);
+  const pnl = pricedItems.reduce((sum, item) => sum + (Number(item.pnl) || 0), 0);
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const providerLabel = useDesktop ? 'desktop' : (inventory.inventoryProvider || 'steam-public');
@@ -141,8 +143,8 @@ async function getPortfolio(steamId, options = {}) {
     pricedCount,
     totalValue,
     totalBasis,
-    pnl: totalValue - pricedBasis,
-    pnlPct: pricedBasis > 0 ? ((totalValue - pricedBasis) / pricedBasis) * 100 : 0,
+    pnl,
+    pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
@@ -692,7 +694,9 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   const totalValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
   const totalBasis = items.reduce((sum, item) => sum + item.basis * item.qty, 0);
   // P&L must ignore cost of still-unpriced rows, otherwise Steam 429s fake a deep loss.
+  // Sum per-position P&L so RUB-entered bases aren't distorted by historical USD FX.
   const pricedBasis = pricedItems.reduce((sum, item) => sum + item.basis * item.qty, 0);
+  const pnl = pricedItems.reduce((sum, item) => sum + (Number(item.pnl) || 0), 0);
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const { history, leaders } = await buildPortfolioHistoryAndLeaders(pricedItems, totalValue);
@@ -725,8 +729,8 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     pricedCount,
     totalValue,
     totalBasis,
-    pnl: totalValue - pricedBasis,
-    pnlPct: pricedBasis > 0 ? ((totalValue - pricedBasis) / pricedBasis) * 100 : 0,
+    pnl,
+    pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
@@ -779,12 +783,57 @@ function buildEmptyManualPortfolio(bucket, steamId = null, ownerId = null) {
   };
 }
 
+function computePositionPnl({
+  value,
+  qty,
+  priceRub,
+  basisUsd,
+  basisOriginal,
+  basisCurrency,
+  hasBasis,
+}) {
+  if (!hasBasis || value == null) return { pnl: 0, pnlPct: null };
+
+  // RUB-entered basis must be compared to Steam's native RUB ask. Converting the
+  // purchase through a historical USD FX and back invents fake losses (e.g. 1860₽
+  // shown as ~23k and P&L flipping negative while the RUB quote is still above cost).
+  if (
+    basisCurrency === 'rub'
+    && Number.isFinite(priceRub)
+    && Number.isFinite(basisOriginal)
+    && basisOriginal >= 0
+  ) {
+    const pnlRub = (priceRub - basisOriginal) * qty;
+    const rate = value > 0 && priceRub > 0 ? priceRub / value : null;
+    const pnl = Number.isFinite(rate) && rate > 0
+      ? pnlRub / rate
+      : (value - basisUsd) * qty;
+    const pnlPct = basisOriginal > 0 ? ((priceRub - basisOriginal) / basisOriginal) * 100 : null;
+    return { pnl, pnlPct };
+  }
+
+  const pnl = (value - basisUsd) * qty;
+  const pnlPct = basisUsd > 0 ? ((value - basisUsd) / basisUsd) * 100 : null;
+  return { pnl, pnlPct };
+}
+
 function enrichItem(item, price, basis) {
   const qty = item.amount || 1;
   const value = price?.price ?? price?.medianPrice ?? null;
+  const priceRub = Number.isFinite(price?.priceRub) ? price.priceRub
+    : (Number.isFinite(price?.medianPriceRub) ? price.medianPriceRub : null);
   const basisEntry = resolveBasisEntry(basis[item.assetid] ?? basis[item.marketHashName]);
   const basisValue = basisEntry.usdPerUnit;
   const hasBasis = basisEntry.hasBasis;
+  const { pnl, pnlPct } = computePositionPnl({
+    value,
+    qty,
+    priceRub,
+    basisUsd: basisValue,
+    basisOriginal: basisEntry.originalAmount,
+    basisCurrency: basisEntry.currency,
+    hasBasis,
+  });
   const history = makeSpark(value || basisValue || 1, item.assetid);
 
   return {
@@ -795,11 +844,13 @@ function enrichItem(item, price, basis) {
     hasBasis,
     basisOriginal: basisEntry.originalAmount,
     basisCurrency: basisEntry.currency,
-    pnl: value != null && hasBasis ? (value - basisValue) * qty : 0,
-    pnlPct: value != null && hasBasis && basisValue > 0 ? ((value - basisValue) / basisValue) * 100 : null,
+    pnl,
+    pnlPct,
     volume24h: price?.volume24h || null,
     medianPrice: price?.medianPrice || null,
     priceProvider: price?.provider || 'unpriced',
+    priceRub,
+    medianPriceRub: price?.medianPriceRub ?? null,
     tier: rarityToTier(item.rarity),
     float: null,
     stickers: countStickerDescriptions(item.descriptions),
@@ -811,9 +862,20 @@ function enrichItem(item, price, basis) {
 function enrichManualItem(item, price, resolvedIconUrl = null) {
   const qty = safeQty(item.quantity ?? item.amount);
   const value = price?.price ?? price?.medianPrice ?? null;
+  const priceRub = Number.isFinite(price?.priceRub) ? price.priceRub
+    : (Number.isFinite(price?.medianPriceRub) ? price.medianPriceRub : null);
   const basisEntry = resolveBasisEntry(item.basis);
   const basisValue = basisEntry.usdPerUnit;
   const hasBasis = basisEntry.hasBasis;
+  const { pnl, pnlPct } = computePositionPnl({
+    value,
+    qty,
+    priceRub,
+    basisUsd: basisValue,
+    basisOriginal: basisEntry.originalAmount,
+    basisCurrency: basisEntry.currency,
+    hasBasis,
+  });
   const rarity = item.rarity || null;
   const tier = Number.isFinite(Number(item.tier)) ? Number(item.tier) : rarityToTier(rarity);
 
@@ -829,12 +891,12 @@ function enrichManualItem(item, price, resolvedIconUrl = null) {
     hasBasis,
     basisOriginal: basisEntry.originalAmount,
     basisCurrency: basisEntry.currency,
-    pnl: value != null && hasBasis ? (value - basisValue) * qty : 0,
-    pnlPct: value != null && hasBasis && basisValue > 0 ? ((value - basisValue) / basisValue) * 100 : null,
+    pnl,
+    pnlPct,
     volume24h: price?.volume24h || null,
     medianPrice: price?.medianPrice || null,
     priceProvider: price?.provider || 'unpriced',
-    priceRub: price?.priceRub,
+    priceRub,
     medianPriceRub: price?.medianPriceRub,
     tier,
     rarity,
@@ -953,6 +1015,8 @@ function aggregatePortfolioItems(items) {
     current.tradableQty += item.tradable ? item.qty : 0;
     current.marketableQty += item.marketable ? item.qty : 0;
     current.value = current.value ?? item.value;
+    current.priceRub = current.priceRub ?? item.priceRub;
+    current.medianPriceRub = current.medianPriceRub ?? item.medianPriceRub;
     current.volume24h = current.volume24h ?? item.volume24h;
     current.medianPrice = current.medianPrice ?? item.medianPrice;
     current.priceProvider = current.priceProvider === 'unpriced' ? item.priceProvider : current.priceProvider;
@@ -965,22 +1029,32 @@ function aggregatePortfolioItems(items) {
       const tradable = item.tradableQty === item.qty;
       const marketable = item.marketableQty === item.qty;
       const totalValue = item.value != null ? item.value * item.qty : null;
+      const basisCurrency = item.basisOriginalMixed ? 'usd' : item.basisCurrency;
       const basisOriginal = !item.basisOriginalMixed && hasBasis && item.qty > 0 && Number.isFinite(item.totalBasisOriginal)
         ? item.totalBasisOriginal / item.qty
         : null;
+      const { pnl, pnlPct } = computePositionPnl({
+        value: item.value,
+        qty: item.qty,
+        priceRub: item.priceRub,
+        basisUsd: basis,
+        basisOriginal,
+        basisCurrency,
+        hasBasis,
+      });
       return {
         ...item,
         basis,
         hasBasis,
         basisOriginal,
-        basisCurrency: item.basisOriginalMixed ? 'usd' : item.basisCurrency,
+        basisCurrency,
         totalBasis: hasBasis ? item.totalBasis : 0,
         totalValue,
         tradable,
         marketable,
         lock: tradable ? 0 : null,
-        pnl: totalValue != null && hasBasis ? totalValue - item.totalBasis : 0,
-        pnlPct: hasBasis && item.totalBasis > 0 && totalValue != null ? ((totalValue - item.totalBasis) / item.totalBasis) * 100 : null,
+        pnl,
+        pnlPct,
       };
     })
     .sort((a, b) => {

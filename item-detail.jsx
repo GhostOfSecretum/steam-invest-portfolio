@@ -199,6 +199,16 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
 
   const pnlColor = Number.isFinite(item.pnl) && item.pnl >= 0 ? 'var(--green)' : 'var(--red)';
   const totalBasis = item.totalBasis ?? (Number.isFinite(item.basis) ? item.basis * item.qty : null);
+  const totalBasisOriginal = Number.isFinite(item.totalBasisOriginal)
+    ? item.totalBasisOriginal
+    : (Number.isFinite(item.basisOriginal) ? item.basisOriginal * (item.qty || 1) : null);
+  // Prefer the exact amount the user typed (e.g. 1860₽ × 10) over USD basis re-converted
+  // through the live FX rate, which invents figures like ~23k₽.
+  const buyCostLabel = item.hasBasis && item.basisCurrency === 'rub' && Number.isFinite(totalBasisOriginal)
+    ? formatMoney(totalBasisOriginal, { currency: 'rub' })
+    : item.hasBasis && item.basisCurrency === 'usd' && Number.isFinite(totalBasisOriginal)
+      ? formatMoney(totalBasisOriginal, { currency: 'usd' })
+      : formatUsd(totalBasis);
   const tradableQty = Number.isFinite(item.tradableQty) ? item.tradableQty : (item.tradable ? item.qty : 0);
   // Portfolio holdings (Steam / manual / public profile) keep Buy·Qty·P&L·lock.
   // Market search, ticker, movers, hero, and /item/:slug pages do not.
@@ -510,7 +520,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
         {isPortfolioHolding && (
           <section className="item-detail-holdings">
             {[
-              { l: t.item.buy, v: formatItemMoney(totalBasis, item.currencyCode) },
+              { l: t.item.buy, v: buyCostLabel },
               { l: lang === 'ru' ? 'Количество' : 'Quantity', v: item.qty },
               { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, c: pnlColor },
               { l: t.item.tradelock, v: tradableQty === item.qty ? (lang === 'ru' ? 'открыт' : 'open') : (tradableQty > 0 ? (lang === 'ru' ? 'частично' : 'partial') : (lang === 'ru' ? 'ограничен' : 'restricted')) },
