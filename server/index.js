@@ -74,6 +74,7 @@ const {
   saveDesktopInventory,
   getDesktopInventory,
 } = require('./services/desktop');
+const { recordSteamLogin, getSteamLoginStats } = require('./services/users');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -208,6 +209,7 @@ app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => 
   await migrateOwnershipToSteam(priorOwnerId, auth.steamId);
   await migrateFavoriteProfilesToSteam(priorOwnerId, auth.steamId);
   await migrateSubscriptionToSteam(priorOwnerId, auth.steamId);
+  await recordSteamLogin(auth.steamId, { source: 'steam_openid' });
   res.redirect('/dashboard');
 }));
 
@@ -315,6 +317,17 @@ app.post('/api/subscription/plan', asyncRoute(async (req, res) => {
   const ownerId = resolveOwnerId(req, { create: true });
   const subscription = await setOwnerPlan(ownerId, req.body?.planId, { source: 'admin' });
   res.json({ subscription, billingReady: effectiveBillingReady(), beta: getBetaPublicConfig() });
+}));
+
+// Unique Steam login stats. Requires PLAN_ADMIN_SECRET — not public.
+app.get('/api/admin/users', asyncRoute(async (req, res) => {
+  const adminSecret = String(process.env.PLAN_ADMIN_SECRET || '').trim();
+  const provided = String(req.headers['x-plan-admin-secret'] || '').trim();
+  if (!adminSecret || provided !== adminSecret) {
+    res.status(403).json({ error: 'Plan admin secret required.', code: 'plan_admin_forbidden' });
+    return;
+  }
+  res.json(await getSteamLoginStats());
 }));
 
 app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async (req, res) => {
@@ -815,6 +828,7 @@ app.get('/api/desktop/login', pairingLimiter, asyncRoute(async (req, res) => {
   await migrateOwnershipToSteam(priorOwnerId, loginSession.steamId);
   await migrateFavoriteProfilesToSteam(priorOwnerId, loginSession.steamId);
   await migrateSubscriptionToSteam(priorOwnerId, loginSession.steamId);
+  await recordSteamLogin(loginSession.steamId, { source: 'desktop' });
   res.redirect('/dashboard');
 }));
 
