@@ -13,6 +13,9 @@ const STEAM_COMMUNITY = 'https://steamcommunity.com';
 const INVENTORY_URL_PATTERN = /\/inventory\/(\d{17})\/730\/2/;
 const GC_REFRESH_TOKEN_KEY = 'gcRefreshTokenProtected';
 const LEGACY_GC_REFRESH_TOKEN_KEY = 'gcRefreshToken';
+const DEVICE_TOKEN_KEY = 'deviceTokenProtected';
+const LEGACY_DEVICE_TOKEN_KEY = 'deviceToken';
+const PAIRING_CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/i;
 
 function normalizeServerUrl(raw) {
   let url = String(raw || '').trim().replace(/\/+$/, '');
@@ -57,6 +60,44 @@ function clearGcState() {
   store.delete(LEGACY_GC_REFRESH_TOKEN_KEY);
   store.delete('gcAccountName');
   store.delete('lastStorageSync');
+}
+
+function setDeviceToken(deviceToken) {
+  ensureSecretStorageAvailable();
+  store.set(DEVICE_TOKEN_KEY, safeStorage.encryptString(deviceToken).toString('base64'));
+  store.delete(LEGACY_DEVICE_TOKEN_KEY);
+}
+
+function getDeviceToken() {
+  const protectedToken = store.get(DEVICE_TOKEN_KEY);
+  if (protectedToken) {
+    ensureSecretStorageAvailable();
+    return safeStorage.decryptString(Buffer.from(protectedToken, 'base64'));
+  }
+
+  const legacyToken = store.get(LEGACY_DEVICE_TOKEN_KEY);
+  if (!legacyToken) return null;
+
+  if (!safeStorage.isEncryptionAvailable()) {
+    return legacyToken;
+  }
+
+  setDeviceToken(legacyToken);
+  return legacyToken;
+}
+
+function clearDeviceToken() {
+  store.delete(DEVICE_TOKEN_KEY);
+  store.delete(LEGACY_DEVICE_TOKEN_KEY);
+}
+
+function hasDeviceToken() {
+  try {
+    return Boolean(getDeviceToken());
+  } catch (err) {
+    console.warn('[desktop] protected device token unavailable:', err.message);
+    return false;
+  }
 }
 
 function hasGcRefreshToken() {
@@ -128,8 +169,7 @@ let setupWindow = null;
 let qrLoginWindow = null;
 
 function createWindow() {
-  const deviceToken = store.get('deviceToken');
-  const isPaired = Boolean(deviceToken);
+  const isPaired = hasDeviceToken();
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -153,7 +193,7 @@ function createWindow() {
 async function autoSyncIfNeeded() {
   try {
     const steamId = store.get('steamId');
-    const deviceToken = store.get('deviceToken');
+    const deviceToken = getDeviceToken();
     if (!steamId || !deviceToken) return;
 
     const lastSync = store.get('lastSync');
@@ -178,7 +218,7 @@ async function autoSyncIfNeeded() {
 
 async function openDesktopApp() {
   const serverUrl = store.get('serverUrl', SERVER_URL);
-  const deviceToken = store.get('deviceToken');
+  const deviceToken = getDeviceToken();
 
   if (!deviceToken) {
     if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.loadURL(serverUrl);
@@ -210,7 +250,7 @@ async function openDesktopApp() {
 }
 
 function resetDesktopState() {
-  store.delete('deviceToken');
+  clearDeviceToken();
   store.delete('steamId');
   store.delete('lastSync');
   clearGcState();
@@ -333,7 +373,7 @@ async function handleSteamLogin() {
 
 async function handleManualSync() {
   const steamId = store.get('steamId');
-  const deviceToken = store.get('deviceToken');
+  const deviceToken = getDeviceToken();
   const serverUrl = store.get('serverUrl', SERVER_URL);
   if (!steamId || !deviceToken) {
     console.log('[sync] not paired');
@@ -356,7 +396,7 @@ function showDesktopSettings() {
 // --- IPC handlers ---
 
 ipcMain.handle('get-state', async () => ({
-  deviceToken: store.get('deviceToken', null),
+  paired: hasDeviceToken(),
   steamId: store.get('steamId', null),
   serverUrl: store.get('serverUrl', SERVER_URL),
   lastSync: store.get('lastSync', null),
@@ -368,9 +408,9 @@ ipcMain.handle('get-state', async () => ({
 
 ipcMain.handle('pair-device', async (_event, { serverUrl, code }) => {
   const normalizedUrl = normalizeServerUrl(serverUrl);
-  const pairingCode = String(code || '').trim();
-  if (!/^\d{6}$/.test(pairingCode)) {
-    throw new Error('Введите 6-значный код с сайта');
+  const pairingCode = String(code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!PAIRING_CODE_RE.test(pairingCode)) {
+    throw new Error('Введите 8-символьный код с сайта (буквы и цифры)');
   }
 
   let response;
@@ -397,7 +437,7 @@ ipcMain.handle('pair-device', async (_event, { serverUrl, code }) => {
     throw new Error(data.error || `Pairing failed (HTTP ${response.status})`);
   }
 
-  store.set('deviceToken', data.deviceToken);
+  setDeviceToken(data.deviceToken);
   store.set('steamId', data.steamId);
   store.set('serverUrl', normalizedUrl);
 
@@ -414,7 +454,7 @@ ipcMain.handle('open-steam-login', async () => {
 
 ipcMain.handle('sync-inventory', async () => {
   const steamId = store.get('steamId');
-  const deviceToken = store.get('deviceToken');
+  const deviceToken = getDeviceToken();
   if (!steamId || !deviceToken) throw new Error('Not paired');
 
   const steamSession = session.fromPartition('persist:steam');

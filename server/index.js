@@ -136,8 +136,8 @@ app.use(session({
 }));
 
 const pairingLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 20,
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many pairing attempts. Try again later.', code: 'rate_limited' },
@@ -637,7 +637,7 @@ app.post('/api/desktop/pairing-code', authLimiter, requireAuth, asyncRoute(async
     return;
   }
   const code = await createPairingCode(req.session.steamId);
-  res.json({ code, expiresIn: 600 });
+  res.json({ code, expiresIn: 300 });
 }));
 
 app.get('/api/downloads/:artifact', asyncRoute(async (req, res) => {
@@ -925,19 +925,72 @@ app.get('/', (req, res) => {
 });
 
 // Desktop installers are plan-gated via /api/downloads/:artifact — block direct static access.
-app.use('/downloads', (req, res, next) => {
-  if (/\.(dmg|exe|zip|AppImage|blockmap)$/i.test(req.path)) {
-    res.status(403).json({
-      error: 'Desktop download requires Plus or Investor plan. Use /api/downloads/:artifact.',
-      code: 'plan_required',
-      requiredFeature: 'desktopDownload',
-    });
-    return;
-  }
-  next();
+app.use('/downloads', (req, res) => {
+  res.status(403).json({
+    error: 'Desktop download requires Plus or Investor plan. Use /api/downloads/:artifact.',
+    code: 'plan_required',
+    requiredFeature: 'desktopDownload',
+  });
 });
 
-app.use(express.static(rootDir, { dotfiles: 'deny' }));
+// Only serve browser assets. Never expose server/, desktop/, scripts/, audits, etc.
+const PUBLIC_ROOT_EXTENSIONS = new Set([
+  '.css', '.js', '.jsx', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ico',
+]);
+const PUBLIC_ASSET_EXTENSIONS = new Set([
+  ...PUBLIC_ROOT_EXTENSIONS,
+  '.json', '.woff', '.woff2', '.ttf', '.map',
+]);
+const PUBLIC_ROOT_FILES = new Set([
+  'robots.txt',
+  'yandex_4cff244ace473e62.html',
+]);
+
+function isAllowedPublicAsset(requestPath) {
+  let decoded;
+  try {
+    decoded = decodeURIComponent(String(requestPath || ''));
+  } catch {
+    return false;
+  }
+  const normalized = path.posix.normalize(`/${decoded}`).replace(/\\/g, '/');
+  if (!normalized.startsWith('/') || normalized.includes('\0') || normalized.includes('/.')) {
+    return false;
+  }
+
+  const basename = path.posix.basename(normalized);
+  const ext = path.posix.extname(basename).toLowerCase();
+
+  if (normalized.startsWith('/assets/')) {
+    return PUBLIC_ASSET_EXTENSIONS.has(ext);
+  }
+
+  // Root-level client files only (no nested backend paths).
+  if (normalized === `/${basename}`) {
+    if (PUBLIC_ROOT_FILES.has(basename)) return true;
+    return PUBLIC_ROOT_EXTENSIONS.has(ext);
+  }
+
+  return false;
+}
+
+const servePublicAssets = express.static(rootDir, {
+  dotfiles: 'deny',
+  index: false,
+  fallthrough: true,
+});
+
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    next();
+    return;
+  }
+  if (!isAllowedPublicAsset(req.path)) {
+    next();
+    return;
+  }
+  servePublicAssets(req, res, next);
+});
 
 app.use((error, req, res, next) => {
   const status = error.status || 500;
@@ -948,6 +1001,10 @@ app.use((error, req, res, next) => {
     error: error.message || 'Unexpected server error.',
     code,
   });
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found.', code: 'not_found' });
 });
 
 app.listen(port, () => {

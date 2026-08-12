@@ -69,9 +69,9 @@
     <div id="step-pair">
       <div class="eyebrow">// STEAM INVEST · DESKTOP</div>
       <h1>Connect to server</h1>
-      <p>На сайте skinshead.pro откройте дашборд, нажмите «Код для desktop» и введите 6-значный код ниже.</p>
+      <p>На сайте skinshead.pro откройте дашборд, нажмите «Код для desktop» и введите 8-символьный код ниже.</p>
       <input id="server-url" type="text" value="https://skinshead.pro" placeholder="Server URL" />
-      <input id="pairing-code" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="6-значный код" maxlength="6" autocomplete="off" />
+      <input id="pairing-code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код: ABCD2345" maxlength="8" />
       <button class="btn btn-primary" id="btn-pair">Connect</button>
       <div id="pair-status" class="status"></div>
     </div>
@@ -111,7 +111,7 @@
       if (state.serverUrl) {
         $('server-url').value = state.serverUrl;
       }
-      if (state.deviceToken && state.steamId) {
+      if (state.paired && state.steamId) {
         showConnected(state);
       } else {
         showPairing();

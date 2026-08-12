@@ -1,17 +1,38 @@
 const crypto = require('crypto');
 const { getCached, setCached } = require('./cache');
 
-const PAIRING_CODE_TTL_MS = 10 * 60 * 1000;
+const PAIRING_CODE_TTL_MS = 5 * 60 * 1000;
 const DEVICE_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const DESKTOP_INVENTORY_TTL_MS = 24 * 60 * 60 * 1000;
 const LOGIN_CODE_TTL_MS = 60 * 1000;
+// 32 chars × 8 = 40 bits. Avoids ambiguous 0/O/1/I/L.
+const PAIRING_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const PAIRING_CODE_LENGTH = 8;
+const PAIRING_CODE_RE = new RegExp(`^[${PAIRING_ALPHABET}]{${PAIRING_CODE_LENGTH}}$`);
 
 function generateCode() {
-  return crypto.randomInt(100000, 999999).toString();
+  const bytes = crypto.randomBytes(PAIRING_CODE_LENGTH);
+  let code = '';
+  for (let i = 0; i < PAIRING_CODE_LENGTH; i += 1) {
+    code += PAIRING_ALPHABET[bytes[i] % PAIRING_ALPHABET.length];
+  }
+  return code;
+}
+
+function normalizePairingCode(code) {
+  return String(code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
+}
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+
+function deviceTokenKey(token) {
+  return `desktop:token:${hashToken(token)}`;
 }
 
 async function createPairingCode(steamId) {
@@ -21,14 +42,16 @@ async function createPairingCode(steamId) {
   return code;
 }
 
-async function redeemPairingCode(code) {
+async function redeemPairingCode(rawCode) {
+  const code = normalizePairingCode(rawCode);
+  if (!PAIRING_CODE_RE.test(code)) return null;
+
   const key = `desktop:pairing:${code}`;
   const data = await getCached(key, PAIRING_CODE_TTL_MS);
   if (!data) return null;
 
   const deviceToken = generateToken();
-  const tokenKey = `desktop:token:${deviceToken}`;
-  await setCached(tokenKey, {
+  await setCached(deviceTokenKey(deviceToken), {
     steamId: data.steamId,
     pairedAt: Date.now(),
   });
@@ -38,9 +61,19 @@ async function redeemPairingCode(code) {
 }
 
 async function validateDeviceToken(deviceToken) {
-  if (!deviceToken) return null;
-  const key = `desktop:token:${deviceToken}`;
-  const data = await getCached(key, DEVICE_TOKEN_TTL_MS);
+  if (!deviceToken || !/^[a-f0-9]{64}$/i.test(deviceToken)) return null;
+
+  const hashedKey = deviceTokenKey(deviceToken);
+  let data = await getCached(hashedKey, DEVICE_TOKEN_TTL_MS);
+  if (data) return data;
+
+  // Legacy: tokens were stored under the raw value. Migrate once on use.
+  const legacyKey = `desktop:token:${deviceToken}`;
+  data = await getCached(legacyKey, DEVICE_TOKEN_TTL_MS);
+  if (!data) return null;
+
+  await setCached(hashedKey, data);
+  await setCached(legacyKey, null);
   return data;
 }
 
@@ -80,6 +113,8 @@ async function getDesktopInventory(steamId) {
 }
 
 module.exports = {
+  PAIRING_CODE_TTL_MS,
+  PAIRING_CODE_LENGTH,
   createPairingCode,
   redeemPairingCode,
   validateDeviceToken,
