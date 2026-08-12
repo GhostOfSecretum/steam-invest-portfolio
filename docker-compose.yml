@@ -4,34 +4,6 @@
 name: steam-invest
 
 services:
-  steam-invest-xray-config:
-    build: .
-    image: steam-invest-app:latest
-    container_name: steam-invest-xray-config
-    user: "0:0"
-    command: node scripts/generate-xray-config.js
-    env_file:
-      - .env
-    environment:
-      XRAY_CONFIG_PATH: /etc/xray/config.json
-    volumes:
-      - xray-config:/etc/xray
-
-  steam-invest-xray:
-    image: ghcr.io/xtls/xray-core:26.3.27
-    container_name: steam-invest-xray
-    restart: unless-stopped
-    command: run -c /etc/xray/config.json
-    volumes:
-      - xray-config:/etc/xray:ro
-    depends_on:
-      steam-invest-xray-config:
-        condition: service_completed_successfully
-    networks:
-      default:
-        aliases:
-          - xray
-
   steam-invest-app:
     build: .
     image: steam-invest-app:latest
@@ -42,16 +14,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      # Leave TELEGRAM_PROXY_HOST unset to connect directly. Set steam-invest-xray (or xray) when VPN is required.
-      TELEGRAM_PROXY_HOST: ${TELEGRAM_PROXY_HOST-}
-      TELEGRAM_PROXY_PORT: ${TELEGRAM_PROXY_PORT-}
     volumes:
       - ./.data:/app/.data
     ports:
       - "${APP_BIND:-127.0.0.1}:${PORT:-3000}:3000"
-    depends_on:
-      - steam-invest-xray
     networks:
       - default
       - proxy
@@ -60,6 +26,3 @@ networks:
   proxy:
     external: true
     name: ${PROXY_DOCKER_NETWORK:-mysterium-tech-landing_default}
-
-volumes:
-  xray-config:

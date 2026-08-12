@@ -14,7 +14,6 @@
     "telegram:topic-links": "node scripts/extract-telegram-topic-links.js",
     "top-investors:import": "node scripts/import-top-investors-from-file.js",
     "top-investors:baseline": "node scripts/baseline-top-investors-activity.js",
-    "xray:config": "node scripts/generate-xray-config.js",
     "start": "node server/index.js"
   },
   "dependencies": {
