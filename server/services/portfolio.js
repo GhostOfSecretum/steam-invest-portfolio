@@ -100,7 +100,11 @@ async function getPortfolio(steamId, options = {}) {
     : steamInventory;
 
   const marketHashNames = inventory.items.map((item) => item.marketHashName);
-  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER);
+  // Steam asks only — keep concurrency low to stay under Steam Market rate limits.
+  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
+    steamOnly: true,
+    concurrency: 4,
+  });
   const sourceItems = inventory.items.map((item) => enrichItem(item, prices[item.marketHashName], basis));
   const items = aggregatePortfolioItems(sourceItems);
 
@@ -670,7 +674,11 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   if (!portfolio) return buildEmptyManualPortfolio(bucket, steamId, ownerId);
 
   const marketHashNames = portfolio.items.map((item) => item.marketHashName);
-  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER);
+  // Steam asks only — keep concurrency low to stay under Steam Market rate limits.
+  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
+    steamOnly: true,
+    concurrency: 4,
+  });
   const iconUrls = await hydrateManualItemIcons(portfolio.items);
   const sourceItems = portfolio.items.map((item) => enrichManualItem(item, prices[item.marketHashName], iconUrls[item.marketHashName]));
   const items = aggregatePortfolioItems(sourceItems);

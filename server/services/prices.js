@@ -139,20 +139,43 @@ async function fetchText(url, { timeoutMs = 6000 } = {}) {
   return response.text();
 }
 
+function isSteamSourcedPrice(price) {
+  const provider = String(price?.provider || '');
+  return provider === 'steam-market'
+    || provider === 'csmarketapi'
+    || provider.startsWith('steam-market-');
+}
+
 async function getPrice(marketHashName, options = {}) {
-  const key = `price:${marketHashName}`;
+  // v2: Steam-first valuation. Busts older cache entries that stored third-party medians
+  // (Buff/Skinport/etc.) as if they were Steam asks.
+  const key = `price:v2:${marketHashName}`;
   const maxAgeMs = Number.isFinite(options.maxAgeMs) ? Math.max(0, options.maxAgeMs) : PRICE_MAX_AGE_MS;
   const cached = maxAgeMs > 0 ? await getCached(key, maxAgeMs) : null;
-  if (cached) return { ...cached, cached: true };
+  if (cached && (!options.steamOnly || isSteamSourcedPrice(cached))) {
+    return { ...cached, cached: true };
+  }
 
   const staleCached = await getCached(key, 30 * 24 * 60 * 60 * 1000);
-  const price = await getCSMarketAPIPrice(marketHashName).catch(() => null)
-    || await getCSFloatPrice(marketHashName).catch(() => null)
-    || await getTakeSkinPrice(marketHashName).catch(() => null)
-    || await getSteamMarketPrice(marketHashName).catch(() => null)
-    || await getSkinportPrice(marketHashName).catch(() => null)
-    || (staleCached ? { ...staleCached, provider: `${staleCached.provider || 'cached'}-stale` } : null)
-    || {
+  const steamOnly = options.steamOnly === true;
+
+  // Prefer real Steam Market asks. CSMarketAPI only helps when it exposes STEAMCOMMUNITY
+  // (useful if Steam rate-limits). Third-party venues stay last-resort (skipped when steamOnly).
+  let price = await getSteamMarketPrice(marketHashName, 'usd').catch(() => null)
+    || await getCSMarketAPIPrice(marketHashName).catch(() => null);
+
+  if (!price && !steamOnly) {
+    price = await getCSFloatPrice(marketHashName).catch(() => null)
+      || await getTakeSkinPrice(marketHashName).catch(() => null)
+      || await getSkinportPrice(marketHashName).catch(() => null);
+  }
+
+  if (!price && staleCached && (!steamOnly || isSteamSourcedPrice(staleCached))) {
+    price = { ...staleCached, provider: `${staleCached.provider || 'cached'}-stale` };
+  }
+
+  if (!price) {
+    price = {
       marketHashName,
       price: null,
       medianPrice: null,
@@ -160,6 +183,7 @@ async function getPrice(marketHashName, options = {}) {
       provider: 'unpriced',
       updatedAt: new Date().toISOString(),
     };
+  }
 
   // Also fetch the native RUB price from Steam so the UI can show exact Steam Market values
   // instead of converting USD with a stale FX rate. We do this lazily and cache the result.
@@ -1201,40 +1225,20 @@ function pickCSMarketListingPrice(listing) {
   return null;
 }
 
-function median(values) {
-  if (!values.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-// Aggregate a CSMarketAPI listings payload into a single representative price.
-// The Steam Community Market is not exposed on every CSMarketAPI plan, so we
-// prefer it when present and otherwise fall back to the median of the per-market
-// minimum prices (robust to stale outliers) instead of returning nothing.
+// Aggregate a CSMarketAPI listings payload into a Steam-comparable price.
+// Only STEAMCOMMUNITY rows are accepted — third-party mins (Buff/Skinport/…) are
+// typically 20–40% below Steam ask and must not drive portfolio valuation.
 function aggregateCSMarketListing(listings) {
   if (!Array.isArray(listings) || !listings.length) return null;
 
   const steam = listings.find((row) => row.market === 'STEAMCOMMUNITY');
   const steamPrice = pickCSMarketListingPrice(steam);
-  if (Number.isFinite(steamPrice)) {
-    return {
-      price: steamPrice,
-      medianPrice: Number.isFinite(steam.median_price) ? steam.median_price : steamPrice,
-      sellListings: Number(steam.listings) || 0,
-    };
-  }
-
-  const perMarketMins = listings
-    .map((row) => pickCSMarketListingPrice(row))
-    .filter((value) => Number.isFinite(value) && value > 0);
-  const representative = median(perMarketMins);
-  if (!Number.isFinite(representative)) return null;
+  if (!Number.isFinite(steamPrice)) return null;
 
   return {
-    price: representative,
-    medianPrice: representative,
-    sellListings: listings.reduce((sum, row) => sum + (Number(row.listings) || 0), 0),
+    price: steamPrice,
+    medianPrice: Number.isFinite(steam.median_price) ? steam.median_price : steamPrice,
+    sellListings: Number(steam.listings) || 0,
   };
 }
 
@@ -1242,7 +1246,8 @@ async function getCSMarketListingPrice(marketHashName, currency = 'usd') {
   if (!process.env.CSMARKET_API_KEY) return null;
 
   const normalizedCurrency = normalizeCurrency(currency).toUpperCase();
-  const cacheKey = `csmarketapi:listing:${marketHashName}:${normalizedCurrency}`;
+  // v2: only STEAMCOMMUNITY aggregates are stored (see aggregateCSMarketListing).
+  const cacheKey = `csmarketapi:listing:steam:${marketHashName}:${normalizedCurrency}`;
   const cached = await getCached(cacheKey, CSMARKET_LISTING_MAX_AGE_MS);
   if (cached) return cached;
 
