@@ -215,11 +215,12 @@ async function getPrice(marketHashName, options = {}) {
   // (and friends) can be 2× Steam ask and poison portfolio P&L for 30 minutes.
   if (cached && (!preferSteam || isSteamSourcedPrice(cached))) {
     stripImplausibleRubFields(cached);
-    if (Number.isFinite(cached.priceRub) || Number.isFinite(cached.medianPriceRub)
-      || skipNativeRub || (!Number.isFinite(cached.price) && !Number.isFinite(cached.medianPrice))) {
+    const hasRub = Number.isFinite(cached.priceRub) || Number.isFinite(cached.medianPriceRub);
+    const unpriced = !Number.isFinite(cached.price) && !Number.isFinite(cached.medianPrice);
+    if (hasRub || unpriced) {
       return { ...cached, cached: true };
     }
-    // Reuse the USD ask; only refill RUB (avoids another priceoverview round-trip).
+    // Reuse the USD ask; only refill RUB (FX when skipNativeRub, else Steam RUB ask).
     const refreshed = { ...cached };
     await attachRubPrice(refreshed, marketHashName, { skipNativeRub });
     await setCached(key, refreshed);
@@ -282,11 +283,17 @@ async function getPrices(marketHashNames, limit = 24, options = {}) {
   const concurrency = Math.max(1, Math.min(24, Number(options.concurrency) || 16));
   const batchDelayMs = Math.max(0, Number(options.batchDelayMs) || 0);
 
+  // Only pace live Steam fetches. Cached hits are cheap — delaying them made large
+  // portfolios sleep for tens of seconds even with a warm price cache.
   for (let i = 0; i < unique.length; i += concurrency) {
-    if (i > 0 && batchDelayMs > 0) await sleep(batchDelayMs);
     const batch = unique.slice(i, i + concurrency);
     const priced = await Promise.all(batch.map((name) => getPrice(name, options)));
     for (const item of priced) result[item.marketHashName] = item;
+
+    const hadLiveFetch = priced.some((item) => item && item.cached === false);
+    if (hadLiveFetch && i + concurrency < unique.length && batchDelayMs > 0) {
+      await sleep(batchDelayMs);
+    }
   }
 
   return result;

@@ -100,12 +100,13 @@ async function getPortfolio(steamId, options = {}) {
     : steamInventory;
 
   const marketHashNames = inventory.items.map((item) => item.marketHashName);
-  // Steam-first, with gentle pacing so priceoverview 429s don't blank half the book.
-  // Fetch native RUB asks too so list prices match the item page / Steam Market.
+  // Steam-first, but skip per-item native RUB round-trips (use FX rate instead) and
+  // only pace live fetches so warm-cache portfolios stay under proxy timeouts.
   const [prices, steamRubRate] = await Promise.all([
     getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
-      concurrency: 2,
-      batchDelayMs: 350,
+      concurrency: 6,
+      batchDelayMs: 120,
+      skipNativeRub: true,
     }),
     getSteamRubRate().catch(() => null),
   ]);
@@ -683,12 +684,13 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   if (!portfolio) return buildEmptyManualPortfolio(bucket, steamId, ownerId);
 
   const marketHashNames = portfolio.items.map((item) => item.marketHashName);
-  // Steam-first, with gentle pacing so priceoverview 429s don't blank half the book.
-  // Fetch native RUB asks too so list prices match the item page / Steam Market.
+  // Steam-first, but skip per-item native RUB round-trips (use FX rate instead) and
+  // only pace live fetches so warm-cache portfolios stay under proxy timeouts.
   const [prices, steamRubRate] = await Promise.all([
     getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
-      concurrency: 2,
-      batchDelayMs: 350,
+      concurrency: 6,
+      batchDelayMs: 120,
+      skipNativeRub: true,
     }),
     getSteamRubRate().catch(() => null),
   ]);
