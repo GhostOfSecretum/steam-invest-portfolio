@@ -36,7 +36,7 @@ const I18N = {
       armorySub: 'Rank Armory rewards by star ROI on live Steam prices. See expected value, profit, and days left on the pass.',
       stats: 'What you get',
       pricing: 'Plans & prices',
-      pricingSub: 'Free is 0 ₽. During beta, Plus unlocks free via Telegram; Investor includes a 7-day free trial.',
+      pricingSub: 'Free is 0 ₽. During beta, Plus unlocks free via Telegram; Investor also gets 7 free days via the channel.',
       faq: 'FAQ',
     },
     news: {
@@ -145,7 +145,7 @@ const I18N = {
       armorySub: 'Рейтинг наград Armory по ROI звёзд на live-ценах Steam. Смотри ожидаемую стоимость, профит и сколько дней осталось у пасса.',
       stats: 'Что внутри',
       pricing: 'Тарифы и цены',
-      pricingSub: 'Free — 0 ₽. Во время беты Plus бесплатно за Telegram; Investor — 7 дней бесплатно на пробу.',
+      pricingSub: 'Free — 0 ₽. Во время беты Plus бесплатно за Telegram; Investor — 7 дней бесплатно тоже за подписку на канал.',
       faq: 'Частые вопросы',
     },
     news: {
@@ -251,7 +251,7 @@ const I18N = {
       armorySub: '按 Steam 实时价格对 Armory 奖励做星级 ROI 排名。查看期望价值、利润和通行证剩余天数。',
       stats: '你将获得',
       pricing: '套餐与价格',
-      pricingSub: 'Free 为 0 ₽。内测期间可通过 Telegram 免费解锁 Plus；Investor 含 7 天免费试用。',
+      pricingSub: 'Free 为 0 ₽。内测期间可通过 Telegram 免费解锁 Plus；Investor 的 7 天试用同样需订阅频道。',
       faq: '常见问题',
     },
     news: {
@@ -360,7 +360,7 @@ const I18N = {
       armorySub: '依 Steam 即時價格對 Armory 獎勵做星級 ROI 排名。查看期望價值、利潤和通行證剩餘天數。',
       stats: '你將獲得',
       pricing: '方案與價格',
-      pricingSub: 'Free 為 0 ₽。內測期間可透過 Telegram 免費解鎖 Plus；Investor 含 7 天免費試用。',
+      pricingSub: 'Free 為 0 ₽。內測期間可透過 Telegram 免費解鎖 Plus；Investor 的 7 天試用同樣需訂閱頻道。',
       faq: '常見問題',
     },
     news: {

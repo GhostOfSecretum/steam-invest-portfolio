@@ -52,6 +52,8 @@ const {
   isBetaMode,
   getBetaPublicConfig,
   unlockBetaAccess,
+  unlockInvestorTrialViaTelegram,
+  isBetaUnlockConfigured,
 } = require('./services/betaAccess');
 const {
   listTopInvestors,
@@ -271,7 +273,21 @@ app.post('/api/beta/telegram-unlock', betaUnlockLimiter, requireAuth, asyncRoute
 app.post('/api/trials/investor', investorTrialLimiter, requireAuth, asyncRoute(async (req, res) => {
   const ownerId = resolveOwnerId(req);
   try {
-    const subscription = await startInvestorTrial(ownerId);
+    // Prefer Telegram channel unlock when the bot is configured.
+    let subscription;
+    if (isBetaUnlockConfigured()) {
+      const result = await unlockInvestorTrialViaTelegram(ownerId, req.body || {});
+      subscription = result.subscription;
+      res.json({
+        ok: true,
+        subscription: withBillingFlags(subscription),
+        billingReady: effectiveBillingReady(),
+        channelUrl: result.channelUrl,
+        telegram: result.telegram,
+      });
+      return;
+    }
+    subscription = await startInvestorTrial(ownerId);
     res.json({
       ok: true,
       subscription: withBillingFlags(subscription),
@@ -282,6 +298,7 @@ app.post('/api/trials/investor', investorTrialLimiter, requireAuth, asyncRoute(a
     res.status(status).json({
       error: error.message || 'Investor trial failed.',
       code: error.code || 'investor_trial_failed',
+      channelUrl: error.channelUrl || getBetaPublicConfig().channelUrl,
     });
   }
 }));

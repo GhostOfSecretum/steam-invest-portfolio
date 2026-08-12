@@ -1107,16 +1107,18 @@ function Pricing({ lang, auth, onInvestors }) {
   const [unlockBusy, setUnlockBusy] = useState(false);
   const [trialBusy, setTrialBusy] = useState(false);
   const telegramWidgetRef = useRef(null);
+  const trialTelegramWidgetRef = useRef(null);
   const channelUrl = beta?.channelUrl || 'https://t.me/cs2skinshead';
   const channelUsername = beta?.channelUsername || 'cs2skinshead';
   const botUsername = beta?.botUsername || null;
   const unlockReady = Boolean(beta?.unlockReady && botUsername);
+  const channelUnlockReady = Boolean((beta?.channelUnlockReady || unlockReady) && botUsername);
   const hasPlusAccess = currentPlanId === 'investor' || currentPlanId === 'plus';
   const trialEligible = Boolean(
     subscription?.investorTrialEligible
     || (!auth?.connected && !subscription?.investorTrialUsed),
   );
-  const onTrial = currentPlanId === 'investor' && subscription?.source === 'investor_trial';
+  const onTrial = currentPlanId === 'investor' && String(subscription?.source || '').startsWith('investor_trial');
   const copy = lang === 'ru'
     ? {
       ctaSoon: 'Оплата подключается',
@@ -1134,14 +1136,16 @@ function Pricing({ lang, auth, onInvestors }) {
       perYear: '₽ / год',
       perMonth: '₽ / мес',
       annualNote: (monthly, saved) => `≈ ${monthly} · экономия ${saved}`,
-      trialBadge: '7 дней бесплатно',
+      trialBadge: '7 дней за подписку',
       trialCta: 'Попробовать 7 дней бесплатно',
-      trialBusy: 'Активирую…',
+      trialBusy: 'Проверяю подписку…',
       trialLogin: 'Войти и попробовать бесплатно',
       trialActive: 'Пробный период активен',
       trialUsed: 'Пробный период уже использован',
+      trialJoin: 'Подписаться на канал',
+      trialUnlockHint: `Подпишитесь на @${channelUsername} и подтвердите через Telegram`,
       betaEyebrow: 'Beta · Plus за подписку',
-      betaText: `Во время беты Plus открывается бесплатно за подписку на канал @${channelUsername}. Тариф Investor — 7 дней бесплатно на пробу, далее оплачивается отдельно.`,
+      betaText: `Во время беты Plus открывается бесплатно за подписку на канал @${channelUsername}. Investor — тоже 7 дней бесплатно за подписку на канал, далее оплачивается отдельно.`,
       betaJoin: 'Открыть канал',
       betaLoginSteam: 'Войти через Steam',
       betaUnlockHint: 'Затем подтвердите вход через Telegram ниже',
@@ -1167,14 +1171,16 @@ function Pricing({ lang, auth, onInvestors }) {
       perYear: '₽ / year',
       perMonth: '₽ / mo',
       annualNote: (monthly, saved) => `≈ ${monthly} · save ${saved}`,
-      trialBadge: '7-day free trial',
+      trialBadge: '7 days via channel',
       trialCta: 'Try 7 days free',
-      trialBusy: 'Starting…',
+      trialBusy: 'Checking subscription…',
       trialLogin: 'Sign in to try free',
       trialActive: 'Free trial active',
       trialUsed: 'Free trial already used',
+      trialJoin: 'Join the channel',
+      trialUnlockHint: `Subscribe to @${channelUsername} and confirm with Telegram`,
       betaEyebrow: 'Beta · Plus via subscription',
-      betaText: `During beta, Plus unlocks free when you subscribe to @${channelUsername}. Investor includes a 7-day free trial, then is paid separately.`,
+      betaText: `During beta, Plus unlocks free when you subscribe to @${channelUsername}. Investor also unlocks 7 free days via the same channel, then is paid separately.`,
       betaJoin: 'Open channel',
       betaLoginSteam: 'Sign in with Steam',
       betaUnlockHint: 'Then confirm with Telegram login below',
@@ -1202,34 +1208,35 @@ function Pricing({ lang, auth, onInvestors }) {
     }
   };
 
-  const claimInvestorTrial = async () => {
+  const claimInvestorTrial = async (telegramUser) => {
     setCheckoutError(null);
     if (!auth?.connected) {
       auth.login();
       return;
     }
+    if (channelUnlockReady && !telegramUser) {
+      // Telegram widget handles confirmation when channel unlock is configured.
+      return;
+    }
     setTrialBusy(true);
     try {
-      await startInvestorTrial();
+      await startInvestorTrial(telegramUser || {});
       if (auth?.refresh) await auth.refresh();
       if (plansState.reload) await plansState.reload();
     } catch (error) {
       const fallback = lang === 'ru'
-        ? 'Не удалось активировать пробный период.'
-        : 'Could not start the free trial.';
+        ? 'Не удалось активировать пробный период. Подпишитесь на канал и попробуйте снова.'
+        : 'Could not start the free trial. Join the channel and try again.';
       setCheckoutError(error.message || fallback);
     } finally {
       setTrialBusy(false);
     }
   };
 
-  useEffect(() => {
-    if (!betaMode || !auth?.connected || !unlockReady || !telegramWidgetRef.current) return undefined;
-    const host = telegramWidgetRef.current;
+  const mountTelegramWidget = (host, callbackName, onAuth) => {
+    if (!host || !botUsername) return () => {};
     host.innerHTML = '';
-    window.onSkinsHeadTelegramAuth = (user) => {
-      finishBetaUnlock(user);
-    };
+    window[callbackName] = (user) => { onAuth(user); };
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
@@ -1237,13 +1244,25 @@ function Pricing({ lang, auth, onInvestors }) {
     script.setAttribute('data-size', 'medium');
     script.setAttribute('data-radius', '8');
     script.setAttribute('data-request-access', 'write');
-    script.setAttribute('data-onauth', 'onSkinsHeadTelegramAuth(user)');
+    script.setAttribute('data-onauth', `${callbackName}(user)`);
     host.appendChild(script);
     return () => {
-      if (window.onSkinsHeadTelegramAuth) delete window.onSkinsHeadTelegramAuth;
+      if (window[callbackName]) delete window[callbackName];
       host.innerHTML = '';
     };
+  };
+
+  useEffect(() => {
+    if (!betaMode || !auth?.connected || !unlockReady || !telegramWidgetRef.current) return undefined;
+    return mountTelegramWidget(telegramWidgetRef.current, 'onSkinsHeadTelegramAuth', finishBetaUnlock);
   }, [betaMode, auth?.connected, unlockReady, botUsername, lang]);
+
+  useEffect(() => {
+    if (!channelUnlockReady || !auth?.connected || !trialEligible || onTrial || !trialTelegramWidgetRef.current) {
+      return undefined;
+    }
+    return mountTelegramWidget(trialTelegramWidgetRef.current, 'onSkinsHeadTelegramTrialAuth', claimInvestorTrial);
+  }, [channelUnlockReady, auth?.connected, trialEligible, onTrial, botUsername, lang]);
 
   const startCheckout = async (planId) => {
     setCheckoutError(null);
@@ -1469,16 +1488,33 @@ function Pricing({ lang, auth, onInvestors }) {
                     {plan.id === 'investor' && (
                       <>
                         {onTrial ? null : trialEligible || !auth?.connected ? (
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            disabled={Boolean(trialBusy || checkoutBusy)}
-                            onClick={claimInvestorTrial}
-                          >
-                            {trialBusy
-                              ? copy.trialBusy
-                              : (!auth?.connected ? copy.trialLogin : copy.trialCta)}
-                          </button>
+                          channelUnlockReady && auth?.connected ? (
+                            <div style={{ display: 'grid', gap: 8 }}>
+                              <a
+                                className="btn btn-ghost btn-sm"
+                                href={channelUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {copy.trialJoin}
+                              </a>
+                              <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                                {trialBusy ? copy.trialBusy : copy.trialUnlockHint}
+                              </div>
+                              <div className="pricing-telegram-widget" ref={trialTelegramWidgetRef} />
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              disabled={Boolean(trialBusy || checkoutBusy)}
+                              onClick={() => claimInvestorTrial()}
+                            >
+                              {trialBusy
+                                ? copy.trialBusy
+                                : (!auth?.connected ? copy.trialLogin : copy.trialCta)}
+                            </button>
+                          )
                         ) : subscription?.investorTrialUsed && currentPlanId !== 'investor' ? (
                           <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
                             {copy.trialUsed}
@@ -1773,8 +1809,8 @@ const FAQ_ITEMS = {
     { q: 'Where do prices come from?', a: 'We combine Steam Community Market data with major third-party marketplaces. Each item page shows available offers and price history from the providers we could reach.' },
     { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. When the desktop client launches, tokens will stay locally and only item lists will be sent to the server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
-    { q: 'Is SkinsHead free?', a: 'Yes, Free is 0 ₽ with up to 1,000 items displayed, market explorer, Armory ROI, and news. Plus is 299 ₽ / 30 days (unlimited; desktop coming soon). Investor is 499 ₽ / 30 days (Plus + top investors) and includes a one-time 7-day free trial. See /pricing.' },
-    { q: 'What do paid plans include?', a: 'Plus (299 ₽ / 30 days): unlimited item display; desktop app download/sync is coming soon. Investor (499 ₽ / 30 days): everything in Plus plus tracking of curated top investor Steam accounts, with a one-time 7-day free trial. Support: Telegram @GhostOfSecretum.' },
+    { q: 'Is SkinsHead free?', a: 'Yes, Free is 0 ₽ with up to 1,000 items displayed, market explorer, Armory ROI, and news. Plus is 299 ₽ / 30 days (unlimited; desktop coming soon; free via channel during beta). Investor is 499 ₽ / 30 days (Plus + top investors) with a one-time 7-day trial via Telegram channel. See /pricing.' },
+    { q: 'What do paid plans include?', a: 'Plus (299 ₽ / 30 days): unlimited item display; desktop app download/sync is coming soon. Investor (499 ₽ / 30 days): everything in Plus plus tracking of curated top investor Steam accounts, with a one-time 7-day free trial via Telegram channel. Support: Telegram @GhostOfSecretum.' },
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
@@ -1784,8 +1820,8 @@ const FAQ_ITEMS = {
     { q: 'Откуда берутся цены?', a: 'Собираем данные Steam Community Market и крупных сторонних площадок. На карточке предмета видны доступные предложения и история цен из источников, до которых удалось достучаться.' },
     { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. Когда выйдет desktop, токены останутся локально, на сервер уйдёт только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
     { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
-    { q: 'SkinsHead бесплатный?', a: 'Да, Free — 0 ₽: до 1 000 предметов, маркет, Armory ROI и новости. Plus — 299 ₽ / 30 дней (безлимит; desktop скоро). Investor — 499 ₽ / 30 дней (Plus + топ-инвесторы) и один раз 7 дней бесплатно на пробу. Прайс: /pricing.' },
-    { q: 'Что дают платные тарифы?', a: 'Plus (299 ₽ / 30 дней): безлимит предметов; desktop-приложение — скоро. Investor (499 ₽ / 30 дней): всё из Plus плюс трекинг топ-аккаунтов инвесторов; можно один раз попробовать 7 дней бесплатно. Поддержка: Telegram @GhostOfSecretum.' },
+    { q: 'SkinsHead бесплатный?', a: 'Да, Free — 0 ₽: до 1 000 предметов, маркет, Armory ROI и новости. Plus — 299 ₽ / 30 дней (безлимит; desktop скоро; в бете — бесплатно за подписку на канал). Investor — 499 ₽ / 30 дней (Plus + топ-инвесторы) и один раз 7 дней бесплатно за подписку на Telegram-канал. Прайс: /pricing.' },
+    { q: 'Что дают платные тарифы?', a: 'Plus (299 ₽ / 30 дней): безлимит предметов; desktop-приложение — скоро. Investor (499 ₽ / 30 дней): всё из Plus плюс трекинг топ-аккаунтов инвесторов; 7 дней бесплатно один раз за подписку на Telegram-канал. Поддержка: Telegram @GhostOfSecretum.' },
     { q: 'Вы связаны с Valve?', a: 'Нет. SkinsHead — независимый проект и не аффилирован со Steam, Valve или Counter-Strike.' },
   ],
 };

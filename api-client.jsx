@@ -86,11 +86,11 @@ async function unlockBetaViaTelegram(payload) {
   });
 }
 
-async function startInvestorTrial() {
+async function startInvestorTrial(payload) {
   return apiFetch('/api/trials/investor', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: '{}',
+    body: JSON.stringify(payload || {}),
   });
 }
 
@@ -102,6 +102,7 @@ function useBetaConfig() {
     channelUsername: 'cs2skinshead',
     botUsername: null,
     unlockReady: false,
+    channelUnlockReady: false,
     error: null,
   });
 
@@ -116,6 +117,7 @@ function useBetaConfig() {
         channelUsername: data.channelUsername || 'cs2skinshead',
         botUsername: data.botUsername || null,
         unlockReady: Boolean(data.unlockReady),
+        channelUnlockReady: Boolean(data.channelUnlockReady),
         error: null,
       });
     } catch (error) {

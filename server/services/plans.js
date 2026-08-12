@@ -93,8 +93,8 @@ const PLANS = [
     periodDays: 30,
     price: { en: '499 ₽ / 30 days', ru: '499 ₽ / 30 дней' },
     priceNote: {
-      en: '≈ $5 · 7-day free trial · Plus + top investors',
-      ru: '7 дней бесплатно · всё из Plus + топ-инвесторы',
+      en: '≈ $5 · 7 days free via Telegram · Plus + top investors',
+      ru: '7 дней бесплатно за Telegram · всё из Plus + топ-инвесторы',
     },
     trialDays: 7,
     highlight: false,
@@ -106,14 +106,14 @@ const PLANS = [
     },
     bullets: {
       en: [
-        '7-day free trial to try Investor',
+        '7-day free trial via Telegram channel',
         'Everything in Plus',
         'Track top investor accounts',
         'Curated high-value Steam portfolios',
         'Early access to investor watchlists',
       ],
       ru: [
-        '7 дней бесплатно, чтобы попробовать',
+        '7 дней бесплатно за подписку на Telegram-канал',
         'Всё из Plus',
         'Трекинг топовых аккаунтов инвесторов',
         'Подборка ценных Steam-портфелей',

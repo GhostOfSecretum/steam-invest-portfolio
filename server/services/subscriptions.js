@@ -66,15 +66,16 @@ function isExpired(entry) {
 function hasUsedInvestorTrial(entry) {
   if (!entry || typeof entry !== 'object') return false;
   if (entry.investorTrialUsedAt) return true;
-  return String(entry.source || '') === INVESTOR_TRIAL_SOURCE;
+  const source = String(entry.source || '');
+  return source === INVESTOR_TRIAL_SOURCE || source === 'investor_trial_telegram';
 }
 
 function isInvestorTrialEligible(ownerId, entry, planId) {
   if (!ownerId || !String(ownerId).startsWith('steam:')) return false;
   if (hasFullAccess(ownerId)) return false;
   if (hasUsedInvestorTrial(entry)) return false;
-  // Trial is for trying Investor from Free only (not while Plus/Investor is active).
-  return planId === DEFAULT_PLAN_ID;
+  // Trial from Free or Plus; not while Investor is already active.
+  return planId === DEFAULT_PLAN_ID || planId === 'plus';
 }
 
 async function getOwnerPlanId(ownerId) {
@@ -165,7 +166,7 @@ async function setOwnerPlan(ownerId, planId, {
   return getOwnerSubscription(ownerId);
 }
 
-async function startInvestorTrial(ownerId) {
+async function startInvestorTrial(ownerId, { source = INVESTOR_TRIAL_SOURCE } = {}) {
   if (!ownerId || !String(ownerId).startsWith('steam:')) {
     const err = new Error('Sign in with Steam to start the Investor trial.');
     err.status = 401;
@@ -191,8 +192,8 @@ async function startInvestorTrial(ownerId) {
   const currentPlanId = (prev && !isExpired(prev))
     ? normalizePlanId(prev.planId)
     : DEFAULT_PLAN_ID;
-  if (currentPlanId !== DEFAULT_PLAN_ID) {
-    const err = new Error('Investor free trial is available only on the Free plan.');
+  if (currentPlanId !== DEFAULT_PLAN_ID && currentPlanId !== 'plus') {
+    const err = new Error('Investor free trial is available only on the Free or Plus plan.');
     err.status = 409;
     err.code = 'trial_not_eligible';
     throw err;
@@ -200,9 +201,10 @@ async function startInvestorTrial(ownerId) {
 
   const nowIso = new Date().toISOString();
   const expiresAt = new Date(Date.now() + INVESTOR_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const trialSource = String(source || INVESTOR_TRIAL_SOURCE).slice(0, 40);
   store.owners[ownerId] = {
     planId: INVESTOR_TRIAL_PLAN_ID,
-    source: INVESTOR_TRIAL_SOURCE,
+    source: trialSource,
     updatedAt: nowIso,
     expiresAt,
     paymentId: prev?.paymentId || null,

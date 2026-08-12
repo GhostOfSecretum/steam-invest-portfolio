@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { setOwnerPlan } = require('./subscriptions');
+const { setOwnerPlan, startInvestorTrial } = require('./subscriptions');
 
 const BETA_PLAN_ID = 'plus';
 const BETA_ACCESS_DAYS = 30;
@@ -50,12 +50,15 @@ function isBetaUnlockConfigured() {
 
 function getBetaPublicConfig() {
   const beta = isBetaMode();
+  const channelUnlockReady = isBetaUnlockConfigured();
   return {
     beta,
     channelUrl: getChannelUrl(),
     channelUsername: getChannelUsername(),
     botUsername: getBotUsername() || null,
-    unlockReady: beta && isBetaUnlockConfigured(),
+    channelUnlockReady,
+    // Plus free unlock during beta; Investor trial also uses Telegram when configured.
+    unlockReady: beta && channelUnlockReady,
   };
 }
 
@@ -205,12 +208,45 @@ async function unlockBetaAccess(ownerId, loginPayload) {
   };
 }
 
+async function unlockInvestorTrialViaTelegram(ownerId, loginPayload) {
+  if (!isBetaUnlockConfigured()) {
+    const err = new Error('Telegram channel unlock is not configured.');
+    err.status = 503;
+    err.code = 'beta_bot_not_configured';
+    throw err;
+  }
+
+  const login = verifyTelegramLogin(loginPayload);
+  const member = await isChannelMember(login.id);
+  if (!member) {
+    const err = new Error('Subscribe to the Telegram channel first, then try again.');
+    err.status = 403;
+    err.code = 'telegram_not_subscribed';
+    err.channelUrl = getChannelUrl();
+    throw err;
+  }
+
+  const subscription = await startInvestorTrial(ownerId, { source: 'investor_trial_telegram' });
+  return {
+    subscription,
+    telegram: {
+      id: login.id,
+      username: login.username,
+      firstName: login.firstName,
+    },
+    channelUrl: getChannelUrl(),
+    expiresAt: subscription.expiresAt || null,
+  };
+}
+
 module.exports = {
   isBetaMode,
   getBetaPublicConfig,
   verifyTelegramLogin,
   isChannelMember,
   unlockBetaAccess,
+  unlockInvestorTrialViaTelegram,
+  isBetaUnlockConfigured,
   BETA_PLAN_ID,
   BETA_ACCESS_DAYS,
 };
