@@ -81,6 +81,7 @@
   <script type="text/babel" src="favorite-profiles.jsx"></script>
   <script type="text/babel" src="top-investors.jsx"></script>
   <script type="text/babel" src="item-detail.jsx"></script>
+  <script type="text/babel" src="collection-detail.jsx"></script>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -127,6 +128,7 @@
       market: { ru: 'Маркет · SkinsHead', en: 'Market · SkinsHead' },
       armory: { ru: 'Armory Pass · SkinsHead', en: 'Armory Pass · SkinsHead' },
       glock3d: { ru: '3D Glock · SkinsHead', en: '3D Glock · SkinsHead' },
+      collection: { ru: 'Коллекция · SkinsHead', en: 'Collection · SkinsHead' },
     };
 
     function applyHomeSeo(lang) {
@@ -186,6 +188,10 @@
         const slug = decodeURIComponent(path.slice('/item/'.length)).toLowerCase();
         if (slug) return { screen: 'item', slug };
       }
+      if (path.startsWith('/collection/')) {
+        const slug = decodeURIComponent(path.slice('/collection/'.length)).toLowerCase();
+        if (slug) return { screen: 'collection', collectionSlug: slug };
+      }
       if (path === '/favorites') {
         return { screen: 'favorites' };
       }
@@ -207,7 +213,7 @@
       return { screen: 'home' };
     }
 
-    function pathForScreen(screen, item, profileUrl = '') {
+    function pathForScreen(screen, item, profileUrl = '', collectionSlug = '') {
       if (screen === 'favorites') return '/favorites';
       if (screen === 'investors') return '/investors';
       if (screen === 'market') return '/market';
@@ -220,14 +226,22 @@
       if (screen === 'item' && item?.marketHashName && window.ItemSlugs) {
         return `/item/${window.ItemSlugs.marketHashNameToSlug(item.marketHashName)}`;
       }
+      if (screen === 'collection' && collectionSlug) {
+        return `/collection/${encodeURIComponent(collectionSlug)}`;
+      }
       return '/';
     }
 
-    function syncAppUrl(screen, item, { replace = false, profileUrl = '' } = {}) {
-      const nextPath = pathForScreen(screen, item, profileUrl);
+    function syncAppUrl(screen, item, { replace = false, profileUrl = '', collectionSlug = '' } = {}) {
+      const nextPath = pathForScreen(screen, item, profileUrl, collectionSlug);
       const current = `${window.location.pathname}${window.location.search}`;
       if (current === nextPath) return;
-      const state = { screen, slug: screen === 'item' ? window.ItemSlugs?.marketHashNameToSlug(item?.marketHashName) : null, profileUrl: profileUrl || null };
+      const state = {
+        screen,
+        slug: screen === 'item' ? window.ItemSlugs?.marketHashNameToSlug(item?.marketHashName) : null,
+        collectionSlug: screen === 'collection' ? collectionSlug || null : null,
+        profileUrl: profileUrl || null,
+      };
       if (replace) history.replaceState(state, '', nextPath);
       else history.pushState(state, '', nextPath);
     }
@@ -244,8 +258,11 @@
       const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
       const [screen, setScreen] = useState(initialRoute.screen);
       const [itemSlug, setItemSlug] = useState(initialRoute.slug || null);
+      const [collectionSlug, setCollectionSlug] = useState(initialRoute.collectionSlug || null);
       const [activeItem, setActiveItem] = useState(null);
-      const [itemReturnScreen, setItemReturnScreen] = useState(initialRoute.screen === 'item' ? 'home' : initialRoute.screen);
+      const [itemReturnScreen, setItemReturnScreen] = useState(
+        initialRoute.screen === 'item' || initialRoute.screen === 'collection' ? 'home' : initialRoute.screen
+      );
       const [cursorStyle, setCursorStyle] = useState('default');
       const [publicProfileUrl, setPublicProfileUrl] = useState(initialRoute.profile || '');
       const [pendingSection, setPendingSection] = useState(null);
@@ -257,6 +274,7 @@
         && window.ItemSlugs.marketHashNameToSlug(activeItem.marketHashName) === itemSlug
       );
       const slugItem = useItemBySlug(itemSlug, screen === 'item' && itemSlug && !slugMatchesItem);
+      const collectionState = useCollectionBySlug(collectionSlug, screen === 'collection' && Boolean(collectionSlug));
 
       // Set lang/currency globally so child components without prop access can read it
       useEffect(() => { window.__lang = t.lang; }, [t.lang]);
@@ -273,9 +291,16 @@
       useEffect(() => {
         document.documentElement.lang = t.lang === 'ru' ? 'ru' : 'en';
         if (screen === 'item' && activeItem) applyItemSeo(activeItem, t.lang);
+        else if (screen === 'collection' && collectionState.data?.collection) {
+          const name = collectionState.data.collection.name;
+          applyAppRouteSeo(t.lang, 'collection');
+          document.title = t.lang === 'ru'
+            ? `${name} · коллекция CS2 · SkinsHead`
+            : `${name} · CS2 collection · SkinsHead`;
+        }
         else if (screen === 'home') applyHomeSeo(t.lang);
         else applyAppRouteSeo(t.lang, screen);
-      }, [t.lang, screen, activeItem]);
+      }, [t.lang, screen, activeItem, collectionState.data]);
       useEffect(() => {
         if (screen !== 'item' || !slugItem.data) return;
         setActiveItem(slugItem.data);
@@ -285,6 +310,7 @@
           const route = parseAppRoute();
           setScreen(route.screen);
           setItemSlug(route.slug || null);
+          setCollectionSlug(route.collectionSlug || null);
           setPublicProfileUrl(route.profile || '');
           if (route.screen !== 'item') setActiveItem(null);
         };
@@ -315,12 +341,26 @@
 
       const goItem = (item) => {
         const slug = window.ItemSlugs?.marketHashNameToSlug(item.marketHashName);
-        setItemReturnScreen(screen);
+        setItemReturnScreen(screen === 'collection' ? 'collection' : screen);
         setActiveItem(item);
         setItemSlug(slug || null);
         setScreen('item');
         syncAppUrl('item', item);
         if (item) applyItemSeo(item, t.lang);
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      };
+      const goCollection = (collectionName, slug) => {
+        const nextSlug = slug
+          || (collectionName && window.ItemSlugs?.collectionNameToSlug
+            ? window.ItemSlugs.collectionNameToSlug(collectionName)
+            : null);
+        if (!nextSlug) return;
+        setItemReturnScreen(screen === 'item' ? itemReturnScreen : screen);
+        setCollectionSlug(nextSlug);
+        setItemSlug(null);
+        setActiveItem(null);
+        setScreen('collection');
+        syncAppUrl('collection', null, { collectionSlug: nextSlug });
         window.scrollTo({ top: 0, behavior: 'instant' });
       };
       const onNav = (s) => {
@@ -329,6 +369,7 @@
           setPendingSection(s);
           setScreen('home');
           setItemSlug(null);
+          setCollectionSlug(null);
           setActiveItem(null);
           syncAppUrl('home');
           return;
@@ -340,6 +381,7 @@
           setItemSlug(null);
           setActiveItem(null);
         }
+        if (s !== 'collection') setCollectionSlug(null);
         syncAppUrl(s, null, { profileUrl: s === 'dashboard' ? publicProfileUrl : '' });
         if (s === 'home') applyHomeSeo(t.lang);
         else if (s !== 'item') applyAppRouteSeo(t.lang, s);
@@ -350,6 +392,7 @@
         setPublicProfileUrl(nextUrl);
         setScreen('dashboard');
         setItemSlug(null);
+        setCollectionSlug(null);
         setActiveItem(null);
         syncAppUrl('dashboard', null, { profileUrl: nextUrl });
         window.scrollTo({top: 0, behavior: 'instant'});
@@ -404,11 +447,11 @@
             </>
           )}
           {screen === 'dashboard' && (
-            <Dashboard lang={t.lang} onItemClick={goItem} auth={auth} publicProfileUrl={publicProfileUrl} onPublicProfile={openPublicProfile} onPricing={() => onNav('pricing')} />
+            <Dashboard lang={t.lang} onItemClick={goItem} onCollectionClick={goCollection} auth={auth} publicProfileUrl={publicProfileUrl} onPublicProfile={openPublicProfile} onPricing={() => onNav('pricing')} />
           )}
           {screen === 'market' && (
             <>
-              <MarketCatalog onItemClick={goItem} />
+              <MarketCatalog onItemClick={goItem} onCollectionClick={goCollection} />
               <Footer lang={t.lang} />
             </>
           )}
@@ -438,7 +481,29 @@
               item={activeItem}
               loading={!activeItem && slugItem.loading}
               error={!activeItem ? slugItem.error : null}
-              onBack={() => onNav(itemReturnScreen)}
+              onBack={() => {
+                if (itemReturnScreen === 'collection' && collectionSlug) {
+                  setScreen('collection');
+                  setActiveItem(null);
+                  setItemSlug(null);
+                  syncAppUrl('collection', null, { collectionSlug });
+                  return;
+                }
+                onNav(itemReturnScreen);
+              }}
+              onCollectionClick={goCollection}
+            />
+          )}
+          {screen === 'collection' && (
+            <CollectionDetail
+              lang={t.lang}
+              slug={collectionSlug}
+              loading={collectionState.loading}
+              error={collectionState.error}
+              data={collectionState.data}
+              onBack={() => onNav(itemReturnScreen === 'collection' ? 'market' : itemReturnScreen)}
+              onItemClick={goItem}
+              onLoadMore={collectionState.loadMore}
             />
           )}
 

@@ -1,4 +1,5 @@
 const { getCached, getCachedEntry, setCached, remember } = require('./cache');
+const { collectionNameToSlug } = require('../../item-slugs');
 
 const PRICE_MAX_AGE_MS = 30 * 60 * 1000;
 const STEAM_PRICE_STALE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -161,24 +162,42 @@ function isSteamSourcedPrice(price) {
     || provider.startsWith('steam-market-');
 }
 
+// Steam RUB/USD is typically ~70–120. Near-parity means a USD quote leaked into priceRub
+// (search/render ignores `currency` and returns "$6.98" even when currency=5).
+function isPlausibleRubAsk(priceRub, priceUsd) {
+  if (!Number.isFinite(priceRub) || priceRub <= 0) return false;
+  if (!Number.isFinite(priceUsd) || priceUsd <= 0) return true;
+  return priceRub >= priceUsd * 10;
+}
+
+function stripImplausibleRubFields(price) {
+  const usdAnchor = Number.isFinite(price?.price) ? price.price : price?.medianPrice;
+  if (!isPlausibleRubAsk(price?.priceRub, usdAnchor)) delete price.priceRub;
+  if (!isPlausibleRubAsk(price?.medianPriceRub, usdAnchor)) delete price.medianPriceRub;
+  return price;
+}
+
 async function attachRubPrice(price, marketHashName, { skipNativeRub = false } = {}) {
   if (!Number.isFinite(price?.price) && !Number.isFinite(price?.medianPrice)) return price;
+  stripImplausibleRubFields(price);
   if (Number.isFinite(price.priceRub) || Number.isFinite(price.medianPriceRub)) return price;
 
-  // Portfolio loads hit Steam once per item already; a second RUB priceoverview doubles
-  // rate-limit pressure. Prefer the global Steam FX probe unless a native RUB ask is needed.
+  const usdAnchor = Number.isFinite(price.price) ? price.price : price.medianPrice;
+
+  // Native RUB priceoverview only — never market search/render for RUB. Search ignores
+  // `currency` and returns USD sell prices, which makes RUB-basis P&L look like -99%.
   if (!skipNativeRub) {
-    const rub = await getSteamMarketPrice(marketHashName, 'rub').catch(() => null)
-      || await getSteamMarketSearchPrice(marketHashName, 'rub').catch(() => null);
-    if (Number.isFinite(rub?.price) || Number.isFinite(rub?.medianPrice)) {
-      price.priceRub = rub.price;
-      price.medianPriceRub = rub.medianPrice;
+    const rub = await getSteamMarketPrice(marketHashName, 'rub').catch(() => null);
+    if (isPlausibleRubAsk(rub?.price, usdAnchor) || isPlausibleRubAsk(rub?.medianPrice, usdAnchor)) {
+      price.priceRub = Number.isFinite(rub.price) ? rub.price : rub.medianPrice;
+      price.medianPriceRub = Number.isFinite(rub.medianPrice) ? rub.medianPrice : rub.price;
       return price;
     }
   }
 
-  const rate = await getSteamRubRate().catch(() => null);
-  if (Number.isFinite(rate) && rate > 0) {
+  const rate = await getSteamRubRate().catch(() => null)
+    || await getMarketUsdRubRate().catch(() => null);
+  if (Number.isFinite(rate) && rate >= 10) {
     if (Number.isFinite(price.price)) price.priceRub = Math.round(price.price * rate * 100) / 100;
     if (Number.isFinite(price.medianPrice)) price.medianPriceRub = Math.round(price.medianPrice * rate * 100) / 100;
   }
@@ -186,9 +205,8 @@ async function attachRubPrice(price, marketHashName, { skipNativeRub = false } =
 }
 
 async function getPrice(marketHashName, options = {}) {
-  // v2: Steam-first valuation. Busts older cache entries that stored third-party medians
-  // (Buff/Skinport/etc.) as if they were Steam asks.
-  const key = `price:v3:${marketHashName}`;
+  // v4: drop v3 entries that cached USD asks as priceRub via search/render currency=5.
+  const key = `price:v4:${marketHashName}`;
   const maxAgeMs = Number.isFinite(options.maxAgeMs) ? Math.max(0, options.maxAgeMs) : PRICE_MAX_AGE_MS;
   const preferSteam = options.preferSteam !== false;
   const skipNativeRub = options.skipNativeRub === true;
@@ -196,7 +214,16 @@ async function getPrice(marketHashName, options = {}) {
   // Never short-circuit on a cached third-party quote when we prefer Steam — take.skin
   // (and friends) can be 2× Steam ask and poison portfolio P&L for 30 minutes.
   if (cached && (!preferSteam || isSteamSourcedPrice(cached))) {
-    return { ...cached, cached: true };
+    stripImplausibleRubFields(cached);
+    if (Number.isFinite(cached.priceRub) || Number.isFinite(cached.medianPriceRub)
+      || skipNativeRub || (!Number.isFinite(cached.price) && !Number.isFinite(cached.medianPrice))) {
+      return { ...cached, cached: true };
+    }
+    // Reuse the USD ask; only refill RUB (avoids another priceoverview round-trip).
+    const refreshed = { ...cached };
+    await attachRubPrice(refreshed, marketHashName, { skipNativeRub });
+    await setCached(key, refreshed);
+    return { ...refreshed, cached: true };
   }
 
   const staleCached = await getCached(key, STEAM_PRICE_STALE_MAX_AGE_MS);
@@ -487,8 +514,11 @@ async function getSteamMarketPrice(marketHashName, currency = 'usd') {
 
 // Fallback when priceoverview is blocked/rate-limited: Steam market search still
 // returns sell_price (cents) for an exact hash_name match.
+// USD only — search/render ignores `currency` and keeps "$…" sell_price_text.
 async function getSteamMarketSearchPrice(marketHashName, currency = 'usd') {
-  const steamCurrency = resolveSteamCurrency(currency);
+  if (normalizeCurrency(currency) !== 'usd') return null;
+
+  const steamCurrency = resolveSteamCurrency('usd');
   const cacheKey = `steam:searchprice:${marketHashName}:${steamCurrency}`;
   const cached = await getCached(cacheKey, PRICE_MAX_AGE_MS);
   if (cached) return { ...cached };
@@ -498,13 +528,17 @@ async function getSteamMarketSearchPrice(marketHashName, currency = 'usd') {
     start: 0,
     count: 10,
     sort: 'name-asc',
-    currency,
+    currency: 'usd',
   });
   const rows = Array.isArray(json?.results) ? json.results : [];
   const exact = rows.find((row) => row?.hash_name === marketHashName);
   if (!exact) return null;
 
-  const price = parseMoney(exact.sell_price_text || exact.sale_price_text)
+  const priceText = exact.sell_price_text || exact.sale_price_text;
+  // Refuse non-USD text even if a caller bypasses the currency guard later.
+  if (priceText && !/\$|USD/i.test(String(priceText))) return null;
+
+  const price = parseMoney(priceText)
     || (Number.isFinite(Number(exact.sell_price)) ? Number(exact.sell_price) / 100 : null);
   if (!Number.isFinite(price) || price <= 0) return null;
 
@@ -514,7 +548,7 @@ async function getSteamMarketSearchPrice(marketHashName, currency = 'usd') {
     medianPrice: Math.round(price * 100) / 100,
     volume24h: Number(exact.sell_listings) || null,
     provider: 'steam-market',
-    currencyCode: STEAM_CURRENCY_LABELS[steamCurrency] || 'USD',
+    currencyCode: 'USD',
     updatedAt: new Date().toISOString(),
   };
   await setCached(cacheKey, result);
@@ -524,7 +558,7 @@ async function getSteamMarketSearchPrice(marketHashName, currency = 'usd') {
 async function getSteamRubRate() {
   const key = 'fx:rub-per-usd';
   const cached = await getCached(key, FX_RATE_MAX_AGE_MS);
-  if (Number.isFinite(cached)) return cached;
+  if (Number.isFinite(cached) && cached >= 10) return cached;
 
   const staleCached = await getCached(key, 30 * 24 * 60 * 60 * 1000);
 
@@ -536,12 +570,15 @@ async function getSteamRubRate() {
 
     if (Number.isFinite(rubPrice?.price) && Number.isFinite(usdPrice?.price) && usdPrice.price > 0) {
       const ratio = rubPrice.price / usdPrice.price;
-      await setCached(key, ratio);
-      return ratio;
+      // Reject near-parity — usually means the RUB probe actually returned USD.
+      if (ratio >= 10) {
+        await setCached(key, ratio);
+        return ratio;
+      }
     }
   } catch { /* fall through */ }
 
-  if (Number.isFinite(staleCached)) return staleCached;
+  if (Number.isFinite(staleCached) && staleCached >= 10) return staleCached;
 
   const basisRatio = await inferRubRateFromBasis();
   if (Number.isFinite(basisRatio)) {
@@ -1284,6 +1321,14 @@ function inferCategoryFromCSMarketItem(item) {
   return inferCategory(type || item.category, item.market_hash_name);
 }
 
+function pickRawCollectionName(raw = {}) {
+  return raw.collection
+    || raw.sticker_collection
+    || raw.graffiti_collection
+    || raw.patch_collection
+    || null;
+}
+
 function normalizeCSMarketCatalogItem(raw, seed = 0) {
   const marketHashName = raw.market_hash_name || raw.hash_name || 'Unknown item';
   const type = raw.type || raw.category || raw.weapon || 'Unknown';
@@ -1296,6 +1341,7 @@ function normalizeCSMarketCatalogItem(raw, seed = 0) {
     : rarityToTier(rarity);
   const commodity = wear === 'N/A'
     || ['containers', 'capsules', 'stickers', 'graffiti'].includes(category);
+  const collection = pickRawCollectionName(raw);
 
   return {
     assetid: `catalog-${raw.classid || raw.nameid || marketHashName}`,
@@ -1313,6 +1359,8 @@ function normalizeCSMarketCatalogItem(raw, seed = 0) {
     category,
     special,
     type,
+    collection,
+    collectionSlug: collection ? collectionNameToSlug(collection) : null,
     sellListings: 0,
     commodity,
     marketable: true,
@@ -1776,6 +1824,7 @@ function matchesCatalogFilters(item, filters) {
     item.type,
     item.category,
     item.rarity,
+    item.collection,
   ].join(' ').toLowerCase();
 
   if (query && !haystack.includes(query)) return false;
@@ -2134,4 +2183,7 @@ module.exports = {
   getItemVariants,
   getMultiWearHistory,
   rarityToTier,
+  getCSMarketAPIItems,
+  normalizeCSMarketCatalogItem,
+  hydrateCSMarketCatalogPrices,
 };

@@ -9,6 +9,7 @@ const {
   SLUG_INDEX,
 } = require('../../item-slugs');
 const { getPrice, getSteamMarketIcon, getMarketCatalog } = require('./prices');
+const { getCollectionForMarketHashName } = require('./collections');
 
 const SITE_URL = String(process.env.APP_BASE_URL || 'https://skinshead.pro').replace(/\/+$/, '');
 
@@ -64,6 +65,7 @@ async function getItemPageData(slug) {
   const wear = wearLabel
     ? wearLabel.split(/[- ]/).map((part) => part[0]).join('').toUpperCase()
     : null;
+  const collectionMeta = await getCollectionForMarketHashName(marketHashName).catch(() => null);
   const item = {
     assetid: `slug-${marketHashNameToSlug(marketHashName)}`,
     marketHashName,
@@ -77,6 +79,8 @@ async function getItemPageData(slug) {
     wear,
     rarity: priceData?.rarity || null,
     tier: priceData?.tier || null,
+    collection: collectionMeta?.name || null,
+    collectionSlug: collectionMeta?.slug || null,
     priceProvider: priceData?.provider || null,
     marketable: true,
     qty: 1,

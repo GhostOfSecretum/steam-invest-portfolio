@@ -31,7 +31,7 @@ function buildVariantHashName(base, wearLabel, { stattrak = false, souvenir = fa
    ITEM DETAIL — API backed
    ─────────────────────────────────────────────────── */
 
-function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
+function ItemDetail({ lang, item, loading = false, error = null, onBack, onCollectionClick }) {
   const t = useT(lang);
   const PERIOD_OPTIONS = [
     { key: '1d',  days: 1,   label: lang === 'ru' ? 'День' : '1D' },
@@ -268,6 +268,12 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
               <span className="chip chip-accent">{lang === 'ru' ? 'УРОВЕНЬ' : 'TIER'} {item.tier || '—'} · {item.rarity || (lang === 'ru' ? 'НЕИЗВЕСТНО' : 'UNKNOWN')}</span>
               <span className="chip">{displayWear}</span>
               <span className="chip">{item.marketable === false ? (lang === 'ru' ? 'не продаётся' : 'not marketable') : (lang === 'ru' ? 'продаётся' : 'marketable')}</span>
+              <CollectionChip
+                collection={item.collection}
+                collectionSlug={item.collectionSlug}
+                lang={lang}
+                onCollectionClick={onCollectionClick}
+              />
             </div>
             <h1 className="display item-detail-title">{item.name}</h1>
             <p className="item-detail-subtitle">

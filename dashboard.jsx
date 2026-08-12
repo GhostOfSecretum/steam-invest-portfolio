@@ -320,7 +320,7 @@ function writeSelectedPortfolioId(id) {
   }
 }
 
-function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicProfile, onPricing }) {
+function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUrl = '', onPublicProfile, onPricing }) {
   const t = useT(lang);
   // Keep the last portfolio across item-detail remounts (Dashboard unmounts on /item).
   const [selectedPortfolioId, setSelectedPortfolioIdState] = useState(() => readSelectedPortfolioId());
@@ -705,6 +705,7 @@ function Dashboard({ lang, onItemClick, auth, publicProfileUrl = '', onPublicPro
                 <InventoryTable
                   items={filteredItems}
                   onItemClick={onItemClick}
+                  onCollectionClick={onCollectionClick}
                   lang={lang}
                   portfolioId={activePortfolioId}
                   portfolioType={data.portfolioType}
@@ -1296,7 +1297,7 @@ function BasisCell({ basisPerUnit, basisOriginal, basisCurrency, hasBasis, qty, 
   );
 }
 
-function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, onBasisSaved, onItemDeleted }) {
+function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolioId, portfolioType, onBasisSaved, onItemDeleted }) {
   const [editingItemId, setEditingItemId] = useState(null);
   const [editDraft, setEditDraft] = useState({ quantity: '', basisPerUnit: '' });
   const [savingItemId, setSavingItemId] = useState(null);
@@ -1494,6 +1495,16 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
               : <div style={{ width: 50, height: 32, borderRadius: 6, background: `linear-gradient(135deg, var(--rar-${h.tier}), #0a0c11)`, opacity: 0.8, border: '1px solid var(--line)' }}></div>}
             <div className="inv-item-cell">
               <div className="inv-item-name">{h.name}</div>
+              {h.collection && (
+                <div style={{ marginTop: 4 }}>
+                  <CollectionChip
+                    collection={h.collection}
+                    collectionSlug={h.collectionSlug}
+                    lang={lang}
+                    onCollectionClick={onCollectionClick}
+                  />
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center' }}>
                 {h.marketableQty > 0 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--green)' }}>{lang === 'ru' ? 'можно продать' : 'marketable'}</span>}
                 {h.assetIds?.length > 1 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>{lang === 'ru' ? `${h.assetIds.length} объединено` : `${h.assetIds.length} stacks merged`}</span>}

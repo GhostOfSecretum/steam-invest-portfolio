@@ -63,6 +63,7 @@ const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
 const { getItemPageData, renderItemHtml, renderAppShellHtml, SITE_URL, buildSitemapXml } = require('./services/items');
+const { getCollectionPageData } = require('./services/collections');
 const {
   createPairingCode,
   redeemPairingCode,
@@ -817,6 +818,18 @@ app.get('/api/items/by-slug/:slug', asyncRoute(async (req, res) => {
   res.json(data);
 }));
 
+app.get('/api/collections/:slug', asyncRoute(async (req, res) => {
+  const data = await getCollectionPageData(req.params.slug, {
+    page: req.query.page,
+    pageSize: req.query.pageSize,
+  });
+  if (!data) {
+    res.status(404).json({ error: 'Collection not found.', code: 'collection_not_found' });
+    return;
+  }
+  res.json(data);
+}));
+
 app.get('/item/:slug', asyncRoute(async (req, res) => {
   const data = await getItemPageData(req.params.slug);
   if (!data) {
@@ -825,6 +838,10 @@ app.get('/item/:slug', asyncRoute(async (req, res) => {
   }
   const html = await renderItemHtml(path.join(rootDir, appFile), data.seo);
   res.type('html').send(html);
+}));
+
+app.get('/collection/:slug', asyncRoute(async (req, res) => {
+  await sendAppShell(res);
 }));
 
 async function sendAppShell(res) {

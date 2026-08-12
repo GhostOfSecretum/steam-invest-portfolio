@@ -246,6 +246,18 @@
     };
   }
 
+  function collectionNameToSlug(name) {
+    return String(name || '')
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase()
+      .replace(/[''`´]/g, '')
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
   return {
     WEAR_SLUGS,
     CURATED_MARKET_HASH_NAMES,
@@ -255,6 +267,7 @@
     getCuratedMarketHashNames,
     getCuratedSlugs,
     buildItemSeoMeta,
+    collectionNameToSlug,
     SLUG_INDEX,
   };
 });

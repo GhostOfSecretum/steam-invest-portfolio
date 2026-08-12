@@ -1,4 +1,5 @@
 const { remember } = require('./cache');
+const { collectionNameToSlug } = require('../../item-slugs');
 
 const STEAM_APP_ID = 730;
 const STEAM_CONTEXT_ID = 2;
@@ -199,6 +200,7 @@ function normalizeInventoryItem(asset, description = {}) {
   const wear = getTag(tags, 'Exterior') || getWearFromName(marketHashName);
   const category = getTag(tags, 'Weapon') || getTag(tags, 'Type') || 'Other';
   const rarity = getTag(tags, 'Rarity') || 'Unknown';
+  const collection = getTag(tags, 'ItemSet') || null;
 
   return {
     assetid: asset.assetid,
@@ -211,6 +213,8 @@ function normalizeInventoryItem(asset, description = {}) {
     category,
     rarity,
     wear,
+    collection,
+    collectionSlug: collection ? collectionNameToSlug(collection) : null,
     tradable: description.tradable === 1,
     marketable: description.marketable === 1,
     iconUrl: description.icon_url ? `https://community.cloudflare.steamstatic.com/economy/image/${description.icon_url}` : null,

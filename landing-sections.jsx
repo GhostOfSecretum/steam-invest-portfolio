@@ -324,7 +324,7 @@ function TopMovers({ onItemClick, auth }) {
   );
 }
 
-function MarketCatalog({ onItemClick }) {
+function MarketCatalog({ onItemClick, onCollectionClick }) {
   const lang = window.__lang || 'en';
   const t = useT(lang);
   const marketT = t.market;
@@ -584,6 +584,16 @@ function MarketCatalog({ onItemClick }) {
 
                     <div className="market-card-body">
                       <div className="market-card-name">{item.name}</div>
+                      {item.collection && (
+                        <div className="market-card-collection">
+                          <CollectionChip
+                            collection={item.collection}
+                            collectionSlug={item.collectionSlug}
+                            lang={lang}
+                            onCollectionClick={onCollectionClick}
+                          />
+                        </div>
+                      )}
                       <div className="market-card-sub">
                         {[item.wear !== 'N/A' ? item.wear : null, item.special !== 'normal' ? formatTagLabel(item.special, specialLabelMap) : null, item.type].filter(Boolean).join(' · ')}
                       </div>

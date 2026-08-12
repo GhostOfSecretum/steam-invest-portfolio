@@ -571,6 +571,65 @@ function useItemBySlug(slug, enabled = true) {
   return state;
 }
 
+function useCollectionBySlug(slug, enabled = true) {
+  const [state, setState] = apiUseState({
+    loading: false,
+    data: null,
+    error: null,
+    page: 1,
+  });
+
+  const loadPage = apiUseCallback(async (page, { append = false } = {}) => {
+    if (!slug) return;
+    setState((current) => ({
+      ...current,
+      loading: true,
+      error: null,
+      data: append ? current.data : null,
+    }));
+    try {
+      const params = new URLSearchParams({ page: String(page), pageSize: '24' });
+      const payload = await apiFetch(`/api/collections/${encodeURIComponent(slug)}?${params}`);
+      setState((current) => {
+        const prevItems = append && current.data?.items ? current.data.items : [];
+        const nextItems = [...prevItems, ...(payload.items || [])];
+        return {
+          loading: false,
+          error: null,
+          page,
+          data: {
+            ...payload,
+            items: nextItems,
+          },
+        };
+      });
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        loading: false,
+        error,
+        data: append ? current.data : null,
+      }));
+    }
+  }, [slug]);
+
+  apiUseEffect(() => {
+    if (!enabled || !slug) {
+      setState({ loading: false, data: null, error: null, page: 1 });
+      return undefined;
+    }
+    loadPage(1, { append: false });
+    return undefined;
+  }, [slug, enabled, loadPage]);
+
+  const loadMore = apiUseCallback(() => {
+    if (!state.data?.hasMore || state.loading) return;
+    loadPage(state.page + 1, { append: true });
+  }, [loadPage, state.data?.hasMore, state.loading, state.page]);
+
+  return { ...state, loadMore, reload: () => loadPage(1, { append: false }) };
+}
+
 function useFavoriteProfiles() {
   const [state, setState] = apiUseState({ loading: true, profiles: [], error: null });
 
@@ -627,6 +686,7 @@ Object.assign(window, {
   useItemVariants,
   useMultiWearHistory,
   useItemBySlug,
+  useCollectionBySlug,
   useArmoryRoi,
   useCsNews,
   formatMoney,

@@ -805,11 +805,14 @@ function computePositionPnl({
   // RUB-entered basis must be compared to Steam's native RUB ask. Converting the
   // purchase through a historical USD FX and back invents fake losses (e.g. 1860₽
   // shown as ~23k and P&L flipping negative while the RUB quote is still above cost).
+  // Guard: priceRub must look like RUB vs the USD ask (not a leaked "$1.00" as 1₽).
+  const rubAskLooksReal = !Number.isFinite(value) || value <= 0 || priceRub >= value * 10;
   if (
     basisCurrency === 'rub'
     && Number.isFinite(priceRub)
     && Number.isFinite(basisOriginal)
     && basisOriginal >= 0
+    && rubAskLooksReal
   ) {
     const pnlRub = (priceRub - basisOriginal) * qty;
     const rate = value > 0 && priceRub > 0 ? priceRub / value : null;
