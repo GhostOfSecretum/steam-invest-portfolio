@@ -145,7 +145,7 @@ function renderPrivacyPage() {
 
     <h2>3. Цели обработки</h2>
     <ul>
-      <li>предоставление функций портфеля, тарифов и desktop-синхронизации;</li>
+      <li>предоставление функций портфеля и тарифов; desktop-синхронизация появится позже;</li>
       <li>идентификация Пользователя и защита сессии;</li>
       <li>подтверждение оплаты и активация платного доступа;</li>
       <li>ответы на обращения в поддержку;</li>
@@ -201,7 +201,8 @@ function renderTermsPage() {
     <div class="meta">Сервис SkinsHead · ${SITE_URL}<br>Дата актуальной редакции: ${DOCS_UPDATED_AT}</div>
     <div class="card">
       Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует порядок использования онлайн-сервиса SkinsHead.
-      Используя Сервис, включая просмотр сайта, авторизацию через Steam, оплату тарифов или скачивание desktop-клиента, Пользователь принимает условия Соглашения в полном объёме.
+      Используя Сервис, включая просмотр сайта, авторизацию через Steam или оплату тарифов, Пользователь принимает условия Соглашения в полном объёме.
+      Desktop-клиент находится в разработке и появится позже.
     </div>
 
     <h2>1. Общие положения</h2>
@@ -214,7 +215,7 @@ function renderTermsPage() {
     <ul>
       <li>учёт и отображение портфеля скинов CS2 / инвентаря Steam;</li>
       <li>аналитику цен, P&amp;L, распределение и связанные инструменты сайта;</li>
-      <li>доступ к desktop-клиенту и синхронизации полного инвентаря (по тарифу);</li>
+      <li>доступ к desktop-клиенту и синхронизации полного инвентаря (по тарифу; приложение скоро);</li>
       <li>доступ к функциям трекинга топовых аккаунтов инвесторов (по тарифу).</li>
     </ul>
     <p>2.2. Сервис не является финансовым советником, брокером, гарантом доходности или аффилированным лицом Valve / Steam / Counter-Strike.</p>
@@ -285,7 +286,7 @@ function renderSupportPage() {
     <ul>
       <li>оплата тарифа и активация доступа;</li>
       <li>возврат / неуспешный платёж;</li>
-      <li>работа портфеля, лимитов и desktop-приложения;</li>
+      <li>работа портфеля, лимитов и desktop-приложения (скоро);</li>
       <li>удаление данных или вопросы по конфиденциальности.</li>
     </ul>
 
@@ -337,10 +338,11 @@ function renderPricingPage() {
     ? `<div class="card">
       <strong>Beta:</strong> тариф Plus можно получить бесплатно за подписку на канал
       <a href="${escapeHtml(beta.channelUrl)}" target="_blank" rel="noopener noreferrer">@${escapeHtml(beta.channelUsername)}</a>
-      после входа через Steam на сайте. Тариф Investor оплачивается по цене ниже.
+      после входа через Steam на сайте. Тариф Investor можно один раз попробовать бесплатно 7 дней, далее оплачивается по цене ниже.
     </div>`
     : `<div class="card">
       Ниже указаны актуальные тарифы Сервиса: сколько стоит каждый план и какие функции он открывает.
+      Тариф Investor можно один раз попробовать бесплатно на 7 дней после входа через Steam.
       Оплата подключаемых платных тарифов производится через платёжного провайдера. После оплаты доступ активируется для аккаунта Steam, с которого выполнен вход на сайте.
     </div>`;
 
@@ -358,8 +360,9 @@ function renderPricingPage() {
         const amount = Number.isFinite(plan.amountRub) ? `${plan.amountRub} ₽` : (plan.price?.ru || '');
         const annualAmount = Number.isFinite(plan.annualAmountRub) ? ` или ${plan.annualAmountRub} ₽ / год` : '';
         const period = plan.periodDays ? ` / ${plan.periodDays} дней` : '';
+        const trial = plan.id === 'investor' ? ' Включает однократный бесплатный пробный период 7 дней.' : '';
         const summary = (plan.bullets?.ru || []).slice(0, 3).join('; ');
-        return `<li><strong>${escapeHtml(name)} (${escapeHtml(amount)}${escapeHtml(period)}${escapeHtml(annualAmount)})</strong> — ${escapeHtml(summary)}.</li>`;
+        return `<li><strong>${escapeHtml(name)} (${escapeHtml(amount)}${escapeHtml(period)}${escapeHtml(annualAmount)})</strong> — ${escapeHtml(summary)}.${escapeHtml(trial)}</li>`;
       }).join('')}
     </ul>
 
@@ -367,6 +370,7 @@ function renderPricingPage() {
     <ul>
       <li>цены указаны в российских рублях;</li>
       <li>период доступа платных тарифов — 30 дней или 12 месяцев с момента успешной оплаты, в зависимости от выбранного периода;</li>
+      <li>тариф Investor можно один раз активировать бесплатно на 7 дней для аккаунта Steam на тарифе Free;</li>
       <li>цифровая услуга считается предоставленной с момента открытия функций тарифа;</li>
       <li>вопросы по оплате и возврату: Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>.</li>
     </ul>
@@ -377,7 +381,7 @@ function renderPricingPage() {
 
   return renderShell({
     title: 'Тарифы и цены',
-    description: 'Тарифы SkinsHead: Free 0 ₽, Plus 499 ₽ / 30 дней, Investor 999 ₽ / 30 дней — состав услуг и условия оплаты.',
+    description: 'Тарифы SkinsHead: Free 0 ₽, Plus 299 ₽ / 30 дней, Investor 499 ₽ / 30 дней с пробным периодом 7 дней — состав услуг и условия оплаты.',
     active: 'pricing',
     bodyHtml,
   });

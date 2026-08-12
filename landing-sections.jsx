@@ -1,4 +1,4 @@
-/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo */
+/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, startInvestorTrial, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo */
 const { useState, useEffect, useRef, useMemo } = React;
 
 /* ───────────────────────────────────────────────────
@@ -996,31 +996,30 @@ function ArmoryROI() {
 }
 
 function DesktopDownload({ lang, auth, onPricing }) {
-  const canDownload = Boolean(auth?.entitlements?.desktopDownload);
   const copy = lang === 'ru'
     ? {
       title: 'Desktop — полный инвентарь и Хранилища',
-      sub: 'Публичный Steam показывает только основной инвентарь. Desktop-клиент SkinsHead заходит в Steam локально и подтягивает полный портфель, включая содержимое Хранилищ.',
+      sub: 'Публичный Steam показывает только основной инвентарь. Desktop-клиент SkinsHead зайдёт в Steam локально и подтянет полный портфель, включая Хранилища.',
+      note: 'Приложение ещё в разработке. Скоро появится для macOS и Windows — скачивание и синхронизация будут доступны на тарифах Plus и Investor.',
+      security: 'Только чтение: пароль Steam не запрашивается, токены остаются на компьютере, на сервер уходит только список предметов.',
+      soon: 'Скоро',
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
       windows: 'Windows · x64',
-      note: 'Установите приложение, откройте портфель на skinshead.pro, нажмите «Код для desktop» и введите 6-значный код. Server URL оставьте https://skinshead.pro.',
-      security: 'Только чтение: пароль Steam не запрашивается, токены остаются на компьютере, на сервер уходит только список предметов.',
-      locked: 'Скачивание desktop доступно на тарифах Plus и Investor.',
       unlock: 'Смотреть тарифы',
-      badge: 'Plus / Investor',
+      badge: 'Скоро · Plus / Investor',
     }
     : {
       title: 'Desktop — full inventory and Хранилища',
-      sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client signs into Steam locally and syncs the full portfolio, including Хранилища.',
+      sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client will sign into Steam locally and sync the full portfolio, including Хранилища.',
+      note: 'The app is still in development. macOS and Windows builds are coming soon — download and sync will be included with Plus and Investor.',
+      security: 'Read-only: Steam password is never requested, tokens stay on your computer, and only item lists are sent to the server.',
+      soon: 'Coming soon',
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
       windows: 'Windows · x64',
-      note: 'Install the app, open your portfolio on skinshead.pro, click “Desktop code”, and enter the 6-digit code. Leave Server URL as https://skinshead.pro.',
-      security: 'Read-only: Steam password is never requested, tokens stay on your computer, and only item lists are sent to the server.',
-      locked: 'Desktop download is included with Plus and Investor plans.',
       unlock: 'View plans',
-      badge: 'Plus / Investor',
+      badge: 'Coming soon · Plus / Investor',
     };
 
   const downloads = [
@@ -1064,21 +1063,21 @@ function DesktopDownload({ lang, auth, onPricing }) {
             </p>
           </div>
           <div style={{ position: 'relative', display: 'grid', gap: 10 }}>
-            {canDownload ? downloads.map((item) => (
-              <a key={item.key} className="btn btn-primary" href={`/api/downloads/${item.key}`} style={{ justifyContent: 'space-between' }}>
+            {downloads.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className="btn btn-ghost"
+                disabled
+                style={{ justifyContent: 'space-between', opacity: 0.72, cursor: 'not-allowed' }}
+              >
                 <span>{item.label}</span>
-                <span className="mono" style={{ fontSize: 11 }}>DOWNLOAD</span>
-              </a>
-            )) : (
-              <>
-                <div className="glass" style={{ padding: 14, color: 'var(--fg-1)', fontSize: 13, lineHeight: 1.55 }}>
-                  {copy.locked}
-                </div>
-                <button type="button" className="btn btn-primary" onClick={() => onPricing && onPricing()}>
-                  {copy.unlock}
-                </button>
-              </>
-            )}
+                <span className="mono" style={{ fontSize: 11 }}>{copy.soon}</span>
+              </button>
+            ))}
+            <button type="button" className="btn btn-primary" onClick={() => onPricing && onPricing()}>
+              {copy.unlock}
+            </button>
             <div className="glass" style={{ padding: 14, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.55 }}>
               {copy.security}
             </div>
@@ -1093,6 +1092,7 @@ function Pricing({ lang, auth, onInvestors }) {
   const t = useT(lang);
   const plansState = usePlans();
   const currentPlanId = auth?.planId || plansState.current?.planId || 'free';
+  const subscription = auth?.subscription || plansState.current || null;
   const beta = plansState.beta || auth?.beta || null;
   const betaMode = Boolean(beta?.beta);
   const billingReady = Boolean(plansState.billingReady);
@@ -1100,12 +1100,18 @@ function Pricing({ lang, auth, onInvestors }) {
   const [checkoutBusy, setCheckoutBusy] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
   const [unlockBusy, setUnlockBusy] = useState(false);
+  const [trialBusy, setTrialBusy] = useState(false);
   const telegramWidgetRef = useRef(null);
   const channelUrl = beta?.channelUrl || 'https://t.me/cs2skinshead';
   const channelUsername = beta?.channelUsername || 'cs2skinshead';
   const botUsername = beta?.botUsername || null;
   const unlockReady = Boolean(beta?.unlockReady && botUsername);
   const hasPlusAccess = currentPlanId === 'investor' || currentPlanId === 'plus';
+  const trialEligible = Boolean(
+    subscription?.investorTrialEligible
+    || (!auth?.connected && !subscription?.investorTrialUsed),
+  );
+  const onTrial = currentPlanId === 'investor' && subscription?.source === 'investor_trial';
   const copy = lang === 'ru'
     ? {
       ctaSoon: 'Оплата подключается',
@@ -1123,8 +1129,14 @@ function Pricing({ lang, auth, onInvestors }) {
       perYear: '₽ / год',
       perMonth: '₽ / мес',
       annualNote: (monthly, saved) => `≈ ${monthly} · экономия ${saved}`,
+      trialBadge: '7 дней бесплатно',
+      trialCta: 'Попробовать 7 дней бесплатно',
+      trialBusy: 'Активирую…',
+      trialLogin: 'Войти и попробовать бесплатно',
+      trialActive: 'Пробный период активен',
+      trialUsed: 'Пробный период уже использован',
       betaEyebrow: 'Beta · Plus за подписку',
-      betaText: `Во время беты Plus открывается бесплатно за подписку на канал @${channelUsername}. Тариф Investor оплачивается отдельно.`,
+      betaText: `Во время беты Plus открывается бесплатно за подписку на канал @${channelUsername}. Тариф Investor — 7 дней бесплатно на пробу, далее оплачивается отдельно.`,
       betaJoin: 'Открыть канал',
       betaLoginSteam: 'Войти через Steam',
       betaUnlockHint: 'Затем подтвердите вход через Telegram ниже',
@@ -1150,8 +1162,14 @@ function Pricing({ lang, auth, onInvestors }) {
       perYear: '₽ / year',
       perMonth: '₽ / mo',
       annualNote: (monthly, saved) => `≈ ${monthly} · save ${saved}`,
+      trialBadge: '7-day free trial',
+      trialCta: 'Try 7 days free',
+      trialBusy: 'Starting…',
+      trialLogin: 'Sign in to try free',
+      trialActive: 'Free trial active',
+      trialUsed: 'Free trial already used',
       betaEyebrow: 'Beta · Plus via subscription',
-      betaText: `During beta, Plus unlocks free when you subscribe to @${channelUsername}. Investor is paid separately.`,
+      betaText: `During beta, Plus unlocks free when you subscribe to @${channelUsername}. Investor includes a 7-day free trial, then is paid separately.`,
       betaJoin: 'Open channel',
       betaLoginSteam: 'Sign in with Steam',
       betaUnlockHint: 'Then confirm with Telegram login below',
@@ -1176,6 +1194,27 @@ function Pricing({ lang, auth, onInvestors }) {
       setCheckoutError(error.message || fallback);
     } finally {
       setUnlockBusy(false);
+    }
+  };
+
+  const claimInvestorTrial = async () => {
+    setCheckoutError(null);
+    if (!auth?.connected) {
+      auth.login();
+      return;
+    }
+    setTrialBusy(true);
+    try {
+      await startInvestorTrial();
+      if (auth?.refresh) await auth.refresh();
+      if (plansState.reload) await plansState.reload();
+    } catch (error) {
+      const fallback = lang === 'ru'
+        ? 'Не удалось активировать пробный период.'
+        : 'Could not start the free trial.';
+      setCheckoutError(error.message || fallback);
+    } finally {
+      setTrialBusy(false);
     }
   };
 
@@ -1337,7 +1376,12 @@ function Pricing({ lang, auth, onInvestors }) {
                   <div style={{ position: 'relative' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
                       <div className="eyebrow pricing-plan-name">{name}</div>
-                      {isCurrent && <span className="chip chip-accent">{copy.current}</span>}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {plan.id === 'investor' && !onTrial && (trialEligible || !auth?.connected) && (
+                          <span className="chip chip-accent">{copy.trialBadge}</span>
+                        )}
+                        {isCurrent && <span className="chip chip-accent">{onTrial ? copy.trialActive : copy.current}</span>}
+                      </div>
                     </div>
                     <div className="display" style={{ marginTop: 10, fontSize: 34, fontWeight: 500 }}>{price}</div>
                     <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{priceNote}</div>
@@ -1418,9 +1462,27 @@ function Pricing({ lang, auth, onInvestors }) {
                       );
                     })()}
                     {plan.id === 'investor' && (
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onInvestors && onInvestors()}>
-                        {copy.investors}
-                      </button>
+                      <>
+                        {onTrial ? null : trialEligible || !auth?.connected ? (
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            disabled={Boolean(trialBusy || checkoutBusy)}
+                            onClick={claimInvestorTrial}
+                          >
+                            {trialBusy
+                              ? copy.trialBusy
+                              : (!auth?.connected ? copy.trialLogin : copy.trialCta)}
+                          </button>
+                        ) : subscription?.investorTrialUsed && currentPlanId !== 'investor' ? (
+                          <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                            {copy.trialUsed}
+                          </div>
+                        ) : null}
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onInvestors && onInvestors()}>
+                          {copy.investors}
+                        </button>
+                      </>
                     )}
                   </div>
                 </article>
@@ -1628,12 +1690,12 @@ function StatsBand() {
   const stats = lang === 'ru'
     ? [
       { v: 'Free', l: 'до 1 000 предметов в списке' },
-      { v: 'Plus', l: 'безлимит + desktop-приложение' },
+      { v: 'Plus', l: 'безлимит + desktop скоро' },
       { v: 'Investor', l: 'трекинг топ-аккаунтов инвесторов' },
     ]
     : [
       { v: 'Free', l: 'up to 1,000 items displayed' },
-      { v: 'Plus', l: 'unlimited + desktop app' },
+      { v: 'Plus', l: 'unlimited + desktop soon' },
       { v: 'Investor', l: 'top investor account tracking' },
     ];
   return (
@@ -1670,7 +1732,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead помогает считать скины CS2 как портфель: live-оценка инвентаря, себестоимость, P&L, распределение по типам и история цен по предметам. Цены собираются со Steam Community Market и сторонних площадок.',
           'Кроме портфеля на сайте есть маркет-эксплорер, лидеры позиций, лента новостей из Telegram и калькулятор ROI Armory Pass. Подключите Steam через OpenID, откройте чужой публичный профиль по ссылке или создайте ручной портфель.',
-          'Бесплатный тариф показывает до 1 000 предметов. Plus открывает безлимитное отображение и desktop для Хранилищ. Investor добавляет трекинг топовых аккаунтов инвесторов — список аккаунтов появится позже.',
+          'Бесплатный тариф показывает до 1 000 предметов. Plus открывает безлимитное отображение; desktop для Хранилищ — скоро. Investor добавляет трекинг топовых аккаунтов инвесторов.',
         ],
       }
     : {
@@ -1679,7 +1741,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead treats CS2 skins as a portfolio: live inventory valuation, cost basis, P&L, allocation by type, and per-item price history. Prices come from the Steam Community Market and major third-party marketplaces.',
           'Beyond the portfolio you get a market explorer, portfolio leaders, Telegram news, and an Armory Pass ROI board. Link Steam via OpenID, open any public profile URL, or keep a manual portfolio.',
-          'The Free plan displays up to 1,000 items. Plus unlocks unlimited display and the desktop app for Хранилища. Investor adds tracking of top investor accounts — the curated list will be added later.',
+          'The Free plan displays up to 1,000 items. Plus unlocks unlimited display; the desktop app for Хранилища is coming soon. Investor adds tracking of top investor accounts.',
         ],
       };
 
@@ -1702,23 +1764,23 @@ const FAQ_ITEMS = {
   en: [
     { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin portfolio tracker. It values a Steam inventory with live market prices and shows P&L, cost basis, allocation, market explorer, Armory Pass ROI, and Telegram news in one place.' },
     { q: 'How do I track a portfolio?', a: 'Link Steam with OpenID, paste a public profile URL, or create a manual portfolio and add purchases. SkinsHead prices items and surfaces leaders, 24h change, and inventory breakdown.' },
-    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Хранилища. The desktop client signs into Steam on your computer and syncs the full inventory to your SkinsHead portfolio with a one-time code. Download and sync require Plus or Investor.' },
+    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Хранилища. The desktop client will sign into Steam on your computer and sync the full inventory to your SkinsHead portfolio. It is coming soon and will require Plus or Investor.' },
     { q: 'Where do prices come from?', a: 'We combine Steam Community Market data with major third-party marketplaces. Each item page shows available offers and price history from the providers we could reach.' },
-    { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. The desktop client keeps tokens locally and only sends item lists to the server. We never request SDA seeds or authenticator codes.' },
+    { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. When the desktop client launches, tokens will stay locally and only item lists will be sent to the server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
-    { q: 'Is SkinsHead free?', a: 'Yes, Free is 0 ₽ with up to 1,000 items displayed, market explorer, Armory ROI, and news. Plus is 499 ₽ / 30 days (unlimited + desktop). Investor is 999 ₽ / 30 days (Plus + top investors). See /pricing.' },
-    { q: 'What do paid plans include?', a: 'Plus (499 ₽ / 30 days): unlimited item display and desktop app download/sync. Investor (999 ₽ / 30 days): everything in Plus plus tracking of curated top investor Steam accounts. Support: Telegram @GhostOfSecretum.' },
+    { q: 'Is SkinsHead free?', a: 'Yes, Free is 0 ₽ with up to 1,000 items displayed, market explorer, Armory ROI, and news. Plus is 299 ₽ / 30 days (unlimited; desktop coming soon). Investor is 499 ₽ / 30 days (Plus + top investors) and includes a one-time 7-day free trial. See /pricing.' },
+    { q: 'What do paid plans include?', a: 'Plus (299 ₽ / 30 days): unlimited item display; desktop app download/sync is coming soon. Investor (499 ₽ / 30 days): everything in Plus plus tracking of curated top investor Steam accounts, with a one-time 7-day free trial. Support: Telegram @GhostOfSecretum.' },
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
     { q: 'Что такое SkinsHead?', a: 'SkinsHead — трекер портфеля скинов CS2. Сервис оценивает инвентарь Steam по live-ценам и показывает P&L, себестоимость, распределение, маркет, ROI Armory Pass и новости из Telegram в одном месте.' },
     { q: 'Как отслеживать портфель?', a: 'Привяжите Steam через OpenID, вставьте ссылку на публичный профиль или создайте ручной портфель и добавьте покупки. SkinsHead оценит предметы и покажет лидеров, изменение за 24ч и разбивку инвентаря.' },
-    { q: 'Зачем нужен desktop?', a: 'Публичный инвентарь Steam обычно не включает Хранилища. Desktop-клиент входит в Steam на вашем компьютере и синхронизирует полный инвентарь в портфель SkinsHead по одноразовому коду. Скачивание и sync доступны на Plus и Investor.' },
+    { q: 'Зачем нужен desktop?', a: 'Публичный инвентарь Steam обычно не включает Хранилища. Desktop-клиент войдёт в Steam на вашем компьютере и синхронизирует полный инвентарь в портфель SkinsHead. Приложение скоро — будет доступно на Plus и Investor.' },
     { q: 'Откуда берутся цены?', a: 'Собираем данные Steam Community Market и крупных сторонних площадок. На карточке предмета видны доступные предложения и история цен из источников, до которых удалось достучаться.' },
-    { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. В desktop токены остаются локально, на сервер уходит только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
+    { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. Когда выйдет desktop, токены останутся локально, на сервер уйдёт только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
     { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
-    { q: 'SkinsHead бесплатный?', a: 'Да, Free — 0 ₽: до 1 000 предметов, маркет, Armory ROI и новости. Plus — 499 ₽ / 30 дней (безлимит + desktop). Investor — 999 ₽ / 30 дней (Plus + топ-инвесторы). Прайс: /pricing.' },
-    { q: 'Что дают платные тарифы?', a: 'Plus (499 ₽ / 30 дней): безлимит предметов и desktop. Investor (999 ₽ / 30 дней): всё из Plus плюс трекинг топ-аккаунтов инвесторов. Поддержка: Telegram @GhostOfSecretum.' },
+    { q: 'SkinsHead бесплатный?', a: 'Да, Free — 0 ₽: до 1 000 предметов, маркет, Armory ROI и новости. Plus — 299 ₽ / 30 дней (безлимит; desktop скоро). Investor — 499 ₽ / 30 дней (Plus + топ-инвесторы) и один раз 7 дней бесплатно на пробу. Прайс: /pricing.' },
+    { q: 'Что дают платные тарифы?', a: 'Plus (299 ₽ / 30 дней): безлимит предметов; desktop-приложение — скоро. Investor (499 ₽ / 30 дней): всё из Plus плюс трекинг топ-аккаунтов инвесторов; можно один раз попробовать 7 дней бесплатно. Поддержка: Telegram @GhostOfSecretum.' },
     { q: 'Вы связаны с Valve?', a: 'Нет. SkinsHead — независимый проект и не аффилирован со Steam, Valve или Counter-Strike.' },
   ],
 };
@@ -1735,8 +1797,8 @@ function FAQ({ lang }) {
           <div>
             <p style={{ color: 'var(--fg-1)', lineHeight: 1.6, fontSize: 15 }}>
               {lang === 'ru'
-                ? 'Не нашли ответ? Напишите в Telegram — разберёмся с портфелем, desktop или ценами.'
-                : 'Still stuck? Message us on Telegram — we can help with portfolio, desktop sync, or pricing.'}
+                ? 'Не нашли ответ? Напишите в Telegram — разберёмся с портфелем, тарифами или ценами.'
+                : 'Still stuck? Message us on Telegram — we can help with portfolio, pricing, or market data.'}
             </p>
             <a className="btn btn-primary btn-sm" href="https://t.me/GhostOfSecretum" target="_blank" rel="noopener noreferrer" style={{ marginTop: 16, display: 'inline-flex' }}>
               Telegram · @GhostOfSecretum →
@@ -1824,7 +1886,7 @@ function Footer({ lang }) {
         items: [
           { label: 'Портфель', href: '/dashboard' },
           { label: 'Тарифы и цены', href: '/pricing' },
-          { label: 'Desktop', href: '/#desktop' },
+          { label: 'Desktop · скоро', href: '/#desktop' },
         ],
       },
       {
@@ -1842,11 +1904,7 @@ function Footer({ lang }) {
         items: [
           { label: 'Portfolio', href: '/dashboard' },
           { label: 'Pricing', href: '/pricing' },
-          { label: 'Desktop', href: '/#desktop' },
-        ],
-      },
-      {
-        h: 'Legal',
+          { label: 'Desktop · soon', href: '/#desktop' },
         items: [
           { label: 'Privacy policy', href: '/privacy' },
           { label: 'Terms of use', href: '/terms' },
@@ -1862,8 +1920,8 @@ function Footer({ lang }) {
           <Logo />
           <p style={{ marginTop: 16, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.6, maxWidth: 320 }}>
             {lang === 'ru'
-              ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI и desktop для Хранилищ. Не аффилирован со Steam, Valve или Counter-Strike.'
-              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI, and desktop sync for Хранилища. Not affiliated with Steam, Valve, or Counter-Strike.'}
+              ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI; desktop для Хранилищ — скоро. Не аффилирован со Steam, Valve или Counter-Strike.'
+              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI; desktop sync for Хранилища coming soon. Not affiliated with Steam, Valve, or Counter-Strike.'}
           </p>
           <a
             href="/support"

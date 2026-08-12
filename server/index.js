@@ -39,6 +39,7 @@ const {
   getOwnerPlanId,
   getOwnerSubscription,
   setOwnerPlan,
+  startInvestorTrial,
   migrateSubscriptionToSteam,
 } = require('./services/subscriptions');
 const {
@@ -162,6 +163,13 @@ const betaUnlockLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many unlock attempts. Try again later.', code: 'rate_limited' },
 });
+const investorTrialLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many trial attempts. Try again later.', code: 'rate_limited' },
+});
 
 function effectiveBillingReady() {
   // Investor stays purchasable during beta; Plus unlocks free via Telegram.
@@ -254,6 +262,24 @@ app.post('/api/beta/telegram-unlock', betaUnlockLimiter, requireAuth, asyncRoute
       error: error.message || 'Beta unlock failed.',
       code: error.code || 'beta_unlock_failed',
       channelUrl: error.channelUrl || getBetaPublicConfig().channelUrl,
+    });
+  }
+}));
+
+app.post('/api/trials/investor', investorTrialLimiter, requireAuth, asyncRoute(async (req, res) => {
+  const ownerId = resolveOwnerId(req);
+  try {
+    const subscription = await startInvestorTrial(ownerId);
+    res.json({
+      ok: true,
+      subscription: withBillingFlags(subscription),
+      billingReady: effectiveBillingReady(),
+    });
+  } catch (error) {
+    const status = Number(error?.status) || 500;
+    res.status(status).json({
+      error: error.message || 'Investor trial failed.',
+      code: error.code || 'investor_trial_failed',
     });
   }
 }));

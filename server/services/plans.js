@@ -33,12 +33,12 @@ const PLANS = [
     missing: {
       en: [
         'Unlimited inventory display',
-        'Desktop app download',
+        'Desktop app (coming soon)',
         'Top investor accounts tracking',
       ],
       ru: [
         'Безлимитное отображение инвентаря',
-        'Скачивание desktop-приложения',
+        'Desktop-приложение (скоро)',
         'Трекинг топовых аккаунтов инвесторов',
       ],
     },
@@ -46,13 +46,13 @@ const PLANS = [
   {
     id: 'plus',
     name: { en: 'Plus', ru: 'Plus' },
-    amountRub: 499,
-    amountUsd: 5,
-    annualAmountRub: 4990,
-    annualAmountUsd: 50,
+    amountRub: 299,
+    amountUsd: 3,
+    annualAmountRub: 2990,
+    annualAmountUsd: 30,
     periodDays: 30,
-    price: { en: '499 ₽ / 30 days', ru: '499 ₽ / 30 дней' },
-    priceNote: { en: '≈ $5 · unlimited items + desktop app', ru: 'безлимит предметов + desktop-приложение' },
+    price: { en: '299 ₽ / 30 days', ru: '299 ₽ / 30 дней' },
+    priceNote: { en: '≈ $3 · unlimited items + desktop soon', ru: 'безлимит предметов + desktop скоро' },
     highlight: true,
     order: 2,
     features: {
@@ -64,14 +64,14 @@ const PLANS = [
       en: [
         'Everything in Free',
         'Unlimited items displayed',
-        'Desktop app for full inventory',
-        'Синхронизация Хранилищ',
+        'Desktop app for full inventory — coming soon',
+        'Хранилища sync — coming soon',
       ],
       ru: [
         'Всё из Free',
         'Безлимитное отображение предметов',
-        'Desktop-приложение для полного инвентаря',
-        'Синхронизация Хранилищ',
+        'Desktop-приложение для полного инвентаря — скоро',
+        'Синхронизация Хранилищ — скоро',
       ],
     },
     missing: {
@@ -86,13 +86,17 @@ const PLANS = [
   {
     id: 'investor',
     name: { en: 'Investor', ru: 'Investor' },
-    amountRub: 999,
-    amountUsd: 10,
-    annualAmountRub: 9990,
-    annualAmountUsd: 100,
+    amountRub: 499,
+    amountUsd: 5,
+    annualAmountRub: 4990,
+    annualAmountUsd: 50,
     periodDays: 30,
-    price: { en: '999 ₽ / 30 days', ru: '999 ₽ / 30 дней' },
-    priceNote: { en: '≈ $10 · everything in Plus + top investors', ru: 'всё из Plus + трекинг топ-инвесторов' },
+    price: { en: '499 ₽ / 30 days', ru: '499 ₽ / 30 дней' },
+    priceNote: {
+      en: '≈ $5 · 7-day free trial · Plus + top investors',
+      ru: '7 дней бесплатно · всё из Plus + топ-инвесторы',
+    },
+    trialDays: 7,
     highlight: false,
     order: 3,
     features: {
@@ -102,12 +106,14 @@ const PLANS = [
     },
     bullets: {
       en: [
+        '7-day free trial to try Investor',
         'Everything in Plus',
         'Track top investor accounts',
         'Curated high-value Steam portfolios',
         'Early access to investor watchlists',
       ],
       ru: [
+        '7 дней бесплатно, чтобы попробовать',
         'Всё из Plus',
         'Трекинг топовых аккаунтов инвесторов',
         'Подборка ценных Steam-портфелей',

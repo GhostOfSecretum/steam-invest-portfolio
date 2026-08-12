@@ -261,43 +261,16 @@ function inventorySourceLabel(source, lang) {
 }
 
 function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
-  const [code, setCode] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  if (!canUseDesktop) {
-    return (
-      <button
-        className="btn btn-sm btn-ghost"
-        onClick={() => onPricing && onPricing()}
-        title={lang === 'ru' ? 'Desktop доступен на Plus / Investor' : 'Desktop requires Plus / Investor'}
-      >
-        {lang === 'ru' ? 'Desktop · Plus' : 'Desktop · Plus'}
-      </button>
-    );
-  }
-
-  const generate = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiFetch('/api/desktop/pairing-code', { method: 'POST' });
-      setCode(data.code);
-    } catch (err) {
-      setCode(null);
-      setError(err?.message || (lang === 'ru' ? 'Не удалось создать код' : 'Failed to create code'));
-    }
-    setLoading(false);
-  };
-
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <button className="btn btn-sm btn-ghost" onClick={generate} disabled={loading}>
-        {loading ? '...' : (lang === 'ru' ? 'Код для desktop' : 'Desktop code')}
-      </button>
-      {code && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 14, color: 'var(--accent)', letterSpacing: '0.15em' }}>{code}</span>}
-      {error && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #ef4444)' }}>{error}</span>}
-    </div>
+    <button
+      className="btn btn-sm btn-ghost"
+      onClick={() => onPricing && onPricing()}
+      title={lang === 'ru'
+        ? (canUseDesktop ? 'Desktop-приложение скоро' : 'Desktop будет на Plus / Investor · скоро')
+        : (canUseDesktop ? 'Desktop app coming soon' : 'Desktop coming soon on Plus / Investor')}
+    >
+      {lang === 'ru' ? 'Desktop · скоро' : 'Desktop · soon'}
+    </button>
   );
 }
 
@@ -538,7 +511,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   <span className="dash-control-index">01</span>
                   <div>
                     <h3>{lang === 'ru' ? 'Синхронизация Steam' : 'Steam sync'}</h3>
-                    <p>{lang === 'ru' ? 'Загрузите полный инвентарь через Desktop.' : 'Import your full inventory through Desktop.'}</p>
+                    <p>{lang === 'ru' ? 'Полный инвентарь через Desktop — скоро.' : 'Full inventory via Desktop — coming soon.'}</p>
                   </div>
                 </div>
                 <div className="dash-control-section-actions">

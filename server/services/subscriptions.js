@@ -6,6 +6,9 @@ const { isPlategaConfigured } = require('./platega');
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const SUBSCRIPTIONS_FILE = path.join(DATA_DIR, 'subscriptions.json');
 const FULL_ACCESS_PLAN_ID = 'investor';
+const INVESTOR_TRIAL_PLAN_ID = 'investor';
+const INVESTOR_TRIAL_DAYS = 7;
+const INVESTOR_TRIAL_SOURCE = 'investor_trial';
 
 // Hardcoded owner exceptions with permanent Investor access.
 // eldokto/eldoktor → https://steamcommunity.com/id/eldoktor/
@@ -60,6 +63,20 @@ function isExpired(entry) {
   return Number.isFinite(ts) && ts < Date.now();
 }
 
+function hasUsedInvestorTrial(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  if (entry.investorTrialUsedAt) return true;
+  return String(entry.source || '') === INVESTOR_TRIAL_SOURCE;
+}
+
+function isInvestorTrialEligible(ownerId, entry, planId) {
+  if (!ownerId || !String(ownerId).startsWith('steam:')) return false;
+  if (hasFullAccess(ownerId)) return false;
+  if (hasUsedInvestorTrial(entry)) return false;
+  // Trial is for trying Investor from Free only (not while Plus/Investor is active).
+  return planId === DEFAULT_PLAN_ID;
+}
+
 async function getOwnerPlanId(ownerId) {
   if (!ownerId) return DEFAULT_PLAN_ID;
   if (hasFullAccess(ownerId)) return FULL_ACCESS_PLAN_ID;
@@ -75,11 +92,14 @@ async function getOwnerSubscription(ownerId) {
   let updatedAt = null;
   let source = 'default';
   let expiresAt = null;
+  let investorTrialUsed = false;
+  let entry = null;
   if (hasFullAccess(ownerId)) {
     source = 'full_access_exception';
   } else if (ownerId) {
     const store = await readStore();
-    const entry = store.owners[ownerId];
+    entry = store.owners[ownerId] || null;
+    investorTrialUsed = hasUsedInvestorTrial(entry);
     if (entry && !isExpired(entry)) {
       updatedAt = entry.updatedAt || null;
       source = entry.source || 'manual';
@@ -98,6 +118,9 @@ async function getOwnerSubscription(ownerId) {
     updatedAt,
     expiresAt,
     billingReady: isPlategaConfigured(),
+    investorTrialDays: INVESTOR_TRIAL_DAYS,
+    investorTrialUsed,
+    investorTrialEligible: isInvestorTrialEligible(ownerId, entry, planId),
   };
 }
 
@@ -127,12 +150,63 @@ async function setOwnerPlan(ownerId, planId, {
     }
   }
 
-  store.owners[ownerId] = {
+  const next = {
     planId: nextPlanId,
     source: String(source || 'manual'),
     updatedAt: new Date().toISOString(),
     expiresAt: nextExpiresAt,
     paymentId: paymentId || prev?.paymentId || null,
+  };
+  if (prev?.investorTrialUsedAt) {
+    next.investorTrialUsedAt = prev.investorTrialUsedAt;
+  }
+  store.owners[ownerId] = next;
+  await writeStore(store);
+  return getOwnerSubscription(ownerId);
+}
+
+async function startInvestorTrial(ownerId) {
+  if (!ownerId || !String(ownerId).startsWith('steam:')) {
+    const err = new Error('Sign in with Steam to start the Investor trial.');
+    err.status = 401;
+    err.code = 'steam_required';
+    throw err;
+  }
+  if (hasFullAccess(ownerId)) {
+    const err = new Error('Investor access is already active.');
+    err.status = 409;
+    err.code = 'trial_not_eligible';
+    throw err;
+  }
+
+  const store = await readStore();
+  const prev = store.owners[ownerId] || null;
+  if (hasUsedInvestorTrial(prev)) {
+    const err = new Error('Investor free trial was already used on this account.');
+    err.status = 409;
+    err.code = 'trial_already_used';
+    throw err;
+  }
+
+  const currentPlanId = (prev && !isExpired(prev))
+    ? normalizePlanId(prev.planId)
+    : DEFAULT_PLAN_ID;
+  if (currentPlanId !== DEFAULT_PLAN_ID) {
+    const err = new Error('Investor free trial is available only on the Free plan.');
+    err.status = 409;
+    err.code = 'trial_not_eligible';
+    throw err;
+  }
+
+  const nowIso = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + INVESTOR_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  store.owners[ownerId] = {
+    planId: INVESTOR_TRIAL_PLAN_ID,
+    source: INVESTOR_TRIAL_SOURCE,
+    updatedAt: nowIso,
+    expiresAt,
+    paymentId: prev?.paymentId || null,
+    investorTrialUsedAt: nowIso,
   };
   await writeStore(store);
   return getOwnerSubscription(ownerId);
@@ -153,6 +227,12 @@ async function migrateSubscriptionToSteam(anonOwnerId, steamId) {
       ...source,
       updatedAt: new Date().toISOString(),
       source: source.source || 'migrated',
+      investorTrialUsedAt: source.investorTrialUsedAt || target?.investorTrialUsedAt || null,
+    };
+  } else if (target && hasUsedInvestorTrial(source) && !target.investorTrialUsedAt) {
+    store.owners[targetOwner] = {
+      ...target,
+      investorTrialUsedAt: source.investorTrialUsedAt || source.updatedAt || new Date().toISOString(),
     };
   }
   delete store.owners[anonOwnerId];
@@ -163,5 +243,8 @@ module.exports = {
   getOwnerPlanId,
   getOwnerSubscription,
   setOwnerPlan,
+  startInvestorTrial,
   migrateSubscriptionToSteam,
+  INVESTOR_TRIAL_DAYS,
+  INVESTOR_TRIAL_SOURCE,
 };

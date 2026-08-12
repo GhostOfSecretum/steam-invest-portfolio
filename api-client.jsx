@@ -86,6 +86,14 @@ async function unlockBetaViaTelegram(payload) {
   });
 }
 
+async function startInvestorTrial() {
+  return apiFetch('/api/trials/investor', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+}
+
 function useBetaConfig() {
   const [state, setState] = apiUseState({
     loading: true,
@@ -672,6 +680,7 @@ Object.assign(window, {
   apiFetch,
   useAuth,
   unlockBetaViaTelegram,
+  startInvestorTrial,
   useBetaConfig,
   usePortfolio,
   useFavoriteProfiles,
