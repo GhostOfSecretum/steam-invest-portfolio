@@ -214,24 +214,27 @@ async function getPrice(marketHashName, options = {}) {
   const cached = maxAgeMs > 0 ? await getCached(key, maxAgeMs) : null;
   // Never short-circuit on a cached third-party quote when we prefer Steam — take.skin
   // (and friends) can be 2× Steam ask and poison portfolio P&L for 30 minutes.
-  if (cached && (!preferSteam || isSteamSourcedPrice(cached))) {
+  if (cached) {
     stripImplausibleRubFields(cached);
     const hasRub = Number.isFinite(cached.priceRub) || Number.isFinite(cached.medianPriceRub);
     const unpriced = !Number.isFinite(cached.price) && !Number.isFinite(cached.medianPrice);
-    if (hasRub || unpriced) {
-      return { ...cached, cached: true };
+    const usableCache = !preferSteam || isSteamSourcedPrice(cached) || unpriced;
+    if (usableCache) {
+      if (hasRub || unpriced) {
+        return { ...cached, cached: true };
+      }
+      // Reuse the USD ask; only refill RUB (FX when skipNativeRub, else Steam RUB ask).
+      const refreshed = { ...cached };
+      await attachRubPrice(refreshed, marketHashName, {
+        skipNativeRub,
+        rubRate: options.rubRate,
+      });
+      const rubFilled = Number.isFinite(refreshed.priceRub) || Number.isFinite(refreshed.medianPriceRub);
+      // Portfolio bulk loads pass persist:false to avoid rewriting the multi‑MB cache
+      // once per row when we only attached an FX-derived RUB ask.
+      if (rubFilled && options.persist !== false) await setCached(key, refreshed);
+      return { ...refreshed, cached: true };
     }
-    // Reuse the USD ask; only refill RUB (FX when skipNativeRub, else Steam RUB ask).
-    const refreshed = { ...cached };
-    await attachRubPrice(refreshed, marketHashName, {
-      skipNativeRub,
-      rubRate: options.rubRate,
-    });
-    const rubFilled = Number.isFinite(refreshed.priceRub) || Number.isFinite(refreshed.medianPriceRub);
-    // Portfolio bulk loads pass persist:false to avoid rewriting the multi‑MB cache
-    // once per row when we only attached an FX-derived RUB ask.
-    if (rubFilled && options.persist !== false) await setCached(key, refreshed);
-    return { ...refreshed, cached: true };
   }
 
   const staleCached = await getCached(key, STEAM_PRICE_STALE_MAX_AGE_MS);
