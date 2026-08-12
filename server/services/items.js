@@ -69,6 +69,8 @@ async function getItemPageData(slug) {
     marketHashName,
     name: priceData?.name || marketHashName.replace(/\s+\([^)]+\)$/, ''),
     price: Number.isFinite(price) ? price : null,
+    priceRub: Number.isFinite(priceData?.priceRub) ? priceData.priceRub : null,
+    medianPrice: Number.isFinite(priceData?.medianPrice) ? priceData.medianPrice : null,
     iconUrl: iconData?.iconUrl || null,
     marketUrl: `https://steamcommunity.com/market/listings/730/${encodeURIComponent(marketHashName)}`,
     type: priceData?.type || '',

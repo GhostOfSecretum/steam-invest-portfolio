@@ -94,14 +94,22 @@ function parseMoney(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const STEAM_FETCH_HEADERS = {
+  Accept: 'application/json,text/javascript,*/*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+};
+
 async function fetchJson(url, { timeoutMs = 6000, headers: extraHeaders = {} } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const isSteam = /steamcommunity\.com/i.test(String(url || ''));
   try {
     const response = await fetch(url, {
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
+        ...(isSteam ? STEAM_FETCH_HEADERS : {}),
         ...extraHeaders,
       },
       signal: controller.signal,
@@ -122,12 +130,14 @@ async function fetchJson(url, { timeoutMs = 6000, headers: extraHeaders = {} } =
 async function fetchText(url, { timeoutMs = 6000 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const isSteam = /steamcommunity\.com/i.test(String(url || ''));
   let response;
   try {
     response = await fetch(url, {
       headers: {
-        'Accept': 'text/html',
+        Accept: 'text/html',
         'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
+        ...(isSteam ? STEAM_FETCH_HEADERS : {}),
       },
       signal: controller.signal,
     });
@@ -158,7 +168,8 @@ async function attachRubPrice(price, marketHashName, { skipNativeRub = false } =
   // Portfolio loads hit Steam once per item already; a second RUB priceoverview doubles
   // rate-limit pressure. Prefer the global Steam FX probe unless a native RUB ask is needed.
   if (!skipNativeRub) {
-    const rub = await getSteamMarketPrice(marketHashName, 'rub').catch(() => null);
+    const rub = await getSteamMarketPrice(marketHashName, 'rub').catch(() => null)
+      || await getSteamMarketSearchPrice(marketHashName, 'rub').catch(() => null);
     if (Number.isFinite(rub?.price) || Number.isFinite(rub?.medianPrice)) {
       price.priceRub = rub.price;
       price.medianPriceRub = rub.medianPrice;
@@ -177,7 +188,7 @@ async function attachRubPrice(price, marketHashName, { skipNativeRub = false } =
 async function getPrice(marketHashName, options = {}) {
   // v2: Steam-first valuation. Busts older cache entries that stored third-party medians
   // (Buff/Skinport/etc.) as if they were Steam asks.
-  const key = `price:v2:${marketHashName}`;
+  const key = `price:v3:${marketHashName}`;
   const maxAgeMs = Number.isFinite(options.maxAgeMs) ? Math.max(0, options.maxAgeMs) : PRICE_MAX_AGE_MS;
   const preferSteam = options.preferSteam !== false;
   const skipNativeRub = options.skipNativeRub === true;
@@ -191,9 +202,12 @@ async function getPrice(marketHashName, options = {}) {
   const staleCached = await getCached(key, STEAM_PRICE_STALE_MAX_AGE_MS);
   const legacyCached = await getCached(`price:${marketHashName}`, STEAM_PRICE_STALE_MAX_AGE_MS);
 
-  // Prefer real Steam Market asks. CSMarketAPI only helps when it exposes STEAMCOMMUNITY.
-  // Third-party venues remain last-resort so portfolios don't collapse to N/A on Steam 429s.
+  // Prefer real Steam Market asks:
+  // 1) priceoverview  2) market search/render (more reliable from some hosts)
+  // 3) CSMarketAPI only when it exposes STEAMCOMMUNITY
+  // take.skin is intentionally omitted — it quotes this sticker at ~2× Steam ask.
   let price = await getSteamMarketPrice(marketHashName, 'usd').catch(() => null)
+    || await getSteamMarketSearchPrice(marketHashName, 'usd').catch(() => null)
     || await getCSMarketAPIPrice(marketHashName).catch(() => null);
 
   if (!price && preferSteam) {
@@ -204,9 +218,8 @@ async function getPrice(marketHashName, options = {}) {
     }
   }
 
-  if (!price) {
+  if (!price && options.allowThirdParty) {
     price = await getCSFloatPrice(marketHashName).catch(() => null)
-      || await getTakeSkinPrice(marketHashName).catch(() => null)
       || await getSkinportPrice(marketHashName).catch(() => null);
   }
 
@@ -470,6 +483,42 @@ async function getSteamMarketPrice(marketHashName, currency = 'usd') {
   if (stale) return { ...stale, provider: 'steam-market-stale' };
   if (lastError) throw lastError;
   return null;
+}
+
+// Fallback when priceoverview is blocked/rate-limited: Steam market search still
+// returns sell_price (cents) for an exact hash_name match.
+async function getSteamMarketSearchPrice(marketHashName, currency = 'usd') {
+  const steamCurrency = resolveSteamCurrency(currency);
+  const cacheKey = `steam:searchprice:${marketHashName}:${steamCurrency}`;
+  const cached = await getCached(cacheKey, PRICE_MAX_AGE_MS);
+  if (cached) return { ...cached };
+
+  const json = await fetchSteamMarketSearch({
+    query: marketHashName,
+    start: 0,
+    count: 10,
+    sort: 'name-asc',
+    currency,
+  });
+  const rows = Array.isArray(json?.results) ? json.results : [];
+  const exact = rows.find((row) => row?.hash_name === marketHashName);
+  if (!exact) return null;
+
+  const price = parseMoney(exact.sell_price_text || exact.sale_price_text)
+    || (Number.isFinite(Number(exact.sell_price)) ? Number(exact.sell_price) / 100 : null);
+  if (!Number.isFinite(price) || price <= 0) return null;
+
+  const result = {
+    marketHashName,
+    price: Math.round(price * 100) / 100,
+    medianPrice: Math.round(price * 100) / 100,
+    volume24h: Number(exact.sell_listings) || null,
+    provider: 'steam-market',
+    currencyCode: STEAM_CURRENCY_LABELS[steamCurrency] || 'USD',
+    updatedAt: new Date().toISOString(),
+  };
+  await setCached(cacheKey, result);
+  return result;
 }
 
 async function getSteamRubRate() {
