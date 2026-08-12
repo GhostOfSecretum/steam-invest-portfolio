@@ -1905,6 +1905,10 @@ function Footer({ lang }) {
           { label: 'Portfolio', href: '/dashboard' },
           { label: 'Pricing', href: '/pricing' },
           { label: 'Desktop · soon', href: '/#desktop' },
+        ],
+      },
+      {
+        h: 'Documents',
         items: [
           { label: 'Privacy policy', href: '/privacy' },
           { label: 'Terms of use', href: '/terms' },
