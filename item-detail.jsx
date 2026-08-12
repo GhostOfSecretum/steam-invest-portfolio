@@ -209,6 +209,11 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
     : item.hasBasis && item.basisCurrency === 'usd' && Number.isFinite(totalBasisOriginal)
       ? formatMoney(totalBasisOriginal, { currency: 'usd' })
       : formatUsd(totalBasis);
+  const buyUnitLabel = item.hasBasis && item.basisCurrency === 'rub' && Number.isFinite(item.basisOriginal)
+    ? formatMoney(item.basisOriginal, { currency: 'rub' })
+    : item.hasBasis && item.basisCurrency === 'usd' && Number.isFinite(item.basisOriginal)
+      ? formatMoney(item.basisOriginal, { currency: 'usd' })
+      : (item.hasBasis && Number.isFinite(item.basis) ? formatUsd(item.basis) : '—');
   const tradableQty = Number.isFinite(item.tradableQty) ? item.tradableQty : (item.tradable ? item.qty : 0);
   // Portfolio holdings (Steam / manual / public profile) keep Buy·Qty·P&L·lock.
   // Market search, ticker, movers, hero, and /item/:slug pages do not.
@@ -520,6 +525,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack }) {
         {isPortfolioHolding && (
           <section className="item-detail-holdings">
             {[
+              { l: lang === 'ru' ? 'За шт.' : 'Per item', v: buyUnitLabel },
               { l: t.item.buy, v: buyCostLabel },
               { l: lang === 'ru' ? 'Количество' : 'Quantity', v: item.qty },
               { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, c: pnlColor },
