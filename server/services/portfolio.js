@@ -101,11 +101,14 @@ async function getPortfolio(steamId, options = {}) {
 
   const marketHashNames = inventory.items.map((item) => item.marketHashName);
   // Steam-first, with gentle pacing so priceoverview 429s don't blank half the book.
-  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
-    skipNativeRub: true,
-    concurrency: 2,
-    batchDelayMs: 350,
-  });
+  // Fetch native RUB asks too so list prices match the item page / Steam Market.
+  const [prices, steamRubRate] = await Promise.all([
+    getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
+      concurrency: 2,
+      batchDelayMs: 350,
+    }),
+    getSteamRubRate().catch(() => null),
+  ]);
   const sourceItems = inventory.items.map((item) => enrichItem(item, prices[item.marketHashName], basis));
   const items = aggregatePortfolioItems(sourceItems);
 
@@ -145,6 +148,7 @@ async function getPortfolio(steamId, options = {}) {
     totalBasis,
     pnl,
     pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
+    steamRubRate: Number.isFinite(steamRubRate) ? steamRubRate : null,
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
@@ -680,11 +684,14 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
 
   const marketHashNames = portfolio.items.map((item) => item.marketHashName);
   // Steam-first, with gentle pacing so priceoverview 429s don't blank half the book.
-  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
-    skipNativeRub: true,
-    concurrency: 2,
-    batchDelayMs: 350,
-  });
+  // Fetch native RUB asks too so list prices match the item page / Steam Market.
+  const [prices, steamRubRate] = await Promise.all([
+    getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
+      concurrency: 2,
+      batchDelayMs: 350,
+    }),
+    getSteamRubRate().catch(() => null),
+  ]);
   const iconUrls = await hydrateManualItemIcons(portfolio.items);
   const sourceItems = portfolio.items.map((item) => enrichManualItem(item, prices[item.marketHashName], iconUrls[item.marketHashName]));
   const items = aggregatePortfolioItems(sourceItems);
@@ -731,6 +738,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     totalBasis,
     pnl,
     pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
+    steamRubRate: Number.isFinite(steamRubRate) ? steamRubRate : null,
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),

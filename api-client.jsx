@@ -254,6 +254,9 @@ function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
       const data = await apiFetch(`${endpoint}${suffix}`);
       // Ignore outdated responses when the user switches portfolios quickly.
       if (seq !== requestSeq.current) return;
+      if (Number.isFinite(data?.steamRubRate) && data.steamRubRate > 0) {
+        FX_RATES.rub = data.steamRubRate;
+      }
       setState({ loading: false, data, error: null });
     } catch (error) {
       if (seq !== requestSeq.current) return;
@@ -513,6 +516,20 @@ function formatItemPrice(item, fallbackUsd, { digits = 2 } = {}) {
   return formatMoney(usdValue, { digits });
 }
 
+// Portfolio row / stack total: prefer native Steam RUB asks so the list matches the
+// item page and steamcommunity.com (USD × default FX 92 drifts by ~10–15%).
+function formatHoldingValue(item, { digits = 2, compact = false } = {}) {
+  const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
+  const currencyKey = getActiveCurrency();
+  if (currencyKey === 'rub' && Number.isFinite(item?.priceRub)) {
+    return formatMoney(item.priceRub * qty, { digits, compact, currency: 'rub' });
+  }
+  const usdTotal = Number.isFinite(item?.totalValue)
+    ? item.totalValue
+    : (Number.isFinite(item?.value) ? item.value * qty : null);
+  return formatMoney(usdTotal, { digits, compact });
+}
+
 function compactUsd(value, options = {}) {
   if (!Number.isFinite(value)) return formatMoney(0, { digits: 0, compact: Boolean(options.compact) });
   return formatMoney(value, {
@@ -616,6 +633,7 @@ Object.assign(window, {
   formatUsd,
   formatItemMoney,
   formatItemPrice,
+  formatHoldingValue,
   compactUsd,
   getActiveCurrency,
   getRubPerUsdRate,

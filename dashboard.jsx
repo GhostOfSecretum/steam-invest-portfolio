@@ -1,4 +1,4 @@
-/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd */
+/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, getActiveCurrency */
 const { useState, useRef, useMemo, useEffect, useCallback } = React;
 
 /* ───────────────────────────────────────────────────
@@ -1539,7 +1539,7 @@ function InventoryTable({ items, onItemClick, lang, portfolioId, portfolioType, 
                 onEdit={(event) => startManualEdit(h, event)}
               />
             )}
-            <div className="mono" style={{ fontSize: 13, fontWeight: 500 }}>{formatUsd(h.totalValue ?? h.value)}</div>
+            <div className="mono" style={{ fontSize: 13, fontWeight: 500 }}>{formatHoldingValue(h)}</div>
             <div className="mono" style={{ fontSize: 12, color: h.pnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
               {Number.isFinite(h.pnlPct) ? `${h.pnlPct >= 0 ? '+' : ''}${h.pnlPct.toFixed(1)}%` : 'N/A'}
             </div>
