@@ -130,37 +130,4 @@ function CollectionDetail({ lang, loading = false, error = null, data = null, on
   );
 }
 
-function CollectionChip({ collection, collectionSlug, lang, onCollectionClick }) {
-  if (!collection) return null;
-  const slug = collectionSlug || (window.ItemSlugs?.collectionNameToSlug
-    ? window.ItemSlugs.collectionNameToSlug(collection)
-    : null);
-  if (!slug || !onCollectionClick) {
-    return <span className="chip chip-collection">{collection}</span>;
-  }
-
-  return (
-    <span
-      className="chip chip-collection is-link"
-      role="link"
-      tabIndex={0}
-      title={lang === 'ru' ? 'Открыть коллекцию' : 'Open collection'}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onCollectionClick(collection, slug);
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          event.stopPropagation();
-          onCollectionClick(collection, slug);
-        }
-      }}
-    >
-      {collection}
-    </span>
-  );
-}
-
-Object.assign(window, { CollectionDetail, CollectionChip });
+Object.assign(window, { CollectionDetail });
