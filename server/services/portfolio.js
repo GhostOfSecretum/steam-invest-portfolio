@@ -100,10 +100,11 @@ async function getPortfolio(steamId, options = {}) {
     : steamInventory;
 
   const marketHashNames = inventory.items.map((item) => item.marketHashName);
-  // Steam asks only — keep concurrency low to stay under Steam Market rate limits.
+  // Steam-first, with gentle pacing so priceoverview 429s don't blank half the book.
   const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
-    steamOnly: true,
-    concurrency: 4,
+    skipNativeRub: true,
+    concurrency: 2,
+    batchDelayMs: 350,
   });
   const sourceItems = inventory.items.map((item) => enrichItem(item, prices[item.marketHashName], basis));
   const items = aggregatePortfolioItems(sourceItems);
@@ -111,6 +112,8 @@ async function getPortfolio(steamId, options = {}) {
   const pricedItems = items.filter((item) => item.value != null);
   const totalValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
   const totalBasis = items.reduce((sum, item) => sum + item.basis * item.qty, 0);
+  // P&L must ignore cost of still-unpriced rows, otherwise Steam 429s fake a deep loss.
+  const pricedBasis = pricedItems.reduce((sum, item) => sum + item.basis * item.qty, 0);
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const providerLabel = useDesktop ? 'desktop' : (inventory.inventoryProvider || 'steam-public');
@@ -138,8 +141,8 @@ async function getPortfolio(steamId, options = {}) {
     pricedCount,
     totalValue,
     totalBasis,
-    pnl: totalValue - totalBasis,
-    pnlPct: totalBasis > 0 ? ((totalValue - totalBasis) / totalBasis) * 100 : 0,
+    pnl: totalValue - pricedBasis,
+    pnlPct: pricedBasis > 0 ? ((totalValue - pricedBasis) / pricedBasis) * 100 : 0,
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
@@ -674,10 +677,11 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   if (!portfolio) return buildEmptyManualPortfolio(bucket, steamId, ownerId);
 
   const marketHashNames = portfolio.items.map((item) => item.marketHashName);
-  // Steam asks only — keep concurrency low to stay under Steam Market rate limits.
+  // Steam-first, with gentle pacing so priceoverview 429s don't blank half the book.
   const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
-    steamOnly: true,
-    concurrency: 4,
+    skipNativeRub: true,
+    concurrency: 2,
+    batchDelayMs: 350,
   });
   const iconUrls = await hydrateManualItemIcons(portfolio.items);
   const sourceItems = portfolio.items.map((item) => enrichManualItem(item, prices[item.marketHashName], iconUrls[item.marketHashName]));
@@ -687,6 +691,8 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   const totalInventoryCount = items.reduce((sum, item) => sum + item.qty, 0);
   const totalValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
   const totalBasis = items.reduce((sum, item) => sum + item.basis * item.qty, 0);
+  // P&L must ignore cost of still-unpriced rows, otherwise Steam 429s fake a deep loss.
+  const pricedBasis = pricedItems.reduce((sum, item) => sum + item.basis * item.qty, 0);
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const { history, leaders } = await buildPortfolioHistoryAndLeaders(pricedItems, totalValue);
@@ -719,8 +725,8 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     pricedCount,
     totalValue,
     totalBasis,
-    pnl: totalValue - totalBasis,
-    pnlPct: totalBasis > 0 ? ((totalValue - totalBasis) / totalBasis) * 100 : 0,
+    pnl: totalValue - pricedBasis,
+    pnlPct: pricedBasis > 0 ? ((totalValue - pricedBasis) / pricedBasis) * 100 : 0,
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),

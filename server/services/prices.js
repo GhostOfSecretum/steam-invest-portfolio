@@ -1,6 +1,7 @@
 const { getCached, getCachedEntry, setCached, remember } = require('./cache');
 
 const PRICE_MAX_AGE_MS = 30 * 60 * 1000;
+const STEAM_PRICE_STALE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const CATALOG_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const HISTORY_MAX_AGE_MS = 60 * 60 * 1000;
 const ICON_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -9,6 +10,10 @@ const FX_RATE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const SKINPORT_MAX_AGE_MS = 5 * 60 * 1000;
 const CSFLOAT_MAX_AGE_MS = 2 * 60 * 1000;
 const LISSKINS_MAX_AGE_MS = 2 * 60 * 1000;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const FX_PROBE_ITEM = 'Revolution Case';
 
@@ -146,32 +151,65 @@ function isSteamSourcedPrice(price) {
     || provider.startsWith('steam-market-');
 }
 
+async function attachRubPrice(price, marketHashName, { skipNativeRub = false } = {}) {
+  if (!Number.isFinite(price?.price) && !Number.isFinite(price?.medianPrice)) return price;
+  if (Number.isFinite(price.priceRub) || Number.isFinite(price.medianPriceRub)) return price;
+
+  // Portfolio loads hit Steam once per item already; a second RUB priceoverview doubles
+  // rate-limit pressure. Prefer the global Steam FX probe unless a native RUB ask is needed.
+  if (!skipNativeRub) {
+    const rub = await getSteamMarketPrice(marketHashName, 'rub').catch(() => null);
+    if (Number.isFinite(rub?.price) || Number.isFinite(rub?.medianPrice)) {
+      price.priceRub = rub.price;
+      price.medianPriceRub = rub.medianPrice;
+      return price;
+    }
+  }
+
+  const rate = await getSteamRubRate().catch(() => null);
+  if (Number.isFinite(rate) && rate > 0) {
+    if (Number.isFinite(price.price)) price.priceRub = Math.round(price.price * rate * 100) / 100;
+    if (Number.isFinite(price.medianPrice)) price.medianPriceRub = Math.round(price.medianPrice * rate * 100) / 100;
+  }
+  return price;
+}
+
 async function getPrice(marketHashName, options = {}) {
   // v2: Steam-first valuation. Busts older cache entries that stored third-party medians
   // (Buff/Skinport/etc.) as if they were Steam asks.
   const key = `price:v2:${marketHashName}`;
   const maxAgeMs = Number.isFinite(options.maxAgeMs) ? Math.max(0, options.maxAgeMs) : PRICE_MAX_AGE_MS;
+  const preferSteam = options.preferSteam !== false;
+  const skipNativeRub = options.skipNativeRub === true;
   const cached = maxAgeMs > 0 ? await getCached(key, maxAgeMs) : null;
-  if (cached && (!options.steamOnly || isSteamSourcedPrice(cached))) {
-    return { ...cached, cached: true };
-  }
+  if (cached) return { ...cached, cached: true };
 
-  const staleCached = await getCached(key, 30 * 24 * 60 * 60 * 1000);
-  const steamOnly = options.steamOnly === true;
+  const staleCached = await getCached(key, STEAM_PRICE_STALE_MAX_AGE_MS);
+  const legacyCached = await getCached(`price:${marketHashName}`, STEAM_PRICE_STALE_MAX_AGE_MS);
 
-  // Prefer real Steam Market asks. CSMarketAPI only helps when it exposes STEAMCOMMUNITY
-  // (useful if Steam rate-limits). Third-party venues stay last-resort (skipped when steamOnly).
+  // Prefer real Steam Market asks. CSMarketAPI only helps when it exposes STEAMCOMMUNITY.
+  // Third-party venues remain last-resort so portfolios don't collapse to N/A on Steam 429s.
   let price = await getSteamMarketPrice(marketHashName, 'usd').catch(() => null)
     || await getCSMarketAPIPrice(marketHashName).catch(() => null);
 
-  if (!price && !steamOnly) {
+  if (!price && preferSteam) {
+    if (staleCached && isSteamSourcedPrice(staleCached)) {
+      price = { ...staleCached, provider: `${staleCached.provider || 'cached'}-stale` };
+    } else if (legacyCached && isSteamSourcedPrice(legacyCached)) {
+      price = { ...legacyCached, provider: `${legacyCached.provider || 'cached'}-stale` };
+    }
+  }
+
+  if (!price) {
     price = await getCSFloatPrice(marketHashName).catch(() => null)
       || await getTakeSkinPrice(marketHashName).catch(() => null)
       || await getSkinportPrice(marketHashName).catch(() => null);
   }
 
-  if (!price && staleCached && (!steamOnly || isSteamSourcedPrice(staleCached))) {
+  if (!price && staleCached) {
     price = { ...staleCached, provider: `${staleCached.provider || 'cached'}-stale` };
+  } else if (!price && legacyCached) {
+    price = { ...legacyCached, provider: `${legacyCached.provider || 'cached'}-stale` };
   }
 
   if (!price) {
@@ -185,23 +223,8 @@ async function getPrice(marketHashName, options = {}) {
     };
   }
 
-  // Also fetch the native RUB price from Steam so the UI can show exact Steam Market values
-  // instead of converting USD with a stale FX rate. We do this lazily and cache the result.
   if (Number.isFinite(price.price) || Number.isFinite(price.medianPrice)) {
-    if (!Number.isFinite(price.priceRub) && !Number.isFinite(price.medianPriceRub)) {
-      const rub = await getSteamMarketPrice(marketHashName, 'rub').catch(() => null);
-      if (Number.isFinite(rub?.price) || Number.isFinite(rub?.medianPrice)) {
-        price.priceRub = rub.price;
-        price.medianPriceRub = rub.medianPrice;
-      } else {
-        // Steam returned null for RUB on this item — derive from the global rate.
-        const rate = await getSteamRubRate().catch(() => null);
-        if (Number.isFinite(rate) && rate > 0) {
-          if (Number.isFinite(price.price)) price.priceRub = Math.round(price.price * rate * 100) / 100;
-          if (Number.isFinite(price.medianPrice)) price.medianPriceRub = Math.round(price.medianPrice * rate * 100) / 100;
-        }
-      }
-    }
+    await attachRubPrice(price, marketHashName, { skipNativeRub });
     await setCached(key, price);
   }
   return { ...price, cached: false };
@@ -211,10 +234,12 @@ async function getPrices(marketHashNames, limit = 24, options = {}) {
   const safeLimit = Number.isFinite(limit) ? limit : Number.MAX_SAFE_INTEGER;
   const unique = [...new Set(marketHashNames.filter(Boolean))].slice(0, safeLimit);
   const result = {};
-  // Larger batches make big portfolio switches much faster when most prices are cached.
-  const concurrency = Math.max(4, Math.min(24, Number(options.concurrency) || 16));
+  // Steam priceoverview is fragile under concurrency; portfolio passes a lower value.
+  const concurrency = Math.max(1, Math.min(24, Number(options.concurrency) || 16));
+  const batchDelayMs = Math.max(0, Number(options.batchDelayMs) || 0);
 
   for (let i = 0; i < unique.length; i += concurrency) {
+    if (i > 0 && batchDelayMs > 0) await sleep(batchDelayMs);
     const batch = unique.slice(i, i + concurrency);
     const priced = await Promise.all(batch.map((name) => getPrice(name, options)));
     for (const item of priced) result[item.marketHashName] = item;
@@ -391,27 +416,54 @@ async function getSkinportPrice(marketHashName, currency = 'usd') {
 
 async function getSteamMarketPrice(marketHashName, currency = 'usd') {
   const steamCurrency = resolveSteamCurrency(currency);
+  const cacheKey = `steam:priceoverview:${marketHashName}:${steamCurrency}`;
+  const cached = await getCached(cacheKey, PRICE_MAX_AGE_MS);
+  if (cached) return { ...cached };
+
   const params = new URLSearchParams({
     appid: '730',
     currency: String(steamCurrency),
     market_hash_name: marketHashName,
   });
-  const json = await fetchJson(`https://steamcommunity.com/market/priceoverview/?${params}`);
-  if (!json.success) return null;
 
-  const price = parseMoney(json.lowest_price || json.median_price);
-  const medianPrice = parseMoney(json.median_price || json.lowest_price);
-  if (!Number.isFinite(price) && !Number.isFinite(medianPrice)) return null;
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const json = await fetchJson(`https://steamcommunity.com/market/priceoverview/?${params}`, {
+        timeoutMs: 8000,
+      });
+      if (!json.success) return null;
 
-  return {
-    marketHashName,
-    price,
-    medianPrice,
-    volume24h: json.volume ? Number.parseInt(String(json.volume).replace(/,/g, ''), 10) : null,
-    provider: 'steam-market',
-    currencyCode: STEAM_CURRENCY_LABELS[steamCurrency] || 'USD',
-    updatedAt: new Date().toISOString(),
-  };
+      const price = parseMoney(json.lowest_price || json.median_price);
+      const medianPrice = parseMoney(json.median_price || json.lowest_price);
+      if (!Number.isFinite(price) && !Number.isFinite(medianPrice)) return null;
+
+      const result = {
+        marketHashName,
+        price,
+        medianPrice,
+        volume24h: json.volume ? Number.parseInt(String(json.volume).replace(/,/g, ''), 10) : null,
+        provider: 'steam-market',
+        currencyCode: STEAM_CURRENCY_LABELS[steamCurrency] || 'USD',
+        updatedAt: new Date().toISOString(),
+      };
+      await setCached(cacheKey, result);
+      return result;
+    } catch (error) {
+      lastError = error;
+      const status = Number(error?.status);
+      if (status === 429 || status === 502 || status === 503) {
+        await sleep(400 * (attempt + 1) + Math.floor(Math.random() * 250));
+        continue;
+      }
+      break;
+    }
+  }
+
+  const stale = await getCached(cacheKey, STEAM_PRICE_STALE_MAX_AGE_MS);
+  if (stale) return { ...stale, provider: 'steam-market-stale' };
+  if (lastError) throw lastError;
+  return null;
 }
 
 async function getSteamRubRate() {
