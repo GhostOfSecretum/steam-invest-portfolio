@@ -177,7 +177,7 @@ function stripImplausibleRubFields(price) {
   return price;
 }
 
-async function attachRubPrice(price, marketHashName, { skipNativeRub = false } = {}) {
+async function attachRubPrice(price, marketHashName, { skipNativeRub = false, rubRate = null } = {}) {
   if (!Number.isFinite(price?.price) && !Number.isFinite(price?.medianPrice)) return price;
   stripImplausibleRubFields(price);
   if (Number.isFinite(price.priceRub) || Number.isFinite(price.medianPriceRub)) return price;
@@ -195,7 +195,8 @@ async function attachRubPrice(price, marketHashName, { skipNativeRub = false } =
     }
   }
 
-  const rate = await getSteamRubRate().catch(() => null)
+  const rate = (Number.isFinite(rubRate) && rubRate >= 10 ? rubRate : null)
+    || await getSteamRubRate().catch(() => null)
     || await getMarketUsdRubRate().catch(() => null);
   if (Number.isFinite(rate) && rate >= 10) {
     if (Number.isFinite(price.price)) price.priceRub = Math.round(price.price * rate * 100) / 100;
@@ -222,8 +223,12 @@ async function getPrice(marketHashName, options = {}) {
     }
     // Reuse the USD ask; only refill RUB (FX when skipNativeRub, else Steam RUB ask).
     const refreshed = { ...cached };
-    await attachRubPrice(refreshed, marketHashName, { skipNativeRub });
-    await setCached(key, refreshed);
+    await attachRubPrice(refreshed, marketHashName, {
+      skipNativeRub,
+      rubRate: options.rubRate,
+    });
+    const rubFilled = Number.isFinite(refreshed.priceRub) || Number.isFinite(refreshed.medianPriceRub);
+    if (rubFilled) await setCached(key, refreshed);
     return { ...refreshed, cached: true };
   }
 
@@ -269,7 +274,10 @@ async function getPrice(marketHashName, options = {}) {
   }
 
   if (Number.isFinite(price.price) || Number.isFinite(price.medianPrice)) {
-    await attachRubPrice(price, marketHashName, { skipNativeRub });
+    await attachRubPrice(price, marketHashName, {
+      skipNativeRub,
+      rubRate: options.rubRate,
+    });
     await setCached(key, price);
   }
   return { ...price, cached: false };
@@ -562,38 +570,54 @@ async function getSteamMarketSearchPrice(marketHashName, currency = 'usd') {
   return result;
 }
 
+let steamRubRateInflight = null;
+
 async function getSteamRubRate() {
   const key = 'fx:rub-per-usd';
   const cached = await getCached(key, FX_RATE_MAX_AGE_MS);
   if (Number.isFinite(cached) && cached >= 10) return cached;
 
-  const staleCached = await getCached(key, 30 * 24 * 60 * 60 * 1000);
+  if (steamRubRateInflight) return steamRubRateInflight;
 
-  try {
-    const [rubPrice, usdPrice] = await Promise.all([
-      getSteamMarketPrice(FX_PROBE_ITEM, 'rub').catch(() => null),
-      getSteamMarketPrice(FX_PROBE_ITEM, 'usd').catch(() => null),
-    ]);
+  steamRubRateInflight = (async () => {
+    const staleCached = await getCached(key, 30 * 24 * 60 * 60 * 1000);
 
-    if (Number.isFinite(rubPrice?.price) && Number.isFinite(usdPrice?.price) && usdPrice.price > 0) {
-      const ratio = rubPrice.price / usdPrice.price;
-      // Reject near-parity — usually means the RUB probe actually returned USD.
-      if (ratio >= 10) {
-        await setCached(key, ratio);
-        return ratio;
+    try {
+      const [rubPrice, usdPrice] = await Promise.all([
+        getSteamMarketPrice(FX_PROBE_ITEM, 'rub').catch(() => null),
+        getSteamMarketPrice(FX_PROBE_ITEM, 'usd').catch(() => null),
+      ]);
+
+      if (Number.isFinite(rubPrice?.price) && Number.isFinite(usdPrice?.price) && usdPrice.price > 0) {
+        const ratio = rubPrice.price / usdPrice.price;
+        // Reject near-parity — usually means the RUB probe actually returned USD.
+        if (ratio >= 10) {
+          await setCached(key, ratio);
+          return ratio;
+        }
       }
+    } catch { /* fall through */ }
+
+    if (Number.isFinite(staleCached) && staleCached >= 10) return staleCached;
+
+    const cbr = await getMarketUsdRubRate().catch(() => null);
+    if (Number.isFinite(cbr) && cbr >= 10) {
+      await setCached(key, cbr);
+      return cbr;
     }
-  } catch { /* fall through */ }
 
-  if (Number.isFinite(staleCached) && staleCached >= 10) return staleCached;
+    const basisRatio = await inferRubRateFromBasis();
+    if (Number.isFinite(basisRatio)) {
+      await setCached(key, basisRatio);
+      return basisRatio;
+    }
 
-  const basisRatio = await inferRubRateFromBasis();
-  if (Number.isFinite(basisRatio)) {
-    await setCached(key, basisRatio);
-    return basisRatio;
-  }
+    return null;
+  })().finally(() => {
+    steamRubRateInflight = null;
+  });
 
-  return null;
+  return steamRubRateInflight;
 }
 
 async function inferRubRateFromBasis() {

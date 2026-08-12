@@ -100,16 +100,15 @@ async function getPortfolio(steamId, options = {}) {
     : steamInventory;
 
   const marketHashNames = inventory.items.map((item) => item.marketHashName);
-  // Steam-first, but skip per-item native RUB round-trips (use FX rate instead) and
-  // only pace live fetches so warm-cache portfolios stay under proxy timeouts.
-  const [prices, steamRubRate] = await Promise.all([
-    getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
-      concurrency: 6,
-      batchDelayMs: 120,
-      skipNativeRub: true,
-    }),
-    getSteamRubRate().catch(() => null),
-  ]);
+  // Resolve FX once, then price the book. Skip per-item Steam RUB asks and only pace
+  // live USD fetches so warm-cache portfolios stay under proxy timeouts.
+  const steamRubRate = await getSteamRubRate().catch(() => null);
+  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
+    concurrency: 6,
+    batchDelayMs: 120,
+    skipNativeRub: true,
+    rubRate: steamRubRate,
+  });
   const sourceItems = inventory.items.map((item) => enrichItem(item, prices[item.marketHashName], basis));
   const items = aggregatePortfolioItems(sourceItems);
 
@@ -684,16 +683,15 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   if (!portfolio) return buildEmptyManualPortfolio(bucket, steamId, ownerId);
 
   const marketHashNames = portfolio.items.map((item) => item.marketHashName);
-  // Steam-first, but skip per-item native RUB round-trips (use FX rate instead) and
-  // only pace live fetches so warm-cache portfolios stay under proxy timeouts.
-  const [prices, steamRubRate] = await Promise.all([
-    getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
-      concurrency: 6,
-      batchDelayMs: 120,
-      skipNativeRub: true,
-    }),
-    getSteamRubRate().catch(() => null),
-  ]);
+  // Resolve FX once, then price the book. Skip per-item Steam RUB asks and only pace
+  // live USD fetches so warm-cache portfolios stay under proxy timeouts.
+  const steamRubRate = await getSteamRubRate().catch(() => null);
+  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
+    concurrency: 6,
+    batchDelayMs: 120,
+    skipNativeRub: true,
+    rubRate: steamRubRate,
+  });
   const iconUrls = await hydrateManualItemIcons(portfolio.items);
   const sourceItems = portfolio.items.map((item) => enrichManualItem(item, prices[item.marketHashName], iconUrls[item.marketHashName]));
   const items = aggregatePortfolioItems(sourceItems);
