@@ -2,7 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const { getSteamInventory, getSteamProfile } = require('./steam');
-const { getPrices, getPriceHistory, getSteamCurrencyRatio, getSteamRubRate, getSteamMarketIcon, rarityToTier } = require('./prices');
+const { getPrices, getPriceHistory, getSteamCurrencyRatio, getSteamRubRate, getSteamCnyRate, getSteamMarketIcon, rarityToTier } = require('./prices');
 const { getDesktopInventory } = require('./desktop');
 const { attachCollections } = require('./collections');
 const {
@@ -104,6 +104,7 @@ async function getPortfolio(steamId, options = {}) {
   // Resolve FX once, then price the book. Skip per-item Steam RUB asks and only pace
   // live USD fetches so warm-cache portfolios stay under proxy timeouts.
   const steamRubRate = await getSteamRubRate().catch(() => null);
+  const steamCnyRate = await getSteamCnyRate().catch(() => null);
   const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
     concurrency: 6,
     batchDelayMs: 120,
@@ -151,6 +152,7 @@ async function getPortfolio(steamId, options = {}) {
     pnl,
     pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
     steamRubRate: Number.isFinite(steamRubRate) ? steamRubRate : null,
+    steamCnyRate: Number.isFinite(steamCnyRate) ? steamCnyRate : null,
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
@@ -688,6 +690,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   // Resolve FX once, then price the book. Skip per-item Steam RUB asks and only pace
   // live USD fetches so warm-cache portfolios stay under proxy timeouts.
   const steamRubRate = await getSteamRubRate().catch(() => null);
+  const steamCnyRate = await getSteamCnyRate().catch(() => null);
   const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
     concurrency: 6,
     batchDelayMs: 120,
@@ -742,6 +745,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     pnl,
     pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
     steamRubRate: Number.isFinite(steamRubRate) ? steamRubRate : null,
+    steamCnyRate: Number.isFinite(steamCnyRate) ? steamCnyRate : null,
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
     allocation: buildAllocation(pricedItems, totalValue),
@@ -992,7 +996,9 @@ function aggregatePortfolioItems(items) {
     const location = item.inStorage ? `storage:${item.storageUnitId || 'unit'}` : 'inventory';
     const key = `${item.marketHashName || item.name || item.assetid}::${location}`;
     const current = grouped.get(key);
-    const itemBasisCurrency = item.basisCurrency === 'rub' ? 'rub' : 'usd';
+    const itemBasisCurrency = item.basisCurrency === 'rub' || item.basisCurrency === 'cny'
+      ? item.basisCurrency
+      : 'usd';
     const itemBasisOriginal = item.hasBasis && Number.isFinite(item.basisOriginal) ? item.basisOriginal * item.qty : null;
 
     if (!current) {
@@ -1182,8 +1188,27 @@ async function setBasisPerUnitByMarketHashName(steamId, marketHashName, basisPer
       steamUsdPrice: ratioData.toPrice.price,
       savedAt: new Date().toISOString(),
     };
+  } else if (cur === 'cny' || cur === 'rmb' || cur === 'yuan') {
+    const ratioData = await getSteamCurrencyRatio(name, 'cny', 'usd');
+    const ratio = Number.isFinite(ratioData?.ratio) && ratioData.ratio > 0
+      ? ratioData.ratio
+      : await getSteamCnyRate().catch(() => null);
+    if (!Number.isFinite(ratio) || ratio <= 0) {
+      const err = new Error('Could not derive CNY/USD ratio from Steam for this item');
+      err.status = 502;
+      err.code = 'steam_fx_unavailable';
+      throw err;
+    }
+    record = {
+      amount: n,
+      currency: 'cny',
+      usdPerUnit: n / ratio,
+      steamCnyPrice: ratioData?.fromPrice?.price,
+      steamUsdPrice: ratioData?.toPrice?.price,
+      savedAt: new Date().toISOString(),
+    };
   } else {
-    const err = new Error('currency must be usd or rub');
+    const err = new Error('currency must be usd, rub, or cny');
     err.status = 400;
     err.code = 'invalid_currency';
     throw err;
@@ -1236,7 +1261,28 @@ async function makeBasisRecord(marketHashName, basisPerUnit, currency = 'usd') {
     };
   }
 
-  const err = new Error('currency must be usd or rub');
+  if (cur === 'cny' || cur === 'rmb' || cur === 'yuan') {
+    const ratioData = await getSteamCurrencyRatio(marketHashName, 'cny', 'usd').catch(() => null);
+    const ratio = Number.isFinite(ratioData?.ratio) && ratioData.ratio > 0
+      ? ratioData.ratio
+      : await getSteamCnyRate().catch(() => null);
+    if (!Number.isFinite(ratio) || ratio <= 0) {
+      const err = new Error('Could not derive CNY/USD ratio from Steam right now. Try again later or enter the cost in USD.');
+      err.status = 502;
+      err.code = 'steam_fx_unavailable';
+      throw err;
+    }
+    return {
+      amount: n,
+      currency: 'cny',
+      usdPerUnit: n / ratio,
+      steamCnyPrice: ratioData?.fromPrice?.price,
+      steamUsdPrice: ratioData?.toPrice?.price,
+      savedAt: new Date().toISOString(),
+    };
+  }
+
+  const err = new Error('currency must be usd, rub, or cny');
   err.status = 400;
   err.code = 'invalid_currency';
   throw err;
@@ -1426,7 +1472,7 @@ function resolveBasisEntry(rawEntry) {
       return {
         usdPerUnit,
         originalAmount: Number.isFinite(amount) ? amount : usdPerUnit,
-        currency: currency === 'rub' ? 'rub' : 'usd',
+        currency: currency === 'rub' || currency === 'cny' ? currency : 'usd',
         hasBasis: true,
       };
     }

@@ -11,6 +11,8 @@
 <link rel="canonical" href="https://skinshead.pro/" />
 <link rel="alternate" hreflang="ru" href="https://skinshead.pro/" />
 <link rel="alternate" hreflang="en" href="https://skinshead.pro/" />
+<link rel="alternate" hreflang="zh-CN" href="https://skinshead.pro/" />
+<link rel="alternate" hreflang="zh-TW" href="https://skinshead.pro/" />
 <link rel="alternate" hreflang="x-default" href="https://skinshead.pro/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="SkinsHead" />
@@ -20,6 +22,8 @@
 <meta property="og:image" content="https://skinshead.pro/logo-cs2-candles-variant-02.png" />
 <meta property="og:locale" content="ru_RU" />
 <meta property="og:locale:alternate" content="en_US" />
+<meta property="og:locale:alternate" content="zh_CN" />
+<meta property="og:locale:alternate" content="zh_TW" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="SkinsHead — CS2 Skin Portfolio Tracker" />
 <meta name="twitter:description" content="CS2 skin portfolio tracker: live inventory value, P&amp;L, market explorer, Armory ROI; desktop sync for Хранилища coming soon." />
@@ -37,7 +41,7 @@
   "applicationCategory": "FinanceApplication",
   "operatingSystem": "Web",
   "browserRequirements": "Requires JavaScript",
-  "inLanguage": ["ru", "en"],
+  "inLanguage": ["ru", "en", "zh-CN", "zh-TW"],
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -96,6 +100,14 @@
         title: 'SkinsHead — CS2 Skin Portfolio Tracker',
         description: 'SkinsHead is a CS2 skin portfolio tracker with live Steam inventory valuation, P&L, market explorer, Armory Pass ROI, and Telegram news. Desktop sync for Хранилища is coming soon.',
       },
+      zh: {
+        title: 'SkinsHead — CS2 皮肤库存追踪器',
+        description: 'SkinsHead 是 CS2 皮肤库存追踪器：实时估值 Steam 库存、盈亏、市场浏览、Armory Pass ROI 与新闻。Desktop 同步仓库即将推出。',
+      },
+      'zh-TW': {
+        title: 'SkinsHead — CS2 皮膚庫存追蹤器',
+        description: 'SkinsHead 是 CS2 皮膚庫存追蹤器：即時估值 Steam 庫存、盈虧、市場瀏覽、Armory Pass ROI 與新聞。Desktop 同步倉庫即將推出。',
+      },
     };
 
     function upsertMeta(attr, key, value) {
@@ -122,14 +134,74 @@
     }
 
     const APP_ROUTE_SEO = {
-      favorites: { ru: 'Избранные профили · SkinsHead', en: 'Favorite profiles · SkinsHead' },
-      dashboard: { ru: 'Портфель · SkinsHead', en: 'Portfolio · SkinsHead' },
-      investors: { ru: 'Топ инвесторы · SkinsHead', en: 'Top investors · SkinsHead' },
-      market: { ru: 'Маркет · SkinsHead', en: 'Market · SkinsHead' },
-      armory: { ru: 'Armory Pass · SkinsHead', en: 'Armory Pass · SkinsHead' },
-      glock3d: { ru: '3D Glock · SkinsHead', en: '3D Glock · SkinsHead' },
-      collection: { ru: 'Коллекция · SkinsHead', en: 'Collection · SkinsHead' },
+      favorites: {
+        ru: 'Избранные профили · SkinsHead',
+        en: 'Favorite profiles · SkinsHead',
+        zh: '收藏的个人资料 · SkinsHead',
+        'zh-TW': '收藏的個人資料 · SkinsHead',
+      },
+      dashboard: {
+        ru: 'Портфель · SkinsHead',
+        en: 'Portfolio · SkinsHead',
+        zh: '库存 · SkinsHead',
+        'zh-TW': '庫存 · SkinsHead',
+      },
+      investors: {
+        ru: 'Топ инвесторы · SkinsHead',
+        en: 'Top investors · SkinsHead',
+        zh: '顶尖投资者 · SkinsHead',
+        'zh-TW': '頂尖投資者 · SkinsHead',
+      },
+      market: {
+        ru: 'Маркет · SkinsHead',
+        en: 'Market · SkinsHead',
+        zh: '市场 · SkinsHead',
+        'zh-TW': '市場 · SkinsHead',
+      },
+      armory: {
+        ru: 'Armory Pass · SkinsHead',
+        en: 'Armory Pass · SkinsHead',
+        zh: 'Armory Pass · SkinsHead',
+        'zh-TW': 'Armory Pass · SkinsHead',
+      },
+      glock3d: {
+        ru: '3D Glock · SkinsHead',
+        en: '3D Glock · SkinsHead',
+        zh: '3D Glock · SkinsHead',
+        'zh-TW': '3D Glock · SkinsHead',
+      },
+      collection: {
+        ru: 'Коллекция · SkinsHead',
+        en: 'Collection · SkinsHead',
+        zh: '收藏 · SkinsHead',
+        'zh-TW': '收藏 · SkinsHead',
+      },
     };
+
+    function htmlLangFor(lang) {
+      if (lang === 'ru') return 'ru';
+      if (lang === 'zh') return 'zh-CN';
+      if (lang === 'zh-TW') return 'zh-TW';
+      return 'en';
+    }
+
+    const PREFS_KEY = 'skinshead:prefs';
+    function readPrefs() {
+      try {
+        const raw = localStorage.getItem(PREFS_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+    function writePrefs(patch) {
+      try {
+        const next = { ...readPrefs(), ...patch };
+        localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+      } catch (_) { /* ignore quota / private mode */ }
+    }
 
     function applyHomeSeo(lang) {
       const copy = HOME_SEO[lang] || HOME_SEO.en;
@@ -255,7 +327,13 @@
     }/*EDITMODE-END*/;
     function App() {
       const initialRoute = parseAppRoute();
-      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const savedPrefs = readPrefs();
+      const initialTweaks = {
+        ...TWEAK_DEFAULTS,
+        ...((window.LANGS || ['en', 'ru', 'zh', 'zh-TW']).includes(savedPrefs.lang) ? { lang: savedPrefs.lang } : {}),
+        ...((['usd', 'rub', 'cny']).includes(savedPrefs.currency) ? { currency: savedPrefs.currency } : {}),
+      };
+      const [t, setTweak] = useTweaks(initialTweaks);
       const [screen, setScreen] = useState(initialRoute.screen);
       const [itemSlug, setItemSlug] = useState(initialRoute.slug || null);
       const [collectionSlug, setCollectionSlug] = useState(initialRoute.collectionSlug || null);
@@ -282,6 +360,9 @@
         window.__currency = t.currency || 'rub';
         window.dispatchEvent(new Event('currency-change'));
       }, [t.currency]);
+      useEffect(() => {
+        writePrefs({ lang: t.lang, currency: t.currency || 'rub' });
+      }, [t.lang, t.currency]);
 
       // Apply data-attrs to body for skin / glass
       useEffect(() => {
@@ -289,14 +370,18 @@
         document.body.dataset.glass = String(t.glass);
       }, [t.skin, t.glass]);
       useEffect(() => {
-        document.documentElement.lang = t.lang === 'ru' ? 'ru' : 'en';
+        document.documentElement.lang = htmlLangFor(t.lang);
         if (screen === 'item' && activeItem) applyItemSeo(activeItem, t.lang);
         else if (screen === 'collection' && collectionState.data?.collection) {
           const name = collectionState.data.collection.name;
           applyAppRouteSeo(t.lang, 'collection');
           document.title = t.lang === 'ru'
             ? `${name} · коллекция CS2 · SkinsHead`
-            : `${name} · CS2 collection · SkinsHead`;
+            : t.lang === 'zh'
+              ? `${name} · CS2 收藏 · SkinsHead`
+              : t.lang === 'zh-TW'
+                ? `${name} · CS2 收藏 · SkinsHead`
+                : `${name} · CS2 collection · SkinsHead`;
         }
         else if (screen === 'home') applyHomeSeo(t.lang);
         else applyAppRouteSeo(t.lang, screen);
@@ -533,6 +618,8 @@
               options={[
                 { value: 'en', label: 'EN' },
                 { value: 'ru', label: 'RU' },
+                { value: 'zh', label: '简' },
+                { value: 'zh-TW', label: '繁' },
               ]}
               onChange={(v) => setTweak('lang', v)}
             />
@@ -542,6 +629,7 @@
               options={[
                 { value: 'rub', label: 'RUB' },
                 { value: 'usd', label: 'USD' },
+                { value: 'cny', label: 'CNY' },
               ]}
               onChange={(v) => setTweak('currency', v)}
             />

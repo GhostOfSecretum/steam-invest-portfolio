@@ -1,4 +1,4 @@
-/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, startInvestorTrial, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo */
+/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, startInvestorTrial, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo, CURRENCIES, getCnyPerUsdRate */
 const { useState, useEffect, useRef, useMemo } = React;
 
 /* ───────────────────────────────────────────────────
@@ -837,6 +837,11 @@ function armoryRoiTone(roi) {
 
 function formatArmoryMoney(value, currency) {
   if (!Number.isFinite(value)) return '—';
+  if (currency === 'cny') {
+    // Armory API returns USD when CNY is selected; convert for display.
+    const rate = (typeof getCnyPerUsdRate === 'function' ? getCnyPerUsdRate() : null) || window.FX_RATES?.cny || 7.25;
+    return formatMoney(value * rate, { digits: 2, currency: 'cny' });
+  }
   return formatMoney(value, { digits: 2, currency });
 }
 
@@ -897,7 +902,7 @@ function ArmoryROI() {
             <div className="armory-toolbar-group">
               <span className="armory-toolbar-label">{copy.currency}</span>
               <div className="armory-currency-row">
-                {['usd', 'rub'].map((key) => (
+                {CURRENCIES.map((key) => (
                   <button
                     key={key}
                     type="button"

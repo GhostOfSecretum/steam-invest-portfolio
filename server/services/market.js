@@ -1,11 +1,12 @@
-const { getTickerItems, getTopMovers, getCases, getPrices, getPriceHistory, getMarketCatalog, getSteamRubRate, getItemOffers, getItemVariants, getMultiWearHistory } = require('./prices');
+const { getTickerItems, getTopMovers, getCases, getPrices, getPriceHistory, getMarketCatalog, getSteamRubRate, getSteamCnyRate, getItemOffers, getItemVariants, getMultiWearHistory } = require('./prices');
 
 async function getMarketSnapshot() {
-  const [tickerResult, moversResult, casesResult, rubRate] = await Promise.allSettled([
+  const [tickerResult, moversResult, casesResult, rubRate, cnyRate] = await Promise.allSettled([
     getTickerItems(),
     getTopMovers(),
     getCases(),
     getSteamRubRate(),
+    getSteamCnyRate(),
   ]);
 
   return {
@@ -13,6 +14,7 @@ async function getMarketSnapshot() {
     movers: moversResult.status === 'fulfilled' ? moversResult.value : [],
     cases: casesResult.status === 'fulfilled' ? casesResult.value : [],
     steamRubRate: rubRate.status === 'fulfilled' && Number.isFinite(rubRate.value) ? rubRate.value : null,
+    steamCnyRate: cnyRate.status === 'fulfilled' && Number.isFinite(cnyRate.value) ? cnyRate.value : null,
     updatedAt: new Date().toISOString(),
   };
 }

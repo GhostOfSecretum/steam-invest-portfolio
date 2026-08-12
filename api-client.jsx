@@ -265,6 +265,9 @@ function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
       if (Number.isFinite(data?.steamRubRate) && data.steamRubRate > 0) {
         FX_RATES.rub = data.steamRubRate;
       }
+      if (Number.isFinite(data?.steamCnyRate) && data.steamCnyRate > 0) {
+        FX_RATES.cny = data.steamCnyRate;
+      }
       setState({ loading: false, data, error: null });
     } catch (error) {
       if (seq !== requestSeq.current) return;
@@ -287,6 +290,9 @@ function useMarketSnapshot(fallback = {}) {
         if (!active) return;
         if (Number.isFinite(data.steamRubRate) && data.steamRubRate > 0) {
           FX_RATES.rub = data.steamRubRate;
+        }
+        if (Number.isFinite(data.steamCnyRate) && data.steamCnyRate > 0) {
+          FX_RATES.cny = data.steamCnyRate;
         }
         setState({ loading: false, data, error: null });
       })
@@ -420,11 +426,13 @@ function useMultiWearHistory(names, days = 30, currency = null) {
 function useArmoryRoi(currency = null) {
   const [state, setState] = apiUseState({ loading: true, data: null, error: null });
   const resolvedCurrency = currency || getActiveCurrency();
+  // Server Armory ROI currently prices in USD/RUB; CNY is converted client-side.
+  const apiCurrency = resolvedCurrency === 'cny' ? 'usd' : resolvedCurrency;
 
   const load = apiUseCallback(async () => {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
-      const data = await apiFetch(`/api/armory/roi?currency=${encodeURIComponent(resolvedCurrency)}`);
+      const data = await apiFetch(`/api/armory/roi?currency=${encodeURIComponent(apiCurrency)}`);
       if (Number.isFinite(data.rubPerUsd) && data.rubPerUsd > 0) {
         FX_RATES.rub = data.rubPerUsd;
       }
@@ -432,7 +440,7 @@ function useArmoryRoi(currency = null) {
     } catch (error) {
       setState({ loading: false, data: null, error });
     }
-  }, [resolvedCurrency]);
+  }, [apiCurrency]);
 
   apiUseEffect(() => { load(); }, [load]);
 
@@ -460,10 +468,17 @@ function useCsNews() {
 const FX_RATES = {
   usd: 1,
   rub: 92,
+  cny: 7.25,
 };
+
+const CURRENCIES = ['usd', 'rub', 'cny'];
 
 function getRubPerUsdRate() {
   return FX_RATES.rub || 92;
+}
+
+function getCnyPerUsdRate() {
+  return FX_RATES.cny || 7.25;
 }
 
 function usdBasisToInputDraft(usdAmount, currencyKey) {
@@ -471,12 +486,14 @@ function usdBasisToInputDraft(usdAmount, currencyKey) {
   if (!Number.isFinite(usdAmount)) return '';
   if (key === 'usd') return String(Math.round(usdAmount * 100) / 100);
   if (key === 'rub') return String(Math.round(usdAmount * getRubPerUsdRate() * 100) / 100);
+  if (key === 'cny') return String(Math.round(usdAmount * getCnyPerUsdRate() * 100) / 100);
   return String(usdAmount);
 }
 
 const CURRENCY_META = {
   usd: { locale: 'en-US', currency: 'USD' },
   rub: { locale: 'ru-RU', currency: 'RUB' },
+  cny: { locale: 'zh-CN', currency: 'CNY' },
 };
 
 function getActiveCurrency() {
@@ -706,6 +723,8 @@ Object.assign(window, {
   compactUsd,
   getActiveCurrency,
   getRubPerUsdRate,
+  getCnyPerUsdRate,
+  CURRENCIES,
   usdBasisToInputDraft,
   withSteamImageSize,
 });

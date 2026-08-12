@@ -36,16 +36,19 @@ const WATCHLIST_MARKET_HASH_NAMES = [
 const STEAM_CURRENCY_CODES = {
   usd: 1,
   rub: 5,
+  cny: 23,
 };
 
 const STEAM_CURRENCY_LABELS = {
   1: 'USD',
   5: 'RUB',
+  23: 'CNY',
 };
 
 const SKINPORT_CURRENCY_CODES = {
   usd: 'USD',
   rub: 'RUB',
+  cny: 'CNY',
 };
 
 const BULK_PRICELIST_MAX_AGE_MS = 10 * 60 * 1000;
@@ -581,6 +584,7 @@ async function getSteamMarketSearchPrice(marketHashName, currency = 'usd') {
 }
 
 let steamRubRateInflight = null;
+let steamCnyRateInflight = null;
 
 async function getSteamRubRate() {
   const key = 'fx:rub-per-usd';
@@ -628,6 +632,41 @@ async function getSteamRubRate() {
   });
 
   return steamRubRateInflight;
+}
+
+async function getSteamCnyRate() {
+  const key = 'fx:cny-per-usd';
+  const cached = await getCached(key, FX_RATE_MAX_AGE_MS);
+  if (Number.isFinite(cached) && cached >= 4 && cached <= 15) return cached;
+
+  if (steamCnyRateInflight) return steamCnyRateInflight;
+
+  steamCnyRateInflight = (async () => {
+    const staleCached = await getCached(key, 30 * 24 * 60 * 60 * 1000);
+
+    try {
+      const [cnyPrice, usdPrice] = await Promise.all([
+        getSteamMarketPrice(FX_PROBE_ITEM, 'cny').catch(() => null),
+        getSteamMarketPrice(FX_PROBE_ITEM, 'usd').catch(() => null),
+      ]);
+
+      if (Number.isFinite(cnyPrice?.price) && Number.isFinite(usdPrice?.price) && usdPrice.price > 0) {
+        const ratio = cnyPrice.price / usdPrice.price;
+        // CNY/USD is typically ~6–8; reject near-parity or absurd outliers.
+        if (ratio >= 4 && ratio <= 15) {
+          await setCached(key, ratio);
+          return ratio;
+        }
+      }
+    } catch { /* fall through */ }
+
+    if (Number.isFinite(staleCached) && staleCached >= 4 && staleCached <= 15) return staleCached;
+    return null;
+  })().finally(() => {
+    steamCnyRateInflight = null;
+  });
+
+  return steamCnyRateInflight;
 }
 
 async function inferRubRateFromBasis() {
@@ -2219,6 +2258,7 @@ module.exports = {
   getSteamMarketPrice,
   getSteamMarketIcon,
   getSteamRubRate,
+  getSteamCnyRate,
   getSteamCurrencyRatio,
   getItemOffers,
   getItemVariants,

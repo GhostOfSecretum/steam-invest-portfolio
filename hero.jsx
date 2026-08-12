@@ -1,4 +1,4 @@
-/* global React, useT, usePortfolio, useMarketSnapshot, useMarketCatalog, compactUsd */
+/* global React, useT, usePortfolio, useMarketSnapshot, useMarketCatalog, compactUsd, tt */
 const { useState, useEffect, useRef, useMemo } = React;
 
 /* ───────────────────────────────────────────────────
@@ -635,7 +635,7 @@ function HeroConcept_Operators({ lang, onItemClick }) {
                 title={pricedCard.marketHashName}
               >
                 <div className="hero-market-price-head">
-                  <span>{lang === 'ru' ? 'Агент' : 'Agent'}</span>
+                  <span>{tt(lang, { en: 'Agent', ru: 'Агент', zh: '干员', 'zh-TW': '幹員' })}</span>
                 </div>
                 <div className="hero-market-price-value">{pricedCard.priceLabel}</div>
                 <div className="hero-market-price-name">{pricedCard.label || pricedCard.marketHashName}</div>
@@ -656,7 +656,7 @@ function HeroConcept_Operators({ lang, onItemClick }) {
                 title={pricedCard.marketHashName}
               >
                 <div className="hero-market-price-head">
-                  <span>{lang === 'ru' ? 'Рыночная цена' : 'Market price'}</span>
+                  <span>{tt(lang, { en: 'Market price', ru: 'Рыночная цена', zh: '市场价格', 'zh-TW': '市場價格' })}</span>
                 </div>
                 <div className="hero-market-price-value">{pricedCard.priceLabel}</div>
                 <div className="hero-market-price-name">{pricedCard.label || pricedCard.marketHashName}</div>
@@ -684,8 +684,8 @@ function HeroPortfolioPreview({ lang, data }) {
   return (
     <div className="hero-portfolio-preview" aria-hidden="true">
       <div className="hero-preview-head">
-        <span>{lang === 'ru' ? 'МОЙ ПОРТФЕЛЬ' : 'MY PORTFOLIO'}</span>
-        <i>{lang === 'ru' ? 'ОБНОВЛЕНО' : 'LIVE'}</i>
+        <span>{tt(lang, { en: 'MY PORTFOLIO', ru: 'МОЙ ПОРТФЕЛЬ', zh: '我的库存', 'zh-TW': '我的庫存' })}</span>
+        <i>{tt(lang, { en: 'LIVE', ru: 'ОБНОВЛЕНО', zh: '实时', 'zh-TW': '即時' })}</i>
       </div>
       <div className="hero-preview-value">{compactUsd(totalValue)}</div>
       <div className="hero-preview-delta" data-positive={pnl >= 0}>
@@ -857,23 +857,40 @@ function Glock3DPage({ lang }) {
     }
   };
 
-  const copy = lang === 'ru'
-    ? {
-      eyebrow: '// SKINSHEAD · 3D PREVIEW',
-      title: 'Glock-18 · Ghost Protocol',
-      sub: 'Интерактивный 3D-превью скина на SkinsHead. Крутите мышью, разбирайте модель и смотрите форму в деталях.',
-      hint: 'ТЯНИТЕ ДЛЯ ОРБИТЫ',
-      explode: 'Разобрать',
-      assemble: 'Собрать',
-    }
-    : {
+  const copy = tt(lang, {
+    en: {
       eyebrow: '// SKINSHEAD · 3D PREVIEW',
       title: 'Glock-18 · Ghost Protocol',
       sub: 'Interactive CS2 skin preview on SkinsHead. Drag to orbit, explode the model, and inspect the shape up close.',
       hint: 'DRAG TO ORBIT',
       explode: 'Explode',
       assemble: 'Assemble',
-    };
+    },
+    ru: {
+      eyebrow: '// SKINSHEAD · 3D PREVIEW',
+      title: 'Glock-18 · Ghost Protocol',
+      sub: 'Интерактивный 3D-превью скина на SkinsHead. Крутите мышью, разбирайте модель и смотрите форму в деталях.',
+      hint: 'ТЯНИТЕ ДЛЯ ОРБИТЫ',
+      explode: 'Разобрать',
+      assemble: 'Собрать',
+    },
+    zh: {
+      eyebrow: '// SKINSHEAD · 3D PREVIEW',
+      title: 'Glock-18 · Ghost Protocol',
+      sub: 'SkinsHead 上的交互式 CS2 皮肤预览。拖动旋转、拆解模型并近距离查看外形。',
+      hint: '拖动以环绕',
+      explode: '拆解',
+      assemble: '组装',
+    },
+    'zh-TW': {
+      eyebrow: '// SKINSHEAD · 3D PREVIEW',
+      title: 'Glock-18 · Ghost Protocol',
+      sub: 'SkinsHead 上的互動式 CS2 皮膚預覽。拖曳旋轉、拆解模型並近距離查看外形。',
+      hint: '拖曳以環繞',
+      explode: '拆解',
+      assemble: '組裝',
+    },
+  });
 
   return (
     <section className="glock3d-page" style={{ padding: '32px 0 64px', minHeight: 'calc(100vh - 90px)' }}>

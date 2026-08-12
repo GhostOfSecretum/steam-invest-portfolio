@@ -1,4 +1,4 @@
-/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, getActiveCurrency */
+/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, getActiveCurrency, tt, localeFor */
 const { useState, useRef, useMemo, useEffect, useCallback } = React;
 
 /* ───────────────────────────────────────────────────
@@ -50,7 +50,7 @@ function PortfolioChart({ history, range, lang }) {
         {hasRealLine && <path d={d} stroke="url(#chartLine)" strokeWidth="2" fill="none" strokeLinejoin="round" />}
         {!hasRealLine && (
           <text x={w / 2} y={h / 2} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontFamily: 'var(--f-mono)', fontSize: 28 }}>
-            {lang === 'ru' ? 'недостаточно истории цен' : 'not enough price history'}
+            {tt(lang, { en: 'not enough price history', ru: 'недостаточно истории цен', zh: '价格历史不足', 'zh-TW': '價格歷史不足' })}
           </text>
         )}
         {hover && hasRealLine && (
@@ -255,9 +255,9 @@ function StatCard({ label, value, delta, deltaColor, sub, accent }) {
 }
 
 function inventorySourceLabel(source, lang) {
-  if (source === 'desktop') return lang === 'ru' ? 'desktop · полный инвентарь' : 'desktop · full inventory';
-  if (source === 'manual') return lang === 'ru' ? 'ручной ввод' : 'manual input';
-  return lang === 'ru' ? 'публичный Steam' : 'public Steam';
+  if (source === 'desktop') return tt(lang, { en: 'desktop · full inventory', ru: 'desktop · полный инвентарь', zh: 'desktop · 完整库存', 'zh-TW': 'desktop · 完整庫存' });
+  if (source === 'manual') return tt(lang, { en: 'manual input', ru: 'ручной ввод', zh: '手动输入', 'zh-TW': '手動輸入' });
+  return tt(lang, { en: 'public Steam', ru: 'публичный Steam', zh: '公开 Steam', 'zh-TW': '公開 Steam' });
 }
 
 function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
@@ -265,11 +265,14 @@ function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
     <button
       className="btn btn-sm btn-ghost"
       onClick={() => onPricing && onPricing()}
-      title={lang === 'ru'
-        ? (canUseDesktop ? 'Desktop-приложение скоро' : 'Desktop будет на Plus / Investor · скоро')
-        : (canUseDesktop ? 'Desktop app coming soon' : 'Desktop coming soon on Plus / Investor')}
+      title={tt(lang, {
+        en: canUseDesktop ? 'Desktop app coming soon' : 'Desktop coming soon on Plus / Investor',
+        ru: canUseDesktop ? 'Desktop-приложение скоро' : 'Desktop будет на Plus / Investor · скоро',
+        zh: canUseDesktop ? 'Desktop 应用即将推出' : 'Desktop 即将在 Plus / Investor 推出',
+        'zh-TW': canUseDesktop ? 'Desktop 應用即將推出' : 'Desktop 即將在 Plus / Investor 推出',
+      })}
     >
-      {lang === 'ru' ? 'Desktop · скоро' : 'Desktop · soon'}
+      {tt(lang, { en: 'Desktop · soon', ru: 'Desktop · скоро', zh: 'Desktop · 即将推出', 'zh-TW': 'Desktop · 即將推出' })}
     </button>
   );
 }
@@ -355,7 +358,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
 
   // Keep the dashboard mounted while switching portfolios so "Manage portfolio" stays open.
   if (portfolio.loading && !portfolio.data) {
-    return <DashboardState lang={lang} title={t.dash.title} loading message={lang === 'ru' ? 'Загружаем портфель и цены...' : 'Loading portfolio and prices...'} />;
+    return <DashboardState lang={lang} title={t.dash.title} loading message={tt(lang, { en: 'Loading portfolio and prices...', ru: 'Загружаем портфель и цены...', zh: '正在加载库存与价格...', 'zh-TW': '正在載入庫存與價格...' })} />;
   }
 
   if (portfolio.error && !portfolio.data) {
@@ -365,7 +368,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
   if (!data) return null;
 
   const selectedPortfolioName = portfolios.find((entry) => String(entry.id) === String(activePortfolioId))?.name
-    || (activePortfolioId === 'steam' ? (lang === 'ru' ? 'Steam-инвентарь' : 'Steam inventory') : null);
+    || (activePortfolioId === 'steam' ? (tt(lang, { en: 'Steam inventory', ru: 'Steam-инвентарь', zh: 'Steam 库存', 'zh-TW': 'Steam 庫存' })) : null);
 
   const toggleFavorite = async () => {
     if (!isPublicPortfolio || favoriteBusy) return;
@@ -381,7 +384,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
         });
       }
     } catch (error) {
-      setFavoriteError(error?.message || (lang === 'ru' ? 'Не удалось обновить избранное' : 'Failed to update favorites'));
+      setFavoriteError(error?.message || (tt(lang, { en: 'Failed to update favorites', ru: 'Не удалось обновить избранное', zh: '无法更新收藏', 'zh-TW': '無法更新收藏' })));
     } finally {
       setFavoriteBusy(false);
     }
@@ -408,20 +411,23 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
   const historyMeta = data.history && !Array.isArray(data.history) ? data.history : {};
   const historySources = Array.isArray(historyMeta.sources) && historyMeta.sources.length
     ? historyMeta.sources.join(' + ')
-    : (lang === 'ru' ? 'нет истории' : 'no history');
-  const historySubtitle = lang === 'ru'
-    ? `USD · история реальных цен · покрытие ${historyMeta.coveragePct || 0}% · ${historySources}`
-    : `USD · real price history · ${historyMeta.coveragePct || 0}% coverage · ${historySources}`;
+    : (tt(lang, { en: 'no history', ru: 'нет истории', zh: '暂无历史', 'zh-TW': '暫無歷史' }));
+  const historySubtitle = tt(lang, {
+    en: `USD · real price history · ${historyMeta.coveragePct || 0}% coverage · ${historySources}`,
+    ru: `USD · история реальных цен · покрытие ${historyMeta.coveragePct || 0}% · ${historySources}`,
+    zh: `USD · 真实价格历史 · 覆盖 ${historyMeta.coveragePct || 0}% · ${historySources}`,
+    'zh-TW': `USD · 真實價格歷史 · 覆蓋 ${historyMeta.coveragePct || 0}% · ${historySources}`,
+  });
   const activePortfolio = portfolios.find((entry) => String(entry.id) === String(activePortfolioId));
   const portfolioTitle = isPublicPortfolio
-    ? (data.profile?.personaname || data.profile?.name || (lang === 'ru' ? 'Публичный портфель' : 'Public portfolio'))
+    ? (data.profile?.personaname || data.profile?.name || (tt(lang, { en: 'Public portfolio', ru: 'Публичный портфель', zh: '公开库存', 'zh-TW': '公開庫存' })))
     : (selectedPortfolioName
       || activePortfolio?.name
-      || (isSteamPortfolio ? (lang === 'ru' ? 'Steam-инвентарь' : 'Steam inventory') : t.dash.title));
+      || (isSteamPortfolio ? (tt(lang, { en: 'Steam inventory', ru: 'Steam-инвентарь', zh: 'Steam 库存', 'zh-TW': 'Steam 庫存' })) : t.dash.title));
   const sections = [
-    { id: 'overview', label: lang === 'ru' ? 'Обзор' : 'Overview' },
-    { id: 'items', label: lang === 'ru' ? 'Предметы' : 'Items', count: isSwitchingPortfolio ? null : data.totalInventoryCount },
-    { id: 'activity', label: lang === 'ru' ? 'История' : 'Activity' },
+    { id: 'overview', label: tt(lang, { en: 'Overview', ru: 'Обзор', zh: '总览', 'zh-TW': '總覽' }) },
+    { id: 'items', label: tt(lang, { en: 'Items', ru: 'Предметы', zh: '物品', 'zh-TW': '物品' }), count: isSwitchingPortfolio ? null : data.totalInventoryCount },
+    { id: 'activity', label: tt(lang, { en: 'Activity', ru: 'История', zh: '动态', 'zh-TW': '動態' }) },
   ];
 
   return (
@@ -430,18 +436,18 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
         <div className="dash-head">
           <div className="dash-head-copy">
             <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--accent)' }}>
-              // {lang === 'ru' ? 'ПОРТФЕЛЬ' : 'PORTFOLIO'}
-              {!isSwitchingPortfolio && <> · {data.totalInventoryCount} {lang === 'ru' ? 'ПРЕДМЕТОВ' : 'ITEMS'}</>}
-              {isSwitchingPortfolio && <> · {lang === 'ru' ? 'ЗАГРУЗКА…' : 'LOADING…'}</>}
+              // {tt(lang, { en: 'PORTFOLIO', ru: 'ПОРТФЕЛЬ', zh: '库存', 'zh-TW': '庫存' })}
+              {!isSwitchingPortfolio && <> · {data.totalInventoryCount} {tt(lang, { en: 'ITEMS', ru: 'ПРЕДМЕТОВ', zh: '件物品', 'zh-TW': '件物品' })}</>}
+              {isSwitchingPortfolio && <> · {tt(lang, { en: 'LOADING…', ru: 'ЗАГРУЗКА…', zh: '加载中…', 'zh-TW': '載入中…' })}</>}
             </div>
             <h1 className="display dash-title">{portfolioTitle}</h1>
             <div className="dash-sync-meta">
               <span className={`dash-source-dot ${isPublicPortfolio ? 'is-public' : 'is-live'}`}></span>
               {isPublicPortfolio
-                ? (lang === 'ru' ? 'Публичный профиль' : 'Public profile')
+                ? (tt(lang, { en: 'Public profile', ru: 'Публичный профиль', zh: '公开资料', 'zh-TW': '公開資料' }))
                 : inventorySourceLabel(data.inventoryProvider, lang)}
               {data.syncedAt && (
-                <span>· {lang === 'ru' ? 'обновлено' : 'updated'} {new Date(data.syncedAt).toLocaleString()}</span>
+                <span>· {tt(lang, { en: 'updated', ru: 'обновлено', zh: '已更新', 'zh-TW': '已更新' })} {new Date(data.syncedAt).toLocaleString()}</span>
               )}
             </div>
           </div>
@@ -451,13 +457,13 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 className="btn btn-sm btn-ghost"
                 onClick={toggleFavorite}
                 disabled={favoriteBusy || favorites.loading}
-                title={lang === 'ru' ? 'Сохранить профиль в избранное' : 'Save profile to favorites'}
+                title={tt(lang, { en: 'Save profile to favorites', ru: 'Сохранить профиль в избранное', zh: '收藏此资料', 'zh-TW': '收藏此資料' })}
               >
                 {favoriteBusy
                   ? '...'
                   : isFavorited
-                    ? (lang === 'ru' ? 'В избранном' : 'Favorited')
-                    : (lang === 'ru' ? 'В избранное' : 'Add to favorites')}
+                    ? (tt(lang, { en: 'Favorited', ru: 'В избранном', zh: '已收藏', 'zh-TW': '已收藏' }))
+                    : (tt(lang, { en: 'Add to favorites', ru: 'В избранное', zh: '加入收藏', 'zh-TW': '加入收藏' }))}
               </button>
             )}
             {!isPublicPortfolio && (
@@ -468,16 +474,16 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 aria-expanded={controlsOpen}
                 aria-controls="portfolio-management"
               >
-                <span>{lang === 'ru' ? 'Управлять портфелем' : 'Manage portfolio'}</span>
+                <span>{tt(lang, { en: 'Manage portfolio', ru: 'Управлять портфелем', zh: '管理库存', 'zh-TW': '管理庫存' })}</span>
                 <span className="dash-controls-chevron" aria-hidden="true" />
               </button>
             )}
             <button
               className="btn btn-sm btn-ghost"
               onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}
-              title={lang === 'ru' ? 'Обновить данные портфеля' : 'Refresh portfolio data'}
+              title={tt(lang, { en: 'Refresh portfolio data', ru: 'Обновить данные портфеля', zh: '刷新库存数据', 'zh-TW': '重新整理庫存資料' })}
             >
-              {portfolio.loading ? '...' : (lang === 'ru' ? 'Обновить' : 'Refresh')}
+              {portfolio.loading ? '...' : (tt(lang, { en: 'Refresh', ru: 'Обновить', zh: '刷新', 'zh-TW': '重新整理' }))}
             </button>
           </div>
         </div>
@@ -489,18 +495,21 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
           <div className="dash-management" id="portfolio-management">
             <div className="dash-management-head">
               <div>
-                <div className="eyebrow">{lang === 'ru' ? 'УПРАВЛЕНИЕ ПОРТФЕЛЕМ' : 'PORTFOLIO MANAGEMENT'}</div>
+                <div className="eyebrow">{tt(lang, { en: 'PORTFOLIO MANAGEMENT', ru: 'УПРАВЛЕНИЕ ПОРТФЕЛЕМ', zh: '库存管理', 'zh-TW': '庫存管理' })}</div>
                 <p>
-                  {lang === 'ru'
-                    ? 'Выберите, откуда получить данные, или добавьте предмет вручную.'
-                    : 'Choose where to get data from, or add an item manually.'}
+                  {tt(lang, {
+                    en: 'Choose where to get data from, or add an item manually.',
+                    ru: 'Выберите, откуда получить данные, или добавьте предмет вручную.',
+                    zh: '选择数据来源，或手动添加物品。',
+                    'zh-TW': '選擇資料來源，或手動新增物品。',
+                  })}
                 </p>
               </div>
               <button
                 type="button"
                 className="dash-management-close"
                 onClick={() => setControlsOpen(false)}
-                aria-label={lang === 'ru' ? 'Закрыть управление портфелем' : 'Close portfolio management'}
+                aria-label={tt(lang, { en: 'Close portfolio management', ru: 'Закрыть управление портфелем', zh: '关闭库存管理', 'zh-TW': '關閉庫存管理' })}
               >
                 ×
               </button>
@@ -510,8 +519,8 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 <div className="dash-control-section-copy">
                   <span className="dash-control-index">01</span>
                   <div>
-                    <h3>{lang === 'ru' ? 'Синхронизация Steam' : 'Steam sync'}</h3>
-                    <p>{lang === 'ru' ? 'Полный инвентарь через Desktop — скоро.' : 'Full inventory via Desktop — coming soon.'}</p>
+                    <h3>{tt(lang, { en: 'Steam sync', ru: 'Синхронизация Steam', zh: 'Steam 同步', 'zh-TW': 'Steam 同步' })}</h3>
+                    <p>{tt(lang, { en: 'Full inventory via Desktop — coming soon.', ru: 'Полный инвентарь через Desktop — скоро.', zh: '通过 Desktop 同步完整库存 — 即将推出。', 'zh-TW': '透過 Desktop 同步完整庫存 — 即將推出。' })}</p>
                   </div>
                 </div>
                 <div className="dash-control-section-actions">
@@ -543,14 +552,17 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
 
         {isSwitchingPortfolio && (
           <div className="dash-switching-banner" role="status" aria-live="polite">
-            {lang === 'ru'
-              ? `Загружаем портфель${selectedPortfolioName ? ` «${selectedPortfolioName}»` : ''}…`
-              : `Loading${selectedPortfolioName ? ` “${selectedPortfolioName}”` : ' portfolio'}…`}
+            {tt(lang, {
+              en: `Loading${selectedPortfolioName ? ` “${selectedPortfolioName}”` : ' portfolio'}…`,
+              ru: `Загружаем портфель${selectedPortfolioName ? ` «${selectedPortfolioName}»` : ''}…`,
+              zh: `正在加载${selectedPortfolioName ? `「${selectedPortfolioName}」` : '库存'}…`,
+              'zh-TW': `正在載入${selectedPortfolioName ? `「${selectedPortfolioName}」` : '庫存'}…`,
+            })}
           </div>
         )}
 
         <div className="dash-body" data-switching={isSwitchingPortfolio ? 'true' : 'false'}>
-        <div className="dash-section-tabs" role="tablist" aria-label={lang === 'ru' ? 'Разделы портфеля' : 'Portfolio sections'}>
+        <div className="dash-section-tabs" role="tablist" aria-label={tt(lang, { en: 'Portfolio sections', ru: 'Разделы портфеля', zh: '库存分区', 'zh-TW': '庫存分區' })}>
           {sections.map((section) => (
             <button
               key={section.id}
@@ -574,29 +586,59 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 accent
                 label={t.dash.total}
                 value={compactUsd(data.totalValue)}
-                delta={lang === 'ru' ? `${data.pricedCount} из ${data.totalInventoryCount} оценено` : `${data.pricedCount} of ${data.totalInventoryCount} priced`}
-                sub={lang === 'ru' ? `${data.uniqueInventoryCount} уникальных позиций` : `${data.uniqueInventoryCount} unique positions`}
+                delta={tt(lang, {
+                  en: `${data.pricedCount} of ${data.totalInventoryCount} priced`,
+                  ru: `${data.pricedCount} из ${data.totalInventoryCount} оценено`,
+                  zh: `${data.pricedCount} / ${data.totalInventoryCount} 已估价`,
+                  'zh-TW': `${data.pricedCount} / ${data.totalInventoryCount} 已估價`,
+                })}
+                sub={tt(lang, {
+                  en: `${data.uniqueInventoryCount} unique positions`,
+                  ru: `${data.uniqueInventoryCount} уникальных позиций`,
+                  zh: `${data.uniqueInventoryCount} 个独立持仓`,
+                  'zh-TW': `${data.uniqueInventoryCount} 個獨立持倉`,
+                })}
               />
               <StatCard
                 label={t.dash.pnl}
                 value={`${data.pnl >= 0 ? '+' : ''}${compactUsd(data.pnl)}`}
                 delta={`${data.pnlPct >= 0 ? '+' : ''}${data.pnlPct.toFixed(2)}%`}
                 deltaColor={pnlColor}
-                sub={lang === 'ru' ? `Себестоимость ${compactUsd(data.totalBasis)}` : `Cost basis ${compactUsd(data.totalBasis)}`}
+                sub={tt(lang, {
+                  en: `Cost basis ${compactUsd(data.totalBasis)}`,
+                  ru: `Себестоимость ${compactUsd(data.totalBasis)}`,
+                  zh: `成本基础 ${compactUsd(data.totalBasis)}`,
+                  'zh-TW': `成本基礎 ${compactUsd(data.totalBasis)}`,
+                })}
               />
               <StatCard
-                label={lang === 'ru' ? 'ДОСТУПНО К ПРОДАЖЕ' : 'SELLABLE NOW'}
+                label={tt(lang, { en: 'SELLABLE NOW', ru: 'ДОСТУПНО К ПРОДАЖЕ', zh: '现在可售', 'zh-TW': '現在可售' })}
                 value={compactUsd(marketableValue)}
-                delta={lang === 'ru' ? `${marketableQty} из ${data.totalInventoryCount} доступны` : `${marketableQty} of ${data.totalInventoryCount} marketable`}
+                delta={tt(lang, {
+                  en: `${marketableQty} of ${data.totalInventoryCount} marketable`,
+                  ru: `${marketableQty} из ${data.totalInventoryCount} доступны`,
+                  zh: `${marketableQty} / ${data.totalInventoryCount} 可出售`,
+                  'zh-TW': `${marketableQty} / ${data.totalInventoryCount} 可出售`,
+                })}
                 deltaColor="var(--cyan)"
-                sub={lang === 'ru' ? `${notMarketableQty} заблокировано или в хранилище` : `${notMarketableQty} locked or in storage`}
+                sub={tt(lang, {
+                  en: `${notMarketableQty} locked or in storage`,
+                  ru: `${notMarketableQty} заблокировано или в хранилище`,
+                  zh: `${notMarketableQty} 锁定或在仓库`,
+                  'zh-TW': `${notMarketableQty} 鎖定或在倉庫`,
+                })}
               />
               <StatCard
-                label={lang === 'ru' ? 'КОНЦЕНТРАЦИЯ' : 'CONCENTRATION'}
+                label={tt(lang, { en: 'CONCENTRATION', ru: 'КОНЦЕНТРАЦИЯ', zh: '集中度', 'zh-TW': '集中度' })}
                 value={topItem ? `${topItemPct.toFixed(0)}%` : '0%'}
-                delta={topItem ? topItem.name : (lang === 'ru' ? 'Нет оценённых предметов' : 'No priced items')}
+                delta={topItem ? topItem.name : (tt(lang, { en: 'No priced items', ru: 'Нет оценённых предметов', zh: '暂无已估价物品', 'zh-TW': '暫無已估價物品' }))}
                 deltaColor="var(--amber)"
-                sub={lang === 'ru' ? `Топ-5 = ${topFivePct.toFixed(0)}% портфеля` : `Top 5 = ${topFivePct.toFixed(0)}% of portfolio`}
+                sub={tt(lang, {
+                  en: `Top 5 = ${topFivePct.toFixed(0)}% of portfolio`,
+                  ru: `Топ-5 = ${topFivePct.toFixed(0)}% портфеля`,
+                  zh: `前 5 = 库存的 ${topFivePct.toFixed(0)}%`,
+                  'zh-TW': `前 5 = 庫存的 ${topFivePct.toFixed(0)}%`,
+                })}
               />
             </div>
 
@@ -604,7 +646,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
               <div className="glass dash-panel">
                 <div className="dash-chart-toolbar">
                   <div>
-                    <div className="eyebrow">{lang === 'ru' ? 'СТОИМОСТЬ ВО ВРЕМЕНИ' : 'VALUE OVER TIME'}</div>
+                    <div className="eyebrow">{tt(lang, { en: 'VALUE OVER TIME', ru: 'СТОИМОСТЬ ВО ВРЕМЕНИ', zh: '价值随时间', 'zh-TW': '價值隨時間' })}</div>
                     <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{historySubtitle}</div>
                   </div>
                   <div className="dash-range-switch">
@@ -613,7 +655,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                         padding: '6px 12px', fontFamily: 'var(--f-mono)', fontSize: 11,
                         color: range === r ? 'var(--fg-0)' : 'var(--fg-3)',
                         background: range === r ? 'rgba(255,255,255,0.06)' : 'transparent',
-                      }}>{r === 'ALL' && lang === 'ru' ? 'ВСЁ' : r}</button>
+                      }}>{r === 'ALL' ? tt(lang, { en: 'ALL', ru: 'ВСЁ', zh: '全部', 'zh-TW': '全部' }) : r}</button>
                     ))}
                   </div>
                 </div>
@@ -630,12 +672,15 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
             {data.itemsLimited && (
               <div className="glass dash-limit-notice">
                 <div style={{ fontSize: 13.5, color: 'var(--fg-1)', lineHeight: 1.5 }}>
-                  {lang === 'ru'
-                    ? `Бесплатный тариф: показаны ${data.visibleInventoryCount || data.itemDisplayLimit} из ${data.totalInventoryCount} предметов. Plus снимает лимит.`
-                    : `Free plan: showing ${data.visibleInventoryCount || data.itemDisplayLimit} of ${data.totalInventoryCount} items. Plus removes the limit.`}
+                  {tt(lang, {
+                    en: `Free plan: showing ${data.visibleInventoryCount || data.itemDisplayLimit} of ${data.totalInventoryCount} items. Plus removes the limit.`,
+                    ru: `Бесплатный тариф: показаны ${data.visibleInventoryCount || data.itemDisplayLimit} из ${data.totalInventoryCount} предметов. Plus снимает лимит.`,
+                    zh: `免费套餐：显示 ${data.visibleInventoryCount || data.itemDisplayLimit} / ${data.totalInventoryCount} 件物品。Plus 可解除限制。`,
+                    'zh-TW': `免費方案：顯示 ${data.visibleInventoryCount || data.itemDisplayLimit} / ${data.totalInventoryCount} 件物品。Plus 可解除限制。`,
+                  })}
                 </div>
                 <button type="button" className="btn btn-sm btn-primary" onClick={() => onPricing && onPricing()}>
-                  {lang === 'ru' ? 'Тарифы' : 'Plans'}
+                  {tt(lang, { en: 'Plans', ru: 'Тарифы', zh: '套餐', 'zh-TW': '方案' })}
                 </button>
               </div>
             )}
@@ -643,16 +688,26 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
             <div className="glass dash-inventory">
               <div className="dash-inventory-toolbar">
                 <div>
-                  <div className="eyebrow">{lang === 'ru' ? 'ПРЕДМЕТЫ ПОРТФЕЛЯ' : 'PORTFOLIO ITEMS'}</div>
+                  <div className="eyebrow">{tt(lang, { en: 'PORTFOLIO ITEMS', ru: 'ПРЕДМЕТЫ ПОРТФЕЛЯ', zh: '库存物品', 'zh-TW': '庫存物品' })}</div>
                   <div className="dash-inventory-meta">
-                    {filteredItems.length}/{items.length} · {data.totalInventoryCount} {lang === 'ru' ? 'шт.' : 'items'}
+                    {filteredItems.length}/{items.length} · {data.totalInventoryCount} {tt(lang, { en: 'items', ru: 'шт.', zh: '件', 'zh-TW': '件' })}
                     {data.itemsLimited && (
                       <span style={{ color: 'var(--accent)' }}>
-                        {lang === 'ru' ? ` · лимит ${data.itemDisplayLimit}` : ` · limit ${data.itemDisplayLimit}`}
+                        {tt(lang, {
+                          en: ` · limit ${data.itemDisplayLimit}`,
+                          ru: ` · лимит ${data.itemDisplayLimit}`,
+                          zh: ` · 上限 ${data.itemDisplayLimit}`,
+                          'zh-TW': ` · 上限 ${data.itemDisplayLimit}`,
+                        })}
                       </span>
                     )}
                     {data.storageItemCount > 0 && (
-                      <span> · {lang === 'ru' ? `хранилище ${data.storageItemCount}` : `storage ${data.storageItemCount}`}</span>
+                      <span> · {tt(lang, {
+                        en: `storage ${data.storageItemCount}`,
+                        ru: `хранилище ${data.storageItemCount}`,
+                        zh: `仓库 ${data.storageItemCount}`,
+                        'zh-TW': `倉庫 ${data.storageItemCount}`,
+                      })}</span>
                     )}
                   </div>
                 </div>
@@ -661,15 +716,15 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                     className="dash-inventory-search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder={lang === 'ru' ? 'Найти предмет...' : 'Find an item...'}
-                    aria-label={lang === 'ru' ? 'Поиск по предметам' : 'Search items'}
+                    placeholder={tt(lang, { en: 'Find an item...', ru: 'Найти предмет...', zh: '查找物品...', 'zh-TW': '尋找物品...' })}
+                    aria-label={tt(lang, { en: 'Search items', ru: 'Поиск по предметам', zh: '搜索物品', 'zh-TW': '搜尋物品' })}
                   />
                   <button
                     className="btn btn-sm btn-ghost"
                     onClick={() => downloadPortfolioCsv(items)}
-                    title={lang === 'ru' ? 'Экспортировать все предметы в CSV' : 'Export all items to CSV'}
+                    title={tt(lang, { en: 'Export all items to CSV', ru: 'Экспортировать все предметы в CSV', zh: '导出全部物品为 CSV', 'zh-TW': '匯出全部物品為 CSV' })}
                   >
-                    {lang === 'ru' ? 'Экспорт CSV' : 'Export CSV'}
+                    {tt(lang, { en: 'Export CSV', ru: 'Экспорт CSV', zh: '导出 CSV', 'zh-TW': '匯出 CSV' })}
                   </button>
                 </div>
               </div>
@@ -695,9 +750,12 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
             <div className="glass dash-activity-panel">
               <div className="eyebrow">{t.dash.activity}</div>
               <div className="dash-section-description">
-                {lang === 'ru'
-                  ? 'Покупки, продажи и изменения количества предметов.'
-                  : 'Purchases, sales, and item quantity changes.'}
+                {tt(lang, {
+                  en: 'Purchases, sales, and item quantity changes.',
+                  ru: 'Покупки, продажи и изменения количества предметов.',
+                  zh: '买入、卖出与物品数量变化。',
+                  'zh-TW': '買入、賣出與物品數量變化。',
+                })}
               </div>
               <ActivityTable
                 activity={data.activity}
@@ -716,21 +774,12 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
 }
 
 function activityKindLabel(kind, lang) {
-  const ru = {
-    added: 'Купил / добавлен',
-    removed: 'Удалён',
-    qty_up: 'Кол-во +',
-    qty_down: 'Кол-во −',
-    updated: 'Изменён',
-  };
-  const en = {
-    added: 'Added',
-    removed: 'Removed',
-    qty_up: 'Qty +',
-    qty_down: 'Qty −',
-    updated: 'Updated',
-  };
-  return (lang === 'ru' ? ru : en)[kind] || kind;
+  return tt(lang, {
+    en: { added: 'Added', removed: 'Removed', qty_up: 'Qty +', qty_down: 'Qty −', updated: 'Updated' },
+    ru: { added: 'Купил / добавлен', removed: 'Удалён', qty_up: 'Кол-во +', qty_down: 'Кол-во −', updated: 'Изменён' },
+    zh: { added: '已添加', removed: '已移除', qty_up: '数量 +', qty_down: '数量 −', updated: '已更新' },
+    'zh-TW': { added: '已新增', removed: '已移除', qty_up: '數量 +', qty_down: '數量 −', updated: '已更新' },
+  })[kind] || kind;
 }
 
 function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDeleted }) {
@@ -740,10 +789,13 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
 
   if (!rows.length) {
     const empty = isManual
-      ? (lang === 'ru' ? 'Пока нет покупок' : 'No purchases yet')
-      : (lang === 'ru'
-        ? 'Изменения появятся после следующего синка с другим составом инвентаря'
-        : 'Changes will appear after the next sync with a different inventory');
+      ? (tt(lang, { en: 'No purchases yet', ru: 'Пока нет покупок', zh: '暂无买入记录', 'zh-TW': '暫無買入紀錄' }))
+      : tt(lang, {
+        en: 'Changes will appear after the next sync with a different inventory',
+        ru: 'Изменения появятся после следующего синка с другим составом инвентаря',
+        zh: '下次同步且库存变化后将显示动态',
+        'zh-TW': '下次同步且庫存變化後將顯示動態',
+      });
     return (
       <div style={{ marginTop: 14, fontFamily: 'var(--f-mono)', fontSize: 11.5, color: 'var(--fg-3)' }}>
         {empty}
@@ -772,9 +824,12 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
     const qtyLabel = Number.isFinite(row.qtyDelta) && row.qtyDelta !== 0
       ? `${row.qtyDelta > 0 ? '+' : ''}${row.qtyDelta}`
       : '';
-    const confirmText = lang === 'ru'
-      ? `Удалить транзакцию «${row.name || row.marketHashName}»${qtyLabel ? ` (${qtyLabel})` : ''}?\nКоличество и себестоимость позиции будут пересчитаны.`
-      : `Delete transaction “${row.name || row.marketHashName}”${qtyLabel ? ` (${qtyLabel})` : ''}?\nPosition quantity and cost basis will be recalculated.`;
+    const confirmText = tt(lang, {
+      en: `Delete transaction “${row.name || row.marketHashName}”${qtyLabel ? ` (${qtyLabel})` : ''}?\nPosition quantity and cost basis will be recalculated.`,
+      ru: `Удалить транзакцию «${row.name || row.marketHashName}»${qtyLabel ? ` (${qtyLabel})` : ''}?\nКоличество и себестоимость позиции будут пересчитаны.`,
+      zh: `删除交易「${row.name || row.marketHashName}」${qtyLabel ? ` (${qtyLabel})` : ''}？\n将重新计算持仓数量与成本。`,
+      'zh-TW': `刪除交易「${row.name || row.marketHashName}」${qtyLabel ? ` (${qtyLabel})` : ''}？\n將重新計算持倉數量與成本。`,
+    });
     if (!window.confirm(confirmText)) return;
 
     setDeletingId(row.id);
@@ -785,7 +840,7 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
       );
       if (onEventDeleted) onEventDeleted();
     } catch (err) {
-      window.alert(err.message || (lang === 'ru' ? 'Не удалось удалить транзакцию' : 'Could not delete transaction'));
+      window.alert(err.message || (tt(lang, { en: 'Could not delete transaction', ru: 'Не удалось удалить транзакцию', zh: '无法删除交易', 'zh-TW': '無法刪除交易' })));
     }
     setDeletingId(null);
   };
@@ -795,12 +850,12 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isManual ? 620 : 480 }}>
         <thead>
           <tr>
-            <th style={{ ...headerStyle, textAlign: 'left' }}>{lang === 'ru' ? 'Дата' : 'Date'}</th>
-            <th style={{ ...headerStyle, textAlign: 'left' }}>{lang === 'ru' ? 'Действие' : 'Action'}</th>
-            <th style={{ ...headerStyle, textAlign: 'left' }}>{lang === 'ru' ? 'Предмет' : 'Item'}</th>
-            <th style={{ ...headerStyle, textAlign: 'right' }}>{lang === 'ru' ? 'Кол-во' : 'Qty'}</th>
+            <th style={{ ...headerStyle, textAlign: 'left' }}>{tt(lang, { en: 'Date', ru: 'Дата', zh: '日期', 'zh-TW': '日期' })}</th>
+            <th style={{ ...headerStyle, textAlign: 'left' }}>{tt(lang, { en: 'Action', ru: 'Действие', zh: '操作', 'zh-TW': '操作' })}</th>
+            <th style={{ ...headerStyle, textAlign: 'left' }}>{tt(lang, { en: 'Item', ru: 'Предмет', zh: '物品', 'zh-TW': '物品' })}</th>
+            <th style={{ ...headerStyle, textAlign: 'right' }}>{tt(lang, { en: 'Qty', ru: 'Кол-во', zh: '数量', 'zh-TW': '數量' })}</th>
             {isManual && (
-              <th style={{ ...headerStyle, textAlign: 'right' }}>{lang === 'ru' ? 'Цена/шт.' : 'Basis'}</th>
+              <th style={{ ...headerStyle, textAlign: 'right' }}>{tt(lang, { en: 'Basis', ru: 'Цена/шт.', zh: '成本', 'zh-TW': '成本' })}</th>
             )}
             {isManual && <th style={{ ...headerStyle, textAlign: 'right' }} />}
           </tr>
@@ -814,7 +869,12 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
               ? `${row.qtyDelta > 0 ? '+' : ''}${row.qtyDelta}`
               : (Number.isFinite(row.qtyAfter) ? String(row.qtyAfter) : '—');
             const basisLabel = Number.isFinite(row.basisPerUnit)
-              ? formatMoney(row.basisPerUnit, { currency: row.currency === 'rub' || row.currency === 'rur' ? 'rub' : 'usd', digits: 2 })
+              ? formatMoney(row.basisPerUnit, {
+                currency: row.currency === 'rub' || row.currency === 'rur'
+                  ? 'rub'
+                  : (row.currency === 'cny' ? 'cny' : 'usd'),
+                digits: 2,
+              })
               : '—';
             const canDelete = isManual && portfolioId && row.id;
             return (
@@ -846,9 +906,9 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
                         className="btn btn-sm btn-ghost"
                         disabled={deletingId === row.id}
                         onClick={() => deleteEvent(row)}
-                        title={lang === 'ru' ? 'Удалить транзакцию и пересчитать позицию' : 'Delete transaction and recalculate position'}
+                        title={tt(lang, { en: 'Delete transaction and recalculate position', ru: 'Удалить транзакцию и пересчитать позицию', zh: '删除交易并重新计算持仓', 'zh-TW': '刪除交易並重新計算持倉' })}
                       >
-                        {deletingId === row.id ? '...' : (lang === 'ru' ? 'Удалить' : 'Delete')}
+                        {deletingId === row.id ? '...' : (tt(lang, { en: 'Delete', ru: 'Удалить', zh: '删除', 'zh-TW': '刪除' }))}
                       </button>
                     ) : null}
                   </td>
@@ -872,7 +932,7 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
   const manualActive = portfolioType === 'manual' && activePortfolioId;
 
   const createPortfolio = async () => {
-    const title = name.trim() || (lang === 'ru' ? 'Ручной портфель' : 'Manual portfolio');
+    const title = name.trim() || (tt(lang, { en: 'Manual portfolio', ru: 'Ручной портфель', zh: '手动库存', 'zh-TW': '手動庫存' }));
     setCreating(true);
     try {
       const data = await apiFetch('/api/portfolios', {
@@ -884,7 +944,7 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
       setNaming(false);
       onChanged(data.portfolio?.id);
     } catch (err) {
-      window.alert(err.message || (lang === 'ru' ? 'Не удалось создать портфель' : 'Could not create portfolio'));
+      window.alert(err.message || (tt(lang, { en: 'Could not create portfolio', ru: 'Не удалось создать портфель', zh: '无法创建库存', 'zh-TW': '無法建立庫存' })));
     }
     setCreating(false);
   };
@@ -906,20 +966,20 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
         <div className="dash-control-section-copy">
           <span className="dash-control-index">{auth?.connected ? '02' : '01'}</span>
           <div>
-            <h3>{lang === 'ru' ? 'Мои портфели' : 'My portfolios'}</h3>
-            <p>{lang === 'ru' ? 'Переключитесь на существующий или создайте ручной портфель.' : 'Switch portfolios or create a manual one.'}</p>
+            <h3>{tt(lang, { en: 'My portfolios', ru: 'Мои портфели', zh: '我的库存', 'zh-TW': '我的庫存' })}</h3>
+            <p>{tt(lang, { en: 'Switch portfolios or create a manual one.', ru: 'Переключитесь на существующий или создайте ручной портфель.', zh: '切换库存或创建手动库存。', 'zh-TW': '切換庫存或建立手動庫存。' })}</p>
           </div>
         </div>
         <div className="dash-control-fields">
           {!auth?.connected && (
             <button className="btn btn-sm btn-primary" onClick={() => auth?.login && auth.login()}>
-              {lang === 'ru' ? 'Подключить Steam' : 'Link Steam'}
+              {tt(lang, { en: 'Link Steam', ru: 'Подключить Steam', zh: '连接 Steam', 'zh-TW': '連線 Steam' })}
             </button>
           )}
           <select
             value={activePortfolioId || ''}
             onChange={(e) => onSelect(e.target.value || null)}
-            aria-label={lang === 'ru' ? 'Выбрать портфель' : 'Choose portfolio'}
+            aria-label={tt(lang, { en: 'Choose portfolio', ru: 'Выбрать портфель', zh: '选择库存', 'zh-TW': '選擇庫存' })}
             aria-busy={switching ? 'true' : 'false'}
             style={portfolioInputStyle({
               flex: '1 1 220px',
@@ -928,7 +988,7 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
               borderColor: switching ? 'var(--accent)' : undefined,
             })}
           >
-            {!activePortfolioId && <option value="">{lang === 'ru' ? 'Выберите портфель' : 'Choose a portfolio'}</option>}
+            {!activePortfolioId && <option value="">{tt(lang, { en: 'Choose a portfolio', ru: 'Выберите портфель', zh: '请选择库存', 'zh-TW': '請選擇庫存' })}</option>}
             {portfolios.map((portfolio) => (
               <option key={portfolio.id} value={portfolio.id}>
                 {portfolio.type === 'steam' ? 'Steam · ' : ''}{portfolio.name}{portfolio.itemCount != null ? ` (${portfolio.itemCount})` : ''}
@@ -948,12 +1008,12 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
                     setName('');
                   }
                 }}
-                placeholder={lang === 'ru' ? 'Название портфеля' : 'Portfolio name'}
-                aria-label={lang === 'ru' ? 'Название нового портфеля' : 'New portfolio name'}
+                placeholder={tt(lang, { en: 'Portfolio name', ru: 'Название портфеля', zh: '库存名称', 'zh-TW': '庫存名稱' })}
+                aria-label={tt(lang, { en: 'New portfolio name', ru: 'Название нового портфеля', zh: '新库存名称', 'zh-TW': '新庫存名稱' })}
                 style={portfolioInputStyle({ flex: '1 1 180px', minWidth: 150, height: 34 })}
               />
               <button className="btn btn-sm btn-primary" onClick={createPortfolio} disabled={creating}>
-                {creating ? '...' : (lang === 'ru' ? 'Создать' : 'Create')}
+                {creating ? '...' : (tt(lang, { en: 'Create', ru: 'Создать', zh: '创建', 'zh-TW': '建立' }))}
               </button>
               <button
                 className="btn btn-sm btn-ghost"
@@ -963,12 +1023,12 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
                   setName('');
                 }}
               >
-                {lang === 'ru' ? 'Отмена' : 'Cancel'}
+                {tt(lang, { en: 'Cancel', ru: 'Отмена', zh: '取消', 'zh-TW': '取消' })}
               </button>
             </div>
           ) : (
             <button className="btn btn-sm btn-ghost" type="button" onClick={() => setNaming(true)}>
-              {lang === 'ru' ? '+ Новый ручной' : '+ New manual'}
+              {tt(lang, { en: '+ New manual', ru: '+ Новый ручной', zh: '+ New manual', 'zh-TW': '+ New manual' })}
             </button>
           )}
         </div>
@@ -978,8 +1038,8 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
         <div className="dash-control-section-copy">
           <span className="dash-control-index">{auth?.connected ? '03' : '02'}</span>
           <div>
-            <h3>{lang === 'ru' ? 'Открыть Steam-профиль' : 'Open Steam profile'}</h3>
-            <p>{lang === 'ru' ? 'Посмотрите публичный инвентарь, не меняя свои портфели.' : 'View a public inventory without changing your portfolios.'}</p>
+            <h3>{tt(lang, { en: 'Open Steam profile', ru: 'Открыть Steam-профиль', zh: 'Open Steam profile', 'zh-TW': 'Open Steam profile' })}</h3>
+            <p>{tt(lang, { en: 'View a public inventory without changing your portfolios.', ru: 'Посмотрите публичный инвентарь, не меняя свои портфели.', zh: 'View a public inventory without changing your portfolios.', 'zh-TW': 'View a public inventory without changing your portfolios.' })}</p>
           </div>
         </div>
         <form onSubmit={submitProfileUrl} className="dash-control-fields">
@@ -994,7 +1054,7 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
             style={portfolioInputStyle({ flex: '1 1 260px', minWidth: 180, height: 34 })}
           />
           <button className="btn btn-sm btn-ghost" type="submit">
-            {lang === 'ru' ? 'Открыть' : 'Open'}
+            {tt(lang, { en: 'Open', ru: 'Открыть', zh: 'Open', 'zh-TW': 'Open' })}
           </button>
           {profileUrlError && <span className="dash-control-error">{profileUrlError}</span>}
         </form>
@@ -1004,11 +1064,11 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
         <div className="dash-control-section-copy">
           <span className="dash-control-index">{auth?.connected ? '04' : '03'}</span>
           <div>
-            <h3>{lang === 'ru' ? 'Добавить предмет вручную' : 'Add an item manually'}</h3>
+            <h3>{tt(lang, { en: 'Add an item manually', ru: 'Добавить предмет вручную', zh: 'Add an item manually', 'zh-TW': 'Add an item manually' })}</h3>
             <p>
               {manualActive
-                ? (lang === 'ru' ? 'Найдите предмет, укажите количество и цену покупки.' : 'Find an item, then enter quantity and purchase price.')
-                : (lang === 'ru' ? 'Сначала выберите или создайте ручной портфель.' : 'Choose or create a manual portfolio first.')}
+                ? (tt(lang, { en: 'Find an item, then enter quantity and purchase price.', ru: 'Найдите предмет, укажите количество и цену покупки.', zh: 'Find an item, then enter quantity and purchase price.', 'zh-TW': 'Find an item, then enter quantity and purchase price.' }))
+                : (tt(lang, { en: 'Choose or create a manual portfolio first.', ru: 'Сначала выберите или создайте ручной портфель.', zh: 'Choose or create a manual portfolio first.', 'zh-TW': 'Choose or create a manual portfolio first.' }))}
             </p>
           </div>
         </div>
@@ -1105,7 +1165,7 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
       setSelectedSuggestion(null);
       onSaved();
     } catch (err) {
-      window.alert(err.message || (lang === 'ru' ? 'Не удалось добавить предмет' : 'Could not add item'));
+      window.alert(err.message || (tt(lang, { en: 'Could not add item', ru: 'Не удалось добавить предмет', zh: 'Could not add item', 'zh-TW': 'Could not add item' })));
     }
     setSaving(false);
   };
@@ -1123,8 +1183,8 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
             }}
             onFocus={() => setSuggestionsOpen(true)}
             onBlur={() => setTimeout(() => setSuggestionsOpen(false), 120)}
-            placeholder={lang === 'ru' ? 'AK-47 | Redline (Field-Tested)' : 'AK-47 | Redline (Field-Tested)'}
-            aria-label={lang === 'ru' ? 'Название предмета' : 'Item name'}
+            placeholder={tt(lang, { en: 'AK-47 | Redline (Field-Tested)', ru: 'AK-47 | Redline (Field-Tested)', zh: 'AK-47 | Redline (Field-Tested)', 'zh-TW': 'AK-47 | Redline (Field-Tested)' })}
+            aria-label={tt(lang, { en: 'Item name', ru: 'Название предмета', zh: 'Item name', 'zh-TW': 'Item name' })}
             disabled={!portfolioId}
             style={portfolioInputStyle({ width: '100%', height: 34 })}
           />
@@ -1144,7 +1204,7 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
             }}>
               {suggestionsLoading && (
                 <div style={{ padding: 10, color: 'var(--fg-3)', fontFamily: 'var(--f-mono)', fontSize: 11 }}>
-                  {lang === 'ru' ? 'Ищу предметы...' : 'Searching items...'}
+                  {tt(lang, { en: 'Searching items...', ru: 'Ищу предметы...', zh: 'Searching items...', 'zh-TW': 'Searching items...' })}
                 </div>
               )}
               {!suggestionsLoading && suggestions.map((item) => (
@@ -1193,20 +1253,20 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
           min="1"
           step="1"
           disabled={!portfolioId}
-          title={lang === 'ru' ? 'Количество' : 'Quantity'}
-          aria-label={lang === 'ru' ? 'Количество' : 'Quantity'}
+          title={tt(lang, { en: 'Quantity', ru: 'Количество', zh: '数量', 'zh-TW': '數量' })}
+          aria-label={tt(lang, { en: 'Quantity', ru: 'Количество', zh: '数量', 'zh-TW': '數量' })}
           style={portfolioInputStyle({ width: 80, height: 34 })}
         />
         <input
           value={basisPerUnit}
           onChange={(e) => setBasisPerUnit(e.target.value)}
-          placeholder={currency === 'rub' ? '₽ / шт.' : '$ / item'}
+          placeholder={currency === 'rub' ? '₽ / шт.' : currency === 'cny' ? '¥ / 件' : '$ / item'}
           disabled={!portfolioId}
-          aria-label={lang === 'ru' ? 'Цена покупки за штуку' : 'Purchase price per item'}
+          aria-label={tt(lang, { en: 'Purchase price per item', ru: 'Цена покупки за штуку', zh: 'Purchase price per item', 'zh-TW': 'Purchase price per item' })}
           style={portfolioInputStyle({ width: 120, height: 34 })}
         />
         <button className="btn btn-sm btn-primary" disabled={!portfolioId || saving}>
-          {saving ? '...' : (lang === 'ru' ? 'Добавить' : 'Add')}
+          {saving ? '...' : (tt(lang, { en: 'Add', ru: 'Добавить', zh: 'Add', 'zh-TW': 'Add' }))}
         </button>
       </div>
     </form>
@@ -1231,21 +1291,26 @@ function portfolioInputStyle(extra = {}) {
 function BasisCell({ basisPerUnit, basisOriginal, basisCurrency, hasBasis, qty, totalBasis, lang, editable, onEdit }) {
   const inputCurrency = getActiveCurrency();
 
-  const editHint = editable ? (lang === 'ru' ? ' · клик, чтобы изменить' : ' · click to edit') : '';
+  const editHint = editable ? (tt(lang, { en: ' · click to edit', ru: ' · клик, чтобы изменить', zh: ' · click to edit', 'zh-TW': ' · click to edit' })) : '';
   const titleTotal = hasBasis && qty > 1
-    ? (basisCurrency === 'rub' && Number.isFinite(basisOriginal)
-      ? formatMoney(basisOriginal * qty, { currency: 'rub' })
+    ? ((basisCurrency === 'rub' || basisCurrency === 'cny') && Number.isFinite(basisOriginal)
+      ? formatMoney(basisOriginal * qty, { currency: basisCurrency })
       : (Number.isFinite(totalBasis) ? formatUsd(totalBasis) : null))
     : null;
   const title = (titleTotal
-    ? (lang === 'ru' ? `Всего: ${titleTotal} · за шт.` : `Total: ${titleTotal} · per unit`)
-    : (lang === 'ru' ? 'Цена покупки за шт.' : 'Buy price per item')) + editHint;
+    ? tt(lang, {
+      en: `Total: ${titleTotal} · per unit`,
+      ru: `Всего: ${titleTotal} · за шт.`,
+      zh: `合计: ${titleTotal} · 每件`,
+      'zh-TW': `合計: ${titleTotal} · 每件`,
+    })
+    : (tt(lang, { en: 'Buy price per item', ru: 'Цена покупки за шт.', zh: '每件买入价', 'zh-TW': '每件買入價' }))) + editHint;
 
   // basisOriginal keeps the exact amount the user typed in its original currency.
   // When the active currency differs, convert the USD basis (basisPerUnit) instead of
   // formatting the USD number as if it were already in the active currency.
   const displayBasis = !hasBasis
-    ? (lang === 'ru' ? 'не задан' : 'not set')
+    ? (tt(lang, { en: 'not set', ru: 'не задан', zh: 'not set', 'zh-TW': 'not set' }))
     : (basisCurrency === inputCurrency && Number.isFinite(basisOriginal)
       ? formatMoney(basisOriginal, { currency: inputCurrency })
       : (Number.isFinite(basisPerUnit) ? formatMoney(basisPerUnit) : '—'));
@@ -1375,7 +1440,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
     // Steam inventory rows: only the cost basis is editable (quantity comes from Steam).
     if (isSteamPortfolio) {
       if (!Number.isFinite(basisPerUnit) || basisPerUnit < 0) {
-        window.alert(lang === 'ru' ? 'Укажи корректную цену покупки.' : 'Enter a valid buy price.');
+        window.alert(tt(lang, { en: 'Enter a valid buy price.', ru: 'Укажи корректную цену покупки.', zh: 'Enter a valid buy price.', 'zh-TW': 'Enter a valid buy price.' }));
         return;
       }
       setSavingItemId(rowEditKey(item));
@@ -1389,7 +1454,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         setEditDraft({ quantity: '', basisPerUnit: '' });
         if (onBasisSaved) onBasisSaved();
       } catch (err) {
-        window.alert(err.message || (lang === 'ru' ? 'Не удалось сохранить' : 'Could not save'));
+        window.alert(err.message || (tt(lang, { en: 'Could not save', ru: 'Не удалось сохранить', zh: 'Could not save', 'zh-TW': 'Could not save' })));
       }
       setSavingItemId(null);
       return;
@@ -1398,7 +1463,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
     if (!item.manualItemId) return;
     const quantity = Number(String(editDraft.quantity).trim().replace(',', '.'));
     if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(basisPerUnit) || basisPerUnit < 0) {
-      window.alert(lang === 'ru' ? 'Укажи корректное количество и цену.' : 'Enter a valid quantity and price.');
+      window.alert(tt(lang, { en: 'Enter a valid quantity and price.', ru: 'Укажи корректное количество и цену.', zh: 'Enter a valid quantity and price.', 'zh-TW': 'Enter a valid quantity and price.' }));
       return;
     }
 
@@ -1413,7 +1478,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
       setEditDraft({ quantity: '', basisPerUnit: '' });
       if (onBasisSaved) onBasisSaved();
     } catch (err) {
-      window.alert(err.message || (lang === 'ru' ? 'Не удалось сохранить' : 'Could not save'));
+      window.alert(err.message || (tt(lang, { en: 'Could not save', ru: 'Не удалось сохранить', zh: 'Could not save', 'zh-TW': 'Could not save' })));
     }
     setSavingItemId(null);
   };
@@ -1425,7 +1490,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
       await apiFetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/items/${encodeURIComponent(item.manualItemId)}`, { method: 'DELETE' });
       if (onItemDeleted) onItemDeleted();
     } catch (err) {
-      window.alert(err.message || (lang === 'ru' ? 'Не удалось удалить предмет' : 'Could not delete item'));
+      window.alert(err.message || (tt(lang, { en: 'Could not delete item', ru: 'Не удалось удалить предмет', zh: '无法删除物品', 'zh-TW': '無法刪除物品' })));
     }
   };
 
@@ -1433,16 +1498,16 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
     <>
       <div className="inv-grid inv-grid-head">
         <div>#</div><div></div>
-        <SortHeader label={lang === 'ru' ? 'Предмет' : 'Item'} column="name" />
-        <SortHeader label={lang === 'ru' ? 'Кол-во' : 'Qty'} column="qty" />
+        <SortHeader label={tt(lang, { en: 'Item', ru: 'Предмет', zh: '物品', 'zh-TW': '物品' })} column="name" />
+        <SortHeader label={tt(lang, { en: 'Qty', ru: 'Кол-во', zh: '数量', 'zh-TW': '數量' })} column="qty" />
         <SortHeader
-          label={lang === 'ru' ? 'Покупка' : 'Basis'}
+          label={tt(lang, { en: 'Basis', ru: 'Покупка', zh: '成本', 'zh-TW': '成本' })}
           column="basis"
-          title={lang === 'ru' ? 'Себестоимость за 1 шт. Меняется через кнопку Изменить.' : 'Cost per unit. Change it from the Edit button.'}
+          title={tt(lang, { en: 'Cost per unit. Change it from the Edit button.', ru: 'Себестоимость за 1 шт. Меняется через кнопку Изменить.', zh: '单件成本。通过“编辑”按钮修改。', 'zh-TW': '單件成本。透過「編輯」按鈕修改。' })}
         />
-        <SortHeader label={lang === 'ru' ? 'Стоимость' : 'Value'} column="value" />
-        <SortHeader label={lang === 'ru' ? 'Доход' : 'P&L'} column="pnl" />
-        <div>{lang === 'ru' ? 'Источник' : 'Source'}</div>
+        <SortHeader label={tt(lang, { en: 'Value', ru: 'Стоимость', zh: '价值', 'zh-TW': '價值' })} column="value" />
+        <SortHeader label={tt(lang, { en: 'P&L', ru: 'Доход', zh: '盈亏', 'zh-TW': '盈虧' })} column="pnl" />
+        <div>{tt(lang, { en: 'Source', ru: 'Источник', zh: 'Source', 'zh-TW': 'Source' })}</div>
       </div>
       {sortedItems.map((h, i) => {
         const change = (h.spark || [0, 0]).at(-1) - (h.spark || [0, 0]).at(-2);
@@ -1451,8 +1516,13 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         const lockLabel = h.tradableQty === h.qty
           ? null
           : h.tradableQty > 0
-            ? (lang === 'ru' ? `${h.qty - h.tradableQty} заблок.` : `${h.qty - h.tradableQty} restricted`)
-            : (lang === 'ru' ? 'заблокировано' : 'restricted');
+            ? tt(lang, {
+              en: `${h.qty - h.tradableQty} restricted`,
+              ru: `${h.qty - h.tradableQty} заблок.`,
+              zh: `${h.qty - h.tradableQty} 受限`,
+              'zh-TW': `${h.qty - h.tradableQty} 受限`,
+            })
+            : (tt(lang, { en: 'restricted', ru: 'заблокировано', zh: '受限', 'zh-TW': '受限' }));
         return (
           <div
             key={h.marketHashName || String(h.assetid || i)}
@@ -1479,11 +1549,16 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center' }}>
-                {h.marketableQty > 0 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--green)' }}>{lang === 'ru' ? 'можно продать' : 'marketable'}</span>}
-                {h.assetIds?.length > 1 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>{lang === 'ru' ? `${h.assetIds.length} объединено` : `${h.assetIds.length} stacks merged`}</span>}
+                {h.marketableQty > 0 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--green)' }}>{tt(lang, { en: 'marketable', ru: 'можно продать', zh: '可出售', 'zh-TW': '可出售' })}</span>}
+                {h.assetIds?.length > 1 && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>{tt(lang, {
+                  en: `${h.assetIds.length} stacks merged`,
+                  ru: `${h.assetIds.length} объединено`,
+                  zh: `${h.assetIds.length} 已合并`,
+                  'zh-TW': `${h.assetIds.length} 已合併`,
+                })}</span>}
                 {(h.inStorage || h.storageQty > 0) && (
                   <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--cyan)' }} title={h.storageUnitName || ''}>
-                    {lang === 'ru' ? 'хранилище' : 'storage'}{h.storageUnitName ? ` · ${h.storageUnitName}` : ''}
+                    {tt(lang, { en: 'storage', ru: 'хранилище', zh: '仓库', 'zh-TW': '倉庫' })}{h.storageUnitName ? ` · ${h.storageUnitName}` : ''}
                   </span>
                 )}
                 {lockLabel && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--amber)' }}>{lockLabel}</span>}
@@ -1507,7 +1582,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
                 value={editDraft.basisPerUnit}
                 onClick={(event) => event.stopPropagation()}
                 onChange={(event) => setEditDraft((draft) => ({ ...draft, basisPerUnit: event.target.value }))}
-                placeholder={getActiveCurrency() === 'rub' ? '₽ / шт.' : '$ / item'}
+                placeholder={getActiveCurrency() === 'rub' ? '₽ / шт.' : getActiveCurrency() === 'cny' ? '¥ / 件' : '$ / item'}
                 style={portfolioInputStyle({ width: 96, fontFamily: 'var(--f-mono)' })}
               />
             ) : (
@@ -1533,19 +1608,19 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
                   {isEditing ? (
                     <>
                       <button className="btn btn-sm btn-primary" onClick={(event) => saveManualEdit(h, event)} disabled={savingItemId === h.manualItemId}>
-                        {savingItemId === h.manualItemId ? '...' : (lang === 'ru' ? 'Сохранить' : 'Save')}
+                        {savingItemId === h.manualItemId ? '...' : (tt(lang, { en: 'Save', ru: 'Сохранить', zh: '保存', 'zh-TW': '儲存' }))}
                       </button>
                       <button className="btn btn-sm btn-ghost" onClick={cancelManualEdit}>
-                        {lang === 'ru' ? 'Отмена' : 'Cancel'}
+                        {tt(lang, { en: 'Cancel', ru: 'Отмена', zh: '取消', 'zh-TW': '取消' })}
                       </button>
                     </>
                   ) : (
                     <>
                       <button className="btn btn-sm btn-ghost" onClick={(event) => startManualEdit(h, event)}>
-                        {lang === 'ru' ? 'Изменить' : 'Edit'}
+                        {tt(lang, { en: 'Edit', ru: 'Изменить', zh: '编辑', 'zh-TW': '編輯' })}
                       </button>
                       <button className="btn btn-sm btn-ghost" onClick={(event) => deleteManualItem(h, event)}>
-                        {lang === 'ru' ? 'Удалить' : 'Delete'}
+                        {tt(lang, { en: 'Delete', ru: 'Удалить', zh: '删除', 'zh-TW': '刪除' })}
                       </button>
                     </>
                   )}
@@ -1553,10 +1628,10 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
               ) : isSteamPortfolio && isEditing ? (
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <button className="btn btn-sm btn-primary" onClick={(event) => saveManualEdit(h, event)} disabled={savingItemId === (h.manualItemId || h.marketHashName)}>
-                    {savingItemId === (h.manualItemId || h.marketHashName) ? '...' : (lang === 'ru' ? 'Сохранить' : 'Save')}
+                    {savingItemId === (h.manualItemId || h.marketHashName) ? '...' : (tt(lang, { en: 'Save', ru: 'Сохранить', zh: '保存', 'zh-TW': '儲存' }))}
                   </button>
                   <button className="btn btn-sm btn-ghost" onClick={cancelManualEdit}>
-                    {lang === 'ru' ? 'Отмена' : 'Cancel'}
+                    {tt(lang, { en: 'Cancel', ru: 'Отмена', zh: '取消', 'zh-TW': '取消' })}
                   </button>
                 </div>
               ) : (
@@ -1571,9 +1646,12 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
 }
 
 function PortfolioLoadingVisual({ lang }) {
-  const labels = lang === 'ru'
-    ? ['Читаем инвентарь', 'Сверяем цены', 'Строим аналитику']
-    : ['Reading inventory', 'Matching prices', 'Building analytics'];
+  const labels = tt(lang, {
+    en: ['Reading inventory', 'Matching prices', 'Building analytics'],
+    ru: ['Читаем инвентарь', 'Сверяем цены', 'Строим аналитику'],
+    zh: ['读取库存', '匹配价格', '生成分析'],
+    'zh-TW': ['讀取庫存', '匹配價格', '產生分析'],
+  });
   const candles = [
     { bottom: 20, body: 22, wick: 38, up: true },
     { bottom: 27, body: 16, wick: 31, up: false },
@@ -1642,9 +1720,12 @@ function DashboardState({ lang, title, auth, message, error, onRetry, loading = 
   const suggestSteamApiKey = auth?.steamApiKeyConfigured === false;
   const text = error
     ? errorMessage(error, lang)
-    : message || (lang === 'ru'
-      ? 'Подключи Steam аккаунт, чтобы прочитать публичный CS2 inventory и оценить портфель.'
-      : 'Connect Steam to read your public CS2 inventory and value the portfolio.');
+    : message || tt(lang, {
+      en: 'Connect Steam to read your public CS2 inventory and value the portfolio.',
+      ru: 'Подключи Steam аккаунт, чтобы прочитать публичный CS2 inventory и оценить портфель.',
+      zh: '连接 Steam 以读取公开 CS2 库存并估算价值。',
+      'zh-TW': '連線 Steam 以讀取公開 CS2 庫存並估算價值。',
+    });
 
   return (
     <div className={loading ? 'dashboard-state dashboard-state--loading' : 'dashboard-state'}>
@@ -1661,9 +1742,12 @@ function DashboardState({ lang, title, auth, message, error, onRetry, loading = 
             )}
             {suggestSteamApiKey && !loading && (
               <p className="dashboard-state__warning">
-                {lang === 'ru'
-                  ? 'Для ника и аватара в Steam добавь STEAM_API_KEY в .env и перезапусти сервер (вход без ключа уже работает).'
-                  : 'Add STEAM_API_KEY to .env and restart the server for Steam display names and avatars (login works without it).'}
+                {tt(lang, {
+                  en: 'Add STEAM_API_KEY to .env and restart the server for Steam display names and avatars (login works without it).',
+                  ru: 'Для ника и аватара в Steam добавь STEAM_API_KEY в .env и перезапусти сервер (вход без ключа уже работает).',
+                  zh: '如需显示 Steam 昵称与头像，请在 .env 添加 STEAM_API_KEY 并重启服务器（登录不依赖该密钥）。',
+                  'zh-TW': '如需顯示 Steam 暱稱與頭像，請在 .env 新增 STEAM_API_KEY 並重啟伺服器（登入不依賴該金鑰）。',
+                })}
               </p>
             )}
             {!loading && (
@@ -1682,12 +1766,12 @@ function DashboardState({ lang, title, auth, message, error, onRetry, loading = 
 
 function errorMessage(error, lang) {
   const messages = {
-    not_authenticated: lang === 'ru' ? 'Steam аккаунт не подключен.' : 'Steam account is not connected.',
-    missing_profile_url: lang === 'ru' ? 'Вставь ссылку на профиль Steam.' : 'Paste a Steam profile link.',
-    invalid_profile_url: lang === 'ru' ? 'Не удалось прочитать ссылку. Нужен профиль Steam или SteamID64.' : 'Could not read that link. Use a Steam profile URL or SteamID64.',
-    profile_not_found: lang === 'ru' ? 'Steam-профиль не найден.' : 'Steam profile was not found.',
-    private_inventory: lang === 'ru' ? 'Steam не отдал inventory. Проверь, что инвентарь публичный.' : 'Steam did not return inventory. Make sure your inventory is public.',
-    rate_limited: lang === 'ru' ? 'Steam временно ограничил запросы. Попробуй позже.' : 'Steam rate limited the request. Try again later.',
+    not_authenticated: tt(lang, { en: 'Steam account is not connected.', ru: 'Steam аккаунт не подключен.', zh: '尚未连接 Steam 账号。', 'zh-TW': '尚未連線 Steam 帳號。' }),
+    missing_profile_url: tt(lang, { en: 'Paste a Steam profile link.', ru: 'Вставь ссылку на профиль Steam.', zh: '请粘贴 Steam 个人资料链接。', 'zh-TW': '請貼上 Steam 個人資料連結。' }),
+    invalid_profile_url: tt(lang, { en: 'Could not read that link. Use a Steam profile URL or SteamID64.', ru: 'Не удалось прочитать ссылку. Нужен профиль Steam или SteamID64.', zh: '无法识别该链接。请使用 Steam 个人资料 URL 或 SteamID64。', 'zh-TW': '無法識別該連結。請使用 Steam 個人資料 URL 或 SteamID64。' }),
+    profile_not_found: tt(lang, { en: 'Steam profile was not found.', ru: 'Steam-профиль не найден.', zh: '未找到 Steam 个人资料。', 'zh-TW': '找不到 Steam 個人資料。' }),
+    private_inventory: tt(lang, { en: 'Steam did not return inventory. Make sure your inventory is public.', ru: 'Steam не отдал inventory. Проверь, что инвентарь публичный.', zh: 'Steam 未返回库存。请确认库存为公开。', 'zh-TW': 'Steam 未回傳庫存。請確認庫存為公開。' }),
+    rate_limited: tt(lang, { en: 'Steam rate limited the request. Try again later.', ru: 'Steam временно ограничил запросы. Попробуй позже.', zh: 'Steam 请求过于频繁，请稍后再试。', 'zh-TW': 'Steam 請求過於頻繁，請稍後再試。' }),
   };
   return messages[error.code] || error.message || 'Unexpected error.';
 }
