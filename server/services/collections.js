@@ -122,11 +122,60 @@ async function getCollectionIndex() {
   return indexPromise;
 }
 
+function collectionFromTags(tags = []) {
+  if (!Array.isArray(tags) || !tags.length) return null;
+  const tag = tags.find((entry) => entry?.category === 'ItemSet');
+  if (!tag) return null;
+  const name = tag.localized_tag_name || tag.name || null;
+  if (!name) return null;
+  const slug = collectionNameToSlug(name);
+  return slug ? { name, slug } : null;
+}
+
+function collectionFromItemFields(item = {}) {
+  if (item.collection) {
+    const slug = item.collectionSlug || collectionNameToSlug(item.collection);
+    return slug ? { name: item.collection, slug } : null;
+  }
+  return collectionFromTags(item.tags);
+}
+
 async function getCollectionForMarketHashName(marketHashName) {
   const name = String(marketHashName || '').trim();
   if (!name) return null;
   const index = await getCollectionIndex();
   return index.byMarketHashName.get(name) || null;
+}
+
+async function attachCollections(items) {
+  if (!Array.isArray(items) || !items.length) return items;
+
+  const prepared = items.map((item) => {
+    const fromItem = collectionFromItemFields(item);
+    if (!fromItem) return item;
+    return {
+      ...item,
+      collection: fromItem.name,
+      collectionSlug: fromItem.slug,
+    };
+  });
+
+  const needsCatalog = prepared.some((item) => !item.collection && item.marketHashName);
+  if (!needsCatalog) return prepared;
+
+  const index = await getCollectionIndex().catch(() => null);
+  if (!index) return prepared;
+
+  return prepared.map((item) => {
+    if (item.collection || !item.marketHashName) return item;
+    const catalog = index.byMarketHashName.get(item.marketHashName);
+    if (!catalog) return item;
+    return {
+      ...item,
+      collection: catalog.name,
+      collectionSlug: catalog.slug,
+    };
+  });
 }
 
 async function getCollectionPageData(slug, options = {}) {
@@ -181,6 +230,9 @@ async function getCollectionPageData(slug, options = {}) {
 module.exports = {
   pickCollectionName,
   collectionNameToSlug,
+  collectionFromTags,
+  collectionFromItemFields,
   getCollectionForMarketHashName,
+  attachCollections,
   getCollectionPageData,
 };

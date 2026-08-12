@@ -651,6 +651,7 @@ async function fetchFullInventory(steamId, steamSession) {
     for (const asset of json.assets || []) {
       const desc = descMap.get(`${asset.classid}_${asset.instanceid}`) || {};
       const tags = desc.tags || [];
+      const collection = getTag(tags, 'ItemSet') || null;
       regularItems.push({
         assetid: asset.assetid,
         classid: asset.classid,
@@ -662,6 +663,7 @@ async function fetchFullInventory(steamId, steamSession) {
         category: getTag(tags, 'Weapon') || getTag(tags, 'Type') || 'Other',
         rarity: getTag(tags, 'Rarity') || 'Unknown',
         wear: getTag(tags, 'Exterior') || 'N/A',
+        collection,
         tradable: desc.tradable === 1,
         marketable: desc.marketable === 1,
         iconUrl: desc.icon_url
@@ -744,6 +746,7 @@ async function fetchTradeOfferInventory(steamId, steamSession) {
   return assets.map((asset) => {
     const desc = descriptions.get(`${asset.classid}_${asset.instanceid}`) || {};
     const tags = desc.tags || [];
+    const collection = getTag(tags, 'ItemSet') || null;
     return {
       assetid: asset.id || asset.assetid,
       classid: asset.classid,
@@ -755,6 +758,7 @@ async function fetchTradeOfferInventory(steamId, steamSession) {
       category: getTag(tags, 'Weapon') || getTag(tags, 'Type') || 'Other',
       rarity: getTag(tags, 'Rarity') || 'Unknown',
       wear: getTag(tags, 'Exterior') || 'N/A',
+      collection,
       tradable: Number(desc.tradable) === 1,
       marketable: Number(desc.marketable) === 1,
       iconUrl: desc.icon_url

@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { getSteamInventory, getSteamProfile } = require('./steam');
 const { getPrices, getPriceHistory, getSteamCurrencyRatio, getSteamRubRate, getSteamMarketIcon, rarityToTier } = require('./prices');
 const { getDesktopInventory } = require('./desktop');
+const { attachCollections } = require('./collections');
 const {
   makeActivityEvent,
   appendEvent,
@@ -111,7 +112,7 @@ async function getPortfolio(steamId, options = {}) {
     persist: false,
   });
   const sourceItems = inventory.items.map((item) => enrichItem(item, prices[item.marketHashName], basis));
-  const items = aggregatePortfolioItems(sourceItems);
+  const items = await attachCollections(aggregatePortfolioItems(sourceItems));
 
   const pricedItems = items.filter((item) => item.value != null);
   const totalValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
@@ -696,7 +697,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   });
   const iconUrls = await hydrateManualItemIcons(portfolio.items);
   const sourceItems = portfolio.items.map((item) => enrichManualItem(item, prices[item.marketHashName], iconUrls[item.marketHashName]));
-  const items = aggregatePortfolioItems(sourceItems);
+  const items = await attachCollections(aggregatePortfolioItems(sourceItems));
   refreshManualItemIconsInBackground(ownerId, portfolio.id);
   const pricedItems = items.filter((item) => item.value != null);
   const totalInventoryCount = items.reduce((sum, item) => sum + item.qty, 0);
