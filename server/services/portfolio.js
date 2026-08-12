@@ -108,6 +108,7 @@ async function getPortfolio(steamId, options = {}) {
     batchDelayMs: 120,
     skipNativeRub: true,
     rubRate: steamRubRate,
+    persist: false,
   });
   const sourceItems = inventory.items.map((item) => enrichItem(item, prices[item.marketHashName], basis));
   const items = aggregatePortfolioItems(sourceItems);
@@ -691,6 +692,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     batchDelayMs: 120,
     skipNativeRub: true,
     rubRate: steamRubRate,
+    persist: false,
   });
   const iconUrls = await hydrateManualItemIcons(portfolio.items);
   const sourceItems = portfolio.items.map((item) => enrichManualItem(item, prices[item.marketHashName], iconUrls[item.marketHashName]));

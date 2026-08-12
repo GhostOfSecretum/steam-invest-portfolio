@@ -228,7 +228,9 @@ async function getPrice(marketHashName, options = {}) {
       rubRate: options.rubRate,
     });
     const rubFilled = Number.isFinite(refreshed.priceRub) || Number.isFinite(refreshed.medianPriceRub);
-    if (rubFilled) await setCached(key, refreshed);
+    // Portfolio bulk loads pass persist:false to avoid rewriting the multi‑MB cache
+    // once per row when we only attached an FX-derived RUB ask.
+    if (rubFilled && options.persist !== false) await setCached(key, refreshed);
     return { ...refreshed, cached: true };
   }
 
@@ -278,6 +280,10 @@ async function getPrice(marketHashName, options = {}) {
       skipNativeRub,
       rubRate: options.rubRate,
     });
+    await setCached(key, price);
+  } else {
+    // Remember unpriced names briefly so large portfolios don't re-hit Steam timeouts
+    // on the same dead rows every dashboard refresh.
     await setCached(key, price);
   }
   return { ...price, cached: false };
