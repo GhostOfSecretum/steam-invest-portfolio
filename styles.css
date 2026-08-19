@@ -772,7 +772,7 @@ a { color: inherit; text-decoration: none; }
 .section-tight { padding: 64px 64px; }
 .pricing-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 .pricing-heading {
@@ -791,8 +791,8 @@ a { color: inherit; text-decoration: none; }
   flex: 0 0 auto;
 }
 .pricing-billing-option {
-  min-width: 112px;
-  padding: 9px 12px;
+  min-width: 88px;
+  padding: 9px 10px;
   border-radius: 10px;
   color: var(--fg-3);
   font-family: var(--f-mono);
@@ -822,6 +822,11 @@ a { color: inherit; text-decoration: none; }
   --plan-color: var(--cyan);
   --plan-glow: oklch(0.78 0.14 210 / 0.22);
   border-color: oklch(0.78 0.14 210 / 0.48);
+}
+.pricing-card-short {
+  --plan-color: var(--green);
+  --plan-glow: oklch(0.78 0.16 145 / 0.22);
+  border-color: oklch(0.78 0.16 145 / 0.48);
 }
 .pricing-card-investor {
   --plan-color: var(--amber);
@@ -3931,7 +3936,7 @@ button:disabled,
   }
 
   .pricing-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dash-page {
@@ -4011,6 +4016,10 @@ button:disabled,
 
   .pricing-billing {
     width: 100%;
+  }
+
+  .pricing-grid {
+    grid-template-columns: 1fr;
   }
 
   .pricing-billing-option {

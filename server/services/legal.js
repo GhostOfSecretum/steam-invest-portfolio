@@ -4,7 +4,7 @@ const { isBetaMode, getBetaPublicConfig } = require('./betaAccess');
 const SITE_URL = 'https://skinshead.pro';
 const SUPPORT_TELEGRAM = '@GhostOfSecretum';
 const SUPPORT_TELEGRAM_URL = 'https://t.me/GhostOfSecretum';
-const DOCS_UPDATED_AT = '2 августа 2026 г.';
+const DOCS_UPDATED_AT = '19 августа 2026 г.';
 const OPERATOR = 'Администрация сервиса SkinsHead';
 
 function escapeHtml(value) {
@@ -318,14 +318,17 @@ function renderPricingPage() {
     const bullets = plan.bullets?.ru || plan.bullets?.en || [];
     const amount = plan.amountRub;
     const annualAmount = plan.annualAmountRub;
+    const shortAmount = plan.shortAmountRub;
+    const shortDays = plan.shortPeriodDays;
     const highlight = plan.highlight ? ' highlight' : '';
     return `
       <article class="plan${highlight}">
         <div class="plan-name">${escapeHtml(name)}</div>
         <div class="plan-price">${escapeHtml(price)}</div>
         <div class="plan-note">${escapeHtml(note)}</div>
-        ${Number.isFinite(amount) ? `<div class="plan-note">Стоимость: <strong>${amount} ₽</strong>${amount > 0 ? ' за 30 дней доступа' : ''}</div>` : ''}
+        ${Number.isFinite(amount) ? `<div class="plan-note">Стоимость: <strong>${amount} ₽</strong>${amount > 0 ? ` за ${plan.periodDays || 30} ${plan.periodDays === 3 ? 'дня' : 'дней'} доступа` : ''}</div>` : ''}
         ${Number.isFinite(annualAmount) ? `<div class="plan-note">Годовая оплата: <strong>${annualAmount} ₽</strong> за 12 месяцев · выгоднее на 17%</div>` : ''}
+        ${Number.isFinite(shortAmount) && shortAmount > 0 ? `<div class="plan-note">Короткий доступ: <strong>${shortAmount} ₽</strong> за ${shortDays || 3} дня</div>` : ''}
         <ul>
           ${bullets.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
         </ul>
@@ -359,7 +362,8 @@ function renderPricingPage() {
         const name = plan.name?.ru || plan.id;
         const amount = Number.isFinite(plan.amountRub) ? `${plan.amountRub} ₽` : (plan.price?.ru || '');
         const annualAmount = Number.isFinite(plan.annualAmountRub) ? ` или ${plan.annualAmountRub} ₽ / год` : '';
-        const period = plan.periodDays ? ` / ${plan.periodDays} дней` : '';
+        const periodWord = plan.periodDays === 3 ? 'дня' : 'дней';
+        const period = plan.periodDays ? ` / ${plan.periodDays} ${periodWord}` : '';
         const trial = plan.id === 'investor' ? ' Включает однократный бесплатный пробный период 7 дней.' : '';
         const summary = (plan.bullets?.ru || []).slice(0, 3).join('; ');
         return `<li><strong>${escapeHtml(name)} (${escapeHtml(amount)}${escapeHtml(period)}${escapeHtml(annualAmount)})</strong> — ${escapeHtml(summary)}.${escapeHtml(trial)}</li>`;
@@ -369,7 +373,7 @@ function renderPricingPage() {
     <h2>Важные условия оплаты</h2>
     <ul>
       <li>цены указаны в российских рублях;</li>
-      <li>период доступа платных тарифов — 30 дней или 12 месяцев с момента успешной оплаты, в зависимости от выбранного периода;</li>
+      <li>период доступа платных тарифов — 3 дня, 30 дней или 12 месяцев с момента успешной оплаты, в зависимости от выбранного периода;</li>
       <li>тариф Investor можно один раз активировать бесплатно на 7 дней для аккаунта Steam на тарифе Free;</li>
       <li>цифровая услуга считается предоставленной с момента открытия функций тарифа;</li>
       <li>вопросы по оплате и возврату: Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>.</li>
@@ -381,7 +385,7 @@ function renderPricingPage() {
 
   return renderShell({
     title: 'Тарифы и цены',
-    description: 'Тарифы SkinsHead: Free 0 ₽, Plus 299 ₽ / 30 дней, Investor 499 ₽ / 30 дней с пробным периодом 7 дней — состав услуг и условия оплаты.',
+    description: 'Тарифы SkinsHead: Free 0 ₽, 3 дня 100 ₽, Plus 299 ₽ / 30 дней, Investor 499 ₽ / 30 дней с пробным периодом 7 дней — состав услуг и условия оплаты.',
     active: 'pricing',
     bodyHtml,
   });

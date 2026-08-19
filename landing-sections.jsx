@@ -1123,6 +1123,7 @@ function Pricing({ lang, auth, onInvestors }) {
     ? {
       ctaSoon: 'Оплата подключается',
       ctaPay: 'Оплатить',
+      ctaTest: 'Тестовая оплата 10 ₽',
       ctaLogin: 'Войти через Steam',
       ctaBusy: 'Переход к оплате…',
       current: 'Текущий план',
@@ -1158,6 +1159,7 @@ function Pricing({ lang, auth, onInvestors }) {
     : {
       ctaSoon: 'Checkout coming soon',
       ctaPay: 'Pay now',
+      ctaTest: 'Test payment 10 ₽',
       ctaLogin: 'Sign in with Steam',
       ctaBusy: 'Redirecting…',
       current: 'Current plan',
@@ -1272,12 +1274,14 @@ function Pricing({ lang, auth, onInvestors }) {
       auth.login();
       return;
     }
+    const plan = plansState.plans.find((item) => item.id === planId);
+    const cycle = Number(plan?.annualAmountRub) > 0 ? billingCycle : 'monthly';
     setCheckoutBusy(planId);
     try {
       const data = await apiFetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, cycle: billingCycle }),
+        body: JSON.stringify({ planId, cycle }),
       });
       if (!data?.redirectUrl) throw new Error(lang === 'ru' ? 'Платёжная ссылка не получена.' : 'Payment link missing.');
       window.location.href = data.redirectUrl;
@@ -1291,25 +1295,25 @@ function Pricing({ lang, auth, onInvestors }) {
   const getAnnualRub = (plan) => (
     Number.isFinite(plan.annualAmountRub) ? plan.annualAmountRub : (Number(plan.amountRub) || 0) * 10
   );
+  const hasAnnualCycle = (plan) => Number(plan.annualAmountRub) > 0;
   const getDisplayPrice = (plan) => {
-    if (plan.id === 'free' || billingCycle === 'monthly') {
+    if (plan.id === 'free' || !hasAnnualCycle(plan) || billingCycle === 'monthly') {
       return plan.price?.[lang] || plan.price?.en;
     }
     return `${formatRub(getAnnualRub(plan))} ${copy.perYear}`;
   };
   const getDisplayPriceNote = (plan) => {
-    if (plan.id === 'free') return plan.priceNote?.[lang] || plan.priceNote?.en;
-    if (billingCycle === 'annual') {
-      const monthlyRub = Number(plan.amountRub) || 0;
-      const annualRub = getAnnualRub(plan);
-      const monthlyEquivalent = annualRub / 12;
-      const savedRub = Math.max(0, monthlyRub * 12 - annualRub);
-      return copy.annualNote(
-        `${formatRub(monthlyEquivalent)} ${copy.perMonth}`,
-        `${formatRub(savedRub)} ₽`,
-      );
+    if (plan.id === 'free' || !hasAnnualCycle(plan) || billingCycle !== 'annual') {
+      return plan.priceNote?.[lang] || plan.priceNote?.en;
     }
-    return plan.priceNote?.[lang] || plan.priceNote?.en;
+    const monthlyRub = Number(plan.amountRub) || 0;
+    const annualRub = getAnnualRub(plan);
+    const monthlyEquivalent = annualRub / 12;
+    const savedRub = Math.max(0, monthlyRub * 12 - annualRub);
+    return copy.annualNote(
+      `${formatRub(monthlyEquivalent)} ${copy.perMonth}`,
+      `${formatRub(savedRub)} ₽`,
+    );
   };
 
   return (
@@ -1431,7 +1435,7 @@ function Pricing({ lang, auth, onInvestors }) {
                           </button>
                         );
                       }
-                      // Beta: Plus is free via Telegram; Investor uses normal checkout.
+                      // Beta: Plus is free via Telegram; 3-day and Investor stay paid.
                       if (betaMode && plan.id === 'plus') {
                         if (hasPlusAccess) {
                           return (
@@ -1525,6 +1529,11 @@ function Pricing({ lang, auth, onInvestors }) {
                         </button>
                       </>
                     )}
+                    {plan.id === 'short' && (
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onInvestors && onInvestors()}>
+                        {copy.investors}
+                      </button>
+                    )}
                   </div>
                 </article>
               );
@@ -1534,6 +1543,21 @@ function Pricing({ lang, auth, onInvestors }) {
         {checkoutError && (
           <div style={{ marginTop: 14, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #c44)' }}>
             {checkoutError}
+          </div>
+        )}
+        {billingReady && (
+          <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={Boolean(checkoutBusy)}
+              onClick={() => startCheckout('test')}
+            >
+              {checkoutBusy === 'test' ? copy.ctaBusy : copy.ctaTest}
+            </button>
+            <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+              {lang === 'ru' ? 'проверка платёжки · 1 час Investor' : 'payment check · 1 hour Investor'}
+            </span>
           </div>
         )}
         <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>

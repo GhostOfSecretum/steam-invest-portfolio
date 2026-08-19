@@ -75,7 +75,7 @@ function isInvestorTrialEligible(ownerId, entry, planId) {
   if (hasFullAccess(ownerId)) return false;
   if (hasUsedInvestorTrial(entry)) return false;
   // Trial from Free or Plus; not while Investor is already active.
-  return planId === DEFAULT_PLAN_ID || planId === 'plus';
+  return planId === DEFAULT_PLAN_ID || planId === 'plus' || planId === 'short';
 }
 
 async function getOwnerPlanId(ownerId) {
@@ -192,7 +192,7 @@ async function startInvestorTrial(ownerId, { source = INVESTOR_TRIAL_SOURCE } = 
   const currentPlanId = (prev && !isExpired(prev))
     ? normalizePlanId(prev.planId)
     : DEFAULT_PLAN_ID;
-  if (currentPlanId !== DEFAULT_PLAN_ID && currentPlanId !== 'plus') {
+  if (currentPlanId !== DEFAULT_PLAN_ID && currentPlanId !== 'plus' && currentPlanId !== 'short') {
     const err = new Error('Investor free trial is available only on the Free or Plus plan.');
     err.status = 409;
     err.code = 'trial_not_eligible';
@@ -223,7 +223,7 @@ async function migrateSubscriptionToSteam(anonOwnerId, steamId) {
   if (!source) return;
   const target = store.owners[targetOwner];
   // Prefer the higher-tier plan if both exist.
-  const rank = { free: 0, plus: 1, investor: 2 };
+  const rank = { free: 0, short: 1, plus: 1, test: 2, investor: 2 };
   if (!target || (rank[normalizePlanId(source.planId)] || 0) > (rank[normalizePlanId(target.planId)] || 0)) {
     store.owners[targetOwner] = {
       ...source,

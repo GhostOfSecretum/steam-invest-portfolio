@@ -705,7 +705,7 @@ async function requireTopInvestorsAccess(req, res) {
   const planId = await getOwnerPlanId(resolveOwnerId(req));
   if (!planAllows(planId, 'topInvestors')) {
     res.status(403).json({
-      error: 'Top investor tracking requires the Investor plan.',
+      error: 'Top investor tracking requires the Investor plan or the 3-day pass.',
       code: 'plan_required',
       requiredFeature: 'topInvestors',
       planId,

@@ -94,9 +94,9 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
   const copy = lang === 'ru'
     ? {
       title: 'Топ-аккаунты инвесторов',
-      sub: 'Подборка Steam-портфелей для отслеживания на тарифе Investor.',
-      lockedTitle: 'Доступно на тарифе Investor',
-      lockedBody: 'Трекинг топовых аккаунтов инвесторов входит в тариф Investor. Можно один раз попробовать Investor 7 дней бесплатно; Plus даёт безлимит (desktop — скоро), Investor добавляет эту подборку.',
+      sub: 'Подборка Steam-портфелей для отслеживания на тарифе Investor и в тарифе на 3 дня.',
+      lockedTitle: 'Доступно на Investor и тарифе 3 дня',
+      lockedBody: 'Трекинг топовых аккаунтов входит в Investor и в тариф на 3 дня за 100 ₽. Investor можно один раз попробовать 7 дней бесплатно.',
       viewPlans: 'Смотреть тарифы',
       empty: 'Список пока пуст — аккаунты появятся здесь, когда мы добавим подборку.',
       open: 'Открыть портфель',
@@ -113,9 +113,9 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
     }
     : {
       title: 'Top investor accounts',
-      sub: 'A curated set of Steam portfolios to watch on the Investor plan.',
-      lockedTitle: 'Included with Investor',
-      lockedBody: 'Top investor tracking is part of the Investor plan. You can try Investor free for 7 days once; Plus unlocks unlimited display (desktop coming soon); Investor adds this watchlist.',
+      sub: 'A curated set of Steam portfolios to watch on Investor and the 3-day plan.',
+      lockedTitle: 'Included with Investor and the 3-day plan',
+      lockedBody: 'Top investor tracking is included with Investor and the 3-day 100 ₽ plan. You can also try Investor free for 7 days once.',
       viewPlans: 'View plans',
       empty: 'The list is empty for now — accounts will appear here once the curated set is added.',
       open: 'Open portfolio',

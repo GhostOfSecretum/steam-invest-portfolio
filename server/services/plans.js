@@ -44,6 +44,42 @@ const PLANS = [
     },
   },
   {
+    id: 'short',
+    name: { en: '3 days', ru: '3 дня' },
+    amountRub: 100,
+    amountUsd: 1,
+    periodDays: 3,
+    price: { en: '100 ₽ / 3 days', ru: '100 ₽ / 3 дня' },
+    priceNote: { en: 'Plus + top investors · 3 days · no auto-renewal', ru: 'Plus и топ-аккаунты на 3 дня · без автопродления' },
+    highlight: true,
+    order: 2,
+    features: {
+      itemDisplayLimit: null,
+      desktopDownload: true,
+      topInvestors: true,
+    },
+    bullets: {
+      en: [
+        'Everything in Plus',
+        'Track top investor accounts',
+        'Unlimited items displayed',
+        '3 days of access',
+        'No auto-renewal',
+      ],
+      ru: [
+        'Всё из Plus',
+        'Топ-аккаунты инвесторов',
+        'Безлимитное отображение предметов',
+        'Доступ на 3 дня',
+        'Без автопродления',
+      ],
+    },
+    missing: {
+      en: [],
+      ru: [],
+    },
+  },
+  {
     id: 'plus',
     name: { en: 'Plus', ru: 'Plus' },
     amountRub: 299,
@@ -53,8 +89,8 @@ const PLANS = [
     periodDays: 30,
     price: { en: '299 ₽ / 30 days', ru: '299 ₽ / 30 дней' },
     priceNote: { en: '≈ $3 · unlimited items + desktop soon', ru: 'безлимит предметов + desktop скоро' },
-    highlight: true,
-    order: 2,
+    highlight: false,
+    order: 3,
     features: {
       itemDisplayLimit: null,
       desktopDownload: true,
@@ -98,7 +134,7 @@ const PLANS = [
     },
     trialDays: 7,
     highlight: false,
-    order: 3,
+    order: 4,
     features: {
       itemDisplayLimit: null,
       desktopDownload: true,
@@ -125,13 +161,39 @@ const PLANS = [
       ru: [],
     },
   },
+  {
+    id: 'test',
+    name: { en: 'Payment test', ru: 'Тест оплаты' },
+    amountRub: 10,
+    amountUsd: 0,
+    periodMinutes: 60,
+    periodDays: 0,
+    price: { en: '10 ₽', ru: '10 ₽' },
+    priceNote: { en: '1 hour Investor access · payment check', ru: '1 час Investor · проверка оплаты' },
+    highlight: false,
+    hidden: true,
+    order: 99,
+    features: {
+      itemDisplayLimit: null,
+      desktopDownload: true,
+      topInvestors: true,
+    },
+    bullets: {
+      en: ['Payment flow check'],
+      ru: ['Проверка оплаты'],
+    },
+    missing: {
+      en: [],
+      ru: [],
+    },
+  },
 ];
 
 const PLAN_BY_ID = Object.fromEntries(PLANS.map((plan) => [plan.id, plan]));
 const DEFAULT_PLAN_ID = 'free';
 
 function listPlans() {
-  return PLANS.slice().sort((a, b) => a.order - b.order);
+  return PLANS.filter((plan) => !plan.hidden).slice().sort((a, b) => a.order - b.order);
 }
 
 function getPlan(planId) {

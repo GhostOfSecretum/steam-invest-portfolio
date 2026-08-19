@@ -13,8 +13,9 @@ const { resolveBaseUrl } = require('./auth');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const PAYMENTS_FILE = path.join(DATA_DIR, 'payments.json');
-const PAID_PLAN_IDS = new Set(['plus', 'investor']);
-const CYCLE_DAYS = { monthly: 30, annual: 365 };
+const PAID_PLAN_IDS = new Set(['short', 'plus', 'investor', 'test']);
+const CYCLE_DAYS = { monthly: 30, annual: 365, '3day': 3 };
+const CYCLE_LABELS = { monthly: '30 дней', annual: '12 мес', '3day': '3 дня', test: 'тест 1 ч' };
 
 async function ensureDataDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -40,7 +41,9 @@ async function writeStore(store) {
 
 function normalizeCycle(cycle) {
   const value = String(cycle || 'monthly').trim().toLowerCase();
-  return value === 'annual' || value === 'yearly' ? 'annual' : 'monthly';
+  if (value === 'annual' || value === 'yearly') return 'annual';
+  if (value === '3day' || value === '3days') return '3day';
+  return 'monthly';
 }
 
 function resolveCheckoutAmount(plan, cycle) {
@@ -50,12 +53,27 @@ function resolveCheckoutAmount(plan, cycle) {
     const monthly = Number(plan.amountRub) || 0;
     return monthly * 10;
   }
+  if (cycle === '3day') {
+    const shortAmount = Number(plan.shortAmountRub);
+    if (Number.isFinite(shortAmount) && shortAmount > 0) return shortAmount;
+    if (Number(plan.periodDays) === 3) return Number(plan.amountRub) || 0;
+    return 0;
+  }
   return Number(plan.amountRub) || 0;
 }
 
 function computeExpiresAt(planId, cycle, fromDate = new Date()) {
-  const days = CYCLE_DAYS[cycle] || CYCLE_DAYS.monthly;
+  const plan = getPlan(planId);
   const start = fromDate instanceof Date ? fromDate.getTime() : Date.now();
+  const minutes = Number(plan.periodMinutes);
+  if (Number.isFinite(minutes) && minutes > 0 && cycle !== 'annual') {
+    return new Date(start + minutes * 60 * 1000).toISOString();
+  }
+  let days = CYCLE_DAYS[cycle] || CYCLE_DAYS.monthly;
+  if (cycle !== 'annual' && cycle !== '3day') {
+    const planDays = Number(plan.periodDays);
+    if (Number.isFinite(planDays) && planDays > 0) days = planDays;
+  }
   return new Date(start + days * 24 * 60 * 60 * 1000).toISOString();
 }
 
@@ -102,7 +120,10 @@ async function createCheckout({ ownerId, steamId, planId, cycle, req }) {
     throw err;
   }
 
-  const billingCycle = normalizeCycle(cycle);
+  let billingCycle = normalizeCycle(cycle);
+  if (billingCycle === 'annual' && !(Number(plan.annualAmountRub) > 0)) {
+    billingCycle = 'monthly';
+  }
   const amountRub = resolveCheckoutAmount(plan, billingCycle);
   if (!(amountRub > 0)) {
     const err = new Error('Invalid plan price.');
@@ -114,7 +135,11 @@ async function createCheckout({ ownerId, steamId, planId, cycle, req }) {
   const paymentId = crypto.randomUUID();
   const baseUrl = resolveBaseUrl(req);
   const planName = plan.name?.ru || plan.name?.en || plan.id;
-  const cycleLabel = billingCycle === 'annual' ? '12 мес' : '30 дней';
+  const cycleLabel = plan.id === 'test'
+    ? CYCLE_LABELS.test
+    : billingCycle === 'annual'
+      ? CYCLE_LABELS.annual
+      : (Number(plan.periodDays) === 3 || billingCycle === '3day' ? CYCLE_LABELS['3day'] : CYCLE_LABELS.monthly);
   const description = `SkinsHead ${planName} · ${cycleLabel}`;
 
   const created = {
