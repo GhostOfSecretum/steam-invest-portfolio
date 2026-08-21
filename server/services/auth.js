@@ -1,11 +1,8 @@
-const openid = require('openid');
-const url = require('url');
-
-const OPENID_CHECK = {
+const STEAM_OPENID = {
   ns: 'http://specs.openid.net/auth/2.0',
-  op_endpoint: 'https://steamcommunity.com/openid/login',
-  claimed_id: 'https://steamcommunity.com/openid/id/',
-  identity: 'https://steamcommunity.com/openid/id/',
+  opEndpoint: 'https://steamcommunity.com/openid/login',
+  claimedIdPrefix: 'https://steamcommunity.com/openid/id/',
+  identifierSelect: 'http://specs.openid.net/auth/2.0/identifier_select',
 };
 
 function resolveBaseUrl(req) {
@@ -25,109 +22,114 @@ function resolveBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
-function createRelyingParty(baseUrl) {
-  return new openid.RelyingParty(
-    `${baseUrl}/api/auth/steam/callback`,
-    baseUrl,
-    true,
-    true,
-    [],
-  );
+function callbackUrl(baseUrl) {
+  return `${baseUrl}/api/auth/steam/callback`;
+}
+
+function authError(message, status, code) {
+  const err = new Error(message);
+  err.status = status;
+  err.code = code;
+  return err;
+}
+
+function getOpenIdParams(req) {
+  const rawUrl = String(req.originalUrl || req.url || '');
+  const query = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?') + 1) : '';
+  const parsed = new URLSearchParams(query);
+  const params = {};
+  for (const [key, value] of parsed.entries()) {
+    if (key.startsWith('openid.')) params[key] = value;
+  }
+  return params;
 }
 
 async function getSteamRedirectUrl(req) {
-  const relyingParty = createRelyingParty(resolveBaseUrl(req));
-  return new Promise((resolve, reject) => {
-    relyingParty.authenticate('https://steamcommunity.com/openid', false, (error, authUrl) => {
-      if (error) {
-        const err = new Error((error && error.message) || String(error) || 'Steam OpenID failed to start.');
-        err.status = 502;
-        err.code = 'steam_openid_start_failed';
-        reject(err);
-        return;
-      }
-      if (!authUrl) {
-        const err = new Error('Steam OpenID did not return a redirect URL.');
-        err.status = 502;
-        err.code = 'steam_openid_no_redirect';
-        reject(err);
-        return;
-      }
-      resolve(authUrl);
-    });
+  const baseUrl = resolveBaseUrl(req);
+  const params = new URLSearchParams({
+    'openid.ns': STEAM_OPENID.ns,
+    'openid.mode': 'checkid_setup',
+    'openid.return_to': callbackUrl(baseUrl),
+    'openid.realm': baseUrl,
+    'openid.identity': STEAM_OPENID.identifierSelect,
+    'openid.claimed_id': STEAM_OPENID.identifierSelect,
   });
+  return `${STEAM_OPENID.opEndpoint}?${params.toString()}`;
 }
 
 async function authenticateSteam(req) {
-  const searchParams = url.parse(req.url || '', true).query || {};
+  const searchParams = getOpenIdParams(req);
 
-  if (searchParams['openid.ns'] !== OPENID_CHECK.ns) {
-    const err = new Error('Claimed identity is not valid.');
-    err.status = 400;
-    err.code = 'invalid_openid_response';
-    throw err;
+  if (searchParams['openid.ns'] !== STEAM_OPENID.ns) {
+    throw authError('Claimed identity is not valid.', 400, 'invalid_openid_response');
   }
-  if (searchParams['openid.op_endpoint'] !== OPENID_CHECK.op_endpoint) {
-    const err = new Error('Claimed identity is not valid.');
-    err.status = 400;
-    err.code = 'invalid_openid_response';
-    throw err;
+  if (searchParams['openid.mode'] !== 'id_res') {
+    throw authError('Claimed identity is not valid.', 400, 'invalid_openid_response');
   }
-  if (!String(searchParams['openid.claimed_id'] || '').startsWith(OPENID_CHECK.claimed_id)) {
-    const err = new Error('Claimed identity is not valid.');
-    err.status = 400;
-    err.code = 'invalid_openid_response';
-    throw err;
+  if (searchParams['openid.op_endpoint'] !== STEAM_OPENID.opEndpoint) {
+    throw authError('Claimed identity is not valid.', 400, 'invalid_openid_response');
   }
-  if (!String(searchParams['openid.identity'] || '').startsWith(OPENID_CHECK.identity)) {
-    const err = new Error('Claimed identity is not valid.');
-    err.status = 400;
-    err.code = 'invalid_openid_response';
-    throw err;
+  if (searchParams['openid.return_to'] !== callbackUrl(resolveBaseUrl(req))) {
+    throw authError('Claimed identity is not valid.', 400, 'invalid_openid_response');
+  }
+  if (!String(searchParams['openid.claimed_id'] || '').startsWith(STEAM_OPENID.claimedIdPrefix)) {
+    throw authError('Claimed identity is not valid.', 400, 'invalid_openid_response');
+  }
+  if (!String(searchParams['openid.identity'] || '').startsWith(STEAM_OPENID.claimedIdPrefix)) {
+    throw authError('Claimed identity is not valid.', 400, 'invalid_openid_response');
   }
 
-  const relyingParty = createRelyingParty(resolveBaseUrl(req));
-  return new Promise((resolve, reject) => {
-    relyingParty.verifyAssertion(req, (error, result) => {
-      if (error) {
-        const err = new Error((error && error.message) || String(error) || 'Steam OpenID verification failed.');
-        err.status = 401;
-        err.code = 'steam_openid_verify_failed';
-        reject(err);
-        return;
-      }
-      if (!result || !result.authenticated) {
-        const err = new Error('Failed to authenticate user.');
-        err.status = 401;
-        err.code = 'steam_openid_not_authenticated';
-        reject(err);
-        return;
-      }
-      const claimed = String(result.claimedIdentifier || '');
-      if (!/^https?:\/\/steamcommunity\.com\/openid\/id\/\d+$/.test(claimed)) {
-        const err = new Error('Claimed identity is not valid.');
-        err.status = 400;
-        err.code = 'invalid_openid_claim';
-        reject(err);
-        return;
-      }
-      const steamId = claimed.replace(/^https?:\/\/steamcommunity\.com\/openid\/id\//, '').trim();
-      if (!/^\d{17}$/.test(steamId)) {
-        const err = new Error('Steam authentication succeeded but did not return a valid SteamID64.');
-        err.status = 502;
-        err.code = 'invalid_steam_auth_response';
-        reject(err);
-        return;
-      }
-      resolve({
-        steamId,
-        raw: {
-          claimedIdentifier: claimed,
-          steamid: steamId,
-        },
-      });
+  const verifyParams = new URLSearchParams(searchParams);
+  verifyParams.set('openid.mode', 'check_authentication');
+
+  let body;
+  try {
+    const response = await fetch(STEAM_OPENID.opEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
+      },
+      body: verifyParams.toString(),
+      signal: AbortSignal.timeout(15000),
     });
-  });
+    if (!response.ok) {
+      throw authError(`Steam returned HTTP ${response.status}.`, 502, 'steam_openid_verify_failed');
+    }
+    body = await response.text();
+  } catch (error) {
+    if (error && error.code === 'steam_openid_verify_failed') throw error;
+    throw authError(
+      (error && error.message) || 'Steam OpenID verification failed.',
+      502,
+      'steam_openid_verify_failed',
+    );
+  }
+
+  if (!/(^|\n)is_valid\s*:\s*true(\r?\n|$)/.test(body)) {
+    throw authError('Failed to authenticate user.', 401, 'steam_openid_not_authenticated');
+  }
+
+  const claimed = String(searchParams['openid.claimed_id'] || '');
+  if (!/^https?:\/\/steamcommunity\.com\/openid\/id\/\d+$/.test(claimed)) {
+    throw authError('Claimed identity is not valid.', 400, 'invalid_openid_claim');
+  }
+  const steamId = claimed.replace(/^https?:\/\/steamcommunity\.com\/openid\/id\//, '').trim();
+  if (!/^\d{17}$/.test(steamId)) {
+    throw authError(
+      'Steam authentication succeeded but did not return a valid SteamID64.',
+      502,
+      'invalid_steam_auth_response',
+    );
+  }
+
+  return {
+    steamId,
+    raw: {
+      claimedIdentifier: claimed,
+      steamid: steamId,
+    },
+  };
 }
 
 module.exports = {

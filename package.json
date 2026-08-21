@@ -22,7 +22,6 @@
     "express-rate-limit": "^7.4.1",
     "express-session": "^1.18.1",
     "helmet": "^8.0.0",
-    "openid": "^2.0.15",
     "telegram": "^2.26.22"
   }
 }
