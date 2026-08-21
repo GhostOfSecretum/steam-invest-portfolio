@@ -273,7 +273,7 @@ async function migrateSubscriptionToSteam(anonOwnerId, steamId) {
   if (!source) return;
   const target = store.owners[targetOwner];
   // Prefer the higher-tier plan if both exist.
-  const rank = { free: 0, short: 1, plus: 1, test: 2, investor: 2 };
+  const rank = { free: 0, short: 1, plus: 1, investor: 2 };
   if (!target || (rank[normalizePlanId(source.planId)] || 0) > (rank[normalizePlanId(target.planId)] || 0)) {
     store.owners[targetOwner] = {
       ...source,

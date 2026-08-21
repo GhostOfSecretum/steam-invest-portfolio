@@ -1015,8 +1015,8 @@ function DesktopDownload({ lang, auth, onPricing }) {
       badge: 'Скоро · Plus / Investor',
     }
     : {
-      title: 'Desktop — full inventory and Хранилища',
-      sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client will sign into Steam locally and sync the full portfolio, including Хранилища.',
+      title: 'Desktop — full inventory and Storage',
+      sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client will sign into Steam locally and sync the full portfolio, including Storage.',
       note: 'The app is still in development. macOS and Windows builds are coming soon — download and sync will be included with Plus. Pay with card or crypto.',
       security: 'Read-only: Steam password is never requested, tokens stay on your computer, and only item lists are sent to the server.',
       soon: 'Coming soon',
@@ -1125,7 +1125,6 @@ function Pricing({ lang, auth, onInvestors }) {
     ? {
       ctaSoon: 'Оплата подключается',
       ctaPay: 'Оплатить',
-      ctaTest: 'Тестовая оплата 10 ₽',
       ctaLogin: 'Войти через Steam',
       ctaBusy: 'Переход к оплате…',
       current: 'Текущий план',
@@ -1164,7 +1163,6 @@ function Pricing({ lang, auth, onInvestors }) {
     : {
       ctaSoon: 'Checkout coming soon',
       ctaPay: 'Pay with card or crypto',
-      ctaTest: 'Test payment 10 ₽',
       ctaLogin: 'Sign in with Steam',
       ctaBusy: 'Redirecting…',
       current: 'Current plan',
@@ -1605,21 +1603,6 @@ function Pricing({ lang, auth, onInvestors }) {
             {checkoutError}
           </div>
         )}
-        {billingReady && (
-          <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={Boolean(checkoutBusy)}
-              onClick={() => startCheckout('test')}
-            >
-              {checkoutBusy === 'test' ? copy.ctaBusy : copy.ctaTest}
-            </button>
-            <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-              {lang === 'ru' ? 'проверка платёжки · 1 час Investor' : 'payment check · 1 hour Plus'}
-            </span>
-          </div>
-        )}
         <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
           <a className="btn btn-ghost btn-sm" href="/pricing">{copy.fullPrice}</a>
           <a className="btn btn-ghost btn-sm" href="/terms">{lang === 'ru' ? 'Соглашение' : 'Terms'}</a>
@@ -1820,7 +1803,7 @@ function StatsBand() {
     ]
     : [
       { v: 'Free', l: 'full website, no item cap' },
-      { v: 'Plus', l: 'desktop + Хранилища soon' },
+      { v: 'Plus', l: 'desktop + Storage soon' },
       { v: 'Investor', l: 'same + 7 days via Telegram' },
     ];
   return (
@@ -1889,12 +1872,12 @@ const FAQ_ITEMS = {
   en: [
     { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin portfolio tracker. It values a Steam inventory with live market prices and shows P&L, cost basis, allocation, market explorer, Armory Pass ROI, and Telegram news in one place.' },
     { q: 'How do I track a portfolio?', a: 'Link Steam with OpenID, paste a public profile URL, or create a manual portfolio and add purchases. SkinsHead prices items and surfaces leaders, 24h change, and inventory breakdown.' },
-    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Хранилища. The desktop client will sign into Steam on your computer and sync the full inventory to your SkinsHead portfolio. It is coming soon and is included with Plus.' },
+    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Storage. The desktop client will sign into Steam on your computer and sync the full inventory to your SkinsHead portfolio. It is coming soon and is included with Plus.' },
     { q: 'Where do prices come from?', a: 'We combine Steam Community Market data with major third-party marketplaces. Each item page shows available offers and price history from the providers we could reach.' },
     { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. When the desktop client launches, tokens will stay locally and only item lists will be sent to the server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
-    { q: 'Is SkinsHead free?', a: 'Yes. The website is free: unlimited inventory, market explorer, Armory ROI, news, and top investor accounts. Sign in with Steam and Plus starts free for 7 days. Then Plus is $7.99 / 30 days or $72 / year for the desktop app (Хранилища; coming soon). A 3-day pass is $2.99. Pay with card or crypto via Platega from any country. See /pricing.' },
-    { q: 'What do paid plans include?', a: 'Paid plans unlock the desktop app and Хранилища sync (coming soon). Plus is $7.99 / 30 days or $72 / year. The 3-day pass is $2.99. Checkout is card or crypto on Platega, so it works internationally. Support: Telegram @GhostOfSecretum.' },
+    { q: 'Is SkinsHead free?', a: 'Yes. The website is free: unlimited inventory, market explorer, Armory ROI, news, and top investor accounts. Sign in with Steam and Plus starts free for 7 days. Then Plus is $7.99 / 30 days or $72 / year for the desktop app (Storage; coming soon). A 3-day pass is $2.99. Pay with card or crypto via Platega from any country. See /pricing.' },
+    { q: 'What do paid plans include?', a: 'Paid plans unlock the desktop app and Storage sync (coming soon). Plus is $7.99 / 30 days or $72 / year. The 3-day pass is $2.99. Checkout is card or crypto on Platega, so it works internationally. Support: Telegram @GhostOfSecretum.' },
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
@@ -2050,7 +2033,7 @@ function Footer({ lang }) {
           <p style={{ marginTop: 16, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.6, maxWidth: 320 }}>
             {lang === 'ru'
               ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI; desktop для Хранилищ — скоро. Не аффилирован со Steam, Valve или Counter-Strike.'
-              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI; desktop sync for Хранилища coming soon. Not affiliated with Steam, Valve, or Counter-Strike.'}
+              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI; desktop sync for Storage coming soon. Not affiliated with Steam, Valve, or Counter-Strike.'}
           </p>
           <a
             href="/support"

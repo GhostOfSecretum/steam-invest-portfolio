@@ -340,13 +340,13 @@ function buildAppMenu() {
           },
         },
         {
-          label: 'Connect Хранилища (Read-Only)',
+          label: 'Connect Storage (Read-Only)',
           click: async () => {
             try { await openGcQrLoginWindow({ skipConsent: false }); } catch (e) { console.error('[menu] gc login error:', e.message); }
           },
         },
         {
-          label: 'Disconnect Хранилища',
+          label: 'Disconnect Storage',
           click: () => {
             clearGcState();
           },

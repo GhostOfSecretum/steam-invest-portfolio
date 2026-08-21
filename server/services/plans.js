@@ -35,7 +35,7 @@ const PLANS = [
     missing: {
       en: [
         'Desktop app (coming soon)',
-        'Хранилища sync (coming soon)',
+        'Storage sync (coming soon)',
       ],
       ru: [
         'Desktop-приложение (скоро)',
@@ -62,7 +62,7 @@ const PLANS = [
       en: [
         'Everything on the website',
         'Desktop app for full inventory — coming soon',
-        'Хранилища sync — coming soon',
+        'Storage sync — coming soon',
         '3 days of access',
         'No auto-renewal',
       ],
@@ -88,7 +88,7 @@ const PLANS = [
     annualAmountUsd: 72,
     periodDays: 30,
     price: { en: '$7.99 / 30 days', ru: '299 ₽ / 30 дней' },
-    priceNote: { en: 'Card or crypto · desktop + Хранилища soon', ru: 'desktop и Хранилища скоро' },
+    priceNote: { en: 'Card or crypto · desktop + Storage soon', ru: 'desktop и Хранилища скоро' },
     highlight: false,
     order: 3,
     features: {
@@ -101,7 +101,7 @@ const PLANS = [
         '7 days free on first Steam login',
         'Everything on the website',
         'Desktop app for full inventory — coming soon',
-        'Хранилища sync — coming soon',
+        'Storage sync — coming soon',
       ],
       ru: [
         'Весь сайт без ограничений',
@@ -124,7 +124,7 @@ const PLANS = [
     periodDays: 30,
     price: { en: '$5 / 30 days', ru: '499 ₽ / 30 дней' },
     priceNote: {
-      en: 'RU-only · 7 days via Telegram · desktop + Хранилища',
+      en: 'RU-only · 7 days via Telegram · desktop + Storage',
       ru: '7 дней бесплатно за Telegram · desktop и Хранилища',
     },
     trialDays: 7,
@@ -141,7 +141,7 @@ const PLANS = [
         '7-day free trial via Telegram channel',
         'Everything on the website',
         'Desktop app for full inventory — coming soon',
-        'Хранилища sync — coming soon',
+        'Storage sync — coming soon',
       ],
       ru: [
         '7 дней бесплатно за подписку на Telegram-канал',
@@ -149,32 +149,6 @@ const PLANS = [
         'Desktop-приложение для полного инвентаря — скоро',
         'Синхронизация Хранилищ — скоро',
       ],
-    },
-    missing: {
-      en: [],
-      ru: [],
-    },
-  },
-  {
-    id: 'test',
-    name: { en: 'Payment test', ru: 'Тест оплаты' },
-    amountRub: 10,
-    amountUsd: 0,
-    periodMinutes: 60,
-    periodDays: 0,
-    price: { en: '10 ₽', ru: '10 ₽' },
-    priceNote: { en: '1 hour Investor access · payment check', ru: '1 час Investor · проверка оплаты' },
-    highlight: false,
-    hidden: true,
-    order: 99,
-    features: {
-      itemDisplayLimit: null,
-      desktopDownload: true,
-      topInvestors: true,
-    },
-    bullets: {
-      en: ['Payment flow check'],
-      ru: ['Проверка оплаты'],
     },
     missing: {
       en: [],

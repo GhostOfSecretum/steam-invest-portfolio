@@ -14,10 +14,10 @@ const { getSteamRubRate } = require('./prices');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const PAYMENTS_FILE = path.join(DATA_DIR, 'payments.json');
-const PAID_PLAN_IDS = new Set(['short', 'plus', 'investor', 'test']);
+const PAID_PLAN_IDS = new Set(['short', 'plus', 'investor']);
 const CYCLE_DAYS = { monthly: 30, annual: 365, '3day': 3 };
-const CYCLE_LABELS = { monthly: '30 дней', annual: '12 мес', '3day': '3 дня', test: 'тест 1 ч' };
-const CYCLE_LABELS_EN = { monthly: '30 days', annual: '12 months', '3day': '3 days', test: '1 hour test' };
+const CYCLE_LABELS = { monthly: '30 дней', annual: '12 мес', '3day': '3 дня' };
+const CYCLE_LABELS_EN = { monthly: '30 days', annual: '12 months', '3day': '3 days' };
 const FALLBACK_USD_RUB = 90;
 
 async function ensureDataDir() {
@@ -79,7 +79,7 @@ function resolveCheckoutAmount(plan, cycle) {
 }
 
 async function resolveCheckoutAmountRub(plan, cycle, locale) {
-  if (plan.id === 'test' || isRuLocale(locale)) {
+  if (isRuLocale(locale)) {
     return {
       amountRub: resolveCheckoutAmount(plan, cycle),
       amountUsd: resolveUsdAmount(plan, cycle),
@@ -187,11 +187,9 @@ async function createCheckout({ ownerId, steamId, planId, cycle, locale, req }) 
     ? (plan.name?.en || plan.name?.ru || plan.id)
     : (plan.name?.ru || plan.name?.en || plan.id);
   const labels = useEn ? CYCLE_LABELS_EN : CYCLE_LABELS;
-  const cycleLabel = plan.id === 'test'
-    ? labels.test
-    : billingCycle === 'annual'
-      ? labels.annual
-      : (Number(plan.periodDays) === 3 || billingCycle === '3day' ? labels['3day'] : labels.monthly);
+  const cycleLabel = billingCycle === 'annual'
+    ? labels.annual
+    : (Number(plan.periodDays) === 3 || billingCycle === '3day' ? labels['3day'] : labels.monthly);
   const description = `SkinsHead ${planName} · ${cycleLabel}`;
 
   const created = {
