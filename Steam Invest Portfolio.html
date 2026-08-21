@@ -186,19 +186,23 @@
     }
 
     const PREFS_KEY = 'skinshead:prefs';
+    const PREFS_VERSION = 2;
     function readPrefs() {
       try {
         const raw = localStorage.getItem(PREFS_KEY);
         if (!raw) return {};
         const parsed = JSON.parse(raw);
-        return parsed && typeof parsed === 'object' ? parsed : {};
+        if (!parsed || typeof parsed !== 'object') return {};
+        // v1 auto-saved the old ru/RUB defaults. Ignore those so first open is en/USD.
+        if (parsed.v !== PREFS_VERSION) return {};
+        return parsed;
       } catch (_) {
         return {};
       }
     }
     function writePrefs(patch) {
       try {
-        const next = { ...readPrefs(), ...patch };
+        const next = { ...readPrefs(), ...patch, v: PREFS_VERSION };
         localStorage.setItem(PREFS_KEY, JSON.stringify(next));
       } catch (_) { /* ignore quota / private mode */ }
     }
