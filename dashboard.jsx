@@ -266,7 +266,7 @@ function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
       className="btn btn-sm btn-ghost"
       onClick={() => onPricing && onPricing()}
       title={tt(lang, {
-        en: canUseDesktop ? 'Desktop app coming soon' : 'Desktop coming soon on Plus / Investor',
+        en: canUseDesktop ? 'Desktop app coming soon' : 'Desktop coming soon on Plus',
         ru: canUseDesktop ? 'Desktop-приложение скоро' : 'Desktop будет на Plus / Investor · скоро',
         zh: canUseDesktop ? 'Desktop 应用即将推出' : 'Desktop 即将在 Plus / Investor 推出',
         'zh-TW': canUseDesktop ? 'Desktop 應用即將推出' : 'Desktop 即將在 Plus / Investor 推出',
@@ -478,6 +478,25 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 <span className="dash-controls-chevron" aria-hidden="true" />
               </button>
             )}
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              onClick={() => {
+                const profileRef = data.profile?.profileurl || data.profile?.steamId || publicSteamId || publicProfileUrl;
+                const shareUrl = profileRef
+                  ? `${window.location.origin}/dashboard?profile=${encodeURIComponent(profileRef)}`
+                  : `${window.location.origin}/`;
+                const valueLabel = compactUsd(data.totalValue);
+                const text = lang === 'ru'
+                  ? `Мой инвентарь CS2 стоит ${valueLabel}. Считаю в SkinsHead`
+                  : `My CS2 inventory is ${valueLabel}. Tracked on SkinsHead`;
+                const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
+                window.open(intent, '_blank', 'noopener,noreferrer');
+              }}
+              title={tt(lang, { en: 'Share this portfolio on X', ru: 'Поделиться портфелем в X', zh: '分享到 X', 'zh-TW': '分享到 X' })}
+            >
+              {tt(lang, { en: 'Share on X', ru: 'В X', zh: '分享到 X', 'zh-TW': '分享到 X' })}
+            </button>
             <button
               className="btn btn-sm btn-ghost"
               onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}

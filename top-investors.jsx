@@ -70,12 +70,11 @@ function InvestorActivityRows({ events, lang, showInvestor = false }) {
   );
 }
 
-function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
-  const unlocked = Boolean(auth?.entitlements?.topInvestors);
-  const investors = useTopInvestors(unlocked && !auth?.loading);
-  const feed = useTopInvestorsActivityFeed(unlocked && !auth?.loading);
+function TopInvestorsPage({ lang, onOpenProfile }) {
+  const investors = useTopInvestors();
+  const feed = useTopInvestorsActivityFeed();
   const [selectedSteamId, setSelectedSteamId] = tiUseState(null);
-  const selectedActivity = useTopInvestorActivity(selectedSteamId, unlocked && Boolean(selectedSteamId));
+  const selectedActivity = useTopInvestorActivity(selectedSteamId, Boolean(selectedSteamId));
 
   const accounts = investors.data?.accounts || [];
 
@@ -94,10 +93,7 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
   const copy = lang === 'ru'
     ? {
       title: 'Топ-аккаунты инвесторов',
-      sub: 'Подборка Steam-портфелей для отслеживания на тарифе Investor и в тарифе на 3 дня.',
-      lockedTitle: 'Доступно на Investor и тарифе 3 дня',
-      lockedBody: 'Трекинг топовых аккаунтов входит в Investor и в тариф на 3 дня за 100 ₽. Investor можно один раз попробовать 7 дней бесплатно.',
-      viewPlans: 'Смотреть тарифы',
+      sub: 'Подборка Steam-портфелей, которые можно смотреть без оплаты — вместе с лентой изменений.',
       empty: 'Список пока пуст — аккаунты появятся здесь, когда мы добавим подборку.',
       open: 'Открыть портфель',
       coming: 'Скоро',
@@ -113,10 +109,7 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
     }
     : {
       title: 'Top investor accounts',
-      sub: 'A curated set of Steam portfolios to watch on Investor and the 3-day plan.',
-      lockedTitle: 'Included with Investor and the 3-day plan',
-      lockedBody: 'Top investor tracking is included with Investor and the 3-day 100 ₽ plan. You can also try Investor free for 7 days once.',
-      viewPlans: 'View plans',
+      sub: 'A curated set of Steam portfolios you can follow for free — including the activity feed.',
       empty: 'The list is empty for now — accounts will appear here once the curated set is added.',
       open: 'Open portfolio',
       coming: 'Coming soon',
@@ -136,7 +129,7 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
       <div className="container">
         <div style={{ marginBottom: 28 }}>
           <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--accent)' }}>
-            // INVESTOR · {unlocked ? 'UNLOCKED' : 'LOCKED'}
+            // WATCHLIST
           </div>
           <h1 className="display" style={{ fontSize: 44, fontWeight: 500, letterSpacing: '-0.02em' }}>
             {copy.title}
@@ -146,23 +139,11 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
           </div>
         </div>
 
-        {!unlocked && (
-          <div className="glass-strong" style={{ padding: 28, maxWidth: 640, display: 'grid', gap: 14 }}>
-            <div className="display" style={{ fontSize: 28, fontWeight: 500 }}>{copy.lockedTitle}</div>
-            <p style={{ margin: 0, color: 'var(--fg-1)', fontSize: 14.5, lineHeight: 1.6 }}>{copy.lockedBody}</p>
-            <div>
-              <button type="button" className="btn btn-primary" onClick={() => onPricing && onPricing()}>
-                {copy.viewPlans}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {unlocked && investors.loading && !investors.data && (
+        {investors.loading && !investors.data && (
           <div style={{ fontFamily: 'var(--f-mono)', fontSize: 13, color: 'var(--fg-3)' }}>...</div>
         )}
 
-        {unlocked && investors.error && !investors.locked && (
+        {investors.error && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <div style={{ fontFamily: 'var(--f-mono)', fontSize: 13, color: 'var(--red)' }}>
               {investors.error.message || 'Failed to load'}
@@ -173,14 +154,14 @@ function TopInvestorsPage({ lang, auth, onOpenProfile, onPricing }) {
           </div>
         )}
 
-        {unlocked && investors.data && accounts.length === 0 && (
+        {investors.data && accounts.length === 0 && (
           <div className="glass" style={{ padding: 28, maxWidth: 560 }}>
             <div className="chip chip-accent" style={{ marginBottom: 12 }}>{copy.coming}</div>
             <div style={{ fontSize: 14.5, color: 'var(--fg-1)', lineHeight: 1.55 }}>{copy.empty}</div>
           </div>
         )}
 
-        {unlocked && accounts.length > 0 && (
+        {accounts.length > 0 && (
           <div className="top-investors-layout" style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(280px, 420px) minmax(320px, 1fr)',

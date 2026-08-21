@@ -5,41 +5,41 @@ const PLANS = [
     amountRub: 0,
     amountUsd: 0,
     periodDays: null,
-    price: { en: '0 ₽', ru: '0 ₽' },
+    price: { en: '$0', ru: '0 ₽' },
     priceNote: { en: 'No payment · forever', ru: 'Без оплаты · навсегда' },
     highlight: false,
     order: 1,
     features: {
-      itemDisplayLimit: 1000,
+      itemDisplayLimit: null,
       desktopDownload: false,
-      topInvestors: false,
+      topInvestors: true,
     },
     bullets: {
       en: [
         'Steam OpenID or public profile',
         'Manual portfolio tracking',
         'Live prices, P&L, allocation',
-        'Up to 1,000 items displayed',
+        'Unlimited items displayed',
+        'Top investor accounts',
         'Market explorer, Armory ROI, news',
       ],
       ru: [
         'Steam OpenID или публичный профиль',
         'Ручной портфель',
         'Live-цены, P&L, распределение',
-        'До 1 000 предметов в списке',
+        'Безлимит предметов в списке',
+        'Топ-аккаунты инвесторов',
         'Маркет, Armory ROI, новости',
       ],
     },
     missing: {
       en: [
-        'Unlimited inventory display',
         'Desktop app (coming soon)',
-        'Top investor accounts tracking',
+        'Хранилища sync (coming soon)',
       ],
       ru: [
-        'Безлимитное отображение инвентаря',
         'Desktop-приложение (скоро)',
-        'Трекинг топовых аккаунтов инвесторов',
+        'Синхронизация Хранилищ (скоро)',
       ],
     },
   },
@@ -47,10 +47,10 @@ const PLANS = [
     id: 'short',
     name: { en: '3 days', ru: '3 дня' },
     amountRub: 100,
-    amountUsd: 1,
+    amountUsd: 2.99,
     periodDays: 3,
-    price: { en: '100 ₽ / 3 days', ru: '100 ₽ / 3 дня' },
-    priceNote: { en: 'Plus + top investors · 3 days · no auto-renewal', ru: 'Plus и топ-аккаунты на 3 дня · без автопродления' },
+    price: { en: '$2.99 / 3 days', ru: '100 ₽ / 3 дня' },
+    priceNote: { en: 'Card or crypto · desktop for 3 days · no auto-renewal', ru: 'desktop и Хранилища на 3 дня · без автопродления' },
     highlight: true,
     order: 2,
     features: {
@@ -60,16 +60,16 @@ const PLANS = [
     },
     bullets: {
       en: [
-        'Everything in Plus',
-        'Track top investor accounts',
-        'Unlimited items displayed',
+        'Everything on the website',
+        'Desktop app for full inventory — coming soon',
+        'Хранилища sync — coming soon',
         '3 days of access',
         'No auto-renewal',
       ],
       ru: [
-        'Всё из Plus',
-        'Топ-аккаунты инвесторов',
-        'Безлимитное отображение предметов',
+        'Весь сайт без ограничений',
+        'Desktop-приложение для полного инвентаря — скоро',
+        'Синхронизация Хранилищ — скоро',
         'Доступ на 3 дня',
         'Без автопродления',
       ],
@@ -83,40 +83,35 @@ const PLANS = [
     id: 'plus',
     name: { en: 'Plus', ru: 'Plus' },
     amountRub: 299,
-    amountUsd: 3,
+    amountUsd: 7.99,
     annualAmountRub: 2990,
-    annualAmountUsd: 30,
+    annualAmountUsd: 72,
     periodDays: 30,
-    price: { en: '299 ₽ / 30 days', ru: '299 ₽ / 30 дней' },
-    priceNote: { en: '≈ $3 · unlimited items + desktop soon', ru: 'безлимит предметов + desktop скоро' },
+    price: { en: '$7.99 / 30 days', ru: '299 ₽ / 30 дней' },
+    priceNote: { en: 'Card or crypto · desktop + Хранилища soon', ru: 'desktop и Хранилища скоро' },
     highlight: false,
     order: 3,
     features: {
       itemDisplayLimit: null,
       desktopDownload: true,
-      topInvestors: false,
+      topInvestors: true,
     },
     bullets: {
       en: [
-        'Everything in Free',
-        'Unlimited items displayed',
+        '7 days free on first Steam login',
+        'Everything on the website',
         'Desktop app for full inventory — coming soon',
         'Хранилища sync — coming soon',
       ],
       ru: [
-        'Всё из Free',
-        'Безлимитное отображение предметов',
+        'Весь сайт без ограничений',
         'Desktop-приложение для полного инвентаря — скоро',
         'Синхронизация Хранилищ — скоро',
       ],
     },
     missing: {
-      en: [
-        'Top investor accounts tracking',
-      ],
-      ru: [
-        'Трекинг топовых аккаунтов инвесторов',
-      ],
+      en: [],
+      ru: [],
     },
   },
   {
@@ -127,13 +122,14 @@ const PLANS = [
     annualAmountRub: 4990,
     annualAmountUsd: 50,
     periodDays: 30,
-    price: { en: '499 ₽ / 30 days', ru: '499 ₽ / 30 дней' },
+    price: { en: '$5 / 30 days', ru: '499 ₽ / 30 дней' },
     priceNote: {
-      en: '≈ $5 · 7 days free via Telegram · Plus + top investors',
-      ru: '7 дней бесплатно за Telegram · всё из Plus + топ-инвесторы',
+      en: 'RU-only · 7 days via Telegram · desktop + Хранилища',
+      ru: '7 дней бесплатно за Telegram · desktop и Хранилища',
     },
     trialDays: 7,
     highlight: false,
+    audience: 'ru',
     order: 4,
     features: {
       itemDisplayLimit: null,
@@ -143,17 +139,15 @@ const PLANS = [
     bullets: {
       en: [
         '7-day free trial via Telegram channel',
-        'Everything in Plus',
-        'Track top investor accounts',
-        'Curated high-value Steam portfolios',
-        'Early access to investor watchlists',
+        'Everything on the website',
+        'Desktop app for full inventory — coming soon',
+        'Хранилища sync — coming soon',
       ],
       ru: [
         '7 дней бесплатно за подписку на Telegram-канал',
-        'Всё из Plus',
-        'Трекинг топовых аккаунтов инвесторов',
-        'Подборка ценных Steam-портфелей',
-        'Ранний доступ к watchlist инвесторов',
+        'Весь сайт без ограничений',
+        'Desktop-приложение для полного инвентаря — скоро',
+        'Синхронизация Хранилищ — скоро',
       ],
     },
     missing: {
@@ -192,8 +186,13 @@ const PLANS = [
 const PLAN_BY_ID = Object.fromEntries(PLANS.map((plan) => [plan.id, plan]));
 const DEFAULT_PLAN_ID = 'free';
 
-function listPlans() {
-  return PLANS.filter((plan) => !plan.hidden).slice().sort((a, b) => a.order - b.order);
+function listPlans(locale) {
+  const lang = String(locale || '').toLowerCase().split('-')[0];
+  return PLANS.filter((plan) => {
+    if (plan.hidden) return false;
+    if (plan.audience && lang && plan.audience !== lang) return false;
+    return true;
+  }).slice().sort((a, b) => a.order - b.order);
 }
 
 function getPlan(planId) {

@@ -9,6 +9,8 @@ const FULL_ACCESS_PLAN_ID = 'investor';
 const INVESTOR_TRIAL_PLAN_ID = 'investor';
 const INVESTOR_TRIAL_DAYS = 7;
 const INVESTOR_TRIAL_SOURCE = 'investor_trial';
+const WELCOME_PLUS_TRIAL_DAYS = 7;
+const WELCOME_PLUS_TRIAL_SOURCE = 'welcome_plus_trial';
 
 // Hardcoded owner exceptions with permanent Investor access.
 // eldokto/eldoktor → https://steamcommunity.com/id/eldoktor/
@@ -70,6 +72,12 @@ function hasUsedInvestorTrial(entry) {
   return source === INVESTOR_TRIAL_SOURCE || source === 'investor_trial_telegram';
 }
 
+function hasUsedWelcomePlusTrial(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  if (entry.welcomePlusTrialUsedAt) return true;
+  return String(entry.source || '') === WELCOME_PLUS_TRIAL_SOURCE;
+}
+
 function isInvestorTrialEligible(ownerId, entry, planId) {
   if (!ownerId || !String(ownerId).startsWith('steam:')) return false;
   if (hasFullAccess(ownerId)) return false;
@@ -122,6 +130,9 @@ async function getOwnerSubscription(ownerId) {
     investorTrialDays: INVESTOR_TRIAL_DAYS,
     investorTrialUsed,
     investorTrialEligible: isInvestorTrialEligible(ownerId, entry, planId),
+    welcomePlusTrialDays: WELCOME_PLUS_TRIAL_DAYS,
+    welcomePlusTrialUsed: hasUsedWelcomePlusTrial(entry),
+    welcomePlusTrialActive: plan.id === 'plus' && String(source).startsWith(WELCOME_PLUS_TRIAL_SOURCE),
   };
 }
 
@@ -160,6 +171,9 @@ async function setOwnerPlan(ownerId, planId, {
   };
   if (prev?.investorTrialUsedAt) {
     next.investorTrialUsedAt = prev.investorTrialUsedAt;
+  }
+  if (prev?.welcomePlusTrialUsedAt) {
+    next.welcomePlusTrialUsedAt = prev.welcomePlusTrialUsedAt;
   }
   store.owners[ownerId] = next;
   await writeStore(store);
@@ -209,9 +223,45 @@ async function startInvestorTrial(ownerId, { source = INVESTOR_TRIAL_SOURCE } = 
     expiresAt,
     paymentId: prev?.paymentId || null,
     investorTrialUsedAt: nowIso,
+    welcomePlusTrialUsedAt: prev?.welcomePlusTrialUsedAt || null,
   };
   await writeStore(store);
   return getOwnerSubscription(ownerId);
+}
+
+async function grantWelcomePlusTrial(ownerId) {
+  if (!ownerId || !String(ownerId).startsWith('steam:')) {
+    return { granted: false, reason: 'steam_required' };
+  }
+  if (hasFullAccess(ownerId)) {
+    return { granted: false, reason: 'full_access' };
+  }
+
+  const store = await readStore();
+  const prev = store.owners[ownerId] || null;
+  if (hasUsedWelcomePlusTrial(prev)) {
+    return { granted: false, reason: 'already_used' };
+  }
+
+  const currentPlanId = (prev && !isExpired(prev))
+    ? normalizePlanId(prev.planId)
+    : DEFAULT_PLAN_ID;
+  if (currentPlanId !== DEFAULT_PLAN_ID) {
+    return { granted: false, reason: 'plan_active' };
+  }
+
+  const nowIso = new Date().toISOString();
+  store.owners[ownerId] = {
+    planId: 'plus',
+    source: WELCOME_PLUS_TRIAL_SOURCE,
+    updatedAt: nowIso,
+    expiresAt: new Date(Date.now() + WELCOME_PLUS_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+    paymentId: prev?.paymentId || null,
+    investorTrialUsedAt: prev?.investorTrialUsedAt || null,
+    welcomePlusTrialUsedAt: nowIso,
+  };
+  await writeStore(store);
+  return { granted: true, subscription: await getOwnerSubscription(ownerId) };
 }
 
 async function migrateSubscriptionToSteam(anonOwnerId, steamId) {
@@ -230,11 +280,18 @@ async function migrateSubscriptionToSteam(anonOwnerId, steamId) {
       updatedAt: new Date().toISOString(),
       source: source.source || 'migrated',
       investorTrialUsedAt: source.investorTrialUsedAt || target?.investorTrialUsedAt || null,
+      welcomePlusTrialUsedAt: source.welcomePlusTrialUsedAt || target?.welcomePlusTrialUsedAt || null,
     };
   } else if (target && hasUsedInvestorTrial(source) && !target.investorTrialUsedAt) {
     store.owners[targetOwner] = {
       ...target,
       investorTrialUsedAt: source.investorTrialUsedAt || source.updatedAt || new Date().toISOString(),
+    };
+  }
+  if (target && store.owners[targetOwner] && hasUsedWelcomePlusTrial(source) && !store.owners[targetOwner].welcomePlusTrialUsedAt) {
+    store.owners[targetOwner] = {
+      ...store.owners[targetOwner],
+      welcomePlusTrialUsedAt: source.welcomePlusTrialUsedAt || source.updatedAt || new Date().toISOString(),
     };
   }
   delete store.owners[anonOwnerId];
@@ -246,7 +303,10 @@ module.exports = {
   getOwnerSubscription,
   setOwnerPlan,
   startInvestorTrial,
+  grantWelcomePlusTrial,
   migrateSubscriptionToSteam,
   INVESTOR_TRIAL_DAYS,
   INVESTOR_TRIAL_SOURCE,
+  WELCOME_PLUS_TRIAL_DAYS,
+  WELCOME_PLUS_TRIAL_SOURCE,
 };

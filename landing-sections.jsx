@@ -1017,14 +1017,14 @@ function DesktopDownload({ lang, auth, onPricing }) {
     : {
       title: 'Desktop — full inventory and Хранилища',
       sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client will sign into Steam locally and sync the full portfolio, including Хранилища.',
-      note: 'The app is still in development. macOS and Windows builds are coming soon — download and sync will be included with Plus and Investor.',
+      note: 'The app is still in development. macOS and Windows builds are coming soon — download and sync will be included with Plus. Pay with card or crypto.',
       security: 'Read-only: Steam password is never requested, tokens stay on your computer, and only item lists are sent to the server.',
       soon: 'Coming soon',
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
       windows: 'Windows · x64',
       unlock: 'View plans',
-      badge: 'Coming soon · Plus / Investor',
+      badge: 'Coming soon · Plus',
     };
 
   const downloads = [
@@ -1095,7 +1095,8 @@ function DesktopDownload({ lang, auth, onPricing }) {
 
 function Pricing({ lang, auth, onInvestors }) {
   const t = useT(lang);
-  const plansState = usePlans();
+  const plansState = usePlans(lang);
+  const isRu = lang === 'ru';
   const currentPlanId = auth?.planId || plansState.current?.planId || 'free';
   const subscription = auth?.subscription || plansState.current || null;
   const beta = plansState.beta || auth?.beta || null;
@@ -1119,6 +1120,7 @@ function Pricing({ lang, auth, onInvestors }) {
     || (!auth?.connected && !subscription?.investorTrialUsed),
   );
   const onTrial = currentPlanId === 'investor' && String(subscription?.source || '').startsWith('investor_trial');
+  const onWelcomeTrial = Boolean(subscription?.welcomePlusTrialActive);
   const copy = lang === 'ru'
     ? {
       ctaSoon: 'Оплата подключается',
@@ -1155,10 +1157,13 @@ function Pricing({ lang, auth, onInvestors }) {
       betaRenew: 'Продлить через Telegram',
       betaNotReady: 'Telegram-бот ещё настраивается',
       betaCta: 'Получить Plus',
+      cryptoNote: 'Оплата картой или криптой через Platega — из любой страны.',
+      welcomeBadge: '7 дней после входа в Steam',
+      welcomeActive: 'Пробный Plus активен',
     }
     : {
       ctaSoon: 'Checkout coming soon',
-      ctaPay: 'Pay now',
+      ctaPay: 'Pay with card or crypto',
       ctaTest: 'Test payment 10 ₽',
       ctaLogin: 'Sign in with Steam',
       ctaBusy: 'Redirecting…',
@@ -1169,10 +1174,10 @@ function Pricing({ lang, auth, onInvestors }) {
       fullPrice: 'Open full pricing page',
       monthly: '30 days',
       annual: 'Annual',
-      annualBadge: '-17%',
-      perYear: '₽ / year',
-      perMonth: '₽ / mo',
-      annualNote: (monthly, saved) => `≈ ${monthly} · save ${saved}`,
+      annualBadge: '-25%',
+      perYear: '/ year',
+      perMonth: '/ mo',
+      annualNote: (monthly, saved) => `${monthly} billed annually · save ${saved}`,
       trialBadge: '7 days via channel',
       trialCta: 'Try 7 days free',
       trialBusy: 'Checking subscription…',
@@ -1181,8 +1186,8 @@ function Pricing({ lang, auth, onInvestors }) {
       trialUsed: 'Free trial already used',
       trialJoin: 'Join the channel',
       trialUnlockHint: `Subscribe to @${channelUsername} and confirm with Telegram`,
-      betaEyebrow: 'Beta · Plus via subscription',
-      betaText: `During beta, Plus unlocks free when you subscribe to @${channelUsername}. Investor also unlocks 7 free days via the same channel, then is paid separately.`,
+      betaEyebrow: 'Plus trial · no Telegram',
+      betaText: 'Sign in with Steam and Plus starts free for 7 days. Then pay with card or crypto via Platega — works from any country.',
       betaJoin: 'Open channel',
       betaLoginSteam: 'Sign in with Steam',
       betaUnlockHint: 'Then confirm with Telegram login below',
@@ -1191,6 +1196,9 @@ function Pricing({ lang, auth, onInvestors }) {
       betaRenew: 'Renew via Telegram',
       betaNotReady: 'Telegram bot is still being configured',
       betaCta: 'Unlock Plus',
+      cryptoNote: 'Pay with card or crypto on Platega — works from any country. International checkout is converted to RUB at the live rate.',
+      welcomeBadge: '7 days on first Steam login',
+      welcomeActive: '7-day Plus trial active',
     };
 
   const finishBetaUnlock = async (telegramUser) => {
@@ -1255,33 +1263,33 @@ function Pricing({ lang, auth, onInvestors }) {
   };
 
   useEffect(() => {
-    if (!betaMode || !auth?.connected || !unlockReady || !telegramWidgetRef.current) return undefined;
+    if (!isRu || !betaMode || !auth?.connected || !unlockReady || !telegramWidgetRef.current) return undefined;
     return mountTelegramWidget(telegramWidgetRef.current, 'onSkinsHeadTelegramAuth', finishBetaUnlock);
-  }, [betaMode, auth?.connected, unlockReady, botUsername, lang]);
+  }, [isRu, betaMode, auth?.connected, unlockReady, botUsername, lang]);
 
   useEffect(() => {
-    if (!channelUnlockReady || !auth?.connected || !trialEligible || onTrial || !trialTelegramWidgetRef.current) {
+    if (!isRu || !channelUnlockReady || !auth?.connected || !trialEligible || onTrial || !trialTelegramWidgetRef.current) {
       return undefined;
     }
     return mountTelegramWidget(trialTelegramWidgetRef.current, 'onSkinsHeadTelegramTrialAuth', claimInvestorTrial);
-  }, [channelUnlockReady, auth?.connected, trialEligible, onTrial, botUsername, lang]);
+  }, [isRu, channelUnlockReady, auth?.connected, trialEligible, onTrial, botUsername, lang]);
 
   const startCheckout = async (planId) => {
     setCheckoutError(null);
     if (!billingReady || planId === 'free') return;
-    if (betaMode && planId === 'plus') return;
+    if (betaMode && planId === 'plus' && isRu) return;
     if (!auth?.connected) {
       auth.login();
       return;
     }
     const plan = plansState.plans.find((item) => item.id === planId);
-    const cycle = Number(plan?.annualAmountRub) > 0 ? billingCycle : 'monthly';
+    const cycle = hasAnnualCycle(plan) ? billingCycle : 'monthly';
     setCheckoutBusy(planId);
     try {
       const data = await apiFetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, cycle }),
+        body: JSON.stringify({ planId, cycle, locale: lang }),
       });
       if (!data?.redirectUrl) throw new Error(lang === 'ru' ? 'Платёжная ссылка не получена.' : 'Payment link missing.');
       window.location.href = data.redirectUrl;
@@ -1292,27 +1300,53 @@ function Pricing({ lang, auth, onInvestors }) {
   };
 
   const formatRub = (value) => Math.round(value).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US');
+  const formatUsdPrice = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '$0';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+  };
   const getAnnualRub = (plan) => (
     Number.isFinite(plan.annualAmountRub) ? plan.annualAmountRub : (Number(plan.amountRub) || 0) * 10
   );
-  const hasAnnualCycle = (plan) => Number(plan.annualAmountRub) > 0;
+  const getAnnualUsd = (plan) => (
+    Number.isFinite(plan.annualAmountUsd) ? plan.annualAmountUsd : (Number(plan.amountUsd) || 0) * 10
+  );
+  const hasAnnualCycle = (plan) => (
+    isRu ? Number(plan?.annualAmountRub) > 0 : Number(plan?.annualAmountUsd) > 0
+  );
   const getDisplayPrice = (plan) => {
-    if (plan.id === 'free' || !hasAnnualCycle(plan) || billingCycle === 'monthly') {
-      return plan.price?.[lang] || plan.price?.en;
+    if (isRu) {
+      if (plan.id === 'free' || !hasAnnualCycle(plan) || billingCycle === 'monthly') {
+        return plan.price?.ru || plan.price?.en;
+      }
+      return `${formatRub(getAnnualRub(plan))} ${copy.perYear}`;
     }
-    return `${formatRub(getAnnualRub(plan))} ${copy.perYear}`;
+    if (plan.id === 'free' || !hasAnnualCycle(plan) || billingCycle === 'monthly') {
+      return plan.price?.en || formatUsdPrice(plan.amountUsd);
+    }
+    return `${formatUsdPrice(getAnnualUsd(plan))} ${copy.perYear}`;
   };
   const getDisplayPriceNote = (plan) => {
     if (plan.id === 'free' || !hasAnnualCycle(plan) || billingCycle !== 'annual') {
-      return plan.priceNote?.[lang] || plan.priceNote?.en;
+      return plan.priceNote?.[isRu ? 'ru' : 'en'] || plan.priceNote?.en;
     }
-    const monthlyRub = Number(plan.amountRub) || 0;
-    const annualRub = getAnnualRub(plan);
-    const monthlyEquivalent = annualRub / 12;
-    const savedRub = Math.max(0, monthlyRub * 12 - annualRub);
+    if (isRu) {
+      const monthlyRub = Number(plan.amountRub) || 0;
+      const annualRub = getAnnualRub(plan);
+      const monthlyEquivalent = annualRub / 12;
+      const savedRub = Math.max(0, monthlyRub * 12 - annualRub);
+      return copy.annualNote(
+        `${formatRub(monthlyEquivalent)} ${copy.perMonth}`,
+        `${formatRub(savedRub)} ₽`,
+      );
+    }
+    const monthlyUsd = Number(plan.amountUsd) || 0;
+    const annualUsd = getAnnualUsd(plan);
+    const monthlyEquivalent = annualUsd / 12;
+    const savedUsd = Math.max(0, monthlyUsd * 12 - annualUsd);
     return copy.annualNote(
-      `${formatRub(monthlyEquivalent)} ${copy.perMonth}`,
-      `${formatRub(savedRub)} ₽`,
+      formatUsdPrice(monthlyEquivalent),
+      formatUsdPrice(savedUsd),
     );
   };
 
@@ -1339,7 +1373,7 @@ function Pricing({ lang, auth, onInvestors }) {
             ))}
           </div>
         </div>
-        {betaMode && (
+        {isRu && betaMode && (
           <div className="glass pricing-beta-banner">
             <div style={{ minWidth: 0 }}>
               <div className="eyebrow" style={{ color: 'var(--accent)' }}>{copy.betaEyebrow}</div>
@@ -1368,21 +1402,41 @@ function Pricing({ lang, auth, onInvestors }) {
             </div>
           </div>
         )}
+        {!isRu && (
+          <div className="glass pricing-beta-banner">
+            <div style={{ minWidth: 0 }}>
+              <div className="eyebrow" style={{ color: 'var(--accent)' }}>{copy.betaEyebrow}</div>
+              <p>{copy.betaText}</p>
+            </div>
+            <div style={{ display: 'grid', gap: 8, justifyItems: 'start' }}>
+              {!auth?.connected ? (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => auth?.login && auth.login()}>
+                  {copy.betaLoginSteam}
+                </button>
+              ) : onWelcomeTrial || hasPlusAccess ? (
+                <button type="button" className="btn btn-ghost btn-sm" disabled>
+                  {onWelcomeTrial ? copy.welcomeActive : copy.betaActive}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        )}
         {plansState.loading && !plansState.plans.length ? (
           <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>...</div>
         ) : (
           <div className="pricing-grid">
             {plansState.plans.map((plan) => {
               const isCurrent = plan.id === currentPlanId;
+              const highlighted = isRu ? plan.highlight : plan.id === 'plus';
               const name = plan.name?.[lang] || plan.name?.en || plan.id;
               const price = getDisplayPrice(plan);
               const priceNote = getDisplayPriceNote(plan);
-              const bullets = plan.bullets?.[lang] || plan.bullets?.en || [];
-              const missing = plan.missing?.[lang] || plan.missing?.en || [];
+              const bullets = plan.bullets?.[isRu ? 'ru' : 'en'] || plan.bullets?.en || [];
+              const missing = plan.missing?.[isRu ? 'ru' : 'en'] || plan.missing?.en || [];
               return (
                 <article
                   key={plan.id}
-                  className={`pricing-card pricing-card-${plan.id} ${plan.highlight ? 'glass-strong' : 'glass'}`}
+                  className={`pricing-card pricing-card-${plan.id} ${highlighted ? 'glass-strong' : 'glass'}`}
                   style={{
                     padding: 28,
                     display: 'flex',
@@ -1405,10 +1459,17 @@ function Pricing({ lang, auth, onInvestors }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
                       <div className="eyebrow pricing-plan-name">{name}</div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {plan.id === 'plus' && !isRu && !isCurrent && (
+                          <span className="chip chip-accent">{copy.welcomeBadge}</span>
+                        )}
                         {plan.id === 'investor' && !onTrial && (trialEligible || !auth?.connected) && (
                           <span className="chip chip-accent">{copy.trialBadge}</span>
                         )}
-                        {isCurrent && <span className="chip chip-accent">{onTrial ? copy.trialActive : copy.current}</span>}
+                        {isCurrent && (
+                          <span className="chip chip-accent">
+                            {onWelcomeTrial ? copy.welcomeActive : (onTrial ? copy.trialActive : copy.current)}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="display" style={{ marginTop: 10, fontSize: 34, fontWeight: 500 }}>{price}</div>
@@ -1430,16 +1491,15 @@ function Pricing({ lang, auth, onInvestors }) {
                     {(() => {
                       if (plan.id === 'free') {
                         return (
-                          <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
+                          <button type="button" className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`} disabled>
                             {lang === 'ru' ? 'Уже доступно' : 'Already available'}
                           </button>
                         );
                       }
-                      // Beta: Plus is free via Telegram; 3-day and Investor stay paid.
-                      if (betaMode && plan.id === 'plus') {
+                      if (isRu && betaMode && plan.id === 'plus') {
                         if (hasPlusAccess) {
                           return (
-                            <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
+                            <button type="button" className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`} disabled>
                               {copy.betaActive}
                             </button>
                           );
@@ -1448,7 +1508,7 @@ function Pricing({ lang, auth, onInvestors }) {
                           return (
                             <button
                               type="button"
-                              className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`}
+                              className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`}
                               onClick={() => auth?.login && auth.login()}
                             >
                               {copy.betaLoginSteam}
@@ -1457,7 +1517,7 @@ function Pricing({ lang, auth, onInvestors }) {
                         }
                         return (
                           <a
-                            className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`}
+                            className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`}
                             href={channelUrl}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -1468,7 +1528,7 @@ function Pricing({ lang, auth, onInvestors }) {
                       }
                       if (!billingReady) {
                         return (
-                          <button type="button" className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`} disabled>
+                          <button type="button" className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`} disabled>
                             {copy.ctaSoon}
                           </button>
                         );
@@ -1481,7 +1541,7 @@ function Pricing({ lang, auth, onInvestors }) {
                       return (
                         <button
                           type="button"
-                          className={`btn ${plan.highlight ? 'btn-primary' : 'btn-ghost'}`}
+                          className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`}
                           disabled={Boolean(checkoutBusy)}
                           onClick={() => startCheckout(plan.id)}
                         >
@@ -1524,12 +1584,9 @@ function Pricing({ lang, auth, onInvestors }) {
                             {copy.trialUsed}
                           </div>
                         ) : null}
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onInvestors && onInvestors()}>
-                          {copy.investors}
-                        </button>
                       </>
                     )}
-                    {plan.id === 'short' && (
+                    {(plan.id === 'free' || plan.id === 'short' || plan.id === 'investor') && (
                       <button type="button" className="btn btn-ghost btn-sm" onClick={() => onInvestors && onInvestors()}>
                         {copy.investors}
                       </button>
@@ -1540,6 +1597,9 @@ function Pricing({ lang, auth, onInvestors }) {
             })}
           </div>
         )}
+        <p style={{ marginTop: 16, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)', maxWidth: 760, lineHeight: 1.55 }}>
+          {copy.cryptoNote}
+        </p>
         {checkoutError && (
           <div style={{ marginTop: 14, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #c44)' }}>
             {checkoutError}
@@ -1556,7 +1616,7 @@ function Pricing({ lang, auth, onInvestors }) {
               {checkoutBusy === 'test' ? copy.ctaBusy : copy.ctaTest}
             </button>
             <span style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-              {lang === 'ru' ? 'проверка платёжки · 1 час Investor' : 'payment check · 1 hour Investor'}
+              {lang === 'ru' ? 'проверка платёжки · 1 час Investor' : 'payment check · 1 hour Plus'}
             </span>
           </div>
         )}
@@ -1754,14 +1814,14 @@ function StatsBand() {
   const t = useT(lang);
   const stats = lang === 'ru'
     ? [
-      { v: 'Free', l: 'до 1 000 предметов в списке' },
-      { v: 'Plus', l: 'безлимит + desktop скоро' },
-      { v: 'Investor', l: 'трекинг топ-аккаунтов инвесторов' },
+      { v: 'Free', l: 'весь сайт без лимитов' },
+      { v: 'Plus', l: 'desktop и Хранилища скоро' },
+      { v: 'Investor', l: 'то же + 7 дней за Telegram' },
     ]
     : [
-      { v: 'Free', l: 'up to 1,000 items displayed' },
-      { v: 'Plus', l: 'unlimited + desktop soon' },
-      { v: 'Investor', l: 'top investor account tracking' },
+      { v: 'Free', l: 'full website, no item cap' },
+      { v: 'Plus', l: 'desktop + Хранилища soon' },
+      { v: 'Investor', l: 'same + 7 days via Telegram' },
     ];
   return (
     <section className="section-tight">
@@ -1797,7 +1857,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead помогает считать скины CS2 как портфель: live-оценка инвентаря, себестоимость, P&L, распределение по типам и история цен по предметам. Цены собираются со Steam Community Market и сторонних площадок.',
           'Кроме портфеля на сайте есть маркет-эксплорер, лидеры позиций, лента новостей из Telegram и калькулятор ROI Armory Pass. Подключите Steam через OpenID, откройте чужой публичный профиль по ссылке или создайте ручной портфель.',
-          'Бесплатный тариф показывает до 1 000 предметов. Plus открывает безлимитное отображение; desktop для Хранилищ — скоро. Investor добавляет трекинг топовых аккаунтов инвесторов.',
+          'Весь сайт бесплатный: полный инвентарь, маркет, Armory, новости и топ-аккаунты инвесторов. Платные тарифы открывают desktop для Хранилищ. Plus в бете — бесплатно за канал; Investor — 7 дней тоже за Telegram.',
         ],
       }
     : {
@@ -1806,7 +1866,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead treats CS2 skins as a portfolio: live inventory valuation, cost basis, P&L, allocation by type, and per-item price history. Prices come from the Steam Community Market and major third-party marketplaces.',
           'Beyond the portfolio you get a market explorer, portfolio leaders, Telegram news, and an Armory Pass ROI board. Link Steam via OpenID, open any public profile URL, or keep a manual portfolio.',
-          'The Free plan displays up to 1,000 items. Plus unlocks unlimited display; the desktop app for Хранилища is coming soon. Investor adds tracking of top investor accounts.',
+          'The website is free: full inventory, market explorer, Armory, news, and top investor accounts. Plus is $7.99/month after a 7-day trial on first Steam login. Pay with card or crypto via Platega from any country.',
         ],
       };
 
@@ -1829,12 +1889,12 @@ const FAQ_ITEMS = {
   en: [
     { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin portfolio tracker. It values a Steam inventory with live market prices and shows P&L, cost basis, allocation, market explorer, Armory Pass ROI, and Telegram news in one place.' },
     { q: 'How do I track a portfolio?', a: 'Link Steam with OpenID, paste a public profile URL, or create a manual portfolio and add purchases. SkinsHead prices items and surfaces leaders, 24h change, and inventory breakdown.' },
-    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Хранилища. The desktop client will sign into Steam on your computer and sync the full inventory to your SkinsHead portfolio. It is coming soon and will require Plus or Investor.' },
+    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Хранилища. The desktop client will sign into Steam on your computer and sync the full inventory to your SkinsHead portfolio. It is coming soon and is included with Plus.' },
     { q: 'Where do prices come from?', a: 'We combine Steam Community Market data with major third-party marketplaces. Each item page shows available offers and price history from the providers we could reach.' },
     { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. When the desktop client launches, tokens will stay locally and only item lists will be sent to the server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
-    { q: 'Is SkinsHead free?', a: 'Yes, Free is 0 ₽ with up to 1,000 items displayed, market explorer, Armory ROI, and news. Plus is 299 ₽ / 30 days (unlimited; desktop coming soon; free via channel during beta). Investor is 499 ₽ / 30 days (Plus + top investors) with a one-time 7-day trial via Telegram channel. See /pricing.' },
-    { q: 'What do paid plans include?', a: 'Plus (299 ₽ / 30 days): unlimited item display; desktop app download/sync is coming soon. Investor (499 ₽ / 30 days): everything in Plus plus tracking of curated top investor Steam accounts, with a one-time 7-day free trial via Telegram channel. Support: Telegram @GhostOfSecretum.' },
+    { q: 'Is SkinsHead free?', a: 'Yes. The website is free: unlimited inventory, market explorer, Armory ROI, news, and top investor accounts. Sign in with Steam and Plus starts free for 7 days. Then Plus is $7.99 / 30 days or $72 / year for the desktop app (Хранилища; coming soon). A 3-day pass is $2.99. Pay with card or crypto via Platega from any country. See /pricing.' },
+    { q: 'What do paid plans include?', a: 'Paid plans unlock the desktop app and Хранилища sync (coming soon). Plus is $7.99 / 30 days or $72 / year. The 3-day pass is $2.99. Checkout is card or crypto on Platega, so it works internationally. Support: Telegram @GhostOfSecretum.' },
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
@@ -1844,8 +1904,8 @@ const FAQ_ITEMS = {
     { q: 'Откуда берутся цены?', a: 'Собираем данные Steam Community Market и крупных сторонних площадок. На карточке предмета видны доступные предложения и история цен из источников, до которых удалось достучаться.' },
     { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. Когда выйдет desktop, токены останутся локально, на сервер уйдёт только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
     { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
-    { q: 'SkinsHead бесплатный?', a: 'Да, Free — 0 ₽: до 1 000 предметов, маркет, Armory ROI и новости. Plus — 299 ₽ / 30 дней (безлимит; desktop скоро; в бете — бесплатно за подписку на канал). Investor — 499 ₽ / 30 дней (Plus + топ-инвесторы) и один раз 7 дней бесплатно за подписку на Telegram-канал. Прайс: /pricing.' },
-    { q: 'Что дают платные тарифы?', a: 'Plus (299 ₽ / 30 дней): безлимит предметов; desktop-приложение — скоро. Investor (499 ₽ / 30 дней): всё из Plus плюс трекинг топ-аккаунтов инвесторов; 7 дней бесплатно один раз за подписку на Telegram-канал. Поддержка: Telegram @GhostOfSecretum.' },
+    { q: 'SkinsHead бесплатный?', a: 'Да. Сайт бесплатный: безлимит инвентаря, маркет, Armory ROI, новости и топ-аккаунты инвесторов. Plus — 299 ₽ / 30 дней за desktop (Хранилища; скоро; в бете бесплатно за канал). Investor — 499 ₽ / 30 дней с однократными 7 днями за Telegram. 3 дня desktop — 100 ₽. Оплата картой или криптой через Platega. Прайс: /pricing.' },
+    { q: 'Что дают платные тарифы?', a: 'Платные тарифы открывают desktop-приложение и синхронизацию Хранилищ (скоро). Plus — 299 ₽ / 30 дней. Investor — 499 ₽ / 30 дней с однократными 7 днями за Telegram-канал. Тариф на 3 дня — 100 ₽. Оплата картой или криптой через Platega — из любой страны. Поддержка: Telegram @GhostOfSecretum.' },
     { q: 'Вы связаны с Valve?', a: 'Нет. SkinsHead — независимый проект и не аффилирован со Steam, Valve или Counter-Strike.' },
   ],
 };

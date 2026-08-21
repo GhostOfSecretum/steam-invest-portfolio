@@ -40,6 +40,7 @@ const {
   getOwnerSubscription,
   setOwnerPlan,
   startInvestorTrial,
+  grantWelcomePlusTrial,
   migrateSubscriptionToSteam,
 } = require('./services/subscriptions');
 const {
@@ -212,6 +213,11 @@ app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => 
   await migrateFavoriteProfilesToSteam(priorOwnerId, auth.steamId);
   await migrateSubscriptionToSteam(priorOwnerId, auth.steamId);
   await recordSteamLogin(auth.steamId, { source: 'steam_openid' });
+  try {
+    await grantWelcomePlusTrial(`steam:${auth.steamId}`);
+  } catch (error) {
+    console.warn('[welcome-plus-trial]', error.message);
+  }
   res.redirect('/dashboard');
 }));
 
@@ -306,7 +312,7 @@ app.post('/api/trials/investor', investorTrialLimiter, requireAuth, asyncRoute(a
 app.get('/api/plans', asyncRoute(async (req, res) => {
   const beta = getBetaPublicConfig();
   res.json({
-    plans: listPlans(),
+    plans: listPlans(req.query.locale),
     billingReady: effectiveBillingReady(),
     beta,
     current: withBillingFlags(await getOwnerSubscription(resolveOwnerId(req))),
@@ -349,7 +355,9 @@ app.get('/api/admin/users', asyncRoute(async (req, res) => {
 
 app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async (req, res) => {
   const planId = String(req.body?.planId || '').trim().toLowerCase();
-  if (isBetaMode() && planId === 'plus') {
+  const locale = String(req.body?.locale || req.query.locale || '').trim();
+  // RU beta still unlocks Plus via Telegram; other locales can pay (card or crypto).
+  if (isBetaMode() && planId === 'plus' && locale.toLowerCase().startsWith('ru')) {
     res.status(503).json({
       error: 'Plus is free during beta. Unlock it via the Telegram channel.',
       code: 'beta_plus_free',
@@ -363,6 +371,7 @@ app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async
     steamId: req.session.steamId,
     planId,
     cycle: req.body?.cycle,
+    locale,
     req,
   });
   res.json(checkout);
@@ -701,36 +710,15 @@ app.get('/api/downloads/:artifact', asyncRoute(async (req, res) => {
   });
 }));
 
-async function requireTopInvestorsAccess(req, res) {
-  const planId = await getOwnerPlanId(resolveOwnerId(req));
-  if (!planAllows(planId, 'topInvestors')) {
-    res.status(403).json({
-      error: 'Top investor tracking requires the Investor plan or the 3-day pass.',
-      code: 'plan_required',
-      requiredFeature: 'topInvestors',
-      planId,
-      preview: await listTopInvestors().then((data) => ({
-        comingSoon: data.comingSoon,
-        count: data.accounts.length,
-      })),
-    });
-    return null;
-  }
-  return planId;
-}
-
 app.get('/api/top-investors', asyncRoute(async (req, res) => {
-  if (!(await requireTopInvestorsAccess(req, res))) return;
   res.json(await listTopInvestors());
 }));
 
 app.get('/api/top-investors/activity', asyncRoute(async (req, res) => {
-  if (!(await requireTopInvestorsAccess(req, res))) return;
   res.json(await listTopInvestorsActivityFeed());
 }));
 
 app.get('/api/top-investors/:steamId/activity', asyncRoute(async (req, res) => {
-  if (!(await requireTopInvestorsAccess(req, res))) return;
   const steamId = String(req.params.steamId || '').trim();
   if (!/^\d{17}$/.test(steamId)) {
     res.status(400).json({ error: 'Valid SteamID64 is required.', code: 'invalid_steam_id' });
@@ -846,6 +834,11 @@ app.get('/api/desktop/login', pairingLimiter, asyncRoute(async (req, res) => {
   await migrateFavoriteProfilesToSteam(priorOwnerId, loginSession.steamId);
   await migrateSubscriptionToSteam(priorOwnerId, loginSession.steamId);
   await recordSteamLogin(loginSession.steamId, { source: 'desktop' });
+  try {
+    await grantWelcomePlusTrial(`steam:${loginSession.steamId}`);
+  } catch (error) {
+    console.warn('[welcome-plus-trial]', error.message);
+  }
   res.redirect('/dashboard');
 }));
 

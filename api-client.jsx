@@ -63,9 +63,9 @@ function useAuth() {
     ...state,
     planId: state.subscription?.planId || 'free',
     entitlements: state.subscription?.entitlements || {
-      itemDisplayLimit: 1000,
+      itemDisplayLimit: null,
       desktopDownload: false,
-      topInvestors: false,
+      topInvestors: true,
     },
     login: () => {
       window.location.href = '/api/auth/steam';
@@ -130,7 +130,7 @@ function useBetaConfig() {
   return { ...state, reload };
 }
 
-function usePlans() {
+function usePlans(locale) {
   const [state, setState] = apiUseState({
     loading: true,
     plans: [],
@@ -143,7 +143,8 @@ function usePlans() {
   const reload = apiUseCallback(async () => {
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
-      const data = await apiFetch('/api/plans');
+      const lang = String(locale || '').trim();
+      const data = await apiFetch(lang ? `/api/plans?locale=${encodeURIComponent(lang)}` : '/api/plans');
       setState({
         loading: false,
         plans: Array.isArray(data.plans) ? data.plans : [],
@@ -155,7 +156,7 @@ function usePlans() {
     } catch (error) {
       setState({ loading: false, plans: [], current: null, billingReady: false, beta: null, error });
     }
-  }, []);
+  }, [locale]);
 
   apiUseEffect(() => { reload(); }, [reload]);
 
