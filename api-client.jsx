@@ -499,8 +499,8 @@ const CURRENCY_META = {
 };
 
 function getActiveCurrency() {
-  const key = String(window.__currency || 'rub').toLowerCase();
-  return CURRENCY_META[key] ? key : 'rub';
+  const key = String(window.__currency || 'usd').toLowerCase();
+  return CURRENCY_META[key] ? key : 'usd';
 }
 
 function normalizeCurrencyCode(value) {
