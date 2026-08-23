@@ -76,6 +76,24 @@
     'tiger tooth': 'Tiger Tooth',
   };
 
+  // Steam market_hash_name casing for hyphenated weapons.
+  const WEAPON_DISPLAY_NAMES = {
+    'm4a1-s': 'M4A1-S',
+    'glock-18': 'Glock-18',
+    'usp-s': 'USP-S',
+    'five-seven': 'Five-SeveN',
+    'cz75-auto': 'CZ75-Auto',
+    'ump-45': 'UMP-45',
+    'mp5-sd': 'MP5-SD',
+    'pp-bizon': 'PP-Bizon',
+    'scar-20': 'SCAR-20',
+    'mac-10': 'MAC-10',
+    'sawed-off': 'Sawed-Off',
+    'tec-9': 'Tec-9',
+    'ak-47': 'AK-47',
+    'mag-7': 'MAG-7',
+  };
+
   function marketHashNameToSlug(marketHashName) {
     let name = String(marketHashName || '').trim();
     let prefix = '';
@@ -159,9 +177,12 @@
   function splitCoreSlug(core) {
     const text = core.replace(/-/g, ' ');
     for (const weapon of WEAPON_PREFIXES) {
-      if (text === weapon) return { weapon, skin: '' };
-      if (text.startsWith(`${weapon} `)) {
-        return { weapon, skin: text.slice(weapon.length + 1) };
+      // Slugs flatten hyphens (`m4a1-s` → `m4a1 s solitude`). Match the prefix
+      // the same way, or M4A1-S / USP-S / AK-47 become "M4A1 | S …".
+      const weaponText = weapon.replace(/-/g, ' ');
+      if (text === weaponText) return { weapon, skin: '' };
+      if (text.startsWith(`${weaponText} `)) {
+        return { weapon, skin: text.slice(weaponText.length + 1) };
       }
     }
     const idx = core.indexOf('-');
@@ -189,6 +210,16 @@
     return capitalizeSegment(normalized);
   }
 
+  function formatWeaponName(weapon) {
+    const normalized = String(weapon || '').trim().toLowerCase();
+    if (!normalized) return '';
+    if (WEAPON_DISPLAY_NAMES[normalized]) return WEAPON_DISPLAY_NAMES[normalized];
+    if (normalized.includes('-')) {
+      return normalized.split('-').map((part) => capitalizeSegment(part)).join('-');
+    }
+    return capitalizeSegment(normalized);
+  }
+
   function slugToMarketHashName(slug) {
     const parsed = parseSlug(slug);
     if (!parsed) return null;
@@ -197,7 +228,7 @@
     if (curated) return curated;
 
     const { weapon, skin } = splitCoreSlug(parsed.core);
-    const weaponName = capitalizeSegment(weapon);
+    const weaponName = formatWeaponName(weapon);
     const skinName = formatSkinName(skin);
     let prefix = '';
     if (parsed.prefix === 'stattrak') prefix = 'StatTrak™ ';

@@ -23,18 +23,17 @@ async function resolveItemBySlug(slug) {
   const candidate = slugToMarketHashName(normalized);
   if (candidate) {
     const priced = await getPrice(candidate).catch(() => null);
+    const livePrice = Number.isFinite(priced?.price) && priced.price > 0
+      ? priced.price
+      : (Number.isFinite(priced?.medianPrice) && priced.medianPrice > 0 ? priced.medianPrice : null);
     // Require a real quote — unpriced placeholders still echo the candidate name and
     // previously made broken sticker slugs (missing "(Holo)") look "resolved".
+    // price: 0 is also a placeholder (Number(null) / unpriced-stale cache).
     if (
-      priced
-      && Number.isFinite(priced.price)
+      livePrice
       && marketHashNameToSlug(priced.marketHashName) === normalized
     ) {
       return priced.marketHashName;
-    }
-    // Even without a live quote, trust a round-trippable candidate (finish-aware slugs).
-    if (marketHashNameToSlug(candidate) === normalized) {
-      return candidate;
     }
   }
 
@@ -45,6 +44,11 @@ async function resolveItemBySlug(slug) {
     const items = catalog?.items || [];
     const exact = items.find((item) => marketHashNameToSlug(item.marketHashName) === normalized);
     if (exact?.marketHashName) return exact.marketHashName;
+  }
+
+  // Even without a live quote, trust a round-trippable candidate (finish-aware slugs).
+  if (candidate && marketHashNameToSlug(candidate) === normalized) {
+    return candidate;
   }
 
   return null;
@@ -59,7 +63,7 @@ async function getItemPageData(slug) {
     getSteamMarketIcon(marketHashName).catch(() => null),
   ]);
 
-  const price = Number(priceData?.price);
+  const price = Number.isFinite(priceData?.price) ? Number(priceData.price) : null;
   const wearMatch = marketHashName.match(/\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i);
   const wearLabel = wearMatch?.[1] || null;
   const wear = wearLabel
@@ -73,7 +77,7 @@ async function getItemPageData(slug) {
     price: Number.isFinite(price) ? price : null,
     priceRub: Number.isFinite(priceData?.priceRub) ? priceData.priceRub : null,
     medianPrice: Number.isFinite(priceData?.medianPrice) ? priceData.medianPrice : null,
-    iconUrl: iconData?.iconUrl || null,
+    iconUrl: (typeof iconData === 'string' ? iconData : iconData?.iconUrl) || null,
     marketUrl: `https://steamcommunity.com/market/listings/730/${encodeURIComponent(marketHashName)}`,
     type: priceData?.type || '',
     wear,

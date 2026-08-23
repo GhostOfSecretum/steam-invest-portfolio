@@ -1109,7 +1109,7 @@ function mulberry32(seed) {
 async function getSteamMarketIcon(marketHashName, options = {}) {
   const key = `icon:${marketHashName}`;
   const cached = await getCached(key, ICON_MAX_AGE_MS);
-  if (cached) return cached.iconUrl;
+  if (cached?.iconUrl) return cached.iconUrl;
   if (options.cachedOnly) return null;
 
   const searchIconUrl = await getSteamMarketSearchIcon(marketHashName).catch(() => null);
@@ -1128,11 +1128,13 @@ async function getSteamMarketIcon(marketHashName, options = {}) {
     .match(/<meta\s+property="og:image"\s+content="([^"]+)"/i)?.[1]
     ?.replace(/&amp;/g, '&') || null;
 
-  await setCached(key, {
-    marketHashName,
-    iconUrl,
-    updatedAt: new Date().toISOString(),
-  });
+  if (iconUrl) {
+    await setCached(key, {
+      marketHashName,
+      iconUrl,
+      updatedAt: new Date().toISOString(),
+    });
+  }
 
   return iconUrl;
 }
