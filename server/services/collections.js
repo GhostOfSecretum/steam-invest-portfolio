@@ -2,13 +2,13 @@ const { collectionNameToSlug } = require('../../item-slugs');
 const {
   getCSMarketAPIItems,
   normalizeCSMarketCatalogItem,
-  getPrices,
+  hydrateCollectionPrices,
 } = require('./prices');
 
 const WEAR_PREF = {
-  'Field-Tested': 0,
+  'Factory New': 0,
   'Minimal Wear': 1,
-  'Factory New': 2,
+  'Field-Tested': 2,
   'Well-Worn': 3,
   'Battle-Scarred': 4,
 };
@@ -32,10 +32,19 @@ function baseSkinKey(raw) {
   return base.toLowerCase();
 }
 
+function pickWearLabel(raw) {
+  const exterior = String(raw.exterior || '').trim();
+  if (exterior && WEAR_PREF[exterior] != null) return exterior;
+  const name = String(raw.market_hash_name || raw.hash_name || '');
+  const match = name.match(/\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i);
+  if (!match) return null;
+  return Object.keys(WEAR_PREF).find((label) => label.toLowerCase() === match[1].toLowerCase()) || null;
+}
+
 function candidateScore(raw) {
   const name = String(raw.market_hash_name || '');
   const isSpecial = /^StatTrak™\s+/i.test(name) || /^Souvenir\s+/i.test(name) ? 1 : 0;
-  const wear = raw.exterior || null;
+  const wear = pickWearLabel(raw);
   const wearScore = wear && WEAR_PREF[wear] != null ? WEAR_PREF[wear] : 5;
   const hasIcon = raw.cloudflare_icon_url || raw.akamai_icon_url ? 0 : 1;
   return [isSpecial, wearScore, hasIcon];
@@ -191,24 +200,9 @@ async function getCollectionPageData(slug, options = {}) {
   const offset = (page - 1) * pageSize;
   const allSkins = index.skinsBySlug.get(normalized) || [];
   const pageSlice = allSkins.slice(offset, offset + pageSize);
-  const pricedMap = await getPrices(
-    pageSlice.map((item) => item.marketHashName),
-    pageSlice.length,
-    { concurrency: 6 },
-  ).catch(() => ({}));
-  const pageItems = pageSlice.map((item) => {
-    const priced = pricedMap[item.marketHashName];
-    if (!Number.isFinite(priced?.price)) return item;
-    return {
-      ...item,
-      price: priced.price,
-      value: priced.price,
-      basis: priced.price,
-      priceRub: Number.isFinite(priced.priceRub) ? priced.priceRub : null,
-      medianPrice: Number.isFinite(priced.medianPrice) ? priced.medianPrice : null,
-      medianPriceRub: Number.isFinite(priced.medianPriceRub) ? priced.medianPriceRub : null,
-      priceProvider: priced.provider || item.priceProvider,
-    };
+  const pageItems = await hydrateCollectionPrices(pageSlice).catch((error) => {
+    console.warn('[collection] price hydrate failed:', error.message);
+    return pageSlice;
   });
 
   return {

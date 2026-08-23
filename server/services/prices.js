@@ -525,7 +525,10 @@ async function getSteamMarketSearchPrice(marketHashName, currency = 'usd') {
     currency: 'usd',
   });
   const rows = Array.isArray(json?.results) ? json.results : [];
-  const exact = rows.find((row) => row?.hash_name === marketHashName);
+  const exact = rows.find((row) => {
+    const name = row?.hash_name || row?.asset_description?.market_hash_name;
+    return name === marketHashName;
+  });
   if (!exact) return null;
 
   const priceText = exact.sell_price_text || exact.sale_price_text;
@@ -1576,6 +1579,52 @@ async function hydrateCSMarketCatalogPrices(items) {
   return resolved;
 }
 
+// Collection pages start from the CSMarket dump (no Steam sell_price). Prefer
+// CSMarket listings for bulk pages, then Steam search/overview for gaps.
+async function hydrateCollectionPrices(items) {
+  if (!Array.isArray(items) || !items.length) return items;
+
+  const rubPerUsdPromise = getSteamRubRate()
+    .then((rate) => (Number.isFinite(rate) && rate > 0 ? rate : 78.5))
+    .catch(() => 78.5);
+
+  const resolved = [];
+  for (let i = 0; i < items.length; i += 6) {
+    const batch = items.slice(i, i + 6);
+    const pricedBatch = await Promise.all(batch.map(async (item) => {
+      if (Number.isFinite(item.price) && item.price > 0) return item;
+
+      const usd = await getCSMarketListingPrice(item.marketHashName, 'usd').catch(() => null)
+        || await getSteamMarketSearchPrice(item.marketHashName, 'usd').catch(() => null)
+        || await getSteamMarketPrice(item.marketHashName, 'usd').catch(() => null);
+      if (!Number.isFinite(usd?.price)) return item;
+
+      const price = usd.price;
+      const rate = await rubPerUsdPromise;
+      const priceRub = Number.isFinite(usd.priceRub)
+        ? usd.priceRub
+        : Math.round(price * rate * 100) / 100;
+      const median = Number.isFinite(usd.medianPrice) ? usd.medianPrice : price;
+
+      return {
+        ...item,
+        price,
+        value: price,
+        basis: price,
+        priceRub,
+        medianPrice: median,
+        medianPriceRub: Math.round(median * rate * 100) / 100,
+        sellListings: usd.sellListings || usd.volume24h || item.sellListings,
+        priceProvider: usd.provider || item.priceProvider,
+        spark: makeSpark(price, 0),
+      };
+    }));
+    resolved.push(...pricedBatch);
+  }
+
+  return resolved;
+}
+
 function sortCatalogItemsServer(items, sort) {
   const sorted = [...items];
   if (sort === 'price-desc') {
@@ -2250,4 +2299,5 @@ module.exports = {
   getCSMarketAPIItems,
   normalizeCSMarketCatalogItem,
   hydrateCSMarketCatalogPrices,
+  hydrateCollectionPrices,
 };
