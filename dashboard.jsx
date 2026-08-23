@@ -1692,7 +1692,7 @@ function PortfolioLoadingVisual({ lang }) {
       <div className="portfolio-loader__scene">
         <div className="portfolio-loader__core">
           <div className="portfolio-loader__core-face">
-            <img src="assets/loader-arrow-neon-glass-01.png" alt="" />
+            <img src="assets/hero-glove-case-steam.png" alt="" />
           </div>
         </div>
         <div className="portfolio-loader__asset portfolio-loader__asset--one">

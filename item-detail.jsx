@@ -260,33 +260,34 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
   return (
     <main className="item-detail-page">
       <div className="container">
-        <button onClick={onBack} className="btn btn-sm btn-ghost item-detail-back">{t.item.back}</button>
-
-        <header className="item-detail-head">
-          <div>
-            <div className="item-detail-tags">
-              <span className="chip chip-accent">{lang === 'ru' ? 'УРОВЕНЬ' : 'TIER'} {item.tier || '—'} · {item.rarity || (lang === 'ru' ? 'НЕИЗВЕСТНО' : 'UNKNOWN')}</span>
-              <span className="chip">{displayWear}</span>
-              <span className="chip">{item.marketable === false ? (lang === 'ru' ? 'не продаётся' : 'not marketable') : (lang === 'ru' ? 'продаётся' : 'marketable')}</span>
-              <CollectionChip
-                collection={item.collection}
-                collectionSlug={item.collectionSlug}
-                lang={lang}
-                onCollectionClick={onCollectionClick}
-              />
+        <div className={`item-detail-primary-grid${isPortfolioHolding ? ' item-detail-primary-grid--holdings' : ''}`}>
+          <header className="item-detail-head">
+            <button onClick={onBack} className="btn btn-sm btn-ghost item-detail-back">{t.item.back}</button>
+            <div className="item-detail-head-main">
+              <div className="item-detail-tags">
+                <span className="chip chip-accent">{lang === 'ru' ? 'УРОВЕНЬ' : 'TIER'} {item.tier || '—'} · {item.rarity || (lang === 'ru' ? 'НЕИЗВЕСТНО' : 'UNKNOWN')}</span>
+                <span className="chip">{displayWear}</span>
+                <span className="chip">{item.marketable === false ? (lang === 'ru' ? 'не продаётся' : 'not marketable') : (lang === 'ru' ? 'продаётся' : 'marketable')}</span>
+                <CollectionChip
+                  collection={item.collection}
+                  collectionSlug={item.collectionSlug}
+                  lang={lang}
+                  onCollectionClick={onCollectionClick}
+                />
+              </div>
+              <div className="item-detail-head-copy">
+                <h1 className="display item-detail-title">{item.name}</h1>
+                <p className="item-detail-subtitle">
+                  {parsedActive.wearLabel || (lang === 'ru' ? 'Без качества' : 'No exterior')}{stattrak ? ' · StatTrak™' : ''}
+                </p>
+              </div>
             </div>
-            <h1 className="display item-detail-title">{item.name}</h1>
-            <p className="item-detail-subtitle">
-              {parsedActive.wearLabel || (lang === 'ru' ? 'Без качества' : 'No exterior')}{stattrak ? ' · StatTrak™' : ''}
-            </p>
-          </div>
-        </header>
+          </header>
 
-        <div className="item-detail-primary-grid">
           <section className={`glass item-detail-visual${!parsedBase.hasWear ? ' item-detail-visual--compact' : ''}`}>
             {item.iconUrl
               ? <div className="item-art item-detail-art">
-                  <img src={withSteamImageSize(item.iconUrl, 720, 405)} alt={item.name} />
+                  <img src={withSteamImageSize(item.iconUrl, 960, 540)} alt={item.name} />
                 </div>
               : <ItemArt label={item.name} tier={item.tier} style={{ aspectRatio: parsedBase.hasWear ? '16/10' : '1/1' }} />}
             <WearBar wear={item.wear} floatValue={item.floatValue} />
@@ -526,24 +527,24 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
               )}
             </div>
           </section>
-        </div>
 
-        {isPortfolioHolding && (
-          <section className="item-detail-holdings">
-            {[
-              { l: lang === 'ru' ? 'За шт.' : 'Per item', v: buyUnitLabel },
-              { l: t.item.buy, v: buyCostLabel },
-              { l: lang === 'ru' ? 'Количество' : 'Quantity', v: item.qty },
-              { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, c: pnlColor },
-              { l: t.item.tradelock, v: tradableQty === item.qty ? (lang === 'ru' ? 'открыт' : 'open') : (tradableQty > 0 ? (lang === 'ru' ? 'частично' : 'partial') : (lang === 'ru' ? 'ограничен' : 'restricted')) },
-            ].map((s, i) => (
-              <div key={i} className="glass item-detail-stat">
-                <div className="eyebrow">{s.l}</div>
-                <div className="display" style={{ color: s.c || 'var(--fg-0)' }}>{s.v}</div>
-              </div>
-            ))}
-          </section>
-        )}
+          {isPortfolioHolding && (
+            <section className="item-detail-holdings">
+              {[
+                { l: lang === 'ru' ? 'За шт.' : 'Per item', v: buyUnitLabel },
+                { l: t.item.buy, v: buyCostLabel },
+                { l: lang === 'ru' ? 'Количество' : 'Quantity', v: item.qty },
+                { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, c: pnlColor },
+                { l: t.item.tradelock, v: tradableQty === item.qty ? (lang === 'ru' ? 'открыт' : 'open') : (tradableQty > 0 ? (lang === 'ru' ? 'частично' : 'partial') : (lang === 'ru' ? 'ограничен' : 'restricted')) },
+              ].map((s, i) => (
+                <div key={i} className="glass item-detail-stat">
+                  <div className="eyebrow">{s.l}</div>
+                  <div className="display" style={{ color: s.c || 'var(--fg-0)' }}>{s.v}</div>
+                </div>
+              ))}
+            </section>
+          )}
+        </div>
 
         <details className="glass item-detail-details">
           <summary>
@@ -697,54 +698,36 @@ function WearBar({ wear, floatValue }) {
   const activeRange = WEAR_RANGES.find(r => fv >= r.min && fv < r.max) || WEAR_RANGES[4];
 
   return (
-    <div style={{ marginTop: 24, padding: 16, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--line)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{
-          fontFamily: 'var(--f-mono)', fontSize: 12, fontWeight: 600,
-          color: activeRange.color, textTransform: 'uppercase', letterSpacing: '0.06em',
-        }}>
-          {activeRange.label}
-        </div>
-        <div style={{
-          fontFamily: 'var(--f-mono)', fontSize: 13, color: 'var(--fg-0)',
-          background: 'rgba(0,0,0,0.4)', padding: '4px 10px', borderRadius: 6,
-        }}>
-          {fv.toFixed(9)}
-        </div>
+    <div className="item-detail-wear">
+      <div className="item-detail-wear-head">
+        <span style={{ color: activeRange.color }}>{activeRange.label}</span>
+        <b>{fv.toFixed(9)}</b>
       </div>
-
-      <div style={{ position: 'relative', height: 8, borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+      <div className="item-detail-wear-track">
         {WEAR_RANGES.map((r, i) => (
-          <div key={i} style={{
-            flex: `${(r.max - r.min) * 100} 0 0`,
-            background: r.color,
-            opacity: r === activeRange ? 1 : 0.25,
-            borderRight: i < 4 ? '1px solid rgba(0,0,0,0.5)' : 'none',
-          }} />
+          <i
+            key={i}
+            style={{
+              flex: `${(r.max - r.min) * 100} 0 0`,
+              background: r.color,
+              opacity: r === activeRange ? 1 : 0.28,
+            }}
+          />
         ))}
+        <em className="item-detail-wear-needle" style={{ left: `${pct}%`, borderBottomColor: activeRange.color }} />
       </div>
-
-      <div style={{ position: 'relative', height: 14, marginTop: -3 }}>
-        <div style={{
-          position: 'absolute',
-          left: `${pct}%`,
-          transform: 'translateX(-50%)',
-          width: 0, height: 0,
-          borderLeft: '5px solid transparent',
-          borderRight: '5px solid transparent',
-          borderBottom: `6px solid ${activeRange.color}`,
-        }} />
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-        {WEAR_RANGES.map((r, i) => (
-          <div key={i} style={{
-            fontFamily: 'var(--f-mono)', fontSize: 9, color: r === activeRange ? r.color : 'var(--fg-3)',
-            textAlign: 'center', flex: `${(r.max - r.min) * 100} 0 0`,
-            fontWeight: r === activeRange ? 700 : 400,
-          }}>
+      <div className="item-detail-wear-keys">
+        {WEAR_RANGES.map((r) => (
+          <span
+            key={r.key}
+            style={{
+              flex: `${(r.max - r.min) * 100} 0 0`,
+              color: r === activeRange ? r.color : 'var(--fg-3)',
+              fontWeight: r === activeRange ? 700 : 400,
+            }}
+          >
             {r.key}
-          </div>
+          </span>
         ))}
       </div>
     </div>
