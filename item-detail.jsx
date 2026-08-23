@@ -233,10 +233,11 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
   const bestOffer = offers
     .filter(offer => offer.hasPrice && Number.isFinite(offerValue(offer)))
     .reduce((best, offer) => !best || offerValue(offer) < offerValue(best) ? offer : best, null);
-  const primaryUrl = bestOffer?.url || item.marketUrl || null;
-  const primaryLabel = bestOffer
-    ? `${lang === 'ru' ? 'Лучшая цена на' : 'Best price at'} ${(MARKETPLACE_META[bestOffer.provider] || {}).label || bestOffer.label}`
-    : (lang === 'ru' ? 'Открыть в Steam Market' : 'Open on Steam Market');
+  const steamMarketName = activeName || item.marketHashName;
+  const primaryUrl = steamMarketName
+    ? `https://steamcommunity.com/market/listings/730/${encodeURIComponent(steamMarketName)}`
+    : (item.marketUrl || null);
+  const primaryLabel = lang === 'ru' ? 'Открыть в Steam Market' : 'Open on Steam Market';
 
   const onMove = (e) => {
     if (!chartRef.current || !chart) return;
