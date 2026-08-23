@@ -1106,6 +1106,34 @@ function mulberry32(seed) {
   };
 }
 
+async function cacheIconUrl(key, marketHashName, iconUrl) {
+  if (!iconUrl) return;
+  await setCached(key, {
+    marketHashName,
+    iconUrl,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+let csMarketIconIndex = null;
+
+async function getCSMarketAPIIcon(marketHashName) {
+  const name = String(marketHashName || '').trim();
+  if (!name) return null;
+  const items = await getCSMarketAPIItems();
+  if (!Array.isArray(items) || !items.length) return null;
+  if (!csMarketIconIndex || csMarketIconIndex.source !== items) {
+    const map = new Map();
+    for (const item of items) {
+      const itemName = item.market_hash_name || item.hash_name;
+      const icon = item.cloudflare_icon_url || item.akamai_icon_url;
+      if (itemName && icon) map.set(itemName, icon);
+    }
+    csMarketIconIndex = { source: items, map };
+  }
+  return csMarketIconIndex.map.get(name) || null;
+}
+
 async function getSteamMarketIcon(marketHashName, options = {}) {
   const key = `icon:${marketHashName}`;
   const cached = await getCached(key, ICON_MAX_AGE_MS);
@@ -1114,29 +1142,32 @@ async function getSteamMarketIcon(marketHashName, options = {}) {
 
   const searchIconUrl = await getSteamMarketSearchIcon(marketHashName).catch(() => null);
   if (searchIconUrl) {
-    await setCached(key, {
-      marketHashName,
-      iconUrl: searchIconUrl,
-      updatedAt: new Date().toISOString(),
-    });
+    await cacheIconUrl(key, marketHashName, searchIconUrl);
     return searchIconUrl;
   }
 
-  const urlName = encodeURIComponent(marketHashName);
-  const html = await fetchText(`https://steamcommunity.com/market/listings/730/${urlName}`);
-  const iconUrl = html
-    .match(/<meta\s+property="og:image"\s+content="([^"]+)"/i)?.[1]
-    ?.replace(/&amp;/g, '&') || null;
-
-  if (iconUrl) {
-    await setCached(key, {
-      marketHashName,
-      iconUrl,
-      updatedAt: new Date().toISOString(),
-    });
+  // Same catalog dump the Market tab uses — Steam search/listings 403 from some hosts.
+  const catalogIconUrl = await getCSMarketAPIIcon(marketHashName).catch(() => null);
+  if (catalogIconUrl) {
+    await cacheIconUrl(key, marketHashName, catalogIconUrl);
+    return catalogIconUrl;
   }
 
-  return iconUrl;
+  try {
+    const urlName = encodeURIComponent(marketHashName);
+    const html = await fetchText(`https://steamcommunity.com/market/listings/730/${urlName}`);
+    const iconUrl = html
+      .match(/<meta\s+property="og:image"\s+content="([^"]+)"/i)?.[1]
+      ?.replace(/&amp;/g, '&') || null;
+    if (iconUrl) {
+      await cacheIconUrl(key, marketHashName, iconUrl);
+      return iconUrl;
+    }
+  } catch {
+    // Steam listing pages are often blocked from the production host.
+  }
+
+  return null;
 }
 
 async function getSteamMarketSearchIcon(marketHashName) {
