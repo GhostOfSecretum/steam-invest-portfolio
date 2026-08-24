@@ -135,7 +135,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
   }
 
   const rawSeries = multiState.data?.series || [];
-  const historyProviders = [...new Set(rawSeries.map((s) => s.provider).filter((p) => p && p !== 'none'))];
   const historyCurrency = (rawSeries.find(s => s.currency)?.currency || (activeCurrency === 'rub' ? 'RUB' : 'USD')).toLowerCase();
   const periodDays = typeof activePeriod.days === 'number' ? activePeriod.days : null;
   const cutoffTs = periodDays == null ? 0 : Date.now() - periodDays * 86400000;
@@ -221,11 +220,8 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
     item.manualItemId
     || (item.assetid && !/^(slug|catalog|ticker|mover|fallback|hero)-/.test(String(item.assetid)))
   );
-  const displayWear = item.wear && item.wear !== 'N/A'
-    ? item.wear
-    : (parsedActive.wearLabel
-      ? parsedActive.wearLabel.split(/[- ]/).map((part) => part[0]).join('').toUpperCase()
-      : 'N/A');
+  const rarityLabel = formatRarityLabel(item.rarity, lang);
+  const rarityColor = rarityChipColor(item.rarity);
   const offers = offersState.data?.offers || [];
   const offerValue = (offer) => activeCurrency === 'rub'
     ? (Number.isFinite(offer.priceRub) ? offer.priceRub : null)
@@ -266,9 +262,9 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
             <button onClick={onBack} className="btn btn-sm btn-ghost item-detail-back">{t.item.back}</button>
             <div className="item-detail-head-main">
               <div className="item-detail-tags">
-                <span className="chip chip-accent">{lang === 'ru' ? 'УРОВЕНЬ' : 'TIER'} {item.tier || '—'} · {item.rarity || (lang === 'ru' ? 'НЕИЗВЕСТНО' : 'UNKNOWN')}</span>
-                <span className="chip">{displayWear}</span>
-                <span className="chip">{item.marketable === false ? (lang === 'ru' ? 'не продаётся' : 'not marketable') : (lang === 'ru' ? 'продаётся' : 'marketable')}</span>
+                {rarityLabel && (
+                  <span className="chip chip-rarity" style={{ '--rarity-color': rarityColor }}>{rarityLabel}</span>
+                )}
                 <CollectionChip
                   collection={item.collection}
                   collectionSlug={item.collectionSlug}
@@ -390,13 +386,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
             <div className="item-detail-chart-head">
               <div>
                 <div className="eyebrow">{lang === 'ru' ? 'Медиана цен' : 'Price history'}</div>
-                <div className="item-detail-chart-meta">
-                  {multiState.loading
-                    ? (lang === 'ru' ? 'загрузка…' : 'loading…')
-                    : (lang === 'ru'
-                        ? `${chartSeries.length} кач. · ${historyProviders[0] || 'нет данных'}`
-                        : `${chartSeries.length} exterior(s) · ${historyProviders[0] || 'no data'}`)}
-                </div>
               </div>
               <div className="item-detail-periods">
                 {PERIOD_OPTIONS.map(p => (
@@ -546,28 +535,48 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
             </section>
           )}
         </div>
-
-        <details className="glass item-detail-details">
-          <summary>
-            <span>
-              <span className="eyebrow">{lang === 'ru' ? 'ДОПОЛНИТЕЛЬНЫЕ ДАННЫЕ' : 'ADDITIONAL DATA'}</span>
-              <strong>{t.item.stickers}</strong>
-            </span>
-            <i>+</i>
-          </summary>
-          <p>
-            {item.stickers
-              ? (lang === 'ru'
-                ? `Обнаружено ${item.stickers} строк(и) описания Steam, связанных с наклейками. Для точной оценки наклеек требуется провайдер float/sticker.`
-                : `${item.stickers} sticker-related Steam description line(s) detected. Exact sticker valuation requires a float/sticker provider.`)
-              : (lang === 'ru'
-                ? 'Steam inventory не предоставил данных об оценке наклеек для этого предмета.'
-                : 'Steam inventory endpoint did not expose applied sticker valuation for this item.')}
-          </p>
-        </details>
       </div>
     </main>
   );
+}
+
+function formatRarityLabel(rarity, lang) {
+  const value = String(rarity || '').trim();
+  if (!value) return null;
+  const key = value.toLowerCase();
+  const labels = {
+    'consumer grade': { en: 'Consumer Grade', ru: 'Ширпотреб' },
+    'industrial grade': { en: 'Industrial Grade', ru: 'Промышленное' },
+    'mil-spec': { en: 'Mil-Spec', ru: 'Армейское' },
+    'mil-spec grade': { en: 'Mil-Spec', ru: 'Армейское' },
+    restricted: { en: 'Restricted', ru: 'Запрещённое' },
+    classified: { en: 'Classified', ru: 'Засекреченное' },
+    covert: { en: 'Covert', ru: 'Тайное' },
+    extraordinary: { en: 'Extraordinary', ru: 'Наивысшее' },
+    contraband: { en: 'Contraband', ru: 'Контрабанда' },
+    'base grade': { en: 'Base Grade', ru: 'Базовое' },
+    distinguished: { en: 'Distinguished', ru: 'Выдающийся' },
+    exceptional: { en: 'Exceptional', ru: 'Исключительный' },
+    superior: { en: 'Superior', ru: 'Превосходный' },
+    master: { en: 'Master', ru: 'Мастерский' },
+    'high grade': { en: 'High Grade', ru: 'Высокого класса' },
+    remarkable: { en: 'Remarkable', ru: 'Примечательный' },
+    exotic: { en: 'Exotic', ru: 'Экзотический' },
+  };
+  const match = Object.keys(labels).find((name) => key === name || key.includes(name));
+  if (!match) return value;
+  return lang === 'ru' ? labels[match].ru : labels[match].en;
+}
+
+function rarityChipColor(rarity) {
+  const value = String(rarity || '').toLowerCase();
+  if (value.includes('contraband') || value.includes('extraordinary')) return '#e4ae33';
+  if (value.includes('covert') || value.includes('master')) return '#eb4b4b';
+  if (value.includes('classified') || value.includes('exotic') || value.includes('superior')) return '#d32ce6';
+  if (value.includes('restricted') || value.includes('remarkable') || value.includes('exceptional')) return '#8847ff';
+  if (value.includes('mil-spec') || value.includes('high grade') || value.includes('distinguished')) return '#4b69ff';
+  if (value.includes('industrial')) return '#5e98d9';
+  return '#b0c3d9';
 }
 
 // Mirror of the server-side splitter so the UI can build/identify wear variants.
