@@ -557,6 +557,18 @@
             <TopInvestorsPage
               lang={t.lang}
               onOpenProfile={openPublicProfile}
+              onOpenItem={(marketHashName) => {
+                const hash = String(marketHashName || '').trim();
+                if (!hash || !window.ItemSlugs) return;
+                const slug = window.ItemSlugs.marketHashNameToSlug(hash);
+                if (!slug) return;
+                setItemReturnScreen(screen === 'item' ? itemReturnScreen : screen);
+                setActiveItem(null);
+                setItemSlug(slug);
+                setScreen('item');
+                syncAppUrl('item', { marketHashName: hash });
+                window.scrollTo({ top: 0, behavior: 'instant' });
+              }}
             />
           )}
           {screen === 'glock3d' && (

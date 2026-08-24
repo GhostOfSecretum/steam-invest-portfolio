@@ -61,6 +61,7 @@ const {
   upsertTopInvestor,
   listTopInvestorsActivityFeed,
   getTopInvestorActivity,
+  startTopInvestorsActivityPoller,
 } = require('./services/top-investors');
 const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
 const { getCsNews } = require('./services/news');
@@ -1033,6 +1034,7 @@ app.use((req, res) => {
 
 app.listen(port, () => {
   console.log(`Steam Invest Portfolio running at http://localhost:${port}`);
+  startTopInvestorsActivityPoller();
 });
 
 // Owner id scopes manual portfolios & basis per user: the Steam account when

@@ -5741,6 +5741,103 @@ button:disabled,
   }
 }
 
+/* Top investors */
+.top-investors-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(320px, 1fr);
+  grid-template-areas:
+    "accounts personal"
+    "accounts feed";
+  gap: 18px;
+  align-items: start;
+}
+.top-investors-accounts {
+  grid-area: accounts;
+  display: grid;
+  gap: 10px;
+  max-height: 70vh;
+  overflow: auto;
+  padding-right: 4px;
+  position: sticky;
+  top: 24px;
+}
+.top-investors-personal,
+.top-investors-feed {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  padding: 18px;
+  max-height: 34vh;
+  overflow: auto;
+}
+.top-investors-personal { grid-area: personal; }
+.top-investors-feed { grid-area: feed; }
+.top-investors-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.top-investors-events {
+  display: grid;
+  gap: 8px;
+}
+.top-investors-event {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+}
+.top-investors-event.is-link {
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.top-investors-event.is-link:hover {
+  border-color: var(--line-strong);
+  background: rgba(255,255,255,0.045);
+}
+.top-investors-event-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.top-investors-event-name {
+  overflow: hidden;
+  color: var(--fg-1);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top-investors-event.is-link .top-investors-event-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.top-investors-event-name span {
+  flex: 0 0 auto;
+  color: var(--fg-3);
+  font-family: var(--f-mono);
+  font-size: 12px;
+}
+@media (max-width: 960px) {
+  .top-investors-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "accounts"
+      "personal"
+      "feed";
+  }
+  .top-investors-accounts,
+  .top-investors-personal,
+  .top-investors-feed {
+    position: static;
+    max-height: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-portfolio-preview,
   .dashboard-state__progress span,

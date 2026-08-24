@@ -11,6 +11,12 @@ const {
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const TOP_INVESTORS_FILE = path.join(DATA_DIR, 'top-investors.json');
 const FEED_LIMIT = 100;
+const POLL_BOOT_DELAY_MS = Number(process.env.TOP_INVESTORS_POLL_BOOT_MS || 15000);
+const POLL_ACCOUNT_DELAY_MS = Number(process.env.TOP_INVESTORS_SYNC_DELAY_MS || 4000);
+const POLL_CYCLE_REST_MS = Number(process.env.TOP_INVESTORS_CYCLE_REST_MS || 60000);
+const POLL_MIN_SYNC_AGE_MS = Number(process.env.TOP_INVESTORS_MIN_SYNC_AGE_MS || 10 * 60 * 1000);
+
+let pollerStarted = false;
 
 async function ensureDataDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -91,6 +97,36 @@ async function listTopInvestorsActivityFeed({ limit = FEED_LIMIT } = {}) {
   };
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isSteamRateLimited(error) {
+  return /HTTP 429|rate limit|Too Many Requests|rate_limited/i.test(String(error?.message || error || ''));
+}
+
+function newestFirst(events) {
+  return (Array.isArray(events) ? events : []).slice().sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+}
+
+async function syncTopInvestorInventory(account) {
+  const inventory = await getSteamInventory(account.steamId, { force: true });
+  const items = Array.isArray(inventory.items) ? inventory.items : [];
+  const syncedAt = inventory.syncedAt || new Date().toISOString();
+  const events = await syncInventoryDiffActivity(account.steamId, items, {
+    source: 'public-diff',
+    syncedAt,
+  });
+  const activity = newestFirst(events.filter(isStructuredActivity));
+  return {
+    ...account,
+    syncedAt,
+    hasBaseline: true,
+    baselineOnly: activity.length === 0,
+    activity,
+  };
+}
+
 async function getTopInvestorActivity(steamId, { sync = false } = {}) {
   const store = await readStore();
   const account = findTopInvestorAccount(store, steamId);
@@ -103,21 +139,7 @@ async function getTopInvestorActivity(steamId, { sync = false } = {}) {
 
   if (sync) {
     try {
-      const inventory = await getSteamInventory(account.steamId, { force: true });
-      const items = Array.isArray(inventory.items) ? inventory.items : [];
-      const syncedAt = inventory.syncedAt || new Date().toISOString();
-      const activity = (await syncInventoryDiffActivity(account.steamId, items, {
-        source: 'public-diff',
-        syncedAt,
-      })).filter(isStructuredActivity).slice().reverse();
-
-      return {
-        ...account,
-        syncedAt,
-        hasBaseline: true,
-        baselineOnly: activity.length === 0,
-        activity,
-      };
+      return await syncTopInvestorInventory(account);
     } catch (error) {
       const err = new Error(error.message || 'Failed to sync investor inventory.');
       err.status = error.status || 502;
@@ -132,8 +154,61 @@ async function getTopInvestorActivity(steamId, { sync = false } = {}) {
     syncedAt: stored.syncedAt,
     hasBaseline: stored.hasBaseline,
     baselineOnly: stored.hasBaseline && stored.events.length === 0,
-    activity: stored.events,
+    activity: newestFirst(stored.events),
   };
+}
+
+async function runTopInvestorsActivityCycle() {
+  const listed = await listTopInvestors();
+  const accounts = listed.accounts || [];
+  let synced = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const account of accounts) {
+    try {
+      const stored = await getInventoryActivityForSteamId(account.steamId);
+      const ageMs = stored.syncedAt ? Date.now() - new Date(stored.syncedAt).getTime() : Infinity;
+      if (Number.isFinite(ageMs) && ageMs >= 0 && ageMs < POLL_MIN_SYNC_AGE_MS) {
+        skipped += 1;
+        continue;
+      }
+      await syncTopInvestorInventory(account);
+      synced += 1;
+      await sleep(POLL_ACCOUNT_DELAY_MS);
+    } catch (error) {
+      failed += 1;
+      console.warn(`[top-investors] auto-sync ${account.personaname || account.steamId} failed:`, error.message || error);
+      if (isSteamRateLimited(error)) await sleep(45000);
+      else await sleep(POLL_ACCOUNT_DELAY_MS);
+    }
+  }
+
+  if (synced || failed) {
+    console.log(`[top-investors] auto-sync cycle synced=${synced} skipped=${skipped} failed=${failed}`);
+  }
+}
+
+function startTopInvestorsActivityPoller() {
+  if (pollerStarted) return;
+  if (String(process.env.TOP_INVESTORS_POLL || '1') === '0') {
+    console.log('[top-investors] activity poller disabled');
+    return;
+  }
+  pollerStarted = true;
+
+  const tick = async () => {
+    try {
+      await runTopInvestorsActivityCycle();
+    } catch (error) {
+      console.warn('[top-investors] poller cycle failed:', error.message || error);
+    } finally {
+      setTimeout(tick, POLL_CYCLE_REST_MS);
+    }
+  };
+
+  console.log('[top-investors] activity poller started');
+  setTimeout(tick, POLL_BOOT_DELAY_MS);
 }
 
 async function upsertTopInvestor(input) {
@@ -176,4 +251,5 @@ module.exports = {
   upsertTopInvestor,
   listTopInvestorsActivityFeed,
   getTopInvestorActivity,
+  startTopInvestorsActivityPoller,
 };

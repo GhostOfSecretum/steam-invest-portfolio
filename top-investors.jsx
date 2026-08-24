@@ -19,12 +19,12 @@ function investorActivityKindLabel(kind, lang) {
   return (lang === 'ru' ? ru : en)[kind] || kind;
 }
 
-function InvestorActivityRows({ events, lang, showInvestor = false }) {
+function InvestorActivityRows({ events, lang, showInvestor = false, onOpenItem }) {
   const rows = (Array.isArray(events) ? events : []).filter((row) => row && row.kind && row.at);
   if (!rows.length) return null;
 
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
+    <div className="top-investors-events">
       {rows.map((row) => {
         const kindColor = row.kind === 'removed' || row.kind === 'qty_down'
           ? 'var(--red)'
@@ -32,19 +32,22 @@ function InvestorActivityRows({ events, lang, showInvestor = false }) {
         const qtyLabel = Number.isFinite(row.qtyDelta) && row.qtyDelta !== 0
           ? `${row.qtyDelta > 0 ? '+' : ''}${row.qtyDelta}`
           : (Number.isFinite(row.qtyAfter) ? String(row.qtyAfter) : '—');
+        const canOpen = Boolean(row.marketHashName && onOpenItem);
         return (
           <div
             key={row.id || `${row.steamId || ''}-${row.at}-${row.marketHashName}-${row.kind}`}
-            style={{
-              padding: '10px 12px',
-              border: '1px solid var(--line)',
-              borderRadius: 10,
-              background: 'rgba(255,255,255,0.02)',
-              display: 'grid',
-              gap: 4,
-            }}
+            className={`top-investors-event${canOpen ? ' is-link' : ''}`}
+            role={canOpen ? 'link' : undefined}
+            tabIndex={canOpen ? 0 : undefined}
+            onClick={canOpen ? () => onOpenItem(row.marketHashName) : undefined}
+            onKeyDown={canOpen ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onOpenItem(row.marketHashName);
+              }
+            } : undefined}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+            <div className="top-investors-event-head">
               <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: kindColor }}>
                 {investorActivityKindLabel(row.kind, lang)}
               </div>
@@ -57,8 +60,9 @@ function InvestorActivityRows({ events, lang, showInvestor = false }) {
                 {row.personaname}
               </div>
             ) : null}
-            <div style={{ fontSize: 13, color: 'var(--fg-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.marketHashName || row.name}>
+            <div className="top-investors-event-name" title={row.marketHashName || row.name}>
               {row.name || row.marketHashName || '—'}
+              {canOpen ? <span>↗</span> : null}
             </div>
             <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: kindColor }}>
               {qtyLabel}
@@ -70,7 +74,7 @@ function InvestorActivityRows({ events, lang, showInvestor = false }) {
   );
 }
 
-function TopInvestorsPage({ lang, onOpenProfile }) {
+function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
   const investors = useTopInvestors();
   const feed = useTopInvestorsActivityFeed();
   const [selectedSteamId, setSelectedSteamId] = tiUseState(null);
@@ -97,15 +101,14 @@ function TopInvestorsPage({ lang, onOpenProfile }) {
       empty: 'Список пока пуст — аккаунты появятся здесь, когда мы добавим подборку.',
       open: 'Открыть портфель',
       coming: 'Скоро',
-      activity: 'Активность',
-      watchlistFeed: 'Лента watchlist',
+      activity: 'Личная активность',
+      watchlistFeed: 'Общая лента',
       selected: 'Выбранный аккаунт',
-      refresh: 'Обновить',
-      syncing: 'Синхронизация…',
+      live: 'автообновление',
       loading: 'Загрузка…',
-      noEvents: 'Пока нет изменений. Нажмите «Обновить», чтобы снять снимок инвентаря.',
-      baselineOnly: 'Базовая точка сохранена. Изменения появятся после следующего обновления с другим составом инвентаря.',
-      feedEmpty: 'Общая лента пуста — события появятся после обновления аккаунтов.',
+      noEvents: 'Пока нет изменений по этому аккаунту. Новые сделки появятся здесь сами.',
+      baselineOnly: 'Базовая точка сохранена. Изменения появятся, когда инвентарь изменится.',
+      feedEmpty: 'Общая лента пуста — события появятся после автоматического обновления аккаунтов.',
     }
     : {
       title: 'Top investor accounts',
@@ -113,15 +116,14 @@ function TopInvestorsPage({ lang, onOpenProfile }) {
       empty: 'The list is empty for now — accounts will appear here once the curated set is added.',
       open: 'Open portfolio',
       coming: 'Coming soon',
-      activity: 'Activity',
+      activity: 'Personal activity',
       watchlistFeed: 'Watchlist feed',
       selected: 'Selected account',
-      refresh: 'Refresh',
-      syncing: 'Syncing…',
+      live: 'auto-updating',
       loading: 'Loading…',
-      noEvents: 'No changes yet. Press Refresh to take an inventory snapshot.',
-      baselineOnly: 'Baseline saved. Changes will appear after the next refresh with a different inventory.',
-      feedEmpty: 'Watchlist feed is empty — events appear after accounts are refreshed.',
+      noEvents: 'No changes for this account yet. New trades will show up here automatically.',
+      baselineOnly: 'Baseline saved. Changes will appear once the inventory moves.',
+      feedEmpty: 'Watchlist feed is empty — events appear after accounts update automatically.',
     };
 
   return (
@@ -162,13 +164,8 @@ function TopInvestorsPage({ lang, onOpenProfile }) {
         )}
 
         {accounts.length > 0 && (
-          <div className="top-investors-layout" style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(280px, 420px) minmax(320px, 1fr)',
-            gap: 18,
-            alignItems: 'start',
-          }}>
-            <div style={{ display: 'grid', gap: 10, maxHeight: '70vh', overflow: 'auto', paddingRight: 4 }}>
+          <div className="top-investors-layout">
+            <div className="top-investors-accounts">
               {accounts.map((account) => {
                 const selected = account.steamId === selectedSteamId;
                 return (
@@ -225,40 +222,20 @@ function TopInvestorsPage({ lang, onOpenProfile }) {
               })}
             </div>
 
-            <div className="glass-strong" style={{
-              padding: 18,
-              position: 'sticky',
-              top: 24,
-              maxHeight: '70vh',
-              overflow: 'auto',
-              display: 'grid',
-              gap: 18,
-            }}>
-              <div>
-                <div className="eyebrow" style={{ marginBottom: 8, color: 'var(--accent)' }}>{copy.activity}</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: 'var(--f-display)', fontSize: 20, fontWeight: 500 }}>
-                      {selectedAccount?.personaname || copy.selected}
-                    </div>
-                    {selectedActivity.data?.syncedAt ? (
-                      <div style={{ marginTop: 4, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                        {lang === 'ru' ? 'Синк' : 'Synced'}: {new Date(selectedActivity.data.syncedAt).toLocaleString()}
-                      </div>
-                    ) : null}
+            <section className="glass top-investors-personal">
+              <div className="top-investors-panel-head">
+                <div>
+                  <div className="eyebrow" style={{ marginBottom: 8, color: 'var(--accent)' }}>{copy.activity}</div>
+                  <div style={{ fontFamily: 'var(--f-display)', fontSize: 20, fontWeight: 500 }}>
+                    {selectedAccount?.personaname || copy.selected}
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost"
-                    disabled={!selectedSteamId || selectedActivity.syncing}
-                    onClick={async () => {
-                      await selectedActivity.sync();
-                      feed.reload();
-                    }}
-                  >
-                    {selectedActivity.syncing ? copy.syncing : copy.refresh}
-                  </button>
+                  {selectedActivity.data?.syncedAt ? (
+                    <div style={{ marginTop: 4, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
+                      {lang === 'ru' ? 'Синк' : 'Synced'}: {new Date(selectedActivity.data.syncedAt).toLocaleString()}
+                    </div>
+                  ) : null}
                 </div>
+                <span className="item-detail-live"><span className="live-dot" /> {copy.live}</span>
               </div>
 
               {selectedActivity.loading && !selectedActivity.data && (
@@ -278,33 +255,33 @@ function TopInvestorsPage({ lang, onOpenProfile }) {
               )}
 
               {selectedActivity.data && (selectedActivity.data.activity || []).length > 0 && (
-                <InvestorActivityRows events={selectedActivity.data.activity} lang={lang} />
+                <InvestorActivityRows events={selectedActivity.data.activity} lang={lang} onOpenItem={onOpenItem} />
               )}
+            </section>
 
-              <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16 }}>
-                <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--fg-3)' }}>{copy.watchlistFeed}</div>
-                {feed.loading && !feed.data && (
-                  <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{copy.loading}</div>
-                )}
-                {feed.data && !(feed.data.events || []).length && (
-                  <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{copy.feedEmpty}</div>
-                )}
-                {feed.data && (feed.data.events || []).length > 0 && (
-                  <InvestorActivityRows events={feed.data.events} lang={lang} showInvestor />
-                )}
+            <section className="glass top-investors-feed">
+              <div className="top-investors-panel-head">
+                <div>
+                  <div className="eyebrow" style={{ marginBottom: 8, color: 'var(--fg-3)' }}>{copy.watchlistFeed}</div>
+                  <div style={{ fontFamily: 'var(--f-display)', fontSize: 20, fontWeight: 500 }}>
+                    {lang === 'ru' ? 'Все рейдеры' : 'All raiders'}
+                  </div>
+                </div>
+                <span className="item-detail-live"><span className="live-dot" /> {copy.live}</span>
               </div>
-            </div>
+              {feed.loading && !feed.data && (
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{copy.loading}</div>
+              )}
+              {feed.data && !(feed.data.events || []).length && (
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{copy.feedEmpty}</div>
+              )}
+              {feed.data && (feed.data.events || []).length > 0 && (
+                <InvestorActivityRows events={feed.data.events} lang={lang} showInvestor onOpenItem={onOpenItem} />
+              )}
+            </section>
           </div>
         )}
       </div>
-
-      <style>{`
-        @media (max-width: 960px) {
-          .top-investors-layout {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

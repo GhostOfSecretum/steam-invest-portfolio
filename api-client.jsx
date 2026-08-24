@@ -190,18 +190,31 @@ function useTopInvestors(enabled = true) {
 function useTopInvestorsActivityFeed(enabled = true) {
   const [state, setState] = apiUseState({ loading: false, data: null, error: null });
 
-  const reload = apiUseCallback(async () => {
+  const reload = apiUseCallback(async ({ silent = false } = {}) => {
     if (!enabled) return;
-    setState((current) => ({ ...current, loading: true, error: null }));
+    setState((current) => ({
+      ...current,
+      loading: silent && current.data ? current.loading : true,
+      error: null,
+    }));
     try {
       const data = await apiFetch('/api/top-investors/activity');
       setState({ loading: false, data, error: null });
     } catch (error) {
-      setState({ loading: false, data: null, error });
+      setState((current) => ({
+        loading: false,
+        data: silent ? current.data : null,
+        error,
+      }));
     }
   }, [enabled]);
 
-  apiUseEffect(() => { reload(); }, [reload]);
+  apiUseEffect(() => {
+    reload();
+    if (!enabled) return undefined;
+    const timer = setInterval(() => reload({ silent: true }), 20000);
+    return () => clearInterval(timer);
+  }, [reload, enabled]);
 
   return { ...state, reload };
 }
@@ -210,7 +223,7 @@ function useTopInvestorActivity(steamId, enabled = true) {
   const [state, setState] = apiUseState({ loading: false, syncing: false, data: null, error: null });
   const requestSeq = apiUseRef(0);
 
-  const load = apiUseCallback(async ({ sync = false } = {}) => {
+  const load = apiUseCallback(async ({ sync = false, silent = false } = {}) => {
     const id = String(steamId || '').trim();
     if (!enabled || !/^\d{17}$/.test(id)) {
       setState({ loading: false, syncing: false, data: null, error: null });
@@ -220,7 +233,7 @@ function useTopInvestorActivity(steamId, enabled = true) {
     const seq = ++requestSeq.current;
     setState((current) => ({
       ...current,
-      loading: true,
+      loading: silent && current.data ? current.loading : true,
       syncing: Boolean(sync),
       error: null,
     }));
@@ -232,13 +245,21 @@ function useTopInvestorActivity(steamId, enabled = true) {
       setState({ loading: false, syncing: false, data, error: null });
     } catch (error) {
       if (seq !== requestSeq.current) return;
-      setState({ loading: false, syncing: false, data: null, error });
+      setState((current) => ({
+        loading: false,
+        syncing: false,
+        data: silent ? current.data : null,
+        error,
+      }));
     }
   }, [enabled, steamId]);
 
   apiUseEffect(() => {
     load({ sync: false });
-  }, [load]);
+    if (!enabled) return undefined;
+    const timer = setInterval(() => load({ sync: false, silent: true }), 20000);
+    return () => clearInterval(timer);
+  }, [load, enabled]);
 
   const sync = apiUseCallback(() => load({ sync: true }), [load]);
 
