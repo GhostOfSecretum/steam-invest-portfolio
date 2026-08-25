@@ -407,109 +407,42 @@ function HeroConcept_Vault({ portfolio, loading, auth, lang }) {
   );
 }
 
-/* Concept 5: Operators squad readout */
-const HERO_AGENT_PRICE_CARDS = [
-  {
-    label: 'B Squadron Officer',
-    marketHashName: 'B Squadron Officer | SAS',
-    category: 'agents',
-    type: 'Agent',
-  },
-  {
-    label: 'Sir Bloody Miami Darryl',
-    marketHashName: 'Sir Bloody Miami Darryl | The Professionals',
-    category: 'agents',
-    type: 'Agent',
-  },
-  {
-    label: 'Osiris',
-    marketHashName: 'Osiris | Elite Crew',
-    category: 'agents',
-    type: 'Agent',
-  },
-];
-
-const HERO_OPERATORS_IMAGES = [
-  {
-    src: '/assets/hero-agents.png',
-    alt: 'Three featured CS2 operators',
-    label: 'Featured agents',
-    priceCards: HERO_AGENT_PRICE_CARDS,
-  },
-  {
-    src: '/assets/hero-ak47-gpt-transparent.png',
-    alt: 'AK-47 Wild Lotus high-detail render',
-    label: 'AK-47 Wild Lotus',
-    marketHashName: 'AK-47 | Wild Lotus (Minimal Wear)',
-    category: 'weapons',
-    type: 'Covert Rifle',
-    wear: 'MW',
-  },
-  {
-    src: '/assets/hero-m4-red-gpt-transparent.png',
-    alt: 'M4 red flame high-detail render',
-    label: 'M4A4 Howl',
-    marketHashName: 'M4A4 | Howl (Minimal Wear)',
-    category: 'weapons',
-    type: 'Contraband Rifle',
-    wear: 'MW',
-  },
-  {
-    src: '/assets/hero-awp-dragon-gpt-transparent.png',
-    alt: 'AWP Dragon Lore high-detail render',
-    label: 'AWP Dragon Lore',
-    marketHashName: 'AWP | Dragon Lore (Minimal Wear)',
-    category: 'weapons',
-    type: 'Covert Sniper Rifle',
-    wear: 'MW',
-  },
-];
-const HERO_OPERATORS_IMAGE_DELAY_MS = 4200;
-const HERO_MARKET_PRICE_REFRESH_MS = 2 * 60 * 1000;
-
-function useHeroMarketPrices() {
-  const [state, setState] = useState({ loading: true, prices: {}, updatedAt: null, error: null });
-  const [currency, setCurrency] = useState(() => getActiveCurrency());
-  const names = useMemo(() => {
-    const marketHashNames = HERO_OPERATORS_IMAGES.flatMap((image) => [
-      image.marketHashName,
-      ...(image.priceCards || []).map((card) => card.marketHashName),
-    ]);
-    return [...new Set(marketHashNames.filter(Boolean))];
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    let timer;
-
-    const load = async () => {
-      try {
-        const search = new URLSearchParams();
-        names.forEach((name) => search.append('names', name));
-        const data = await apiFetch(`/api/market/prices?${search.toString()}`);
-        if (!active) return;
-        setState({ loading: false, prices: data.prices || {}, updatedAt: data.updatedAt || null, error: null });
-      } catch (error) {
-        if (active) setState((current) => ({ ...current, loading: false, error }));
-      }
-    };
-
-    load();
-    timer = setInterval(load, HERO_MARKET_PRICE_REFRESH_MS);
-    return () => {
-      active = false;
-      if (timer) clearInterval(timer);
-    };
-  }, [names]);
-
-  useEffect(() => {
-    const syncCurrency = () => setCurrency(getActiveCurrency());
-    window.addEventListener('currency-change', syncCurrency);
-    return () => window.removeEventListener('currency-change', syncCurrency);
-  }, []);
-
-  return { ...state, currency };
-}
+/* Hero stage: the actual Portfolio screens — Overview, then Items */
+const HERO_APP_SLIDE_MS = 6500;
+const HERO_APP_DEMO = {
+  uniqueCount: 22,
+  totalCount: 74,
+  pricedCount: 74,
+  totalValue: 4280,
+  pnl: 320,
+  pnlPct: 8.08,
+  totalBasis: 3960,
+  topName: '★ Karambit | Autotronic (Minimal Wear)',
+  topShare: 41,
+  topFiveShare: 73,
+  items: [
+    { name: '★ Karambit | Autotronic (Minimal Wear)', marketHashName: '★ Karambit | Autotronic (Minimal Wear)', collection: 'The Gamma Collection', qty: 1, basis: 1420, totalValue: 1765, pnlPct: 24.3, tier: 5, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL6kJ_m-B1Q7uCvZaZkNM-UHVibwPx3vd5oWj28gQ8ovTSGpYPwJiPTcAMkCJt3QuVY4xXrloHhP-nlsw2Ljo1NzS6ohitJvCc4sOcHAqInqKfJz1aWliaAF_M' },
+    { name: 'AWP | Neo-Noir (Factory New)', marketHashName: 'AWP | Neo-Noir (Factory New)', collection: 'The Color of Violence Collection', qty: 1, basis: 760, totalValue: 890, pnlPct: 17.1, tier: 5, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwiYbf_jdk7uW-V6poL_6cB3WvzedxuPUnHirrxR4l423SyI39I3KXPwdxWZclQeNZ5EXskYfnNeyw71OMi9lNzDK-0H3r66pOTw' },
+    { name: 'M4A1-S | Black Lotus (Field-Tested)', marketHashName: 'M4A1-S | Black Lotus (Field-Tested)', collection: 'The Recoil Collection', qty: 3, basis: 110, totalValue: 282, pnlPct: -14.5, tier: 5, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwjFS4_ega6F_H_3HDzaD_ux6seJicCW8gQg0jDCAnobsLGWTbQQnDsN3QuYOtELqkIazZeLm7lPYj9gQzyj72y8du31i6ulQA6Rx5OSJ2CPXrFUp' },
+    { name: 'StatTrak™ USP-S | Ticket to Hell (Minimal Wear)', marketHashName: 'StatTrak™ USP-S | Ticket to Hell (Minimal Wear)', collection: 'The Kilowatt Collection', qty: 2, basis: 58, totalValue: 134, pnlPct: 15.5, tier: 4, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLkjYbf7itX6vytbbZSI-WsG3SA_vp5j-lsQyWMmRQguynLzt_8JXiVOwF2AsF4R-ECshftltKxZe6x41CKjotExST8jn8f7ilr5PFCD_TZVvgG5g' },
+    { name: 'Fever Case', marketHashName: 'Fever Case', collection: null, qty: 36, basis: 2.10, totalValue: 67, pnlPct: -11.9, tier: 1, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGJKz2lu_XsnXwtmkJjSU91dh8bj35VTqVBP4io_frncVtqv7MPE8JaHHCj_Dl-wk4-NtFirikURy4jiGwo2udHqVaAEjDZp3EflK7EeSMnMs4w' },
+    { name: 'AK-47 | Slate (Factory New)', marketHashName: 'AK-47 | Slate (Factory New)', collection: 'The Control Collection', qty: 4, basis: 19.50, totalValue: 96, pnlPct: 23.1, tier: 3, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLwlcK3wiVI0POlPPNSMOKcCGKD0ud5vuBlcCW6khUz_W3Sytb4cCqTOFUpWJtzTOUD5hPsw9a0Yrnrs1SK3ooXzy6shilM5311o7FVYrIufmI' },
+    { name: 'M4A4 | Temukau (Minimal Wear)', marketHashName: 'M4A4 | Temukau (Minimal Wear)', collection: 'The Revolution Collection', qty: 2, basis: 38.00, totalValue: 63, pnlPct: -17.1, tier: 5, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL8ypexwiFO0P_6afBSNPWeG2yR1NF6ueZhW2ewlBtx5W6AmYv9JS6XaAV1CJEmTeUL4UTpxNzjZO3jtgaIjN9ExCuskGoXuRnyRhBA' },
+    { name: 'Glock-18 | Pink DDPAT (Factory New)', marketHashName: 'Glock-18 | Pink DDPAT (Factory New)', collection: 'The Overpass Collection', qty: 6, basis: 7.50, totalValue: 54, pnlPct: 19.4, tier: 3, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyL2kpnj9h1T9s2qbLRsNM-DB2mb_uJ_t-l9ASi2lBgjsmjSm4ugeX6WO1AoCsElFuEIuhC6xta2Zbmw5gCMjtlAni3gznQeU26CORw' },
+    { name: 'P250 | Visions (Factory New)', marketHashName: 'P250 | Visions (Factory New)', collection: 'The Recoil Collection', qty: 5, basis: 12.40, totalValue: 48, pnlPct: -22.4, tier: 4, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGIGz3UqlXOLrxM-vMGmW8VNxu5Dx60noTyLhzMOwwiVI0OL8PfRSNvmAB2ie0tF6ueZhW2fmzERx5jyHm4v_dXvGaQR2WJF2QrIMsxW_w9PvN-zhtgXXiokWn3_6kGoXuc_iGAKZ' },
+    { name: 'Recoil Case', marketHashName: 'Recoil Case', collection: null, qty: 18, basis: 2.55, totalValue: 41, pnlPct: -10.6, tier: 1, iconUrl: 'https://community.cloudflare.steamstatic.com/economy/image/i0CoZ81Ui0m-9KwlBY1L_18myuGuq1wfhWSaZgMttyVfPaERSR0Wqmu7LAocGJKz2lu_XsnXwtmkJjSU91dh8bj35VTqVBP4io_frnMVu6b-avA-JqSSCjSWwuhz47U9TCzlxh9yt2WGnNqgIi-fbgUkWMNxFPlK7EdIJF6a2Q' },
+  ],
+  best: [
+    { name: 'AK-47 | Slate', marketHashName: 'AK-47 | Slate (Factory New)', pct: 23.1 },
+    { name: 'Glock-18 | Pink DDPAT', marketHashName: 'Glock-18 | Pink DDPAT (Factory New)', pct: 19.4 },
+    { name: 'Sticker | Vitality (Glitter) | Paris 2023', marketHashName: 'Sticker | Vitality (Glitter) | Paris 2023', pct: 16.8 },
+  ],
+  worst: [
+    { name: 'M4A4 | Temukau', marketHashName: 'M4A4 | Temukau (Minimal Wear)', pct: -17.1 },
+    { name: 'P250 | Visions', marketHashName: 'P250 | Visions (Factory New)', pct: -22.4 },
+    { name: 'Tec-9 | Flash Out', marketHashName: 'Tec-9 | Flash Out (Factory New)', pct: -19.6 },
+  ],
+};
 
 function HeroOperatorsBackdrop() {
   return (
@@ -522,149 +455,185 @@ function HeroOperatorsBackdrop() {
   );
 }
 
-function HeroConcept_Operators({ lang, onItemClick }) {
-  const [imageIndex, setImageIndex] = useState(0);
-  const [missingByIndex, setMissingByIndex] = useState({});
-  const rotateTimerRef = useRef(null);
-  const marketPrices = useHeroMarketPrices();
-  const activeImage = HERO_OPERATORS_IMAGES[imageIndex] || HERO_OPERATORS_IMAGES[0];
-  const imageMissing = Boolean(missingByIndex[imageIndex]);
-  const activePriceCards = activeImage.priceCards || [
-    {
-      label: activeImage.label || activeImage.marketHashName,
-      marketHashName: activeImage.marketHashName,
-      category: activeImage.category,
-      type: activeImage.type,
-      wear: activeImage.wear,
-      rarity: activeImage.rarity,
-    },
+function HeroConcept_PortfolioSlides({ lang }) {
+  const t = useT(lang);
+  const demo = HERO_APP_DEMO;
+  const [slide, setSlide] = useState('overview');
+  const [paused, setPaused] = useState(false);
+  const money = (value, digits = 0) => compactUsd(value, { digits });
+  const sections = [
+    { id: 'overview', label: tt(lang, { en: 'Overview', ru: 'Обзор', zh: '总览', 'zh-TW': '總覽' }) },
+    { id: 'items', label: tt(lang, { en: 'Items', ru: 'Предметы', zh: '物品', 'zh-TW': '物品' }), count: demo.totalCount },
   ];
-  const getPriceCard = (card) => {
-    const price = card.marketHashName ? marketPrices.prices[card.marketHashName] : null;
-    const value = Number.isFinite(price?.price) ? price.price : price?.medianPrice;
-    return {
-      ...card,
-      price,
-      priceLabel: Number.isFinite(value) ? formatItemPrice(price, value, { digits: 0 }) : marketPrices.loading ? '...' : 'N/A',
-    };
-  };
-  const openPriceCard = (card) => {
-    if (!onItemClick || !card.marketHashName) return;
-    const price = card.price || {};
-    const itemPrice = Number.isFinite(price.price) ? price.price
-      : Number.isFinite(price.medianPrice) ? price.medianPrice
-      : 0;
-    onItemClick({
-      assetid: `hero-${card.marketHashName}`,
-      assetIds: [`hero-${card.marketHashName}`],
-      marketHashName: card.marketHashName,
-      name: card.label || card.marketHashName,
-      price: itemPrice,
-      value: itemPrice,
-      totalValue: itemPrice,
-      priceRub: price.priceRub,
-      medianPrice: price.medianPrice,
-      medianPriceRub: price.medianPriceRub,
-      qty: 1,
-      basis: itemPrice,
-      totalBasis: itemPrice,
-      pnl: 0,
-      pnlPct: 0,
-      tradable: true,
-      tradableQty: 1,
-      marketable: true,
-      rarity: card.rarity || (card.category === 'agents' ? 'Extraordinary' : 'Covert'),
-      category: card.category || 'collectibles',
-      type: card.type || 'Collectible',
-      wear: card.wear || 'N/A',
-      special: 'normal',
-      tier: 5,
-      currencyCode: price.currencyCode || 'USD',
-      priceProvider: price.provider,
-    });
-  };
 
   useEffect(() => {
-    if (HERO_OPERATORS_IMAGES.length < 2) return undefined;
-    rotateTimerRef.current = setInterval(() => {
-      setImageIndex((current) => (current + 1) % HERO_OPERATORS_IMAGES.length);
-    }, HERO_OPERATORS_IMAGE_DELAY_MS);
-    return () => {
-      if (rotateTimerRef.current) clearInterval(rotateTimerRef.current);
-    };
-  }, []);
+    if (paused) return undefined;
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    const timer = setInterval(() => {
+      setSlide((current) => (current === 'overview' ? 'items' : 'overview'));
+    }, HERO_APP_SLIDE_MS);
+    return () => clearInterval(timer);
+  }, [paused]);
 
   return (
-    <div
-      className="hero-3d-stage"
-      style={{ perspective: 1400, '--image-delay': `${HERO_OPERATORS_IMAGE_DELAY_MS}ms` }}
-    >
+    <div className="hero-3d-stage hero-desk-stage">
       <div className="hero-operators-glow"></div>
       <HeroOperatorsBackdrop />
-      <div className="hero-operators-shadow"></div>
 
-      <div className="hero-operators-image-wrap">
-        {!imageMissing ? (
-          <img
-            key={activeImage.src}
-            src={activeImage.src}
-            alt={activeImage.alt}
-            className="hero-operators-image"
-            onError={() => setMissingByIndex((current) => ({ ...current, [imageIndex]: true }))}
-          />
-        ) : (
-          <div className="hero-operators-fallback" aria-hidden="true">
-            <div className="hero-operators-card" data-slot="left"></div>
-            <div className="hero-operators-card" data-slot="center"></div>
-            <div className="hero-operators-card" data-slot="right"></div>
+      <div
+        className="hero-app"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        <div className="hero-app-frame">
+          <div className="hero-app-chrome">
+            <div className="dash-section-tabs" role="tablist" aria-label={tt(lang, { en: 'Portfolio sections', ru: 'Разделы портфеля', zh: '库存分区', 'zh-TW': '庫存分區' })}>
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={slide === section.id}
+                  className="dash-section-tab"
+                  data-active={slide === section.id}
+                  onClick={() => setSlide(section.id)}
+                >
+                  {section.label}
+                  {Number.isFinite(section.count) && <span>{section.count}</span>}
+                </button>
+              ))}
+            </div>
+            <i>{tt(lang, { en: 'Your portfolio', ru: 'Твой портфель', zh: '你的库存', 'zh-TW': '你的庫存' })}</i>
           </div>
-        )}
-      </div>
 
-      {activePriceCards.length > 1 ? (
-        <div className="hero-agent-price-layout">
-          {activePriceCards.map((card, index) => {
-            const pricedCard = getPriceCard(card);
-            const slot = index === 0 ? 'left' : index === 1 ? 'center' : 'right';
-            return (
-              <button
-                type="button"
-                className={`hero-operators-badge hero-market-agent-card hero-market-agent-card-${slot}`}
-                key={pricedCard.marketHashName || index}
-                onClick={() => openPriceCard(pricedCard)}
-                title={pricedCard.marketHashName}
-              >
-                <div className="hero-market-price-head">
-                  <span>{tt(lang, { en: 'Agent', ru: 'Агент', zh: '干员', 'zh-TW': '幹員' })}</span>
+          <div className="hero-app-stage">
+          <div className="hero-app-slide" role="tabpanel" data-active={slide === 'overview' ? 'true' : 'false'} aria-hidden={slide !== 'overview'}>
+              <div className="dash-stats">
+                <div className="glass dash-stat-card">
+                  <div className="dash-stat-accent" />
+                  <div className="eyebrow">{t.dash.total}</div>
+                  <div className="display dash-stat-value">{money(demo.totalValue)}</div>
+                  <div className="dash-stat-delta">{tt(lang, { en: `${demo.pricedCount} of ${demo.totalCount} priced`, ru: `${demo.pricedCount} из ${demo.totalCount} оценено`, zh: `${demo.pricedCount} / ${demo.totalCount} 已估价`, 'zh-TW': `${demo.pricedCount} / ${demo.totalCount} 已估價` })}</div>
+                  <div className="dash-stat-sub">{tt(lang, { en: `${demo.uniqueCount} unique positions`, ru: `${demo.uniqueCount} уникальных позиций`, zh: `${demo.uniqueCount} 个独立持仓`, 'zh-TW': `${demo.uniqueCount} 個獨立持倉` })}</div>
                 </div>
-                <div className="hero-market-price-value">{pricedCard.priceLabel}</div>
-                <div className="hero-market-price-name">{pricedCard.label || pricedCard.marketHashName}</div>
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="hero-market-single-wrap">
-          {activePriceCards.map((card, index) => {
-            const pricedCard = getPriceCard(card);
-            return (
-              <button
-                type="button"
-                className="hero-operators-badge hero-market-price-card"
-                key={pricedCard.marketHashName || index}
-                onClick={() => openPriceCard(pricedCard)}
-                title={pricedCard.marketHashName}
-              >
-                <div className="hero-market-price-head">
-                  <span>{tt(lang, { en: 'Market price', ru: 'Рыночная цена', zh: '市场价格', 'zh-TW': '市場價格' })}</span>
+                <div className="glass dash-stat-card">
+                  <div className="eyebrow">{t.dash.pnl}</div>
+                  <div className="display dash-stat-value">{`${demo.pnl >= 0 ? '+' : ''}${money(demo.pnl)}`}</div>
+                  <div className="dash-stat-delta" style={{ color: demo.pnl >= 0 ? 'var(--green)' : 'var(--red)' }}>{`${demo.pnlPct >= 0 ? '+' : ''}${demo.pnlPct.toFixed(2)}%`}</div>
+                  <div className="dash-stat-sub">{tt(lang, { en: `Cost basis ${money(demo.totalBasis)}`, ru: `Себестоимость ${money(demo.totalBasis)}`, zh: `成本基础 ${money(demo.totalBasis)}`, 'zh-TW': `成本基礎 ${money(demo.totalBasis)}` })}</div>
                 </div>
-                <div className="hero-market-price-value">{pricedCard.priceLabel}</div>
-                <div className="hero-market-price-name">{pricedCard.label || pricedCard.marketHashName}</div>
-              </button>
-            );
-          })}
+                <div className="glass dash-stat-card">
+                  <div className="eyebrow">{tt(lang, { en: 'SELLABLE NOW', ru: 'ДОСТУПНО К ПРОДАЖЕ', zh: '现在可售', 'zh-TW': '現在可售' })}</div>
+                  <div className="display dash-stat-value">{money(demo.totalValue)}</div>
+                  <div className="dash-stat-delta" style={{ color: 'var(--cyan)' }}>{tt(lang, { en: `${demo.totalCount} of ${demo.totalCount} marketable`, ru: `${demo.totalCount} из ${demo.totalCount} доступны`, zh: `${demo.totalCount} / ${demo.totalCount} 可出售`, 'zh-TW': `${demo.totalCount} / ${demo.totalCount} 可出售` })}</div>
+                  <div className="dash-stat-sub">{tt(lang, { en: '0 locked or in storage', ru: '0 заблокировано или в хранилище', zh: '0 锁定或在仓库', 'zh-TW': '0 鎖定或在倉庫' })}</div>
+                </div>
+                <div className="glass dash-stat-card">
+                  <div className="eyebrow">{tt(lang, { en: 'CONCENTRATION', ru: 'КОНЦЕНТРАЦИЯ', zh: '集中度', 'zh-TW': '集中度' })}</div>
+                  <div className="display dash-stat-value">{`${demo.topShare}%`}</div>
+                  <div className="dash-stat-delta" style={{ color: 'var(--amber)' }}>{demo.topName}</div>
+                  <div className="dash-stat-sub">{tt(lang, { en: `Top 5 = ${demo.topFiveShare}% of portfolio`, ru: `Топ-5 = ${demo.topFiveShare}% портфеля`, zh: `前 5 = 库存的 ${demo.topFiveShare}%`, 'zh-TW': `前 5 = 庫存的 ${demo.topFiveShare}%` })}</div>
+                </div>
+              </div>
+
+              <div className="dash-chart-row">
+                <div className="glass dash-panel">
+                  <div className="dash-chart-toolbar">
+                    <div>
+                      <div className="eyebrow">{tt(lang, { en: 'VALUE OVER TIME', ru: 'СТОИМОСТЬ ВО ВРЕМЕНИ', zh: '价值随时间', 'zh-TW': '價值隨時間' })}</div>
+                      <div className="hero-app-muted">{tt(lang, { en: 'USD · real price history · 60% coverage · csfloat', ru: 'USD · история реальных цен · покрытие 60% · csfloat', zh: 'USD · 真实价格历史 · 覆盖 60% · csfloat', 'zh-TW': 'USD · 真實價格歷史 · 覆蓋 60% · csfloat' })}</div>
+                    </div>
+                    <div className="dash-range-switch">
+                      {['7d', '30d', '90d', tt(lang, { en: 'ALL', ru: 'ВСЁ', zh: '全部', 'zh-TW': '全部' })].map((label, index) => (
+                        <button key={label} type="button" tabIndex={-1} style={{
+                          padding: '5px 9px', fontFamily: 'var(--f-mono)', fontSize: 10,
+                          color: index === 3 ? 'var(--fg-0)' : 'var(--fg-3)',
+                          background: index === 3 ? 'rgba(255,255,255,0.06)' : 'transparent',
+                        }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <svg className="hero-app-chart" viewBox="0 0 320 92" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="heroAppFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0.34" />
+                        <stop offset="100%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M0 38 C18 22 36 14 52 24 S78 58 98 46 S128 18 148 28 S176 62 198 54 S232 22 258 34 S292 70 320 58 L320 92 L0 92 Z" fill="url(#heroAppFill)" />
+                    <path d="M0 38 C18 22 36 14 52 24 S78 58 98 46 S128 18 148 28 S176 62 198 54 S232 22 258 34 S292 70 320 58" fill="none" stroke="var(--accent)" strokeWidth="1.8" />
+                  </svg>
+                </div>
+
+                <div className="glass dash-panel hero-app-leaders">
+                  <div className="eyebrow">{t.dash.leaders}</div>
+                  <div className="hero-app-muted">{t.dash.leadersHint}</div>
+                  <div className="hero-app-leader-label">{t.dash.bestLeaders}</div>
+                  {demo.best.map((row) => (
+                    <div className="hero-app-leader" key={row.marketHashName}>
+                      <span>{row.name}</span>
+                      <b data-positive="true">{`+${row.pct.toFixed(1)}%`}</b>
+                    </div>
+                  ))}
+                  <div className="hero-app-leader-label">{t.dash.worstLeaders}</div>
+                  {demo.worst.map((row) => (
+                    <div className="hero-app-leader" key={row.marketHashName}>
+                      <span>{row.name}</span>
+                      <b>{`${row.pct.toFixed(1)}%`}</b>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+          <div className="hero-app-slide" role="tabpanel" data-active={slide === 'items' ? 'true' : 'false'} aria-hidden={slide !== 'items'}>
+              <div className="glass dash-inventory">
+                <div className="dash-inventory-toolbar">
+                  <div>
+                    <div className="eyebrow">{tt(lang, { en: 'PORTFOLIO ITEMS', ru: 'ПРЕДМЕТЫ ПОРТФЕЛЯ', zh: '库存物品', 'zh-TW': '庫存物品' })}</div>
+                    <div className="dash-inventory-meta">{demo.uniqueCount}/{demo.uniqueCount} · {demo.totalCount} {tt(lang, { en: 'items', ru: 'шт.', zh: '件', 'zh-TW': '件' })}</div>
+                  </div>
+                  <div className="dash-inventory-actions">
+                    <span className="dash-inventory-search">{tt(lang, { en: 'Find an item...', ru: 'Найти предмет...', zh: '查找物品...', 'zh-TW': '尋找物品...' })}</span>
+                  </div>
+                </div>
+                <div className="hero-app-grid hero-app-grid-head">
+                  <span>#</span>
+                  <span>{tt(lang, { en: 'Item', ru: 'Предмет', zh: '物品', 'zh-TW': '物品' })}</span>
+                  <span>{tt(lang, { en: 'Qty', ru: 'Кол-во', zh: '数量', 'zh-TW': '數量' })}</span>
+                  <span>{tt(lang, { en: 'Basis', ru: 'Покупка', zh: '成本', 'zh-TW': '成本' })}</span>
+                  <span>{tt(lang, { en: 'Value', ru: 'Стоимость', zh: '价值', 'zh-TW': '價值' })} ↓</span>
+                  <span>P&L</span>
+                </div>
+                <div className="hero-app-items-body">
+                {demo.items.slice().sort((a, b) => b.totalValue - a.totalValue).map((item, index) => (
+                  <div
+                    className="hero-app-grid hero-app-grid-row"
+                    key={item.marketHashName}
+                    data-last={index === demo.items.length - 1}
+                  >
+                    <em>{String(index + 1).padStart(2, '0')}</em>
+                    <span className="hero-app-item">
+                      {item.iconUrl
+                        ? <img src={item.iconUrl} alt="" />
+                        : <i data-tier={item.tier} aria-hidden="true" />}
+                      <span>
+                        <b>{item.name}</b>
+                        {item.collection && <small>{item.collection}</small>}
+                      </span>
+                    </span>
+                    <strong>{item.qty}</strong>
+                    <strong>{money(item.basis, 2)}</strong>
+                    <b className="inv-value-mark">{money(item.totalValue)}</b>
+                    <u data-positive={item.pnlPct >= 0}>{`${item.pnlPct >= 0 ? '+' : ''}${item.pnlPct.toFixed(1)}%`}</u>
+                  </div>
+                ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -718,7 +687,7 @@ function HeroPortfolioPreview({ lang, data }) {
   );
 }
 
-/* Hero stage: Operators concept */
+/* Hero stage: portfolio app slides */
 function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
   const t = useT(lang);
   const [profileUrl, setProfileUrl] = useState('');
@@ -726,8 +695,8 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
   const [profileOpen, setProfileOpen] = useState(false);
 
   const stage = useMemo(
-    () => <HeroConcept_Operators lang={lang} onItemClick={onItemClick} />,
-    [lang, onItemClick]
+    () => <HeroConcept_PortfolioSlides lang={lang} />,
+    [lang]
   );
   const submitProfileUrl = (event) => {
     event.preventDefault();
@@ -795,10 +764,9 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
 
         </div>
 
-        {/* Right: 3D stage */}
+        {/* Right: portfolio screens */}
         <div className="hero-stage-wrap">
           {stage}
-          {/* Portfolio preview temporarily hidden */}
         </div>
       </div>
 
