@@ -86,7 +86,24 @@ async function getPortfolio(steamId, options = {}) {
   ]);
 
   const useDesktop = desktopInventory && Array.isArray(desktopInventory.items) && desktopInventory.items.length > 0;
-  const steamInventory = useDesktop ? null : await getSteamInventory(steamId, { ...options, priority: 0 });
+  let inventoryRateLimited = false;
+  let steamInventory = null;
+  if (!useDesktop) {
+    try {
+      steamInventory = await getSteamInventory(steamId, { ...options, priority: 0 });
+    } catch (error) {
+      if (error?.code !== 'rate_limited' && error?.status !== 429) throw error;
+      inventoryRateLimited = true;
+      steamInventory = {
+        syncedAt: null,
+        cached: false,
+        inventoryProvider: 'steam-public',
+        totalInventoryCount: 0,
+        assetEntriesCount: 0,
+        items: [],
+      };
+    }
+  }
   const storageItemCount = useDesktop ? Number(desktopInventory.storageItemCount || 0) : 0;
   const inventory = useDesktop
     ? {
@@ -127,10 +144,12 @@ async function getPortfolio(steamId, options = {}) {
   const providerLabel = useDesktop ? 'desktop' : (inventory.inventoryProvider || 'steam-public');
   const { history, leaders } = await buildPortfolioHistoryAndLeaders(pricedItems, totalValue);
   const activitySource = options.activitySource === 'public-diff' ? 'public-diff' : 'steam-diff';
-  const activity = await syncInventoryDiffActivity(steamId, items, {
-    source: activitySource,
-    syncedAt: inventory.syncedAt,
-  });
+  const activity = inventoryRateLimited
+    ? []
+    : await syncInventoryDiffActivity(steamId, items, {
+      source: activitySource,
+      syncedAt: inventory.syncedAt,
+    });
 
   const result = {
     portfolioId: 'steam',
@@ -160,8 +179,9 @@ async function getPortfolio(steamId, options = {}) {
     leaders,
     items,
     activity: activity.filter(isStructuredActivity).slice().reverse(),
+    inventoryRateLimited,
   };
-  if (!options.force) writePortfolioViewCache(steamCacheKey, result);
+  if (!options.force && !inventoryRateLimited) writePortfolioViewCache(steamCacheKey, result);
   return result;
 }
 

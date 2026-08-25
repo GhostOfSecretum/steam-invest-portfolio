@@ -8,7 +8,7 @@ const session = require('express-session');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { getSteamRedirectUrl, authenticateSteam } = require('./services/auth');
-const { getSteamProfile, resolveSteamProfileInput } = require('./services/steam');
+const { getSteamProfile, resolveSteamProfileInput, saveIngestedSteamInventory } = require('./services/steam');
 const {
   getPortfolio,
   listPortfolios,
@@ -126,6 +126,7 @@ try {
 // Default body limit is small; the large limit only applies to inventory sync.
 // This runs first, marks the body as parsed, so the global parser skips it.
 app.use('/api/desktop/inventory-sync', express.json({ limit: '50mb' }));
+app.use('/api/portfolio/steam-inventory', express.json({ limit: '10mb' }));
 app.use(express.json({ limit: '256kb' }));
 app.use(session({
   name: 'steam-invest.sid',
@@ -444,6 +445,19 @@ app.get('/api/portfolio', asyncRoute(async (req, res) => {
     portfolioId: req.query.portfolioId,
     ownerId,
   });
+  res.json(applyItemDisplayLimit(portfolio, planId));
+}));
+
+app.post('/api/portfolio/steam-inventory', asyncRoute(async (req, res) => {
+  if (!req.session.steamId) {
+    res.status(401).json({ error: 'Steam account is not connected.', code: 'not_authenticated' });
+    return;
+  }
+
+  await saveIngestedSteamInventory(req.session.steamId, req.body?.pages);
+  const ownerId = resolveOwnerId(req);
+  const planId = await getOwnerPlanId(ownerId);
+  const portfolio = await getPortfolio(req.session.steamId, { ownerId });
   res.json(applyItemDisplayLimit(portfolio, planId));
 }));
 

@@ -266,6 +266,39 @@ function useTopInvestorActivity(steamId, enabled = true) {
   return { ...state, reload: () => load({ sync: false }), sync };
 }
 
+async function fetchBrowserSteamInventory(steamId) {
+  const pages = [];
+  let startAssetId = null;
+  let more = true;
+
+  while (more) {
+    const params = new URLSearchParams({ l: 'english', count: '2500' });
+    if (startAssetId) params.set('start_assetid', startAssetId);
+    const response = await fetch(`https://steamcommunity.com/inventory/${steamId}/730/2?${params}`);
+    if (!response.ok) {
+      const error = new Error(`Steam returned HTTP ${response.status}`);
+      error.status = response.status;
+      error.code = response.status === 429 ? 'rate_limited' : 'steam_http_error';
+      throw error;
+    }
+    const json = await response.json();
+    if (!json.success && json.success !== 1) {
+      const error = new Error(json.Error || 'Steam inventory request failed.');
+      error.code = 'steam_inventory_failed';
+      throw error;
+    }
+    pages.push({
+      assets: json.assets || [],
+      descriptions: json.descriptions || [],
+    });
+    more = Boolean(json.more_items);
+    startAssetId = json.last_assetid || null;
+    if (!startAssetId) more = false;
+  }
+
+  return pages;
+}
+
 function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
   const [state, setState] = apiUseState({ loading: false, data: null, error: null });
   const requestSeq = apiUseRef(0);
@@ -284,15 +317,28 @@ function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
       const suffix = params.toString() ? `?${params.toString()}` : '';
       const endpoint = publicProfileUrl ? '/api/portfolio/public' : '/api/portfolio';
       const data = await apiFetch(`${endpoint}${suffix}`);
+      let next = data;
+      if (!publicProfileUrl && data?.inventoryRateLimited && data?.profile?.steamId) {
+        try {
+          const pages = await fetchBrowserSteamInventory(data.profile.steamId);
+          next = await apiFetch('/api/portfolio/steam-inventory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pages }),
+          });
+        } catch {
+          // Stay on the logged-in empty portfolio instead of blocking the dashboard.
+        }
+      }
       // Ignore outdated responses when the user switches portfolios quickly.
       if (seq !== requestSeq.current) return;
-      if (Number.isFinite(data?.steamRubRate) && data.steamRubRate > 0) {
-        FX_RATES.rub = data.steamRubRate;
+      if (Number.isFinite(next?.steamRubRate) && next.steamRubRate > 0) {
+        FX_RATES.rub = next.steamRubRate;
       }
-      if (Number.isFinite(data?.steamCnyRate) && data.steamCnyRate > 0) {
-        FX_RATES.cny = data.steamCnyRate;
+      if (Number.isFinite(next?.steamCnyRate) && next.steamCnyRate > 0) {
+        FX_RATES.cny = next.steamCnyRate;
       }
-      setState({ loading: false, data, error: null });
+      setState({ loading: false, data: next, error: null });
     } catch (error) {
       if (seq !== requestSeq.current) return;
       setState((current) => ({ loading: false, data: current.data, error }));

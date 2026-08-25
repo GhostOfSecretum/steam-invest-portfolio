@@ -105,7 +105,7 @@ function newestFirst(events) {
 }
 
 async function syncTopInvestorInventory(account) {
-  const inventory = await getSteamInventory(account.steamId, { force: true, priority: 5 });
+  const inventory = await getSteamInventory(account.steamId, { force: false, allowCommunity: false });
   const items = Array.isArray(inventory.items) ? inventory.items : [];
   const syncedAt = inventory.syncedAt || new Date().toISOString();
   const events = await syncInventoryDiffActivity(account.steamId, items, {

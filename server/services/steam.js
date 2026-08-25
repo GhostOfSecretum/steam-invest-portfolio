@@ -10,7 +10,6 @@ const PROFILE_STALE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const FETCH_RETRIES = 3;
 const COMMUNITY_GAP_MS = 1500;
 const COMMUNITY_COOLDOWN_MS = 2 * 60 * 1000;
-const COMMUNITY_USER_WAIT_MS = 8000;
 const STEAM_HEADERS = {
   Accept: 'application/json,text/javascript,*/*',
   'Accept-Language': 'en-US,en;q=0.9',
@@ -275,7 +274,10 @@ async function getSteamInventory(steamId, { force = false, allowCommunity = true
     }
 
     try {
-      const value = await enqueueCommunity(() => fetchInventoryViaCommunity(steamId), { priority });
+      const value = await enqueueCommunity(
+        () => fetchInventoryViaCommunity(steamId, { skipCooldown: priority === 0 }),
+        { priority },
+      );
       await setCached(key, value);
       return { ...value, cached: false };
     } catch (error) {
@@ -289,8 +291,8 @@ async function getSteamInventory(steamId, { force = false, allowCommunity = true
   });
 }
 
-async function fetchInventoryViaCommunity(steamId) {
-  await waitForCommunitySlot(COMMUNITY_USER_WAIT_MS);
+async function fetchInventoryViaCommunity(steamId, { skipCooldown = false } = {}) {
+  if (!skipCooldown) await waitForCommunitySlot(0);
   const pages = [];
   let startAssetId = null;
   let more = true;
@@ -317,6 +319,33 @@ async function fetchInventoryViaCommunity(steamId) {
   }
 
   return assembleInventory(pages, 'steam-public');
+}
+
+function ingestSteamInventoryPages(steamId, rawPages) {
+  requireSteamId(steamId);
+  if (!Array.isArray(rawPages) || rawPages.length === 0 || rawPages.length > 20) {
+    throw new SteamHttpError('Inventory payload is invalid.', 400, 'invalid_inventory_payload');
+  }
+
+  const pages = rawPages.map((page) => {
+    if (!page || typeof page !== 'object') {
+      throw new SteamHttpError('Inventory payload is invalid.', 400, 'invalid_inventory_payload');
+    }
+    const assets = Array.isArray(page.assets) ? page.assets : [];
+    const descriptions = Array.isArray(page.descriptions) ? page.descriptions : [];
+    if (assets.length > 2500 || descriptions.length > 5000) {
+      throw new SteamHttpError('Inventory payload is invalid.', 400, 'invalid_inventory_payload');
+    }
+    return { assets, descriptions };
+  });
+
+  return assembleInventory(pages, 'steam-browser');
+}
+
+async function saveIngestedSteamInventory(steamId, rawPages) {
+  const value = ingestSteamInventoryPages(steamId, rawPages);
+  await setCached(`steam:inventory:${steamId}`, value);
+  return { ...value, cached: false };
 }
 
 function assembleInventory(pages, inventoryProvider) {
@@ -388,4 +417,5 @@ module.exports = {
   getSteamProfile,
   getSteamInventory,
   isSteamCommunityCoolingDown,
+  saveIngestedSteamInventory,
 };
