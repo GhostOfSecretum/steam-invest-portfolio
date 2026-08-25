@@ -356,7 +356,10 @@ function parseEmbeddedJson(text) {
 }
 
 async function loadProxiedInventoryPage(steamId, startAssetId) {
-  const text = await fetchText(`https://r.jina.ai/${inventoryPageUrl(steamId, startAssetId)}`);
+  const text = await fetchText(`https://r.jina.ai/${inventoryPageUrl(steamId, startAssetId)}`, {
+    // Cloudflare challenges the full browser UA on r.jina.ai, while its API accepts a generic UA.
+    extraHeaders: { 'User-Agent': 'Mozilla/5.0' },
+  });
   return parseEmbeddedJson(text);
 }
 
