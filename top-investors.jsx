@@ -171,7 +171,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
                 return (
                   <div
                     key={account.steamId}
-                    className="glass"
+                    className={`glass top-investors-account${selected ? ' is-selected' : ''}`}
                     role="button"
                     tabIndex={0}
                     onClick={() => setSelectedSteamId(account.steamId)}
@@ -188,8 +188,6 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
                       alignItems: 'center',
                       gap: 16,
                       cursor: 'pointer',
-                      borderColor: selected ? 'var(--accent)' : undefined,
-                      boxShadow: selected ? 'inset 0 0 0 1px var(--accent)' : undefined,
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>

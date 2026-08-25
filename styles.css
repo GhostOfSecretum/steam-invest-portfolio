@@ -5778,6 +5778,15 @@ button:disabled,
   position: sticky;
   top: 24px;
 }
+.top-investors-account.is-selected {
+  border-color: var(--accent);
+}
+.top-investors-account .btn-primary {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.top-investors-account .btn-primary:hover {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+}
 .top-investors-personal,
 .top-investors-feed {
   display: grid;
