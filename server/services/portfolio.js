@@ -79,14 +79,14 @@ async function getPortfolio(steamId, options = {}) {
   }
 
   const includeDesktop = options.includeDesktop !== false;
-  const [profile, steamInventory, desktopInventory, basis] = await Promise.all([
+  const [profile, desktopInventory, basis] = await Promise.all([
     getSteamProfile(steamId),
-    getSteamInventory(steamId, options),
     includeDesktop ? getDesktopInventory(steamId).catch(() => null) : Promise.resolve(null),
     readBasis(steamId),
   ]);
 
   const useDesktop = desktopInventory && Array.isArray(desktopInventory.items) && desktopInventory.items.length > 0;
+  const steamInventory = useDesktop ? null : await getSteamInventory(steamId, options);
   const storageItemCount = useDesktop ? Number(desktopInventory.storageItemCount || 0) : 0;
   const inventory = useDesktop
     ? {

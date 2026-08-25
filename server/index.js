@@ -242,7 +242,19 @@ app.get('/api/me', asyncRoute(async (req, res) => {
     return;
   }
 
-  const profile = await getSteamProfile(req.session.steamId);
+  let profile;
+  try {
+    profile = await getSteamProfile(req.session.steamId);
+  } catch {
+    profile = {
+      steamId: req.session.steamId,
+      personaname: `STEAM/${String(req.session.steamId).slice(-6)}`,
+      profileurl: `https://steamcommunity.com/profiles/${req.session.steamId}`,
+      avatar: null,
+      avatarmedium: null,
+      avatarfull: null,
+    };
+  }
   res.json({
     connected: true,
     profile,

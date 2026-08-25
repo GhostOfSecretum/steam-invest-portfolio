@@ -1,10 +1,22 @@
-const { remember } = require('./cache');
+const { getCached, getCachedEntry, setCached } = require('./cache');
 const { collectionNameToSlug } = require('../../item-slugs');
 
 const STEAM_APP_ID = 730;
 const STEAM_CONTEXT_ID = 2;
 const INVENTORY_MAX_AGE_MS = 5 * 60 * 1000;
+const INVENTORY_STALE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const PROFILE_MAX_AGE_MS = 30 * 60 * 1000;
+const PROFILE_STALE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const FETCH_RETRIES = 3;
+const COMMUNITY_GAP_MS = 1200;
+const STEAM_HEADERS = {
+  Accept: 'application/json,text/javascript,*/*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+};
+
+const inflight = new Map();
+let communityQueue = Promise.resolve();
 
 class SteamHttpError extends Error {
   constructor(message, status, code) {
@@ -21,36 +33,92 @@ function requireSteamId(steamId) {
   }
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'application/json',
-      'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
-    },
-  });
-
-  if (!response.ok) {
-    const code = response.status === 403 ? 'private_inventory' : response.status === 429 ? 'rate_limited' : 'steam_http_error';
-    throw new SteamHttpError(`Steam returned HTTP ${response.status}.`, response.status, code);
-  }
-
-  return response.json();
+function fallbackProfile(steamId, extra = {}) {
+  return {
+    steamId,
+    personaname: `STEAM/${String(steamId).slice(-6)}`,
+    profileurl: `https://steamcommunity.com/profiles/${steamId}`,
+    avatar: null,
+    avatarmedium: null,
+    avatarfull: null,
+    ...extra,
+  };
 }
 
-async function fetchText(url) {
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'text/html,application/xhtml+xml,application/xml',
-      'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
-    },
-  });
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  if (!response.ok) {
-    const code = response.status === 429 ? 'rate_limited' : 'steam_http_error';
-    throw new SteamHttpError(`Steam returned HTTP ${response.status}.`, response.status, code);
+function isRetryableStatus(status) {
+  return status === 429 || status === 500 || status === 502 || status === 503;
+}
+
+function steamErrorFromStatus(status) {
+  const code = status === 403 ? 'private_inventory' : status === 429 ? 'rate_limited' : 'steam_http_error';
+  return new SteamHttpError(`Steam returned HTTP ${status}.`, status, code);
+}
+
+function dedupe(key, loader) {
+  if (inflight.has(key)) return inflight.get(key);
+  const pending = Promise.resolve().then(loader).finally(() => inflight.delete(key));
+  inflight.set(key, pending);
+  return pending;
+}
+
+function enqueueCommunity(loader) {
+  const run = communityQueue.then(loader, loader);
+  communityQueue = run.then(() => sleep(COMMUNITY_GAP_MS), () => sleep(COMMUNITY_GAP_MS));
+  return run;
+}
+
+async function fetchSteam(url, { accept = 'application/json', extraHeaders = {}, retries = FETCH_RETRIES } = {}) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    let response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          Accept: accept,
+          ...STEAM_HEADERS,
+          ...extraHeaders,
+        },
+        signal: AbortSignal.timeout(20000),
+      });
+    } catch (error) {
+      lastError = new SteamHttpError(error.message || 'Steam request failed.', 502, 'steam_http_error');
+      await sleep(400 * (attempt + 1));
+      continue;
+    }
+
+    if (response.ok) {
+      if (!accept.includes('json')) return response.text();
+      try {
+        return await response.json();
+      } catch {
+        throw new SteamHttpError('Steam returned a non-JSON response.', 502, 'steam_http_error');
+      }
+    }
+
+    lastError = steamErrorFromStatus(response.status);
+    if (!isRetryableStatus(response.status) || attempt === retries - 1) throw lastError;
+
+    const retryAfter = Number(response.headers.get('retry-after'));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? Math.min(retryAfter * 1000, 4000)
+      : 800 * (attempt + 1) + Math.floor(Math.random() * 400);
+    await sleep(waitMs);
   }
 
-  return response.text();
+  throw lastError || new SteamHttpError('Steam request failed.', 502, 'steam_http_error');
+}
+
+async function fetchJson(url, options = {}) {
+  return fetchSteam(url, { ...options, accept: 'application/json' });
+}
+
+async function fetchText(url, options = {}) {
+  return fetchSteam(url, { ...options, accept: 'text/html,application/xhtml+xml,application/xml' });
 }
 
 async function resolveSteamProfileInput(input) {
@@ -109,56 +177,123 @@ async function getSteamProfile(steamId) {
   requireSteamId(steamId);
 
   if (!process.env.STEAM_API_KEY) {
-    return {
-      steamId,
-      personaname: `STEAM/${steamId.slice(-6)}`,
-      profileurl: `https://steamcommunity.com/profiles/${steamId}`,
-      avatar: null,
-      avatarmedium: null,
-      avatarfull: null,
-      apiKeyMissing: true,
-    };
+    return fallbackProfile(steamId, { apiKeyMissing: true });
   }
 
   const key = `steam:profile:${steamId}`;
-  const { value } = await remember(key, PROFILE_MAX_AGE_MS, async () => {
-    const params = new URLSearchParams({ key: process.env.STEAM_API_KEY, steamids: steamId });
-    const json = await fetchJson(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?${params}`);
-    const player = json.response?.players?.[0];
-    if (!player) throw new SteamHttpError('Steam profile not found.', 404, 'profile_not_found');
-    return {
-      steamId: player.steamid,
-      personaname: player.personaname,
-      profileurl: player.profileurl,
-      avatar: player.avatar,
-      avatarmedium: player.avatarmedium,
-      avatarfull: player.avatarfull,
-      communityvisibilitystate: player.communityvisibilitystate,
-      personastate: player.personastate,
-    };
-  });
+  return dedupe(key, async () => {
+    const cached = await getCached(key, PROFILE_MAX_AGE_MS);
+    if (cached) return cached;
 
-  return value;
+    try {
+      const params = new URLSearchParams({ key: process.env.STEAM_API_KEY, steamids: steamId });
+      const json = await fetchJson(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?${params}`);
+      const player = json.response?.players?.[0];
+      if (!player) throw new SteamHttpError('Steam profile not found.', 404, 'profile_not_found');
+      const value = {
+        steamId: player.steamid,
+        personaname: player.personaname,
+        profileurl: player.profileurl,
+        avatar: player.avatar,
+        avatarmedium: player.avatarmedium,
+        avatarfull: player.avatarfull,
+        communityvisibilitystate: player.communityvisibilitystate,
+        personastate: player.personastate,
+      };
+      await setCached(key, value);
+      return value;
+    } catch (error) {
+      if (error?.code === 'invalid_steamid') throw error;
+      const stale = await getCached(key, PROFILE_STALE_MAX_AGE_MS);
+      if (stale) return stale;
+      return fallbackProfile(steamId);
+    }
+  });
 }
 
 async function getSteamInventory(steamId, { force = false } = {}) {
   requireSteamId(steamId);
   const key = `steam:inventory:${steamId}`;
 
-  if (!force) {
-    const cached = await remember(key, INVENTORY_MAX_AGE_MS, async () => fetchInventoryPages(steamId));
-    return { ...cached.value, cached: cached.cached };
-  }
+  return dedupe(`${key}:${force ? 'force' : 'get'}`, async () => {
+    if (!force) {
+      const cached = await getCached(key, INVENTORY_MAX_AGE_MS);
+      if (cached) return { ...cached, cached: true };
+    }
 
-  const value = await fetchInventoryPages(steamId);
-  const { setCached } = require('./cache');
-  await setCached(key, value);
-  return { ...value, cached: false };
+    try {
+      const value = await fetchInventoryPages(steamId);
+      await setCached(key, value);
+      return { ...value, cached: false };
+    } catch (error) {
+      const stale = await getCachedEntry(key);
+      const ageMs = stale ? Date.now() - stale.updatedAt : Infinity;
+      if (stale?.value && ageMs <= INVENTORY_STALE_MAX_AGE_MS) {
+        return { ...stale.value, cached: true, stale: true };
+      }
+      throw error;
+    }
+  });
 }
 
 async function fetchInventoryPages(steamId) {
-  const allAssets = [];
-  const descriptionMap = new Map();
+  if (process.env.STEAM_API_KEY) {
+    try {
+      return await fetchInventoryViaWebApi(steamId);
+    } catch (error) {
+      if (error?.code === 'private_inventory' || error?.code === 'invalid_steamid') throw error;
+      console.warn('[steam] webapi inventory failed, falling back to community:', error.message || error);
+    }
+  }
+
+  return enqueueCommunity(() => fetchInventoryViaCommunity(steamId));
+}
+
+async function fetchInventoryViaWebApi(steamId) {
+  const pages = [];
+  let startAssetId = null;
+  let more = true;
+  let totalInventoryCount = null;
+
+  while (more) {
+    const params = new URLSearchParams({
+      key: process.env.STEAM_API_KEY,
+      steamid: steamId,
+      appid: String(STEAM_APP_ID),
+      contextid: String(STEAM_CONTEXT_ID),
+      language: 'english',
+      get_descriptions: '1',
+      count: '2500',
+    });
+    if (startAssetId) params.set('start_assetid', startAssetId);
+
+    const json = await fetchJson(`https://api.steampowered.com/IEconService/GetInventoryItemsWithDescriptions/v1/?${params}`);
+    const payload = json.response || {};
+    if (payload.success === false) {
+      throw new SteamHttpError(payload.error || 'Steam inventory request failed.', 502, 'steam_inventory_failed');
+    }
+
+    pages.push(payload);
+    if (Number.isFinite(Number(payload.total_inventory_count))) {
+      totalInventoryCount = Number(payload.total_inventory_count);
+    }
+
+    more = Boolean(payload.more_items);
+    startAssetId = payload.last_assetid || null;
+    if (!startAssetId) more = false;
+  }
+
+  const first = pages[0] || {};
+  const hasAssets = pages.some((page) => Array.isArray(page.assets) && page.assets.length);
+  if (!hasAssets && totalInventoryCount == null && !Array.isArray(first.descriptions)) {
+    throw new SteamHttpError('Steam Web API returned an empty inventory payload.', 502, 'steam_inventory_failed');
+  }
+
+  return assembleInventory(pages, 'steam-webapi');
+}
+
+async function fetchInventoryViaCommunity(steamId) {
+  const pages = [];
   let startAssetId = null;
   let more = true;
 
@@ -167,26 +302,40 @@ async function fetchInventoryPages(steamId) {
     if (startAssetId) params.set('start_assetid', startAssetId);
 
     const url = `https://steamcommunity.com/inventory/${steamId}/${STEAM_APP_ID}/${STEAM_CONTEXT_ID}?${params}`;
-    const json = await fetchJson(url);
+    const json = await fetchJson(url, {
+      extraHeaders: {
+        Referer: `https://steamcommunity.com/profiles/${steamId}/inventory`,
+      },
+    });
 
     if (!json.success && json.success !== 1) {
       throw new SteamHttpError(json.Error || 'Steam inventory request failed.', 502, 'steam_inventory_failed');
     }
 
-    for (const asset of json.assets || []) allAssets.push(asset);
-    for (const description of json.descriptions || []) {
-      descriptionMap.set(`${description.classid}_${description.instanceid}`, description);
-    }
-
+    pages.push(json);
     more = Boolean(json.more_items);
     startAssetId = json.last_assetid || null;
     if (!startAssetId) more = false;
   }
 
+  return assembleInventory(pages, 'steam-public');
+}
+
+function assembleInventory(pages, inventoryProvider) {
+  const allAssets = [];
+  const descriptionMap = new Map();
+
+  for (const page of pages) {
+    for (const asset of page.assets || []) allAssets.push(asset);
+    for (const description of page.descriptions || []) {
+      descriptionMap.set(`${description.classid}_${description.instanceid}`, description);
+    }
+  }
+
   return {
     appId: STEAM_APP_ID,
     contextId: STEAM_CONTEXT_ID,
-    inventoryProvider: 'steam-public',
+    inventoryProvider,
     totalInventoryCount: allAssets.reduce((sum, asset) => sum + Number(asset.amount || 1), 0),
     assetEntriesCount: allAssets.length,
     syncedAt: new Date().toISOString(),

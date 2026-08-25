@@ -88,7 +88,7 @@ async function authenticateSteam(req) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
       body: verifyParams.toString(),
       signal: AbortSignal.timeout(15000),
