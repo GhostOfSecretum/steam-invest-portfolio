@@ -56,7 +56,7 @@ const I18N = {
     dash: {
       title: 'Portfolio',
       subtitle: 'Steam portfolio · SkinsHead',
-      total: 'Total value',
+      total: 'Market value',
       change24: '24h change',
       pnl: 'All-time P&L',
       basis: 'Cost basis',
@@ -165,7 +165,7 @@ const I18N = {
     dash: {
       title: 'Портфель',
       subtitle: 'Портфель Steam · SkinsHead',
-      total: 'Стоимость',
+      total: 'Рыночная стоимость',
       change24: 'Изменение 24ч',
       pnl: 'P&L за всё время',
       basis: 'Себестоимость',
@@ -271,7 +271,7 @@ const I18N = {
     dash: {
       title: '库存',
       subtitle: 'Steam 库存 · SkinsHead',
-      total: '总价值',
+      total: '市场价值',
       change24: '24h 变化',
       pnl: '累计盈亏',
       basis: '成本基础',
@@ -380,7 +380,7 @@ const I18N = {
     dash: {
       title: '庫存',
       subtitle: 'Steam 庫存 · SkinsHead',
-      total: '總價值',
+      total: '市場價值',
       change24: '24h 變化',
       pnl: '累計盈虧',
       basis: '成本基礎',

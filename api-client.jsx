@@ -611,8 +611,7 @@ function formatItemPrice(item, fallbackUsd, { digits = 2 } = {}) {
   return formatMoney(usdValue, { digits });
 }
 
-// Portfolio row / stack total: prefer native Steam RUB asks so the list matches the
-// item page and steamcommunity.com (USD × default FX 92 drifts by ~10–15%).
+// Portfolio row / stack total: mark-to-market in the active currency.
 function formatHoldingValue(item, { digits = 2, compact = false } = {}) {
   const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
   const currencyKey = getActiveCurrency();
@@ -623,6 +622,16 @@ function formatHoldingValue(item, { digits = 2, compact = false } = {}) {
     ? item.totalValue
     : (Number.isFinite(item?.value) ? item.value * qty : null);
   return formatMoney(usdTotal, { digits, compact });
+}
+
+function formatSteamSticker(item, { digits = 0, compact = true } = {}) {
+  const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
+  const currencyKey = getActiveCurrency();
+  if (currencyKey === 'rub' && Number.isFinite(item?.steamPriceRub)) {
+    return formatMoney(item.steamPriceRub * qty, { digits, compact, currency: 'rub' });
+  }
+  if (!Number.isFinite(item?.steamPrice)) return null;
+  return formatMoney(item.steamPrice * qty, { digits, compact });
 }
 
 function compactUsd(value, options = {}) {
@@ -790,6 +799,7 @@ Object.assign(window, {
   formatItemMoney,
   formatItemPrice,
   formatHoldingValue,
+  formatSteamSticker,
   compactUsd,
   getActiveCurrency,
   getRubPerUsdRate,

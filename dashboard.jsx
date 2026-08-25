@@ -1,4 +1,4 @@
-/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, getActiveCurrency, tt, localeFor */
+/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, formatSteamSticker, getActiveCurrency, tt, localeFor */
 const { useState, useRef, useMemo, useEffect, useCallback } = React;
 
 /* ───────────────────────────────────────────────────
@@ -611,12 +611,19 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   zh: `${data.pricedCount} / ${data.totalInventoryCount} 已估价`,
                   'zh-TW': `${data.pricedCount} / ${data.totalInventoryCount} 已估價`,
                 })}
-                sub={tt(lang, {
-                  en: `${data.uniqueInventoryCount} unique positions`,
-                  ru: `${data.uniqueInventoryCount} уникальных позиций`,
-                  zh: `${data.uniqueInventoryCount} 个独立持仓`,
-                  'zh-TW': `${data.uniqueInventoryCount} 個獨立持倉`,
-                })}
+                sub={Number.isFinite(data.totalSteamValue) && data.totalSteamValue > 0
+                  ? tt(lang, {
+                    en: `Steam ${compactUsd(data.totalSteamValue)}`,
+                    ru: `Steam ${compactUsd(data.totalSteamValue)}`,
+                    zh: `Steam ${compactUsd(data.totalSteamValue)}`,
+                    'zh-TW': `Steam ${compactUsd(data.totalSteamValue)}`,
+                  })
+                  : tt(lang, {
+                    en: `${data.uniqueInventoryCount} unique positions`,
+                    ru: `${data.uniqueInventoryCount} уникальных позиций`,
+                    zh: `${data.uniqueInventoryCount} 个独立持仓`,
+                    'zh-TW': `${data.uniqueInventoryCount} 個獨立持倉`,
+                  })}
               />
               <StatCard
                 label={t.dash.pnl}
@@ -1524,7 +1531,16 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
           column="basis"
           title={tt(lang, { en: 'Cost per unit. Change it from the Edit button.', ru: 'Себестоимость за 1 шт. Меняется через кнопку Изменить.', zh: '单件成本。通过“编辑”按钮修改。', 'zh-TW': '單件成本。透過「編輯」按鈕修改。' })}
         />
-        <SortHeader label={tt(lang, { en: 'Value', ru: 'Стоимость', zh: '价值', 'zh-TW': '價值' })} column="value" />
+        <SortHeader
+          label={tt(lang, { en: 'Value', ru: 'Стоимость', zh: '价值', 'zh-TW': '價值' })}
+          column="value"
+          title={tt(lang, {
+            en: 'Cash-market mark. Steam list price is shown underneath.',
+            ru: 'Оценка по сторонним маркетам. Ценник Steam — строкой ниже.',
+            zh: '第三方市场价格。Steam 标价显示在下方。',
+            'zh-TW': '第三方市場價格。Steam 標價顯示在下方。',
+          })}
+        />
         <SortHeader label={tt(lang, { en: 'P&L', ru: 'Доход', zh: '盈亏', 'zh-TW': '盈虧' })} column="pnl" />
         <div>{tt(lang, { en: 'Source', ru: 'Источник', zh: 'Source', 'zh-TW': 'Source' })}</div>
       </div>
@@ -1532,6 +1548,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         const change = (h.spark || [0, 0]).at(-1) - (h.spark || [0, 0]).at(-2);
         const isEditing = editingItemId === (h.manualItemId || h.marketHashName);
         const basisEditable = (portfolioType === 'manual' && h.manualItemId) || isSteamPortfolio;
+        const steamSticker = formatSteamSticker(h);
         const lockLabel = h.tradableQty === h.qty
           ? null
           : h.tradableQty > 0
@@ -1617,7 +1634,10 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
                 onEdit={(event) => startManualEdit(h, event)}
               />
             )}
-            <div className="mono" style={{ fontSize: 13, fontWeight: 500 }}>{formatHoldingValue(h)}</div>
+            <div className="inv-value-cell">
+              <div className="mono inv-value-mark">{formatHoldingValue(h)}</div>
+              {steamSticker && <div className="inv-value-steam">Steam {steamSticker}</div>}
+            </div>
             <div className="mono" style={{ fontSize: 12, color: h.pnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
               {Number.isFinite(h.pnlPct) ? `${h.pnlPct >= 0 ? '+' : ''}${h.pnlPct.toFixed(1)}%` : 'N/A'}
             </div>
@@ -1797,8 +1817,8 @@ function errorMessage(error, lang) {
 
 function downloadPortfolioCsv(items) {
   const rows = [
-    ['assetid', 'market_hash_name', 'qty', 'basis_total_usd', 'value_total_usd', 'pnl_total_usd', 'pnl_pct', 'provider'],
-    ...items.map((item) => [item.assetid, item.marketHashName, item.qty, item.totalBasis ?? item.basis, item.totalValue ?? item.value, item.pnl, item.pnlPct, item.priceProvider]),
+    ['assetid', 'market_hash_name', 'qty', 'basis_total_usd', 'value_total_usd', 'steam_total_usd', 'pnl_total_usd', 'pnl_pct', 'provider'],
+    ...items.map((item) => [item.assetid, item.marketHashName, item.qty, item.totalBasis ?? item.basis, item.totalValue ?? item.value, Number.isFinite(item.steamPrice) ? item.steamPrice * (item.qty || 1) : '', item.pnl, item.pnlPct, item.priceProvider]),
   ];
   const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });

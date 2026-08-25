@@ -52,6 +52,12 @@ const SKINPORT_CURRENCY_CODES = {
 };
 
 const BULK_PRICELIST_MAX_AGE_MS = 10 * 60 * 1000;
+// Third-party asks more expensive than Steam are usually poisoned listings.
+// Asks far below Steam are usually a name mismatch, not a real cash market.
+const MARK_HIGH_VS_STEAM = 1.75;
+const MARK_LOW_VS_STEAM = 0.25;
+const MARK_PACK_HIGH = 1.6;
+const MARK_PACK_LOW = 0.45;
 const CSMARKET_ITEMS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const CSMARKET_LISTING_MAX_AGE_MS = 10 * 60 * 1000;
 const CSMARKET_CATALOG_PRICE_HYDRATE_CAP = 500;
@@ -317,6 +323,120 @@ async function getPrices(marketHashNames, limit = 24, options = {}) {
     }
   }
 
+  return result;
+}
+
+function medianAsk(values) {
+  const sorted = (Array.isArray(values) ? values : [])
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return Math.round(median * 100) / 100;
+}
+
+function selectMarketMark(quotes, steamAsk) {
+  const raw = (Array.isArray(quotes) ? quotes : [])
+    .map((entry) => ({
+      provider: entry?.provider,
+      price: Number(entry?.price),
+    }))
+    .filter((entry) => entry.provider && Number.isFinite(entry.price) && entry.price > 0);
+
+  let usable = raw.filter((entry) => {
+    if (!Number.isFinite(steamAsk) || steamAsk <= 0) return true;
+    if (entry.price > steamAsk * MARK_HIGH_VS_STEAM) return false;
+    if (entry.price < steamAsk * MARK_LOW_VS_STEAM) return false;
+    return true;
+  });
+
+  if (usable.length >= 2) {
+    const packMedian = medianAsk(usable.map((entry) => entry.price));
+    if (Number.isFinite(packMedian)) {
+      const tightened = usable.filter((entry) => (
+        entry.price <= packMedian * MARK_PACK_HIGH
+        && entry.price >= packMedian * MARK_PACK_LOW
+      ));
+      if (tightened.length) usable = tightened;
+    }
+  }
+
+  return {
+    mark: medianAsk(usable.map((entry) => entry.price)),
+    sources: usable.map((entry) => entry.provider),
+  };
+}
+
+async function getThirdPartyPriceLists() {
+  const [skinport, csgomarket, lisskins] = await Promise.all([
+    getSkinportPriceList().catch(() => ({})),
+    getMarketCsgoPriceList().catch(() => ({})),
+    getLisSkinsPriceList().catch(() => ({})),
+  ]);
+  return {
+    skinport: skinport && typeof skinport === 'object' ? skinport : {},
+    csgomarket: csgomarket && typeof csgomarket === 'object' ? csgomarket : {},
+    lisskins: lisskins && typeof lisskins === 'object' ? lisskins : {},
+  };
+}
+
+// Portfolio mark-to-market: median of lowest asks on liquid cash markets.
+// Steam stays on the quote as a sticker / fallback, and is never written back
+// into the Steam price cache.
+async function getPortfolioPrices(marketHashNames, options = {}) {
+  const names = [...new Set((marketHashNames || []).filter(Boolean))];
+  if (!names.length) return {};
+  const [steamPrices, lists] = await Promise.all([
+    getPrices(names, Number.MAX_SAFE_INTEGER, options),
+    getThirdPartyPriceLists(),
+  ]);
+
+  const result = {};
+  for (const name of names) {
+    const steam = steamPrices[name] || {
+      marketHashName: name,
+      price: null,
+      medianPrice: null,
+      volume24h: null,
+      provider: 'unpriced',
+    };
+    const steamAsk = Number.isFinite(steam.price) ? steam.price
+      : (Number.isFinite(steam.medianPrice) ? steam.medianPrice : null);
+    const steamPriceRub = Number.isFinite(steam.priceRub) ? steam.priceRub
+      : (Number.isFinite(steam.medianPriceRub) ? steam.medianPriceRub : null);
+    const selected = selectMarketMark([
+      { provider: 'skinport', price: lists.skinport[name]?.price },
+      { provider: 'csgomarket', price: lists.csgomarket[name]?.price },
+      { provider: 'lisskins', price: lists.lisskins[name]?.price },
+    ], steamAsk);
+    const usedSteamFallback = !Number.isFinite(selected.mark) && Number.isFinite(steamAsk);
+    const value = Number.isFinite(selected.mark) ? selected.mark : steamAsk;
+    const merged = {
+      ...steam,
+      marketHashName: name,
+      price: Number.isFinite(value) ? value : null,
+      medianPrice: Number.isFinite(selected.mark) ? selected.mark : (steam.medianPrice ?? value ?? null),
+      provider: usedSteamFallback
+        ? (steam.provider || 'steam-market')
+        : (Number.isFinite(value) ? 'market-mark' : 'unpriced'),
+      markSources: selected.sources,
+      steamPrice: Number.isFinite(steamAsk) ? steamAsk : null,
+      steamPriceRub: Number.isFinite(steamPriceRub) ? steamPriceRub : null,
+      updatedAt: steam.updatedAt || new Date().toISOString(),
+    };
+
+    if (Number.isFinite(selected.mark)) {
+      delete merged.priceRub;
+      delete merged.medianPriceRub;
+      await attachRubPrice(merged, name, {
+        skipNativeRub: true,
+        rubRate: options.rubRate,
+      });
+    }
+
+    result[name] = merged;
+  }
   return result;
 }
 
@@ -2019,7 +2139,7 @@ async function getMarketCsgoPriceList() {
   const cached = await getCached(key, BULK_PRICELIST_MAX_AGE_MS);
   if (cached) return cached;
 
-  const json = await fetchJson('https://market.csgo.com/api/v2/prices/USD.json', { timeoutMs: 12000 }).catch(() => null);
+  const json = await fetchJson('https://market.csgo.com/api/v2/prices/USD.json', { timeoutMs: 25000 }).catch(() => null);
   const rows = Array.isArray(json?.items) ? json.items : [];
   const map = {};
   for (const row of rows) {
@@ -2040,7 +2160,7 @@ async function getSkinportPriceList() {
   if (cached) return cached;
 
   const json = await fetchJson('https://api.skinport.com/v1/items?app_id=730&currency=USD', {
-    timeoutMs: 12000,
+    timeoutMs: 25000,
     headers: { 'Accept-Encoding': 'br' },
   }).catch(() => null);
   const rows = Array.isArray(json) ? json : [];
@@ -2060,7 +2180,7 @@ async function getLisSkinsPriceList() {
   const cached = await getCached(key, BULK_PRICELIST_MAX_AGE_MS);
   if (cached) return cached;
 
-  const rows = await fetchJson('https://lis-skins.com/market_export_json/csgo.json', { timeoutMs: 15000 }).catch(() => null);
+  const rows = await fetchJson('https://lis-skins.com/market_export_json/csgo.json', { timeoutMs: 25000 }).catch(() => null);
   const list = Array.isArray(rows) ? rows : [];
   const map = {};
   for (const row of list) {
@@ -2282,6 +2402,7 @@ function resolveSteamCurrency(value) {
 module.exports = {
   getPrice,
   getPrices,
+  getPortfolioPrices,
   getPriceHistory,
   getTickerItems,
   getTopMovers,

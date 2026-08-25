@@ -2,7 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const { getSteamInventory, getSteamProfile } = require('./steam');
-const { getPrices, getPriceHistory, getSteamCurrencyRatio, getSteamRubRate, getSteamCnyRate, getSteamMarketIcon, rarityToTier } = require('./prices');
+const { getPortfolioPrices, getPriceHistory, getSteamCurrencyRatio, getSteamRubRate, getSteamCnyRate, getSteamMarketIcon, rarityToTier } = require('./prices');
 const { getDesktopInventory } = require('./desktop');
 const { attachCollections } = require('./collections');
 const {
@@ -122,7 +122,7 @@ async function getPortfolio(steamId, options = {}) {
   // live USD fetches so warm-cache portfolios stay under proxy timeouts.
   const steamRubRate = await getSteamRubRate().catch(() => null);
   const steamCnyRate = await getSteamCnyRate().catch(() => null);
-  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
+  const prices = await getPortfolioPrices(marketHashNames, {
     concurrency: 6,
     batchDelayMs: 120,
     skipNativeRub: true,
@@ -134,6 +134,7 @@ async function getPortfolio(steamId, options = {}) {
 
   const pricedItems = items.filter((item) => item.value != null);
   const totalValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
+  const totalSteamValue = sumSteamValue(items);
   const totalBasis = items.reduce((sum, item) => sum + item.basis * item.qty, 0);
   // P&L must ignore cost of still-unpriced rows, otherwise Steam 429s fake a deep loss.
   // Sum per-position P&L so RUB-entered bases aren't distorted by historical USD FX.
@@ -167,6 +168,8 @@ async function getPortfolio(steamId, options = {}) {
     uniqueInventoryCount: items.length,
     pricedCount,
     totalValue,
+    totalSteamValue,
+    valuation: 'market',
     totalBasis,
     pnl,
     pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
@@ -711,7 +714,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   // live USD fetches so warm-cache portfolios stay under proxy timeouts.
   const steamRubRate = await getSteamRubRate().catch(() => null);
   const steamCnyRate = await getSteamCnyRate().catch(() => null);
-  const prices = await getPrices(marketHashNames, Number.MAX_SAFE_INTEGER, {
+  const prices = await getPortfolioPrices(marketHashNames, {
     concurrency: 6,
     batchDelayMs: 120,
     skipNativeRub: true,
@@ -725,6 +728,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   const pricedItems = items.filter((item) => item.value != null);
   const totalInventoryCount = items.reduce((sum, item) => sum + item.qty, 0);
   const totalValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
+  const totalSteamValue = sumSteamValue(items);
   const totalBasis = items.reduce((sum, item) => sum + item.basis * item.qty, 0);
   // P&L must ignore cost of still-unpriced rows, otherwise Steam 429s fake a deep loss.
   // Sum per-position P&L so RUB-entered bases aren't distorted by historical USD FX.
@@ -761,6 +765,8 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     uniqueInventoryCount: items.length,
     pricedCount,
     totalValue,
+    totalSteamValue,
+    valuation: 'market',
     totalBasis,
     pnl,
     pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
@@ -805,6 +811,8 @@ function buildEmptyManualPortfolio(bucket, steamId = null, ownerId = null) {
     uniqueInventoryCount: 0,
     pricedCount: 0,
     totalValue: 0,
+    totalSteamValue: 0,
+    valuation: 'market',
     totalBasis: 0,
     pnl: 0,
     pnlPct: 0,
@@ -887,6 +895,9 @@ function enrichItem(item, price, basis) {
     volume24h: price?.volume24h || null,
     medianPrice: price?.medianPrice || null,
     priceProvider: price?.provider || 'unpriced',
+    markSources: Array.isArray(price?.markSources) ? price.markSources : [],
+    steamPrice: Number.isFinite(price?.steamPrice) ? price.steamPrice : null,
+    steamPriceRub: Number.isFinite(price?.steamPriceRub) ? price.steamPriceRub : null,
     priceRub,
     medianPriceRub: price?.medianPriceRub ?? null,
     tier: rarityToTier(item.rarity),
@@ -934,6 +945,9 @@ function enrichManualItem(item, price, resolvedIconUrl = null) {
     volume24h: price?.volume24h || null,
     medianPrice: price?.medianPrice || null,
     priceProvider: price?.provider || 'unpriced',
+    markSources: Array.isArray(price?.markSources) ? price.markSources : [],
+    steamPrice: Number.isFinite(price?.steamPrice) ? price.steamPrice : null,
+    steamPriceRub: Number.isFinite(price?.steamPriceRub) ? price.steamPriceRub : null,
     priceRub,
     medianPriceRub: price?.medianPriceRub,
     tier,
@@ -1059,6 +1073,9 @@ function aggregatePortfolioItems(items) {
     current.medianPriceRub = current.medianPriceRub ?? item.medianPriceRub;
     current.volume24h = current.volume24h ?? item.volume24h;
     current.medianPrice = current.medianPrice ?? item.medianPrice;
+    current.steamPrice = current.steamPrice ?? item.steamPrice;
+    current.steamPriceRub = current.steamPriceRub ?? item.steamPriceRub;
+    current.markSources = current.markSources?.length ? current.markSources : item.markSources;
     current.priceProvider = current.priceProvider === 'unpriced' ? item.priceProvider : current.priceProvider;
   }
 
@@ -1609,6 +1626,14 @@ function scoreLiquidity(items) {
   if (!items.length) return 0;
   const averageVolume = items.reduce((sum, item) => sum + (item.volume24h || 0), 0) / items.length;
   return Math.max(0, Math.min(100, Math.round(averageVolume / 10)));
+}
+
+function sumSteamValue(items) {
+  return (Array.isArray(items) ? items : []).reduce((sum, item) => {
+    if (!Number.isFinite(item?.steamPrice) || item.steamPrice <= 0) return sum;
+    const qty = Number.isFinite(item.qty) && item.qty > 0 ? item.qty : 1;
+    return sum + item.steamPrice * qty;
+  }, 0);
 }
 
 async function buildPortfolioHistoryAndLeaders(items, totalValue) {
