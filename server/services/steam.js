@@ -297,10 +297,19 @@ async function fetchInventoryViaCommunity(steamId) {
     try {
       return await fetchInventoryPagesFrom(steamId, loadCommunityInventoryPage);
     } catch (error) {
-      if (error?.code !== 'rate_limited') throw error;
+      if (!shouldFallbackToProxy(error)) throw error;
+      console.warn('[steam] community inventory failed, using proxy:', error.code || error.message);
     }
   }
   return fetchInventoryPagesFrom(steamId, loadProxiedInventoryPage);
+}
+
+function shouldFallbackToProxy(error) {
+  return error?.code === 'rate_limited'
+    || error?.code === 'private_inventory'
+    || error?.code === 'steam_http_error'
+    || error?.status === 403
+    || error?.status === 429;
 }
 
 async function fetchInventoryPagesFrom(steamId, loadPage) {
