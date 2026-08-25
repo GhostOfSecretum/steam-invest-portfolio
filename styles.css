@@ -5777,15 +5777,21 @@ button:disabled,
   padding-right: 4px;
   position: sticky;
   top: 24px;
+  isolation: isolate;
+}
+.top-investors-account.glass {
+  overflow: hidden;
+  background: var(--bg-2);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .top-investors-account.is-selected {
   border-color: var(--accent);
 }
-.top-investors-account .btn-primary {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
-}
+.top-investors-account .btn-primary,
 .top-investors-account .btn-primary:hover {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+  box-shadow: none;
 }
 .top-investors-personal,
 .top-investors-feed {
