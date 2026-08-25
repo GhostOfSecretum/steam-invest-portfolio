@@ -5,6 +5,9 @@ const STEAM_OPENID = {
   identifierSelect: 'http://specs.openid.net/auth/2.0/identifier_select',
 };
 
+const VERIFY_RETRIES = 3;
+const VERIFY_RETRY_DELAY_MS = 700;
+
 function resolveBaseUrl(req) {
   const configured = String(process.env.APP_BASE_URL || '').trim().replace(/\/+$/, '');
   if (configured) return configured;
@@ -31,6 +34,51 @@ function authError(message, status, code) {
   err.status = status;
   err.code = code;
   return err;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Steam throttles the whole server IP with 403/429 on steamcommunity.com. A rejected login
+// answers 200 with is_valid:false, so these statuses never mean the claim itself is bad.
+function isTransientVerifyStatus(status) {
+  return status === 403 || status === 429 || status >= 500;
+}
+
+async function postOpenIdVerification(body) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < VERIFY_RETRIES; attempt += 1) {
+    if (attempt > 0) await sleep(VERIFY_RETRY_DELAY_MS * attempt);
+
+    let response;
+    try {
+      response = await fetch(STEAM_OPENID.opEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        body,
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch (error) {
+      lastError = authError(
+        (error && error.message) || 'Steam OpenID verification failed.',
+        502,
+        'steam_openid_verify_failed',
+      );
+      continue;
+    }
+
+    if (response.ok) return response.text();
+
+    lastError = authError(`Steam returned HTTP ${response.status}.`, 502, 'steam_openid_verify_failed');
+    if (!isTransientVerifyStatus(response.status)) break;
+  }
+
+  throw lastError;
 }
 
 function getOpenIdParams(req) {
@@ -82,29 +130,7 @@ async function authenticateSteam(req) {
   const verifyParams = new URLSearchParams(searchParams);
   verifyParams.set('openid.mode', 'check_authentication');
 
-  let body;
-  try {
-    const response = await fetch(STEAM_OPENID.opEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-      body: verifyParams.toString(),
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) {
-      throw authError(`Steam returned HTTP ${response.status}.`, 502, 'steam_openid_verify_failed');
-    }
-    body = await response.text();
-  } catch (error) {
-    if (error && error.code === 'steam_openid_verify_failed') throw error;
-    throw authError(
-      (error && error.message) || 'Steam OpenID verification failed.',
-      502,
-      'steam_openid_verify_failed',
-    );
-  }
+  const body = await postOpenIdVerification(verifyParams.toString());
 
   if (!/(^|\n)is_valid\s*:\s*true(\r?\n|$)/.test(body)) {
     throw authError('Failed to authenticate user.', 401, 'steam_openid_not_authenticated');
