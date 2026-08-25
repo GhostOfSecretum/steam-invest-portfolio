@@ -103,11 +103,12 @@ async function pumpCommunity() {
   }
 }
 
-async function waitForCommunitySlot(maxWaitMs) {
-  const wait = communityCooldownUntil - Date.now();
-  if (wait <= 0) return;
-  if (wait > maxWaitMs) throw steamErrorFromStatus(429);
-  await sleep(wait);
+function isSteamCommunityHost(url) {
+  try {
+    return /(^|\.)steamcommunity\.com$/i.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
 }
 
 async function fetchSteam(url, { accept = 'application/json', extraHeaders = {}, retries = FETCH_RETRIES } = {}) {
@@ -140,7 +141,7 @@ async function fetchSteam(url, { accept = 'application/json', extraHeaders = {},
     }
 
     lastError = steamErrorFromStatus(response.status);
-    if (response.status === 429 && /steamcommunity\.com/i.test(url)) {
+    if (response.status === 429 && isSteamCommunityHost(url)) {
       markCommunityRateLimited(Number(response.headers.get('retry-after')));
       throw lastError;
     }
@@ -275,7 +276,7 @@ async function getSteamInventory(steamId, { force = false, allowCommunity = true
 
     try {
       const value = await enqueueCommunity(
-        () => fetchInventoryViaCommunity(steamId, { skipCooldown: priority === 0 }),
+        () => fetchInventoryViaCommunity(steamId),
         { priority },
       );
       await setCached(key, value);
@@ -291,27 +292,27 @@ async function getSteamInventory(steamId, { force = false, allowCommunity = true
   });
 }
 
-async function fetchInventoryViaCommunity(steamId, { skipCooldown = false } = {}) {
-  if (!skipCooldown) await waitForCommunitySlot(0);
+async function fetchInventoryViaCommunity(steamId) {
+  if (!isSteamCommunityCoolingDown()) {
+    try {
+      return await fetchInventoryPagesFrom(steamId, loadCommunityInventoryPage);
+    } catch (error) {
+      if (error?.code !== 'rate_limited') throw error;
+    }
+  }
+  return fetchInventoryPagesFrom(steamId, loadProxiedInventoryPage);
+}
+
+async function fetchInventoryPagesFrom(steamId, loadPage) {
   const pages = [];
   let startAssetId = null;
   let more = true;
 
   while (more) {
-    const params = new URLSearchParams({ l: 'english', count: '2500' });
-    if (startAssetId) params.set('start_assetid', startAssetId);
-
-    const url = `https://steamcommunity.com/inventory/${steamId}/${STEAM_APP_ID}/${STEAM_CONTEXT_ID}?${params}`;
-    const json = await fetchJson(url, {
-      extraHeaders: {
-        Referer: `https://steamcommunity.com/profiles/${steamId}/inventory`,
-      },
-    });
-
+    const json = await loadPage(steamId, startAssetId);
     if (!json.success && json.success !== 1) {
       throw new SteamHttpError(json.Error || 'Steam inventory request failed.', 502, 'steam_inventory_failed');
     }
-
     pages.push(json);
     more = Boolean(json.more_items);
     startAssetId = json.last_assetid || null;
@@ -319,6 +320,35 @@ async function fetchInventoryViaCommunity(steamId, { skipCooldown = false } = {}
   }
 
   return assembleInventory(pages, 'steam-public');
+}
+
+function inventoryPageUrl(steamId, startAssetId) {
+  const params = new URLSearchParams({ l: 'english', count: '2000' });
+  if (startAssetId) params.set('start_assetid', startAssetId);
+  return `https://steamcommunity.com/inventory/${steamId}/${STEAM_APP_ID}/${STEAM_CONTEXT_ID}?${params}`;
+}
+
+async function loadCommunityInventoryPage(steamId, startAssetId) {
+  return fetchJson(inventoryPageUrl(steamId, startAssetId), {
+    extraHeaders: {
+      Referer: `https://steamcommunity.com/profiles/${steamId}/inventory`,
+    },
+  });
+}
+
+function parseEmbeddedJson(text) {
+  const raw = String(text || '');
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start < 0 || end <= start) {
+    throw new SteamHttpError('Steam inventory proxy returned a non-JSON response.', 502, 'steam_http_error');
+  }
+  return JSON.parse(raw.slice(start, end + 1));
+}
+
+async function loadProxiedInventoryPage(steamId, startAssetId) {
+  const text = await fetchText(`https://r.jina.ai/${inventoryPageUrl(steamId, startAssetId)}`);
+  return parseEmbeddedJson(text);
 }
 
 function ingestSteamInventoryPages(steamId, rawPages) {
