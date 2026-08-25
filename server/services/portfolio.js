@@ -86,7 +86,7 @@ async function getPortfolio(steamId, options = {}) {
   ]);
 
   const useDesktop = desktopInventory && Array.isArray(desktopInventory.items) && desktopInventory.items.length > 0;
-  const steamInventory = useDesktop ? null : await getSteamInventory(steamId, options);
+  const steamInventory = useDesktop ? null : await getSteamInventory(steamId, { ...options, priority: 0 });
   const storageItemCount = useDesktop ? Number(desktopInventory.storageItemCount || 0) : 0;
   const inventory = useDesktop
     ? {

@@ -8,7 +8,9 @@ const INVENTORY_STALE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const PROFILE_MAX_AGE_MS = 30 * 60 * 1000;
 const PROFILE_STALE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const FETCH_RETRIES = 3;
-const COMMUNITY_GAP_MS = 1200;
+const COMMUNITY_GAP_MS = 1500;
+const COMMUNITY_COOLDOWN_MS = 2 * 60 * 1000;
+const COMMUNITY_USER_WAIT_MS = 8000;
 const STEAM_HEADERS = {
   Accept: 'application/json,text/javascript,*/*',
   'Accept-Language': 'en-US,en;q=0.9',
@@ -16,7 +18,9 @@ const STEAM_HEADERS = {
 };
 
 const inflight = new Map();
-let communityQueue = Promise.resolve();
+const communityWaiters = [];
+let communityBusy = false;
+let communityCooldownUntil = 0;
 
 class SteamHttpError extends Error {
   constructor(message, status, code) {
@@ -50,7 +54,18 @@ function sleep(ms) {
 }
 
 function isRetryableStatus(status) {
-  return status === 429 || status === 500 || status === 502 || status === 503;
+  return status === 500 || status === 502 || status === 503;
+}
+
+function isSteamCommunityCoolingDown() {
+  return Date.now() < communityCooldownUntil;
+}
+
+function markCommunityRateLimited(retryAfterSec) {
+  const retryMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0 ? retryAfterSec * 1000 : COMMUNITY_COOLDOWN_MS;
+  const waitMs = Math.max(COMMUNITY_COOLDOWN_MS, Math.min(10 * 60 * 1000, retryMs));
+  communityCooldownUntil = Math.max(communityCooldownUntil, Date.now() + waitMs);
+  console.warn(`[steam] community cooldown ${Math.round(waitMs / 1000)}s`);
 }
 
 function steamErrorFromStatus(status) {
@@ -65,10 +80,35 @@ function dedupe(key, loader) {
   return pending;
 }
 
-function enqueueCommunity(loader) {
-  const run = communityQueue.then(loader, loader);
-  communityQueue = run.then(() => sleep(COMMUNITY_GAP_MS), () => sleep(COMMUNITY_GAP_MS));
-  return run;
+function enqueueCommunity(loader, { priority = 1 } = {}) {
+  return new Promise((resolve, reject) => {
+    communityWaiters.push({ priority, loader, resolve, reject });
+    communityWaiters.sort((a, b) => a.priority - b.priority);
+    pumpCommunity();
+  });
+}
+
+async function pumpCommunity() {
+  if (communityBusy) return;
+  const next = communityWaiters.shift();
+  if (!next) return;
+  communityBusy = true;
+  try {
+    next.resolve(await next.loader());
+  } catch (error) {
+    next.reject(error);
+  } finally {
+    await sleep(COMMUNITY_GAP_MS);
+    communityBusy = false;
+    pumpCommunity();
+  }
+}
+
+async function waitForCommunitySlot(maxWaitMs) {
+  const wait = communityCooldownUntil - Date.now();
+  if (wait <= 0) return;
+  if (wait > maxWaitMs) throw steamErrorFromStatus(429);
+  await sleep(wait);
 }
 
 async function fetchSteam(url, { accept = 'application/json', extraHeaders = {}, retries = FETCH_RETRIES } = {}) {
@@ -101,6 +141,10 @@ async function fetchSteam(url, { accept = 'application/json', extraHeaders = {},
     }
 
     lastError = steamErrorFromStatus(response.status);
+    if (response.status === 429 && /steamcommunity\.com/i.test(url)) {
+      markCommunityRateLimited(Number(response.headers.get('retry-after')));
+      throw lastError;
+    }
     if (!isRetryableStatus(response.status) || attempt === retries - 1) throw lastError;
 
     const retryAfter = Number(response.headers.get('retry-after'));
@@ -211,18 +255,27 @@ async function getSteamProfile(steamId) {
   });
 }
 
-async function getSteamInventory(steamId, { force = false } = {}) {
+async function getSteamInventory(steamId, { force = false, allowCommunity = true, priority = 1 } = {}) {
   requireSteamId(steamId);
   const key = `steam:inventory:${steamId}`;
 
-  return dedupe(`${key}:${force ? 'force' : 'get'}`, async () => {
+  return dedupe(`${key}:${force ? 'force' : 'get'}:${allowCommunity ? 'live' : 'cache'}`, async () => {
     if (!force) {
       const cached = await getCached(key, INVENTORY_MAX_AGE_MS);
       if (cached) return { ...cached, cached: true };
     }
 
+    if (!allowCommunity) {
+      const stale = await getCachedEntry(key);
+      const ageMs = stale ? Date.now() - stale.updatedAt : Infinity;
+      if (stale?.value && ageMs <= INVENTORY_STALE_MAX_AGE_MS) {
+        return { ...stale.value, cached: true, stale: true };
+      }
+      throw new SteamHttpError('Steam inventory is not cached.', 503, 'inventory_unavailable');
+    }
+
     try {
-      const value = await fetchInventoryPages(steamId);
+      const value = await enqueueCommunity(() => fetchInventoryViaCommunity(steamId), { priority });
       await setCached(key, value);
       return { ...value, cached: false };
     } catch (error) {
@@ -236,63 +289,8 @@ async function getSteamInventory(steamId, { force = false } = {}) {
   });
 }
 
-async function fetchInventoryPages(steamId) {
-  if (process.env.STEAM_API_KEY) {
-    try {
-      return await fetchInventoryViaWebApi(steamId);
-    } catch (error) {
-      if (error?.code === 'private_inventory' || error?.code === 'invalid_steamid') throw error;
-      console.warn('[steam] webapi inventory failed, falling back to community:', error.message || error);
-    }
-  }
-
-  return enqueueCommunity(() => fetchInventoryViaCommunity(steamId));
-}
-
-async function fetchInventoryViaWebApi(steamId) {
-  const pages = [];
-  let startAssetId = null;
-  let more = true;
-  let totalInventoryCount = null;
-
-  while (more) {
-    const params = new URLSearchParams({
-      key: process.env.STEAM_API_KEY,
-      steamid: steamId,
-      appid: String(STEAM_APP_ID),
-      contextid: String(STEAM_CONTEXT_ID),
-      language: 'english',
-      get_descriptions: '1',
-      count: '2500',
-    });
-    if (startAssetId) params.set('start_assetid', startAssetId);
-
-    const json = await fetchJson(`https://api.steampowered.com/IEconService/GetInventoryItemsWithDescriptions/v1/?${params}`);
-    const payload = json.response || {};
-    if (payload.success === false) {
-      throw new SteamHttpError(payload.error || 'Steam inventory request failed.', 502, 'steam_inventory_failed');
-    }
-
-    pages.push(payload);
-    if (Number.isFinite(Number(payload.total_inventory_count))) {
-      totalInventoryCount = Number(payload.total_inventory_count);
-    }
-
-    more = Boolean(payload.more_items);
-    startAssetId = payload.last_assetid || null;
-    if (!startAssetId) more = false;
-  }
-
-  const first = pages[0] || {};
-  const hasAssets = pages.some((page) => Array.isArray(page.assets) && page.assets.length);
-  if (!hasAssets && totalInventoryCount == null && !Array.isArray(first.descriptions)) {
-    throw new SteamHttpError('Steam Web API returned an empty inventory payload.', 502, 'steam_inventory_failed');
-  }
-
-  return assembleInventory(pages, 'steam-webapi');
-}
-
 async function fetchInventoryViaCommunity(steamId) {
+  await waitForCommunitySlot(COMMUNITY_USER_WAIT_MS);
   const pages = [];
   let startAssetId = null;
   let more = true;
@@ -389,4 +387,5 @@ module.exports = {
   resolveSteamProfileInput,
   getSteamProfile,
   getSteamInventory,
+  isSteamCommunityCoolingDown,
 };

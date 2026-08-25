@@ -1,6 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
-const { resolveSteamProfileInput, getSteamProfile, getSteamInventory } = require('./steam');
+const { resolveSteamProfileInput, getSteamProfile, getSteamInventory, isSteamCommunityCoolingDown } = require('./steam');
 const {
   getInventoryActivityForSteamId,
   listInventoryActivityForSteamIds,
@@ -11,9 +11,8 @@ const {
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const TOP_INVESTORS_FILE = path.join(DATA_DIR, 'top-investors.json');
 const FEED_LIMIT = 100;
-const POLL_BOOT_DELAY_MS = Number(process.env.TOP_INVESTORS_POLL_BOOT_MS || 15000);
-const POLL_ACCOUNT_DELAY_MS = Number(process.env.TOP_INVESTORS_SYNC_DELAY_MS || 4000);
-const POLL_CYCLE_REST_MS = Number(process.env.TOP_INVESTORS_CYCLE_REST_MS || 60000);
+const POLL_BOOT_DELAY_MS = Number(process.env.TOP_INVESTORS_POLL_BOOT_MS || 5 * 60 * 1000);
+const POLL_CYCLE_REST_MS = Number(process.env.TOP_INVESTORS_CYCLE_REST_MS || 3 * 60 * 1000);
 const POLL_MIN_SYNC_AGE_MS = Number(process.env.TOP_INVESTORS_MIN_SYNC_AGE_MS || 10 * 60 * 1000);
 
 let pollerStarted = false;
@@ -97,10 +96,6 @@ async function listTopInvestorsActivityFeed({ limit = FEED_LIMIT } = {}) {
   };
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function isSteamRateLimited(error) {
   return /HTTP 429|rate limit|Too Many Requests|rate_limited/i.test(String(error?.message || error || ''));
 }
@@ -110,7 +105,7 @@ function newestFirst(events) {
 }
 
 async function syncTopInvestorInventory(account) {
-  const inventory = await getSteamInventory(account.steamId, { force: true });
+  const inventory = await getSteamInventory(account.steamId, { force: true, priority: 5 });
   const items = Array.isArray(inventory.items) ? inventory.items : [];
   const syncedAt = inventory.syncedAt || new Date().toISOString();
   const events = await syncInventoryDiffActivity(account.steamId, items, {
@@ -159,11 +154,15 @@ async function getTopInvestorActivity(steamId, { sync = false } = {}) {
 }
 
 async function runTopInvestorsActivityCycle() {
+  if (isSteamCommunityCoolingDown()) {
+    console.log('[top-investors] skip cycle: steam community cooling down');
+    return;
+  }
+
   const listed = await listTopInvestors();
   const accounts = listed.accounts || [];
-  let synced = 0;
   let skipped = 0;
-  let failed = 0;
+  let due = null;
 
   for (const account of accounts) {
     try {
@@ -173,19 +172,26 @@ async function runTopInvestorsActivityCycle() {
         skipped += 1;
         continue;
       }
-      await syncTopInvestorInventory(account);
-      synced += 1;
-      await sleep(POLL_ACCOUNT_DELAY_MS);
+      due = account;
+      break;
     } catch (error) {
-      failed += 1;
-      console.warn(`[top-investors] auto-sync ${account.personaname || account.steamId} failed:`, error.message || error);
-      if (isSteamRateLimited(error)) await sleep(45000);
-      else await sleep(POLL_ACCOUNT_DELAY_MS);
+      console.warn(`[top-investors] read ${account.personaname || account.steamId} failed:`, error.message || error);
     }
   }
 
-  if (synced || failed) {
-    console.log(`[top-investors] auto-sync cycle synced=${synced} skipped=${skipped} failed=${failed}`);
+  if (!due) {
+    if (skipped) console.log(`[top-investors] auto-sync cycle synced=0 skipped=${skipped} failed=0`);
+    return;
+  }
+
+  try {
+    await syncTopInvestorInventory(due);
+    console.log(`[top-investors] auto-sync cycle synced=1 skipped=${skipped} failed=0`);
+  } catch (error) {
+    console.warn(`[top-investors] auto-sync ${due.personaname || due.steamId} failed:`, error.message || error);
+    if (isSteamRateLimited(error) || isSteamCommunityCoolingDown()) {
+      console.warn('[top-investors] aborting cycle after Steam rate limit');
+    }
   }
 }
 
