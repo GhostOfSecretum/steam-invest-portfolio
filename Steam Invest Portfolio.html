@@ -289,6 +289,38 @@
       return { screen: 'home' };
     }
 
+    function takeAuthErrorFromUrl() {
+      const code = String(new URLSearchParams(window.location.search).get('auth_error') || '').trim();
+      if (!code) return null;
+      window.history.replaceState({}, '', window.location.pathname);
+      return code;
+    }
+
+    function authErrorMessage(lang, code) {
+      if (code === 'steam_openid_verify_failed') {
+        return tt(lang, {
+          en: 'Steam did not answer the login check. Please try again in a moment.',
+          ru: 'Steam не ответил на проверку входа. Попробуйте ещё раз через минуту.',
+          zh: 'Steam 未响应登录验证。请稍后再试。',
+          'zh-TW': 'Steam 未回應登入驗證。請稍後再試。',
+        });
+      }
+      if (code === 'steam_openid_not_authenticated') {
+        return tt(lang, {
+          en: 'Steam did not confirm the login. Please sign in again.',
+          ru: 'Steam не подтвердил вход. Войдите ещё раз.',
+          zh: 'Steam 未确认登录。请重新登录。',
+          'zh-TW': 'Steam 未確認登入。請重新登入。',
+        });
+      }
+      return tt(lang, {
+        en: 'Steam sign-in failed. Please try again.',
+        ru: 'Не удалось войти через Steam. Попробуйте ещё раз.',
+        zh: 'Steam 登录失败。请重试。',
+        'zh-TW': 'Steam 登入失敗。請重試。',
+      });
+    }
+
     function pathForScreen(screen, item, profileUrl = '', collectionSlug = '') {
       if (screen === 'favorites') return '/favorites';
       if (screen === 'investors') return '/investors';
@@ -348,6 +380,7 @@
       const [cursorStyle, setCursorStyle] = useState('default');
       const [publicProfileUrl, setPublicProfileUrl] = useState(initialRoute.profile || '');
       const [pendingSection, setPendingSection] = useState(null);
+      const [authError, setAuthError] = useState(takeAuthErrorFromUrl);
       const auth = useAuth();
       const slugMatchesItem = Boolean(
         activeItem?.marketHashName
@@ -508,6 +541,18 @@
             t={i18n}
             auth={auth}
           />
+
+          {authError && (
+            <div className="glass auth-error-banner" role="alert">
+              <span>{authErrorMessage(t.lang, authError)}</span>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => { setAuthError(null); if (auth?.login) auth.login(); }}
+              >
+                {tt(t.lang, { en: 'Try again', ru: 'Повторить', zh: '重试', 'zh-TW': '重試' })}
+              </button>
+            </div>
+          )}
 
           {screen === 'home' && (
             <>

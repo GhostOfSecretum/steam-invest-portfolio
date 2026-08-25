@@ -205,7 +205,15 @@ app.get('/api/auth/steam', authLimiter, asyncRoute(async (req, res) => {
 }));
 
 app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => {
-  const auth = await authenticateSteam(req);
+  let auth;
+  try {
+    auth = await authenticateSteam(req);
+  } catch (error) {
+    console.warn('[auth] Steam login failed:', error.code || error.message);
+    res.redirect(`/?auth_error=${encodeURIComponent(error.code || 'steam_login_failed')}`);
+    return;
+  }
+
   const priorOwnerId = req.session.ownerId || null;
   await regenerateSession(req);
   req.session.steamId = auth.steamId;
