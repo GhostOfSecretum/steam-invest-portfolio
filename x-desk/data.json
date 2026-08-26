@@ -1,0 +1,587 @@
+{
+  "handle": "SkinsheadPro",
+  "name": "SkinsHead",
+  "url": "https://x.com/SkinsheadPro",
+  "website": "https://skinshead.pro",
+  "bio": "CS2 skins as a portfolio. Live inventory value, real P&L, Armory ROI. For people who treat skins like a bag, not a wallpaper.",
+  "location": "CS2 skin market",
+  "premium": "Premium",
+  "pin": "Пост 1 до 30 авг. Thesis-ролик готов — закрепить вместо поста 1, не публиковать раньше.",
+  "quota": {
+    "repliesMin": 15,
+    "repliesMax": 20,
+    "postsPerDay": 1,
+    "window": "19:30",
+    "tz": "Europe/Moscow"
+  },
+  "rules": [
+    "1 свой пост в день, окно 19:30 МСК",
+    "15–20 реплаев, пауза 2–4 мин, английский, свои мысли",
+    "Ссылку в тело поста не ставить",
+    "Видео не публиковать до недели 2 (~30 авг–5 сен)",
+    "30 авг: закрепить thesis-ролик (30с). 31 авг: продуктовый рил — не закреплять",
+    "Лайки не фармить; взаимки с нишевых мелких — да",
+    "Не ядро: аккаунты «buying 95% Buff»"
+  ],
+  "assets": {
+    "header": "media/header.png",
+    "avatar": "media/avatar.png",
+    "pinVideo": "media/pin.mp4",
+    "productReel": "media/reel.mp4"
+  },
+  "week2": {
+    "window": "2026-08-30 — 2026-09-05",
+    "pin": {
+      "title": "Закреп · неделя 2",
+      "src": "media/pin.mp4",
+      "file": "output/skinshead-x-pin-pnl.mp4",
+      "when": "30 авг · 19:30",
+      "duration": "30с · 9:16",
+      "status": "готов · не публиковать раньше ~30 авг",
+      "action": "закрепить вместо поста 1",
+      "caption": "Steam Market is a price tag.\nA portfolio is P&L.\n\nMost traders know the AK list price.\nAlmost none know what they could actually withdraw after tax.\n\nThat's the number that matters."
+    },
+    "reel": {
+      "title": "Рил · неделя 2",
+      "src": "media/reel.mp4",
+      "file": "output/skinshead_reel_ms_v2_open.mp4",
+      "when": "31 авг · 19:30",
+      "duration": "13с · 9:16",
+      "status": "готов · вторым постом недели 2",
+      "action": "не закреплять",
+      "caption": "Know the value of your CS2 inventory.\n\nNot the Steam sticker.\nLive value, cost basis, whether you’re actually up.\n\nI built the screen I wanted for my own bag.\nThat’s SkinsHead."
+    }
+  },
+  "live": {
+    "pulledAt": "2026-08-26T15:58:23.182Z",
+    "pulledAtMsk": "2026-08-26 18:58 МСК",
+    "profile": {
+      "followers": 1,
+      "following": 61,
+      "statuses": 91,
+      "likesGiven": 21,
+      "mediaCount": 2
+    },
+    "today": {
+      "date": "2026-08-26",
+      "replies": 12,
+      "replyViews": 346,
+      "replyLikes": 1,
+      "replyBacks": 0,
+      "replyBackHandles": [],
+      "topReplies": [
+        {
+          "handle": "Gerhardderechte",
+          "views": 195,
+          "likes": 1,
+          "replies": 0,
+          "text": "@Gerhardderechte The second one seems more textured and attractive",
+          "date": "2026-08-26"
+        },
+        {
+          "handle": "TheGreenFireCS",
+          "views": 58,
+          "likes": 0,
+          "replies": 0,
+          "text": "@TheGreenFireCS We can only hope that this is just a correction, possibly due to a change in the trend, and we will continue moving upward. Plus, the end of the summer season means the return of players and possible major updates",
+          "date": "2026-08-26"
+        },
+        {
+          "handle": "csmoneytrade",
+          "views": 33,
+          "likes": 0,
+          "replies": 0,
+          "text": "@csmoneytrade These are crazy numbers, but someone was lucky enough to see the coveted word “Dragon Lore” 🤯🤩",
+          "date": "2026-08-26"
+        },
+        {
+          "handle": "Alkem1stCS",
+          "views": 23,
+          "likes": 0,
+          "replies": 0,
+          "text": "@Alkem1stCS For some reason, when the memory pass stopped working, I also stopped playing—at least that gave me some kind of incentive, even if it was just a symbolic one.",
+          "date": "2026-08-26"
+        },
+        {
+          "handle": "tradeit_gg",
+          "views": 15,
+          "likes": 0,
+          "replies": 0,
+          "text": "@tradeit_gg Synchronized gymnastics ?)",
+          "date": "2026-08-26"
+        }
+      ],
+      "posts": []
+    },
+    "latestPost": {
+      "id": "2092288395158364315",
+      "url": "https://x.com/SkinsheadPro/status/2092288395158364315",
+      "date": "2026-08-25",
+      "time": "19:30",
+      "views": 16,
+      "likes": 0,
+      "replies": 0,
+      "reposts": 0,
+      "text": "Your Steam inventory value is not what you can cash out.\n\nIt ignores the 15% tax.\nIt ignores that half the bag wouldn’t sell at that price today.\n\nThat’s a sticker, not a position.\n\nDo you track listing price, or money you could actually withdraw?"
+    },
+    "week": {
+      "from": "2026-08-20",
+      "to": "2026-08-26",
+      "topReplies": [
+        {
+          "handle": "phrog_gaming",
+          "views": 1859,
+          "likes": 0,
+          "replies": 1,
+          "text": "@phrog_gaming The biggest fleet I've ever seen 🤯",
+          "date": "2026-08-25"
+        },
+        {
+          "handle": "ohnePixelUpdate",
+          "views": 1361,
+          "likes": 1,
+          "replies": 0,
+          "text": "@ohnePixelUpdate It feels like some skins will keep dropping forever, yet there are still runners on the market.",
+          "date": "2026-08-23"
+        },
+        {
+          "handle": "skinsmonkey",
+          "views": 585,
+          "likes": 3,
+          "replies": 0,
+          "text": "@skinsmonkey Beautiful green set 🍏",
+          "date": "2026-08-25"
+        },
+        {
+          "handle": "BCGameEsports",
+          "views": 526,
+          "likes": 1,
+          "replies": 0,
+          "text": "@BCGameEsports @kooldeep_ @dixycom1 @bcgame God of AWP😵‍💫",
+          "date": "2026-08-24"
+        },
+        {
+          "handle": "lisskins",
+          "views": 511,
+          "likes": 2,
+          "replies": 1,
+          "text": "@lisskins Opal will be the new gamma 🤩 and Leviathan is a gorgeous dragon, the Dragon Lore among the knives 🐉",
+          "date": "2026-08-24"
+        },
+        {
+          "handle": "tradeit_gg",
+          "views": 505,
+          "likes": 1,
+          "replies": 0,
+          "text": "@tradeit_gg Perhaps we’re already at the bottom somewhere, and this is a good entry point for the long term",
+          "date": "2026-08-24"
+        },
+        {
+          "handle": "Rensorcs",
+          "views": 402,
+          "likes": 1,
+          "replies": 1,
+          "text": "@Rensorcs Probably the most beautiful MP9, on par with the Wild Lotus AK‑47",
+          "date": "2026-08-24"
+        },
+        {
+          "handle": "cs2insiderX",
+          "views": 363,
+          "likes": 2,
+          "replies": 0,
+          "text": "@cs2insiderX Yes, this is quite possible, just as it was in the NFT market back in the day.",
+          "date": "2026-08-24"
+        }
+      ]
+    }
+  },
+  "days": [
+    {
+      "date": "2026-08-21",
+      "kind": "setup",
+      "label": "создание",
+      "following": 37,
+      "followers": 0,
+      "notes": "Аккаунт создан, Premium куплен, шапка v4. Био и имя ещё нельзя."
+    },
+    {
+      "date": "2026-08-22",
+      "kind": "locked",
+      "label": "лок",
+      "notes": "Профиль заблокирован — постов и пачки реплаев нет."
+    },
+    {
+      "date": "2026-08-23",
+      "kind": "content",
+      "dayNum": 1,
+      "label": "день 1",
+      "replies": 26,
+      "replyViews": 2870,
+      "replyLikes": 14,
+      "replyBacks": 2,
+      "following": 47,
+      "followers": 2,
+      "statuses": 30,
+      "post": {
+        "n": 1,
+        "time": "19:30",
+        "pinned": true,
+        "views": 3,
+        "likes": 0,
+        "replies": 0,
+        "reposts": 0,
+        "text": "Most CS2 players know the price of their AK.\nAlmost none know if they’re actually up or down.\n\nSteam Market is a price tag.\nA portfolio is a P&L.\n\nThat’s the gap I’m going to write about."
+      },
+      "notes": "Био и имя выставлены. Крупный аккаунт ответил на реплай. Закреп — пост 1."
+    },
+    {
+      "date": "2026-08-24",
+      "kind": "content",
+      "dayNum": 2,
+      "label": "день 2",
+      "replies": 27,
+      "replyViews": 1534,
+      "replyLikes": 13,
+      "replyBacks": 3,
+      "following": 53,
+      "followers": 0,
+      "statuses": 60,
+      "likesGiven": 11,
+      "topReplies": [
+        {
+          "handle": "tradeit_gg",
+          "views": 380,
+          "likes": 1,
+          "replies": 0,
+          "text": "@tradeit_gg Perhaps we’re already at the bottom somewhere, and this is a good entry point for the long term"
+        },
+        {
+          "handle": "cs2insiderX",
+          "views": 279,
+          "likes": 2,
+          "replies": 0,
+          "text": "@cs2insiderX Yes, this is quite possible, just as it was in the NFT market back in the day."
+        },
+        {
+          "handle": "skinclubmedia",
+          "views": 154,
+          "likes": 0,
+          "replies": 0,
+          "text": "@skinclubmedia In my opinion, AUG looks very attractive in my colors, but of course AWP is really juicy 😍"
+        },
+        {
+          "handle": "BCGameEsports",
+          "views": 134,
+          "likes": 1,
+          "replies": 0,
+          "text": "@BCGameEsports @kooldeep_ @dixycom1 @bcgame God of AWP😵‍💫"
+        },
+        {
+          "handle": "TheGreenFireCS",
+          "views": 118,
+          "likes": 0,
+          "replies": 0,
+          "text": "@TheGreenFireCS It seems like a good price after the pump and boost; maybe there will be a repeat?"
+        }
+      ],
+      "replyBackHandles": [
+        "lisskins",
+        "Rensorcs",
+        "ikeegz_"
+      ],
+      "post": {
+        "n": 2,
+        "time": "19:30",
+        "pinned": false,
+        "views": 5,
+        "likes": 0,
+        "replies": 0,
+        "reposts": 0,
+        "url": "https://x.com/SkinsheadPro/status/2091926005116215691",
+        "text": "Unpopular take: if you don’t track cost basis, you don’t have a skin “investment”.\nYou have a collection with cope.\n\nBe honest — do you know your all-time P&L, or just what the inventory is worth today?"
+      },
+      "notes": "Реплаи выше квоты (27). Подписки +6. Фолловеров 2→1. Thesis-ролик готов, не публиковать."
+    },
+    {
+      "date": "2026-08-25",
+      "kind": "content",
+      "dayNum": 3,
+      "label": "день 3",
+      "post": {
+        "n": 3,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Your Steam inventory value is not what you can cash out.\n\nIt ignores the 15% tax.\nIt ignores that half the bag wouldn’t sell at that price today.\n\nThat’s a sticker, not a position.\n\nDo you track listing price, or money you could actually withdraw?",
+        "views": 11,
+        "likes": 0,
+        "replies": 0,
+        "reposts": 0,
+        "url": "https://x.com/SkinsheadPro/status/2092288395158364315"
+      },
+      "notes": "Не закреплять, только текст, без картинки.",
+      "replies": 18,
+      "replyViews": 891,
+      "replyLikes": 7,
+      "replyBacks": 2,
+      "replyBackHandles": [
+        "phrog_gaming",
+        "ikeegz_"
+      ],
+      "topReplies": [
+        {
+          "handle": "Drepz_",
+          "views": 184,
+          "likes": 1,
+          "replies": 0,
+          "text": "@Drepz_ Yes, stickers are more of a nuisance than a nice addition.",
+          "date": "2026-08-25"
+        },
+        {
+          "handle": "TheGreenFireCS",
+          "views": 155,
+          "likes": 1,
+          "replies": 0,
+          "text": "@TheGreenFireCS Great job, bro! I’ll definitely take it for study and save it 😎",
+          "date": "2026-08-25"
+        },
+        {
+          "handle": "skinsmonkey",
+          "views": 70,
+          "likes": 0,
+          "replies": 0,
+          "text": "@skinsmonkey Beautiful green set 🍏",
+          "date": "2026-08-25"
+        },
+        {
+          "handle": "cs2speculator",
+          "views": 59,
+          "likes": 0,
+          "replies": 0,
+          "text": "@cs2speculator Paper Millionaires 😇🤑",
+          "date": "2026-08-25"
+        },
+        {
+          "handle": "ikeegz_",
+          "views": 58,
+          "likes": 1,
+          "replies": 1,
+          "text": "@ikeegz_ The set is so rich, it’s almost a pity 😅",
+          "date": "2026-08-25"
+        }
+      ],
+      "followers": 1,
+      "following": 60,
+      "statuses": 79,
+      "likesGiven": 20
+    },
+    {
+      "date": "2026-08-26",
+      "kind": "content",
+      "dayNum": 4,
+      "label": "день 4",
+      "post": {
+        "n": 4,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Armory Pass is not a collection.\nIt’s a loot box with a spreadsheet.\n\nYou remember the red you hit.\nYou forget the stars you burned.\n\nIf you can’t say your Armory ROI in one number, you didn’t invest. You opened it.\n\nDid your last pass actually print?"
+      },
+      "notes": "Не закреплять, только текст, без картинки. Новый угол: Armory EV, не налог и не cost basis.",
+      "replies": 12,
+      "replyViews": 346,
+      "replyLikes": 1,
+      "replyBacks": 0,
+      "followers": 1,
+      "following": 61,
+      "statuses": 91,
+      "likesGiven": 21,
+      "topReplies": [
+        {
+          "handle": "Gerhardderechte",
+          "views": 195,
+          "likes": 1,
+          "replies": 0,
+          "text": "@Gerhardderechte The second one seems more textured and attractive",
+          "date": "2026-08-26"
+        },
+        {
+          "handle": "TheGreenFireCS",
+          "views": 58,
+          "likes": 0,
+          "replies": 0,
+          "text": "@TheGreenFireCS We can only hope that this is just a correction, possibly due to a change in the trend, and we will continue moving upward. Plus, the end of the summer season means the return of players and possible major updates",
+          "date": "2026-08-26"
+        },
+        {
+          "handle": "csmoneytrade",
+          "views": 33,
+          "likes": 0,
+          "replies": 0,
+          "text": "@csmoneytrade These are crazy numbers, but someone was lucky enough to see the coveted word “Dragon Lore” 🤯🤩",
+          "date": "2026-08-26"
+        },
+        {
+          "handle": "Alkem1stCS",
+          "views": 23,
+          "likes": 0,
+          "replies": 0,
+          "text": "@Alkem1stCS For some reason, when the memory pass stopped working, I also stopped playing—at least that gave me some kind of incentive, even if it was just a symbolic one.",
+          "date": "2026-08-26"
+        },
+        {
+          "handle": "tradeit_gg",
+          "views": 15,
+          "likes": 0,
+          "replies": 0,
+          "text": "@tradeit_gg Synchronized gymnastics ?)",
+          "date": "2026-08-26"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-27",
+      "kind": "planned",
+      "dayNum": 5,
+      "label": "день 5",
+      "post": {
+        "n": 5,
+        "time": "19:30",
+        "pinned": false,
+        "text": "If one knife is 70% of your inventory, you don’t have a portfolio.\n\nYou have a bet. The other skins are decoration.\n\nA dump on that pattern doesn’t “correct”. It wipes the bag.\n\nWhat’s your largest position as a % of the whole thing?"
+      },
+      "notes": "Не закреплять, только текст. Концентрация: один нож = весь портфель."
+    },
+    {
+      "date": "2026-08-28",
+      "kind": "planned",
+      "dayNum": 6,
+      "label": "день 6",
+      "post": {
+        "n": 6,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Steam Market is not a mark.\n\nIt’s the number nobody paid you.\nCSFloat and Skinport will show you a different one — if they want the skin at all.\n\nIf you only watch Steam, you’re pricing a screenshot.\n\nWhere do you actually mark the bag?"
+      },
+      "notes": "Не закреплять, только текст. Steam vs CSFloat/Skinport: цена — не марк."
+    },
+    {
+      "date": "2026-08-29",
+      "kind": "planned",
+      "dayNum": 7,
+      "label": "день 7",
+      "post": {
+        "n": 7,
+        "time": "19:30",
+        "pinned": false,
+        "text": "If you had to sell 80% of your inventory this week, how many days would that take?\n\nNot a Steam listing.\nA real buyer. Real cash.\n\nIf you can’t answer, you don’t have a position. You have a display case.\n\nHow long would yours take?"
+      },
+      "notes": "Не закреплять, только текст. Вопрос про ликвидность, не цена."
+    },
+    {
+      "date": "2026-08-30",
+      "kind": "planned",
+      "dayNum": 8,
+      "label": "неделя 2 · закреп",
+      "post": {
+        "n": 8,
+        "time": "19:30",
+        "pinned": true,
+        "media": "pin",
+        "text": "Steam Market is a price tag.\nA portfolio is P&L.\n\nMost traders know the AK list price.\nAlmost none know what they could actually withdraw after tax.\n\nThat's the number that matters."
+      },
+      "notes": "Thesis-ролик output/skinshead-x-pin-pnl.mp4 — закрепить вместо поста 1. Без URL, без скринов дашборда."
+    },
+    {
+      "date": "2026-08-31",
+      "kind": "planned",
+      "dayNum": 9,
+      "label": "неделя 2 · рил",
+      "post": {
+        "n": 9,
+        "time": "19:30",
+        "pinned": false,
+        "media": "reel",
+        "text": "Know the value of your CS2 inventory.\n\nNot the Steam sticker.\nLive value, cost basis, whether you’re actually up.\n\nI built the screen I wanted for my own bag.\nThat’s SkinsHead."
+      },
+      "notes": "Продуктовый рил output/skinshead_reel_ms_v2_open.mp4 — не закреплять. Без URL. Первый раз назвать продукт."
+    },
+    {
+      "date": "2026-09-01",
+      "kind": "planned",
+      "dayNum": 10,
+      "label": "день 10",
+      "post": {
+        "n": 10,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Your public Steam inventory is not your portfolio.\n\nStorage doesn’t show.\nHalf the bag you actually hold isn’t in that URL.\n\nIf you’re tracking P&L off a public profile, you’re doing math on a fragment.\n\nDo you even know what’s sitting in Storage right now?"
+      },
+      "notes": "Не закреплять, только текст. Публичный инвентарь без Storage — обрубок."
+    }
+  ],
+  "weekTopReplies": [
+    {
+      "handle": "phrog_gaming",
+      "views": 1859,
+      "likes": 0,
+      "replies": 1,
+      "text": "@phrog_gaming The biggest fleet I've ever seen 🤯",
+      "date": "2026-08-25"
+    },
+    {
+      "handle": "ohnePixelUpdate",
+      "views": 1361,
+      "likes": 1,
+      "replies": 0,
+      "text": "@ohnePixelUpdate It feels like some skins will keep dropping forever, yet there are still runners on the market.",
+      "date": "2026-08-23"
+    },
+    {
+      "handle": "skinsmonkey",
+      "views": 585,
+      "likes": 3,
+      "replies": 0,
+      "text": "@skinsmonkey Beautiful green set 🍏",
+      "date": "2026-08-25"
+    },
+    {
+      "handle": "BCGameEsports",
+      "views": 526,
+      "likes": 1,
+      "replies": 0,
+      "text": "@BCGameEsports @kooldeep_ @dixycom1 @bcgame God of AWP😵‍💫",
+      "date": "2026-08-24"
+    },
+    {
+      "handle": "lisskins",
+      "views": 511,
+      "likes": 2,
+      "replies": 1,
+      "text": "@lisskins Opal will be the new gamma 🤩 and Leviathan is a gorgeous dragon, the Dragon Lore among the knives 🐉",
+      "date": "2026-08-24"
+    },
+    {
+      "handle": "tradeit_gg",
+      "views": 505,
+      "likes": 1,
+      "replies": 0,
+      "text": "@tradeit_gg Perhaps we’re already at the bottom somewhere, and this is a good entry point for the long term",
+      "date": "2026-08-24"
+    },
+    {
+      "handle": "Rensorcs",
+      "views": 402,
+      "likes": 1,
+      "replies": 1,
+      "text": "@Rensorcs Probably the most beautiful MP9, on par with the Wild Lotus AK‑47",
+      "date": "2026-08-24"
+    },
+    {
+      "handle": "cs2insiderX",
+      "views": 363,
+      "likes": 2,
+      "replies": 0,
+      "text": "@cs2insiderX Yes, this is quite possible, just as it was in the NFT market back in the day.",
+      "date": "2026-08-24"
+    }
+  ]
+}

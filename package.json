@@ -14,7 +14,8 @@
     "telegram:topic-links": "node scripts/extract-telegram-topic-links.js",
     "top-investors:import": "node scripts/import-top-investors-from-file.js",
     "top-investors:baseline": "node scripts/baseline-top-investors-activity.js",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "x-desk": "node scripts/x-desk.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

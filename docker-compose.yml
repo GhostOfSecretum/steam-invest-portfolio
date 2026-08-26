@@ -22,6 +22,28 @@ services:
       - default
       - proxy
 
+  steam-invest-desk:
+    image: steam-invest-app:latest
+    build: .
+    container_name: steam-invest-desk
+    user: "0:0"
+    entrypoint: ["/app/scripts/docker-app-entrypoint.sh"]
+    command: ["node", "scripts/x-desk.js"]
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      X_DESK_BIND: "0.0.0.0"
+      X_DESK_PORT: "3847"
+      X_DESK_DATA: /app/.data/x-desk.json
+    volumes:
+      - ./.data:/app/.data
+      - ./output:/app/output:ro
+      - ./assets/fonts:/app/assets/fonts:ro
+    networks:
+      - default
+      - proxy
+
 networks:
   proxy:
     external: true

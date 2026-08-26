@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>SkinsHead · X desk</title>
+  <link rel="stylesheet" href="desk.css" />
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="grid"></div>
+  <div class="noise"></div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="tick"></span>
+      <span class="brand-kicker">SKINSHEAD</span>
+      <h1>X desk</h1>
+    </div>
+    <div class="top-meta">
+      <span class="pill local">только вы</span>
+      <span class="pill">авто · 30 мин</span>
+      <span class="pill" id="pulled">не снимали</span>
+      <button type="button" id="refresh">Снять с X</button>
+    </div>
+  </header>
+
+  <section class="hero" id="hero">
+    <img class="avatar" src="media/avatar.png" alt="" />
+    <div class="hero-copy">
+      <a class="handle" id="handle" href="https://x.com/SkinsheadPro" target="_blank" rel="noreferrer">@SkinsheadPro</a>
+      <p class="bio" id="bio"></p>
+      <p class="pin" id="pin"></p>
+    </div>
+    <div class="clock">
+      <div class="clock-kicker">окно поста</div>
+      <div class="clock-time" id="clock">19:30</div>
+      <div class="clock-sub" id="countdown">МСК</div>
+    </div>
+  </section>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="videos" id="videos"></section>
+
+  <section class="charts">
+    <article class="panel">
+      <header>
+        <h2>Реплаи / день</h2>
+        <span class="hint">квота 15–20</span>
+      </header>
+      <div class="chart" id="chart-replies"></div>
+    </article>
+    <article class="panel">
+      <header>
+        <h2>Просмотры</h2>
+        <span class="hint">свой пост vs сумма реплаев</span>
+      </header>
+      <div class="chart" id="chart-views"></div>
+    </article>
+  </section>
+
+  <section class="split">
+    <article class="panel next" id="next-card"></article>
+    <article class="panel">
+      <header>
+        <h2>Дни</h2>
+        <span class="hint" id="follow-line"></span>
+      </header>
+      <div class="days" id="days"></div>
+    </article>
+  </section>
+
+  <section class="split rules-row">
+    <article class="panel">
+      <header><h2>Режим</h2></header>
+      <ul class="rules" id="rules"></ul>
+    </article>
+    <article class="panel">
+      <header>
+        <h2>Лучшие реплаи</h2>
+        <div class="seg" role="tablist" aria-label="Период реплаев">
+          <button type="button" class="seg-btn on" data-range="day">день</button>
+          <button type="button" class="seg-btn" data-range="week">неделя</button>
+        </div>
+      </header>
+      <p class="hint tops-hint" id="tops-hint">последний снятый день</p>
+      <div class="tops" id="tops"></div>
+    </article>
+  </section>
+
+  <p class="foot">Закрытый стол. Журнал markdown остаётся запасным логом.</p>
+
+  <script src="desk.js"></script>
+</body>
+</html>
