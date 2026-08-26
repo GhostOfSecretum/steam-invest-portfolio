@@ -133,6 +133,12 @@ function mediaSrc(data, key) {
   return null;
 }
 
+function xProfile(handle) {
+  const h = String(handle || '').replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '');
+  if (!h) return '<span>—</span>';
+  return `<a class="acct" href="https://x.com/${h}" target="_blank" rel="noreferrer">@${h}</a>`;
+}
+
 function mediaLabel(key) {
   if (key === 'pin') return 'видео-пин';
   if (key === 'reel') return 'рил';
@@ -272,7 +278,7 @@ function renderTops(data) {
   $('tops').innerHTML = rows.map((r) => `
     <div class="top-row${week ? ' week' : ''}">
       ${week ? `<span class="when">${(r.date || '').slice(5)}</span>` : ''}
-      <span>@${r.handle}</span>
+      ${xProfile(r.handle)}
       <span class="views">${fmt(r.views)} view</span>
       <span>${fmt(r.likes)} like</span>
     </div>`).join('');
