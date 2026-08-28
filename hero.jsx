@@ -797,7 +797,7 @@ function Bracket({ pos }) {
     bl: { bottom: 16, left: 16, borderBottom: '1px solid', borderLeft: '1px solid' },
     br: { bottom: 16, right: 16, borderBottom: '1px solid', borderRight: '1px solid' },
   };
-  return <div style={{ position: 'absolute', width: 20, height: 20, borderColor: 'var(--accent)', opacity: 0.4, ...styles[pos] }}></div>;
+  return <div className="hero-hud-bracket" style={{ position: 'absolute', width: 20, height: 20, borderColor: 'var(--accent)', opacity: 0.4, ...styles[pos] }}></div>;
 }
 
 /* Full-page Glock Ghost Protocol viewer (img2threejs showcase) */

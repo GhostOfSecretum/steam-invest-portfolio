@@ -1793,105 +1793,6 @@ function HowItWorks({ lang }) {
   );
 }
 
-function ProductShowcase({ lang }) {
-  const copy = lang === 'ru'
-    ? {
-      eyebrow: '// РЕЗУЛЬТАТ, А НЕ ПРОСТО ЦЕНЫ',
-      title: 'Сразу видно, что происходит с деньгами',
-      sub: 'Главный экран отвечает на четыре вопроса: сколько стоит портфель, сколько вы заработали, что можно продать и какие позиции растут быстрее остальных.',
-      features: [
-        ['Актуальная оценка', 'Рыночная стоимость инвентаря по сторонним площадкам. Steam остаётся ценником.'],
-        ['Прибыль и себестоимость', 'P&L считается относительно ваших реальных цен покупки.'],
-        ['Лидеры роста и падения', 'Сразу видно, какие предметы сильнее всего изменились в цене.'],
-        ['История и экспорт', 'Изменения состава портфеля и выгрузка данных в CSV.'],
-      ],
-      value: 'Рыночная стоимость',
-      profit: 'Прибыль',
-      sellable: 'Можно продать',
-      leaders: 'Лидеры роста',
-    }
-    : {
-      eyebrow: '// OUTCOMES, NOT JUST PRICES',
-      title: 'See what is happening with your money',
-      sub: 'The main screen answers four questions: portfolio value, profit, sellable value, and which positions are growing fastest.',
-      features: [
-        ['Live valuation', 'Cash-market inventory value. Steam list price sits underneath.'],
-        ['Profit and cost basis', 'P&L calculated against your actual purchase prices.'],
-        ['Top gainers and losers', 'See which items moved the most at a glance.'],
-        ['History and export', 'Portfolio changes over time with CSV export.'],
-      ],
-      value: 'Market value',
-      profit: 'Profit',
-      sellable: 'Sellable now',
-      leaders: 'Top gainers',
-    };
-
-  return (
-    <section className="section landing-showcase">
-      <div className="container landing-showcase-grid">
-        <div className="landing-product-frame glass-strong">
-          <div className="landing-product-topbar">
-            <span>SKINSHEAD / PORTFOLIO</span>
-            <i>● LIVE</i>
-          </div>
-          <div className="landing-product-metrics">
-            <div><span>{copy.value}</span><strong>$12,840</strong><i>148 items</i></div>
-            <div><span>{copy.profit}</span><strong className="is-positive">+$2,140</strong><i>+20.0%</i></div>
-            <div><span>{copy.sellable}</span><strong>$9,320</strong><i>112 items</i></div>
-          </div>
-          <div className="landing-product-body">
-            <div className="landing-product-chart">
-              <div className="eyebrow">90 DAYS</div>
-              <svg viewBox="0 0 600 190" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="landingChartFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0.34" />
-                    <stop offset="100%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path d="M0 162 C50 154 72 130 118 138 S188 112 235 122 S304 74 348 91 S418 68 470 76 S536 31 600 20 L600 190 L0 190 Z" fill="url(#landingChartFill)" />
-                <path d="M0 162 C50 154 72 130 118 138 S188 112 235 122 S304 74 348 91 S418 68 470 76 S536 31 600 20" fill="none" stroke="var(--accent)" strokeWidth="3" />
-              </svg>
-            </div>
-            <div className="landing-product-leaders">
-              <div className="landing-product-leaders-head">
-                <div className="eyebrow">{copy.leaders}</div>
-                <span>30D</span>
-              </div>
-              {[
-                ['AK-47 | Redline', '+18.4%'],
-                ['Karambit | Doppler', '+12.7%'],
-                ['Breakout Case', '+9.6%'],
-                ['Desert Eagle | Printstream', '+7.1%'],
-              ].map(([label, value], index) => (
-                <div className="landing-leader-row" key={label}>
-                  <i>{String(index + 1).padStart(2, '0')}</i>
-                  <span title={label}>{label}</span>
-                  <b>{value}</b>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="landing-showcase-copy">
-          <div className="eyebrow">{copy.eyebrow}</div>
-          <h2 className="display">{copy.title}</h2>
-          <p className="landing-showcase-sub">{copy.sub}</p>
-          <div className="landing-benefit-list">
-            {copy.features.map(([title, text], index) => (
-              <div key={title}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <div><h3>{title}</h3><p>{text}</p></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function FinalCta({ lang, auth, onPrimary }) {
   const connected = Boolean(auth?.connected);
   return (
@@ -2209,4 +2110,4 @@ function Footer({ lang }) {
   );
 }
 
-Object.assign(window, { Ticker, MarketCapBoard, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, Pricing, HowItWorks, ProductShowcase, FinalCta, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });
+Object.assign(window, { Ticker, MarketCapBoard, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, Pricing, HowItWorks, FinalCta, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });

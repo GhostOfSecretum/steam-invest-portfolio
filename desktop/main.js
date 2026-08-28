@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, safeStorage, session } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, safeStorage, session, shell } = require('electron');
 const path = require('path');
 const QRCode = require('qrcode');
 const Store = require('electron-store');
@@ -8,7 +8,7 @@ const { mergeInventoryItems } = require('./inventory-merge');
 const store = new Store({ encryptionKey: 'steam-invest-local-only' });
 
 const DEFAULT_SERVER_URL = 'https://skinshead.pro';
-const SERVER_URL = store.get('serverUrl', DEFAULT_SERVER_URL);
+const ALLOWED_SERVER_HOSTS = new Set(['skinshead.pro', 'www.skinshead.pro']);
 const STEAM_COMMUNITY = 'https://steamcommunity.com';
 const INVENTORY_URL_PATTERN = /\/inventory\/(\d{17})\/730\/2/;
 const GC_REFRESH_TOKEN_KEY = 'gcRefreshTokenProtected';
@@ -18,10 +18,49 @@ const LEGACY_DEVICE_TOKEN_KEY = 'deviceToken';
 const PAIRING_CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/i;
 
 function normalizeServerUrl(raw) {
-  let url = String(raw || '').trim().replace(/\/+$/, '');
-  if (!url) throw new Error('Укажите адрес сервера (например https://skinshead.pro)');
-  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-  return url;
+  let input = String(raw || '').trim().replace(/\/+$/, '');
+  if (!input) throw new Error('Укажите адрес сервера (например https://skinshead.pro)');
+  if (!/^https?:\/\//i.test(input)) input = `https://${input}`;
+
+  let parsed;
+  try {
+    parsed = new URL(input);
+  } catch {
+    throw new Error(`Некорректный адрес сервера: ${input}`);
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  const isLocalDev = !app.isPackaged && (host === 'localhost' || host === '127.0.0.1');
+
+  if (!ALLOWED_SERVER_HOSTS.has(host) && !isLocalDev) {
+    throw new Error(`Адрес ${host} не разрешён. Используйте ${DEFAULT_SERVER_URL}.`);
+  }
+  if (parsed.protocol !== 'https:' && !isLocalDev) {
+    throw new Error('Адрес сервера должен использовать https.');
+  }
+
+  return `${parsed.protocol}//${parsed.host}`;
+}
+
+// A stored value can predate the allowlist, so re-validate on every read and fall
+// back to the default rather than trusting whatever is on disk.
+function getServerUrl() {
+  const stored = store.get('serverUrl');
+  if (!stored) return DEFAULT_SERVER_URL;
+  try {
+    return normalizeServerUrl(stored);
+  } catch (err) {
+    console.warn('[desktop] stored serverUrl rejected, using default:', err.message);
+    return DEFAULT_SERVER_URL;
+  }
+}
+
+function openExternalIfHttps(url) {
+  try {
+    if (new URL(url).protocol === 'https:') shell.openExternal(url);
+  } catch {
+    /* malformed URL — nothing to open */
+  }
 }
 
 function ensureSecretStorageAvailable() {
@@ -182,6 +221,18 @@ function createWindow() {
     },
   });
 
+  // This window's preload exposes the full IPC bridge, so it must only ever host
+  // the bundled local UI. Anything remote is handed to the system browser.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('file://')) return;
+    event.preventDefault();
+    openExternalIfHttps(url);
+  });
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalIfHttps(url);
+    return { action: 'deny' };
+  });
+
   mainWindow.loadFile(path.join(__dirname, 'ui', 'index.html'));
   if (isPaired) {
     autoSyncIfNeeded();
@@ -217,11 +268,11 @@ async function autoSyncIfNeeded() {
 }
 
 async function openDesktopApp() {
-  const serverUrl = store.get('serverUrl', SERVER_URL);
+  const serverUrl = getServerUrl();
   const deviceToken = getDeviceToken();
 
   if (!deviceToken) {
-    if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.loadURL(serverUrl);
+    await shell.openExternal(serverUrl);
     return;
   }
 
@@ -244,9 +295,7 @@ async function openDesktopApp() {
   const { code } = await codeResponse.json();
   const url = `${serverUrl}/api/desktop/login?code=${encodeURIComponent(code)}`;
 
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    await mainWindow.loadURL(url);
-  }
+  await shell.openExternal(url);
 }
 
 function resetDesktopState() {
@@ -257,7 +306,7 @@ function resetDesktopState() {
 }
 
 async function runInventorySync(steamId, steamSession, deviceToken, { includeStorage = true } = {}) {
-  const serverUrl = store.get('serverUrl', SERVER_URL);
+  const serverUrl = getServerUrl();
   let storageItems = [];
   let gcStorageError = null;
   const refreshToken = includeStorage ? getGcRefreshToken() : null;
@@ -374,7 +423,6 @@ async function handleSteamLogin() {
 async function handleManualSync() {
   const steamId = store.get('steamId');
   const deviceToken = getDeviceToken();
-  const serverUrl = store.get('serverUrl', SERVER_URL);
   if (!steamId || !deviceToken) {
     console.log('[sync] not paired');
     return;
@@ -398,7 +446,7 @@ function showDesktopSettings() {
 ipcMain.handle('get-state', async () => ({
   paired: hasDeviceToken(),
   steamId: store.get('steamId', null),
-  serverUrl: store.get('serverUrl', SERVER_URL),
+  serverUrl: getServerUrl(),
   lastSync: store.get('lastSync', null),
   gcConnected: hasGcRefreshToken(),
   gcAccountName: store.get('gcAccountName', null),
