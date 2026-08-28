@@ -993,6 +993,11 @@ app.get('/glock3d', (req, res) => {
   res.redirect(301, '/glock-3d');
 });
 
+app.get('/pulse-preview', (req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.sendFile(path.join(rootDir, 'pulse-preview.html'));
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(rootDir, appFile));
 });

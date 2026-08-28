@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Pulse UI mock · SkinsHead</title>
+<link rel="icon" type="image/png" href="logo-cs2-candles-favicon.png" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .pulse-mock-banner {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    padding: 10px 32px;
+    border-bottom: 1px solid oklch(0.82 0.16 75 / 0.35);
+    background: oklch(0.82 0.16 75 / 0.1);
+    backdrop-filter: blur(16px);
+  }
+  .pulse-mock-banner p {
+    margin: 0;
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    color: var(--amber);
+  }
+  .pulse-mock-banner .btn { cursor: pointer; }
+  .pulse-mock-nav {
+    pointer-events: none;
+    opacity: 0.88;
+  }
+  .pulse-scene {
+    padding-top: 28px;
+  }
+  .pulse-scene-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .pulse-scene-label h2 {
+    font-size: clamp(22px, 3vw, 32px);
+  }
+  .pulse-scene-label p {
+    max-width: 420px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--fg-2);
+  }
+  .market-board-grid.is-pulse-mock {
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  }
+  .pulse-card {
+    min-height: 248px;
+    overflow: hidden;
+  }
+  .pulse-card::after {
+    content: '';
+    position: absolute;
+    inset: auto -20% -50% 30%;
+    height: 140%;
+    background: radial-gradient(ellipse at center, var(--pulse-glow, oklch(0.66 0.22 25 / 0.16)), transparent 68%);
+    pointer-events: none;
+  }
+  .pulse-card[data-band="fear"] { --pulse-glow: oklch(0.66 0.22 25 / 0.18); --pulse-ink: var(--red); }
+  .pulse-card[data-band="neutral"] { --pulse-glow: oklch(0.82 0.16 75 / 0.14); --pulse-ink: var(--amber); }
+  .pulse-card[data-band="greed"] { --pulse-glow: oklch(0.78 0.16 150 / 0.16); --pulse-ink: var(--green); }
+  .pulse-hero {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 22px;
+    align-items: end;
+  }
+  .pulse-score {
+    font-family: var(--f-display);
+    font-size: 72px;
+    font-weight: 500;
+    letter-spacing: -0.07em;
+    line-height: 0.85;
+    font-variant-numeric: tabular-nums;
+    color: var(--pulse-ink);
+  }
+  .pulse-label {
+    margin-top: 10px;
+    font-family: var(--f-display);
+    font-size: 18px;
+    letter-spacing: -0.03em;
+  }
+  .pulse-updated {
+    margin-top: 6px;
+    font-family: var(--f-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-3);
+  }
+  .pulse-meter {
+    width: 100%;
+  }
+  .pulse-meter-track {
+    position: relative;
+    height: 10px;
+    border-radius: 99px;
+    background: linear-gradient(90deg,
+      oklch(0.66 0.22 25) 0%,
+      oklch(0.82 0.16 75) 45%,
+      oklch(0.78 0.16 150) 100%);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
+  }
+  .pulse-meter-needle {
+    position: absolute;
+    top: -5px;
+    width: 4px;
+    height: 20px;
+    margin-left: -2px;
+    border-radius: 2px;
+    background: var(--fg-0);
+    box-shadow: 0 0 12px var(--pulse-ink);
+  }
+  .pulse-meter-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-family: var(--f-mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-3);
+  }
+  .pulse-legs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .pulse-leg {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(0,0,0,0.18);
+  }
+  .pulse-leg .eyebrow { letter-spacing: 0.12em; font-size: 9.5px; }
+  .pulse-leg strong {
+    display: block;
+    margin-top: 4px;
+    font-family: var(--f-mono);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pulse-divergence {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-left: 2px solid var(--amber);
+    border-radius: 0 10px 10px 0;
+    background: oklch(0.82 0.16 75 / 0.08);
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--fg-1);
+  }
+  .pulse-themes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .pulse-theme {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    color: var(--fg-1);
+  }
+  .pulse-theme i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--fg-3);
+  }
+  .pulse-theme[data-bias="bearish"] i { background: var(--red); }
+  .pulse-theme[data-bias="bullish"] i { background: var(--green); }
+  .pulse-quotes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .pulse-quote {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    padding: 8px 0 0;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--fg-1);
+  }
+  .pulse-quote:first-child { border-top: 0; padding-top: 0; }
+  .pulse-quote b {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--fg-0);
+  }
+  .pulse-quote span { color: var(--fg-2); }
+  .pulse-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .pulse-card-actions .btn { cursor: pointer; }
+  .pulse-strip {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .pulse-strip-score {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .pulse-strip-score strong {
+    font-family: var(--f-display);
+    font-size: 28px;
+    letter-spacing: -0.05em;
+    color: var(--pulse-ink, var(--red));
+  }
+  .pulse-strip-copy {
+    min-width: 0;
+    font-size: 13px;
+    color: var(--fg-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pulse-x-card {
+    max-width: 520px;
+    padding: 18px 18px 16px;
+  }
+  .pulse-x-card-head {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .pulse-x-card-head img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .pulse-x-card-head strong { display: block; font-size: 14px; }
+  .pulse-x-card-head span {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .pulse-x-card p {
+    margin-top: 14px;
+    font-size: 16px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+  .pulse-x-meta {
+    margin-top: 14px;
+    font-family: var(--f-mono);
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .pulse-phone {
+    width: 390px;
+    max-width: 100%;
+    margin-top: 8px;
+    padding: 12px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.03);
+  }
+  .spark-wrap { width: 100%; height: 104px; }
+  .spark-wrap svg { width: 100%; height: 100%; display: block; }
+  @media (max-width: 980px) {
+    .market-board-grid.is-pulse-mock { grid-template-columns: 1fr; }
+    .pulse-strip { grid-template-columns: 1fr; }
+    .pulse-hero { grid-template-columns: 1fr; }
+    .dash-page { padding: 28px 20px 64px; }
+    .section-tight { padding: 40px 20px; }
+    .pulse-mock-banner { padding: 10px 16px; }
+  }
+</style>
+</head>
+<body>
+  <div class="app-bg"></div>
+  <div class="app-grid"></div>
+  <div class="app-noise"></div>
+
+  <div class="pulse-mock-banner">
+    <p>MOCK · sample numbers · not wired to Grok yet · /pulse-preview</p>
+    <div class="market-board-periods" role="tablist" aria-label="Sample reading">
+      <button type="button" data-scene="fear" class="is-active">Fear 28</button>
+      <button type="button" data-scene="split">Split 51</button>
+      <button type="button" data-scene="greed">Greed 74</button>
+    </div>
+  </div>
+
+  <nav class="nav pulse-mock-nav" aria-hidden="true">
+    <div class="nav-logo">
+      <img src="logo-cs2-candles-variant-02.png" alt="" width="36" height="36" style="border-radius:8px">
+      <div class="nav-logo-wordmark">
+        <span class="nav-logo-wordmark-silver">SKINS</span><span class="nav-logo-wordmark-pink">HEAD</span>
+      </div>
+    </div>
+    <div class="eyebrow" style="color: var(--fg-3)">Market · Armory · News</div>
+  </nav>
+
+  <section class="section-tight landing-market-board pulse-scene">
+    <div class="container">
+      <div class="pulse-scene-label">
+        <h2 class="display">Landing · next to market cap</h2>
+        <p>Public. No login. This is the X hook: one number beside the tape.</p>
+      </div>
+      <div class="section-header">
+        <div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+            <span style="font-family:var(--f-mono);font-size:11px;color:var(--accent);padding:3px 8px;border:1px solid oklch(0.68 0.22 5 / 0.4);border-radius:4px">// 01</span>
+            <div style="height:1px;width:60px;background:var(--line-strong)"></div>
+          </div>
+          <h2 class="display" style="font-size:clamp(32px,4vw,52px);font-weight:500;letter-spacing:-0.02em;line-height:1.05">CS2 market</h2>
+        </div>
+        <p style="max-width:480px;color:var(--fg-1);font-size:14.5px;line-height:1.6">Listed value from Steam and major markets. Pulse is crowd temperature on X, not a second price.</p>
+      </div>
+
+      <div class="market-board-grid is-pulse-mock">
+        <article class="glass-strong market-board-card market-board-stats" id="capCard" data-positive="false">
+          <div class="market-board-card-head">
+            <span class="market-board-kicker"><i class="market-board-ico">▣</i> Market cap</span>
+            <div class="market-board-periods">
+              <button type="button">24h</button>
+              <button type="button" class="is-active">7d</button>
+              <button type="button">30d</button>
+            </div>
+          </div>
+          <div class="market-board-stats-body">
+            <div class="market-board-stats-copy">
+              <div class="eyebrow">Listed value</div>
+              <div class="market-board-value-row">
+                <div class="market-board-value" id="capValue">$1.84B</div>
+                <div class="market-board-delta" id="capDelta" data-positive="false">▼ 4.18%</div>
+              </div>
+              <div class="market-board-foot">Tracking 1.2M listed skins</div>
+            </div>
+            <div class="market-board-spark">
+              <div class="spark-wrap" id="capSpark"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="glass-strong market-board-card pulse-card" id="pulseCard" data-band="fear">
+          <div class="market-board-card-head">
+            <span class="market-board-kicker">
+              <span class="live-dot"></span>
+              Skin Pulse
+            </span>
+            <span class="market-board-all">6h · English X</span>
+          </div>
+          <div class="pulse-hero">
+            <div>
+              <div class="pulse-score" id="pulseScore">28</div>
+              <div class="pulse-label" id="pulseLabel">Fear</div>
+              <div class="pulse-updated">Updated 4m ago</div>
+            </div>
+            <div class="pulse-meter">
+              <div class="pulse-meter-track">
+                <div class="pulse-meter-needle" id="pulseNeedle" style="left:28%"></div>
+              </div>
+              <div class="pulse-meter-ticks">
+                <span>Fear</span>
+                <span>Neutral</span>
+                <span>Greed</span>
+              </div>
+            </div>
+          </div>
+          <div class="pulse-legs">
+            <div class="pulse-leg"><div class="eyebrow">Market</div><strong id="legMarket">22</strong></div>
+            <div class="pulse-leg"><div class="eyebrow">X tape</div><strong id="legX">31</strong></div>
+            <div class="pulse-leg"><div class="eyebrow">Whales</div><strong id="legWhale">44</strong></div>
+          </div>
+          <div class="pulse-divergence" id="pulseDiv">Price already down. X tape is still catching up.</div>
+          <div class="pulse-themes" id="pulseThemes"></div>
+          <div class="pulse-quotes" id="pulseQuotes"></div>
+          <div class="pulse-card-actions">
+            <button type="button" class="btn btn-sm">Share on X</button>
+            <button type="button" class="btn btn-sm btn-ghost">How it’s scored</button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <div class="dash-page pulse-scene">
+    <div class="container">
+      <div class="pulse-scene-label">
+        <h2 class="display">Dashboard · Overview strip</h2>
+        <p>Logged-in. Sits above P&amp;L so Pulse is context for the bag, not a second product.</p>
+      </div>
+      <div class="dash-head">
+        <div class="dash-head-copy">
+          <div class="eyebrow" style="margin-bottom:10px;color:var(--accent)">// PORTFOLIO · 84 ITEMS</div>
+          <h1 class="display dash-title">Steam inventory</h1>
+        </div>
+        <div class="dash-head-actions">
+          <button type="button" class="btn btn-sm btn-ghost">Share on X</button>
+          <button type="button" class="btn btn-sm btn-ghost">Refresh</button>
+        </div>
+      </div>
+
+      <div class="glass-strong pulse-strip pulse-card" id="pulseStrip" data-band="fear">
+        <div class="pulse-strip-score">
+          <span class="eyebrow">Pulse</span>
+          <strong id="stripScore">28</strong>
+          <span id="stripLabel">Fear</span>
+        </div>
+        <div class="pulse-strip-copy" id="stripCopy">Glove Case · Armory ROI · Steam tax — price down, tape lagging</div>
+        <button type="button" class="btn btn-sm">Share reading</button>
+      </div>
+
+      <div class="dash-stats">
+        <div class="glass dash-stat-card">
+          <div class="dash-stat-accent"></div>
+          <div class="eyebrow">TOTAL VALUE</div>
+          <div class="display dash-stat-value">$12,480</div>
+          <div class="dash-stat-delta" style="color:var(--green)">61 of 84 priced</div>
+          <div class="dash-stat-sub">Steam $11,920</div>
+        </div>
+        <div class="glass dash-stat-card">
+          <div class="eyebrow">P&amp;L</div>
+          <div class="display dash-stat-value">+$1,046</div>
+          <div class="dash-stat-delta" style="color:var(--green)">+9.15%</div>
+          <div class="dash-stat-sub">Cost basis $11,434</div>
+        </div>
+        <div class="glass dash-stat-card">
+          <div class="eyebrow">SELLABLE NOW</div>
+          <div class="display dash-stat-value">$8,210</div>
+          <div class="dash-stat-delta" style="color:var(--cyan)">52 of 84 marketable</div>
+          <div class="dash-stat-sub">32 locked or in storage</div>
+        </div>
+        <div class="glass dash-stat-card">
+          <div class="eyebrow">CONCENTRATION</div>
+          <div class="display dash-stat-value">22%</div>
+          <div class="dash-stat-delta" style="color:var(--amber)">Sport Gloves | Pandora's Box</div>
+          <div class="dash-stat-sub">Top 5 = 61% of portfolio</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="section-tight pulse-scene" style="padding-top:0">
+    <div class="container">
+      <div class="pulse-scene-label">
+        <h2 class="display">What you’d post at 19:30</h2>
+        <p>No URL. Same tone as the account. Number + one divergence line.</p>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+        <article class="glass pulse-x-card">
+          <div class="pulse-x-card-head">
+            <img src="logo-cs2-candles-variant-02.png" alt="">
+            <div>
+              <strong>SkinsHead</strong>
+              <span>@SkinsheadPro · 19:30</span>
+            </div>
+          </div>
+          <p id="xPost"></p>
+          <div class="pulse-x-meta">0 replies · 0 reposts · 16 views · sample</div>
+        </article>
+
+        <div>
+          <div class="eyebrow" style="margin-bottom:10px">Mobile card</div>
+          <div class="pulse-phone glass">
+            <article class="glass-strong market-board-card pulse-card" id="pulsePhone" data-band="fear" style="min-height:0">
+              <div class="market-board-card-head">
+                <span class="market-board-kicker"><span class="live-dot"></span> Skin Pulse</span>
+                <span class="market-board-all">4m ago</span>
+              </div>
+              <div class="pulse-hero" style="grid-template-columns:1fr">
+                <div>
+                  <div class="pulse-score" id="phoneScore" style="font-size:56px">28</div>
+                  <div class="pulse-label" id="phoneLabel">Fear</div>
+                </div>
+                <div class="pulse-meter">
+                  <div class="pulse-meter-track">
+                    <div class="pulse-meter-needle" id="phoneNeedle" style="left:28%"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="pulse-divergence" id="phoneDiv" style="margin-top:14px"></div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<script>
+const SCENES = {
+  fear: {
+    pulse: 28, label: 'Fear', band: 'fear',
+    market: 22, x: 31, whale: 44,
+    cap: '$1.84B', capChange: -4.18,
+    capSpark: [22, 21.6, 21.8, 21.2, 20.9, 20.4, 19.8, 19.6],
+    divergence: 'Price already down. X tape is still catching up.',
+    themes: [
+      { name: 'Glove Case', bias: 'bearish' },
+      { name: 'Armory ROI', bias: 'bullish' },
+      { name: 'Steam tax', bias: 'bearish' },
+    ],
+    quotes: [
+      { handle: 'cs2insiderX', text: 'Cases keep bleeding and nobody wants to call the bottom.' },
+      { handle: 'TheGreenFireCS', text: 'Looks like a summer flush. Players come back, this might be the dip.' },
+    ],
+    post: 'CS2 Skin Pulse is 28 — Fear.\n\nMarket cap 24h −4.2%.\nGlove Case still the tape.\n\nPrice already down. X is late.',
+  },
+  split: {
+    pulse: 51, label: 'Neutral', band: 'neutral',
+    market: 24, x: 72, whale: 48,
+    cap: '$1.81B', capChange: -3.40,
+    capSpark: [22, 21.4, 21.1, 20.6, 20.2, 19.9, 19.7, 19.5],
+    divergence: 'Market is red. X is still greedy. That’s the useful reading.',
+    themes: [
+      { name: 'Buff vs Steam', bias: 'bearish' },
+      { name: 'Knives', bias: 'bullish' },
+      { name: 'Armory Pass', bias: 'bullish' },
+    ],
+    quotes: [
+      { handle: 'Alkem1stCS', text: 'Everyone still posting bag screenshots. Chart already rolled over.' },
+      { handle: 'skinclubmedia', text: 'If you needed a reminder: listing price ≠ cash you can withdraw.' },
+    ],
+    post: 'CS2 Skin Pulse is 51 — Neutral.\n\nCap is −3.4%.\nX tape is still greedy.\n\nThat’s the gap. Not a signal. A temperature.',
+  },
+  greed: {
+    pulse: 74, label: 'Greed', band: 'greed',
+    market: 68, x: 81, whale: 71,
+    cap: '$1.93B', capChange: 2.64,
+    capSpark: [19.2, 19.6, 19.8, 20.1, 20.4, 20.8, 21.1, 21.4],
+    divergence: 'Tape and price agree. Crowded long. Size accordingly.',
+    themes: [
+      { name: 'Covert rifles', bias: 'bullish' },
+      { name: 'Armory ROI', bias: 'bullish' },
+      { name: 'Major rumor', bias: 'bullish' },
+    ],
+    quotes: [
+      { handle: 'tradeit_gg', text: 'Volume is back. People are paying up for liquid rifles again.' },
+      { handle: 'ohnePixelUpdate', text: 'Another insane unbox day. Market loves a highlight clip.' },
+    ],
+    post: 'CS2 Skin Pulse is 74 — Greed.\n\nCap 24h +2.6%.\nCovert rifles and Armory are the tape.\n\nCrowded. Track the bag, not the clip.',
+  },
+};
+
+function sparkSvg(values, color) {
+  const w = 320, h = 104, pad = 6;
+  const min = Math.min(...values), max = Math.max(...values);
+  const span = Math.max(max - min, 0.01);
+  const pts = values.map((v, i) => {
+    const x = pad + (i / (values.length - 1)) * (w - pad * 2);
+    const y = h - pad - ((v - min) / span) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+    <polyline fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" points="${pts.join(' ')}" />
+  </svg>`;
+}
+
+function render(sceneKey) {
+  const s = SCENES[sceneKey];
+  const up = s.capChange >= 0;
+  document.getElementById('capCard').dataset.positive = String(up);
+  document.getElementById('capValue').textContent = s.cap;
+  const delta = document.getElementById('capDelta');
+  delta.dataset.positive = String(up);
+  delta.textContent = `${up ? '▲' : '▼'} ${Math.abs(s.capChange).toFixed(2)}%`;
+  document.getElementById('capSpark').innerHTML = sparkSvg(s.capSpark, up ? 'var(--green)' : 'var(--red)');
+
+  ['pulseCard', 'pulseStrip', 'pulsePhone'].forEach((id) => {
+    document.getElementById(id).dataset.band = s.band;
+  });
+  document.getElementById('pulseScore').textContent = s.pulse;
+  document.getElementById('pulseLabel').textContent = s.label;
+  document.getElementById('pulseNeedle').style.left = `${s.pulse}%`;
+  document.getElementById('legMarket').textContent = s.market;
+  document.getElementById('legX').textContent = s.x;
+  document.getElementById('legWhale').textContent = s.whale;
+  document.getElementById('pulseDiv').textContent = s.divergence;
+  document.getElementById('pulseThemes').innerHTML = s.themes.map((t) =>
+    `<span class="pulse-theme" data-bias="${t.bias}"><i></i>${t.name}</span>`
+  ).join('');
+  document.getElementById('pulseQuotes').innerHTML = s.quotes.map((q) =>
+    `<div class="pulse-quote">↳<div><b>@${q.handle}</b> <span>${q.text}</span></div></div>`
+  ).join('');
+
+  document.getElementById('stripScore').textContent = s.pulse;
+  document.getElementById('stripLabel').textContent = s.label;
+  document.getElementById('stripCopy').textContent =
+    s.themes.map((t) => t.name).join(' · ') + ' — ' + s.divergence;
+
+  document.getElementById('xPost').textContent = s.post;
+  document.getElementById('phoneScore').textContent = s.pulse;
+  document.getElementById('phoneLabel').textContent = s.label;
+  document.getElementById('phoneNeedle').style.left = `${s.pulse}%`;
+  document.getElementById('phoneDiv').textContent = s.divergence;
+}
+
+document.querySelectorAll('[data-scene]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-scene]').forEach((b) => b.classList.toggle('is-active', b === btn));
+    render(btn.dataset.scene);
+  });
+});
+
+render('fear');
+</script>
+</body>
+</html>
