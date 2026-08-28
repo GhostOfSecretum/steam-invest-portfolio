@@ -1,4 +1,4 @@
-/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, startInvestorTrial, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo, CURRENCIES, getCnyPerUsdRate */
+/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, startInvestorTrial, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo, Sparkline, withSteamImageSize, CURRENCIES, getCnyPerUsdRate */
 const { useState, useEffect, useRef, useMemo } = React;
 
 /* ───────────────────────────────────────────────────
@@ -209,6 +209,137 @@ function Ticker({ onItemClick }) {
       </div>
       <style>{`@keyframes tickerScroll { from { transform: translateX(0) } to { transform: translateX(-33.333%) } }`}</style>
     </div>
+  );
+}
+
+function formatListedCount(value) {
+  if (!Number.isFinite(value) || value <= 0) return '—';
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    compactDisplay: 'short',
+    maximumFractionDigits: value >= 1000 ? 1 : 0,
+  }).format(value);
+}
+
+const MARKET_CAP_PERIODS = [7, 30, 90, 365];
+
+function MarketBoardPeriods({ days, value, onChange, label }) {
+  return (
+    <div className="market-board-periods" role="group" aria-label={label || 'Period'}>
+      {days.map((entry) => (
+        <button
+          key={entry}
+          type="button"
+          aria-pressed={value === entry}
+          className={value === entry ? 'is-active' : undefined}
+          onClick={() => onChange(entry)}
+        >
+          {entry}d
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function marketCapPeriodChange(overview, period) {
+  const changes = overview.changes && typeof overview.changes === 'object' ? overview.changes : {};
+  const direct = Number(changes[period] ?? changes[String(period)]);
+  if (Number.isFinite(direct)) return direct;
+  if (period === 7 && Number.isFinite(overview.change7d)) return overview.change7d;
+  if (period === 7 && Number.isFinite(overview.change24h)) return overview.change24h;
+  return null;
+}
+
+function historyPointTime(point) {
+  if (!point) return NaN;
+  if (Number.isFinite(point.t)) return point.t;
+  return Date.parse(point.date);
+}
+
+function downsampleSpark(series, maxPoints) {
+  if (!Array.isArray(series) || series.length <= maxPoints) return series || [];
+  const last = series.length - 1;
+  const out = [];
+  for (let i = 0; i < maxPoints; i += 1) {
+    const index = i === maxPoints - 1 ? last : Math.round((i / (maxPoints - 1)) * last);
+    out.push(series[index]);
+  }
+  return out;
+}
+
+function marketCapSpark(overview, period) {
+  const history = Array.isArray(overview.history) ? overview.history : [];
+  if (history.length > 1 && Number.isFinite(period)) {
+    const lastTs = historyPointTime(history[history.length - 1]);
+    const cutoff = lastTs - period * 24 * 60 * 60 * 1000;
+    const slice = history.filter((point) => historyPointTime(point) >= cutoff);
+    const series = (slice.length >= 2 ? slice : history).map((point) => point.v);
+    if (series.length > 1) return downsampleSpark(series, period <= 7 ? 8 : period <= 30 ? 14 : 22);
+  }
+  if (period === 7 && Array.isArray(overview.spark) && overview.spark.length > 1) return overview.spark;
+  return [];
+}
+
+function MarketCapBoard({ onItemClick, onMarket }) {
+  const lang = window.__lang || 'en';
+  const t = useT(lang);
+  const board = t.marketBoard || {};
+  const [period, setPeriod] = useState(7);
+  const market = useMarketSnapshot({ ticker: TICKER_ITEMS });
+  const overview = market.data?.overview || {};
+  const listedValue = Number.isFinite(overview.listedValue) ? overview.listedValue : null;
+  const change = marketCapPeriodChange(overview, period);
+  const spark = marketCapSpark(overview, period);
+  const positive = change == null || change >= 0;
+  const tracking = overview.circulating
+    ? (board.tracking || 'Estimated circulating CS2 market')
+    : String(board.trackingListed || board.tracking || 'Tracking {n} listed skins').replace(
+      '{n}',
+      formatListedCount(overview.listedCount || overview.itemCount || 0),
+    );
+
+  return (
+    <section className="section-tight landing-market-board">
+      <div className="container">
+        <SectionHeader title={t.sections.marketCap} sub={t.sections.marketCapSub} num="01" />
+        <div className="market-board-grid">
+          <article className="glass-strong market-board-card market-board-stats" data-positive={positive}>
+            <div className="market-board-card-head">
+              <span className="market-board-kicker">
+                <i className="market-board-ico" aria-hidden="true">▣</i>
+                {board.stats}
+              </span>
+              <MarketBoardPeriods
+                days={MARKET_CAP_PERIODS}
+                value={period}
+                onChange={setPeriod}
+              />
+            </div>
+            <div className="market-board-stats-body">
+              <div className="market-board-stats-copy">
+                <div className="eyebrow">{board.listed}</div>
+                <div className="market-board-value-row">
+                  <div className="market-board-value">
+                    {listedValue != null ? formatMoney(listedValue, { digits: 0 }) : '—'}
+                  </div>
+                  {change != null && (
+                    <div className="market-board-delta" data-positive={positive}>
+                      {positive ? '▲' : '▼'} {Math.abs(change).toFixed(2)}%
+                    </div>
+                  )}
+                </div>
+                <div className="market-board-foot">{tracking}</div>
+              </div>
+              <div className="market-board-spark">
+                {spark.length > 1 && (
+                  <Sparkline data={spark} color={positive ? 'var(--green)' : 'var(--red)'} height={104} smooth pad={0.18} />
+                )}
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -2078,4 +2209,4 @@ function Footer({ lang }) {
   );
 }
 
-Object.assign(window, { Ticker, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, Pricing, HowItWorks, ProductShowcase, FinalCta, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });
+Object.assign(window, { Ticker, MarketCapBoard, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, Pricing, HowItWorks, ProductShowcase, FinalCta, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });

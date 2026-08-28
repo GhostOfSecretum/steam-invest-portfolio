@@ -63,7 +63,7 @@ const {
   getTopInvestorActivity,
   startTopInvestorsActivityPoller,
 } = require('./services/top-investors');
-const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory } = require('./services/market');
+const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory, getPeriodMovers } = require('./services/market');
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
@@ -582,6 +582,11 @@ app.delete('/api/portfolios/:portfolioId/events/:eventId', asyncRoute(async (req
 app.get('/api/market/snapshot', asyncRoute(async (req, res) => {
   const snapshot = await getMarketSnapshot();
   res.json(snapshot);
+}));
+
+app.get('/api/market/movers', asyncRoute(async (req, res) => {
+  const movers = await getPeriodMovers();
+  res.json(movers);
 }));
 
 app.get('/api/market/catalog', asyncRoute(async (req, res) => {

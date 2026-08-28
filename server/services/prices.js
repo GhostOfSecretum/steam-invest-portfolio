@@ -1,5 +1,9 @@
+const { execFile } = require('child_process');
+const { promisify } = require('util');
 const { getCached, getCachedEntry, setCached, remember } = require('./cache');
 const { collectionNameToSlug } = require('../../item-slugs');
+
+const execFileAsync = promisify(execFile);
 
 const PRICE_MAX_AGE_MS = 30 * 60 * 1000;
 const STEAM_PRICE_STALE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -7,6 +11,9 @@ const CATALOG_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const HISTORY_MAX_AGE_MS = 60 * 60 * 1000;
 const ICON_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const TOP_MOVERS_MAX_AGE_MS = 30 * 60 * 1000;
+const MARKET_OVERVIEW_MAX_AGE_MS = 15 * 60 * 1000;
+const MARKET_OVERVIEW_HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const MARKET_OVERVIEW_HISTORY_POINT_GAP_MS = 3 * 60 * 60 * 1000;
 const FX_RATE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const SKINPORT_MAX_AGE_MS = 5 * 60 * 1000;
 const CSFLOAT_MAX_AGE_MS = 2 * 60 * 1000;
@@ -31,6 +38,39 @@ const WATCHLIST_MARKET_HASH_NAMES = [
   'AWP | Lightning Strike (Factory New)',
   'AK-47 | Vulcan (Minimal Wear)',
   "Sport Gloves | Pandora's Box (Field-Tested)",
+];
+
+const PERIOD_MOVER_DAYS = [1, 7, 30];
+const CSMARKETCAP_INDEX_PATHS = ['rifles', 'pistols', 'smgs', 'heavy', 'knives', 'gloves', 'cases'];
+const PERIOD_MOVER_SEEDS = [
+  ...WATCHLIST_MARKET_HASH_NAMES,
+  'AWP | Asiimov (Field-Tested)',
+  'AK-47 | Fire Serpent (Field-Tested)',
+  'AK-47 | Asiimov (Field-Tested)',
+  'AK-47 | Bloodsport (Field-Tested)',
+  'AK-47 | Inheritance (Field-Tested)',
+  'AK-47 | Slate (Field-Tested)',
+  'M4A1-S | Printstream (Field-Tested)',
+  'M4A1-S | Black Lotus (Field-Tested)',
+  'M4A4 | Temukau (Field-Tested)',
+  'AWP | Neo-Noir (Field-Tested)',
+  'AWP | Chromatic Aberration (Field-Tested)',
+  'AWP | Containment Breach (Field-Tested)',
+  'USP-S | Printstream (Field-Tested)',
+  'Desert Eagle | Printstream (Field-Tested)',
+  'Glock-18 | Water Elemental (Factory New)',
+  'Butterfly Knife | Fade (Factory New)',
+  'Karambit | Lore (Field-Tested)',
+  'Bayonet | Doppler (Factory New)',
+  'Talon Knife | Doppler (Factory New)',
+  'Specialist Gloves | Crimson Kimono (Field-Tested)',
+  'Driver Gloves | Snow Leopard (Field-Tested)',
+  'P90 | Asiimov (Field-Tested)',
+  'MAC-10 | Neon Rider (Factory New)',
+  'Revolution Case',
+  'Recoil Case',
+  'Kilowatt Case',
+  'Fracture Case',
 ];
 
 const STEAM_CURRENCY_CODES = {
@@ -137,7 +177,7 @@ async function fetchJson(url, { timeoutMs = 6000, headers: extraHeaders = {} } =
   }
 }
 
-async function fetchText(url, { timeoutMs = 6000 } = {}) {
+async function fetchText(url, { timeoutMs = 6000, headers: extraHeaders = {} } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const isSteam = /steamcommunity\.com/i.test(String(url || ''));
@@ -148,6 +188,7 @@ async function fetchText(url, { timeoutMs = 6000 } = {}) {
         Accept: 'text/html',
         'User-Agent': 'SteamInvestPortfolio/0.1 (+local-dev)',
         ...(isSteam ? STEAM_FETCH_HEADERS : {}),
+        ...extraHeaders,
       },
       signal: controller.signal,
     });
@@ -1313,95 +1354,909 @@ async function getTickerItems() {
   })));
 }
 
-async function getTopMovers() {
-  const key = 'market:top-movers';
-  let value = [];
-  try {
-    const cached = await remember(key, TOP_MOVERS_MAX_AGE_MS, async () => {
-      const json = await fetchJson('https://take.skin/api/public/v1/skins?page=0&limit=100');
-      return Array.isArray(json.data) ? json.data : [];
-    });
-    value = cached.value;
-  } catch (error) {
-    const stale = await getCached(key, 7 * 24 * 60 * 60 * 1000);
-    if (Array.isArray(stale)) value = stale;
+function toNumericPercent(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value == null) return null;
+  const cleaned = String(value).replace('%', '').replace(',', '.').trim();
+  const parsed = Number.parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function extractTakeSkinDelta(item) {
+  const directCandidates = [
+    item?.delta,
+    item?.change,
+    item?.change24h,
+    item?.change24H,
+    item?.priceChange24h,
+    item?.priceChangePercent,
+    item?.priceChangePercentage,
+    item?.percentChange,
+    item?.percentChange24h,
+    item?.pctChange24h,
+  ];
+  for (const candidate of directCandidates) {
+    const parsed = toNumericPercent(candidate);
+    if (parsed != null) return parsed;
   }
 
-  const toNumericPercent = (value) => {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (value == null) return null;
-    const cleaned = String(value).replace('%', '').replace(',', '.').trim();
-    const parsed = Number.parseFloat(cleaned);
-    return Number.isFinite(parsed) ? parsed : null;
+  const nestedCandidates = [
+    item?.stats?.change24h,
+    item?.stats?.percentChange24h,
+    item?.stats?.delta24h,
+    item?.analytics?.change24h,
+    item?.analytics?.percentChange24h,
+  ];
+  for (const candidate of nestedCandidates) {
+    const parsed = toNumericPercent(candidate);
+    if (parsed != null) return parsed;
+  }
+
+  return null;
+}
+
+function takeSkinIconUrl(item) {
+  const candidate = item?.iconUrl || item?.image || item?.icon || item?.img || item?.imageUrl;
+  return typeof candidate === 'string' && candidate.startsWith('http') ? candidate : null;
+}
+
+function mapTakeSkinItem(item, index) {
+  const marketHashName = item.marketHashName || item.name;
+  const price = parseMoney(item.price);
+  return {
+    name: stripWear(marketHashName || item.name),
+    marketHashName,
+    wear: getWear(marketHashName),
+    price,
+    delta: extractTakeSkinDelta(item),
+    tier: rarityToTier(item.rarity),
+    spark: makeSpark(price, index),
+    provider: 'take.skin',
+    iconUrl: takeSkinIconUrl(item),
   };
+}
 
-  const extractDelta = (item) => {
-    const directCandidates = [
-      item?.delta,
-      item?.change,
-      item?.change24h,
-      item?.change24H,
-      item?.priceChange24h,
-      item?.priceChangePercent,
-      item?.priceChangePercentage,
-      item?.percentChange,
-      item?.percentChange24h,
-      item?.pctChange24h,
-    ];
-    for (const candidate of directCandidates) {
-      const parsed = toNumericPercent(candidate);
-      if (parsed != null) return parsed;
-    }
-
-    const nestedCandidates = [
-      item?.stats?.change24h,
-      item?.stats?.percentChange24h,
-      item?.stats?.delta24h,
-      item?.analytics?.change24h,
-      item?.analytics?.percentChange24h,
-    ];
-    for (const candidate of nestedCandidates) {
-      const parsed = toNumericPercent(candidate);
-      if (parsed != null) return parsed;
-    }
-
-    return null;
+function publicMover(item) {
+  return {
+    name: item.name,
+    marketHashName: item.marketHashName,
+    wear: item.wear,
+    price: item.price,
+    delta: item.delta,
+    tier: item.tier,
+    spark: item.spark,
+    provider: item.provider,
+    iconUrl: item.iconUrl || null,
   };
+}
 
-  const items = value
-    .map((item, index) => {
-      const price = parseMoney(item.price);
-      const delta = extractDelta(item);
-      return {
-        _order: index,
-        name: stripWear(item.marketHashName || item.name),
-        marketHashName: item.marketHashName,
-        wear: getWear(item.marketHashName),
+async function loadTakeSkinRows() {
+  const key = 'market:top-movers';
+  try {
+    const cached = await remember(key, TOP_MOVERS_MAX_AGE_MS, async () => {
+      const json = await fetchJson('https://take.skin/api/public/v1/skins?page=0&limit=100', { timeoutMs: 12000 });
+      return Array.isArray(json.data) ? json.data : [];
+    });
+    return Array.isArray(cached.value) ? cached.value : [];
+  } catch (error) {
+    const stale = await getCached(key, 7 * 24 * 60 * 60 * 1000);
+    return Array.isArray(stale) ? stale : [];
+  }
+}
+
+function liquidityFromPriceMap(map) {
+  let listedValue = 0;
+  let listedCount = 0;
+  let itemCount = 0;
+  for (const row of Object.values(map || {})) {
+    const price = Number(row.price);
+    const volume = Number(row.volume);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    itemCount += 1;
+    if (Number.isFinite(volume) && volume > 0) {
+      listedValue += price * volume;
+      listedCount += volume;
+    }
+  }
+  return { listedValue, listedCount, itemCount };
+}
+
+function pickListedLiquidity(maps) {
+  const sources = [
+    ['skinport', maps.skinport],
+    ['lisskins', maps.lisskins],
+    ['csgomarket', maps.csgomarket],
+  ];
+  for (const [source, map] of sources) {
+    const liquidity = liquidityFromPriceMap(map);
+    if (liquidity.listedValue > 0) return { ...liquidity, source };
+  }
+  return { listedValue: 0, listedCount: 0, itemCount: 0, source: null };
+}
+
+function pulseFromMovers(items) {
+  let weighted = 0;
+  let weight = 0;
+  for (const item of items) {
+    if (!Number.isFinite(item.delta) || Math.abs(item.delta) > 40) continue;
+    const itemWeight = Math.max(1, Number(item.price) || 1);
+    weighted += item.delta * itemWeight;
+    weight += itemWeight;
+  }
+  return weight > 0 ? weighted / weight : null;
+}
+
+function pickMoverLeaders(items, maxAbs = 120) {
+  const cap = Number.isFinite(maxAbs) ? maxAbs : 120;
+  const usable = items.filter((item) => (
+    Number.isFinite(item.price)
+    && item.price >= 1
+    && Number.isFinite(item.delta)
+    && Math.abs(item.delta) <= cap
+  ));
+  const gainers = usable
+    .filter((item) => item.delta > 0)
+    .sort((a, b) => b.delta - a.delta || b.price - a.price)
+    .slice(0, 3);
+  const losers = usable
+    .filter((item) => item.delta < 0)
+    .sort((a, b) => a.delta - b.delta || b.price - a.price)
+    .slice(0, 3);
+  const movers = [...usable]
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || b.price - a.price)
+    .slice(0, 6);
+  return { gainers, losers, movers };
+}
+
+async function moversFromPriceSnapshot(map) {
+  const key = 'market:listed-price-snapshot';
+  const current = {};
+  for (const [name, row] of Object.entries(map || {})) {
+    const price = Number(row?.price);
+    const volume = Number(row?.volume);
+    if (!name || !Number.isFinite(price) || price < 1) continue;
+    if (Number.isFinite(volume) && volume < 3) continue;
+    current[name] = price;
+  }
+
+  const entry = await getCachedEntry(key);
+  const previous = entry && entry.value && typeof entry.value === 'object' ? entry.value : null;
+  const ageMs = entry && Number.isFinite(entry.updatedAt) ? Date.now() - entry.updatedAt : null;
+  const items = [];
+  if (previous) {
+    let index = 0;
+    for (const [name, price] of Object.entries(current)) {
+      const old = Number(previous[name]);
+      if (!Number.isFinite(old) || old <= 0) continue;
+      const delta = ((price - old) / old) * 100;
+      if (!Number.isFinite(delta) || Math.abs(delta) < 0.4 || Math.abs(delta) > 120) continue;
+      items.push({
+        name: stripWear(name),
+        marketHashName: name,
+        wear: getWear(name),
         price,
         delta,
-        tier: rarityToTier(item.rarity),
+        tier: rarityToTier(''),
         spark: makeSpark(price, index),
-        provider: 'take.skin',
-      };
-    })
-    .filter((item) => item.price != null && item.delta != null)
-    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || a._order - b._order)
-    .slice(0, 6)
-    .map(({ _order, ...item }) => ({
-      name: stripWear(item.marketHashName || item.name),
-      marketHashName: item.marketHashName,
-      wear: getWear(item.marketHashName),
-      price: item.price,
-      delta: item.delta,
-      tier: item.tier,
-      spark: item.spark,
-      provider: item.provider,
-    }));
+        provider: 'price-snapshot',
+        iconUrl: null,
+      });
+      index += 1;
+    }
+  }
 
-  return Promise.all(items.map(async (item) => ({
-    ...item,
-    iconUrl: item.marketHashName ? await getSteamMarketIcon(item.marketHashName).catch(() => null) : null,
-  })));
+  if (!previous || (ageMs != null && ageMs >= 6 * 60 * 60 * 1000)) {
+    await setCached(key, current);
+  }
+
+  return items;
+}
+
+async function attachMoverIcons(items) {
+  return Promise.all(items.map(async (item) => {
+    if (item.iconUrl) return item;
+    const iconUrl = item.marketHashName
+      ? await getSteamMarketIcon(item.marketHashName).catch(() => null)
+      : null;
+    return { ...item, iconUrl };
+  }));
+}
+
+function pickPeriodMoverUniverse() {
+  return [...new Set(PERIOD_MOVER_SEEDS)].slice(0, 18);
+}
+
+function parseTakeSkinHistoryPoints(json) {
+  const raw = Array.isArray(json?.data) ? json.data : [];
+  return raw
+    .map((point) => ({
+      date: point.date,
+      price: parseMoney(point.price),
+    }))
+    .filter((point) => Number.isFinite(point.price) && point.price > 0 && !Number.isNaN(new Date(point.date).getTime()))
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+}
+
+function changeOverDays(points, days) {
+  if (!Array.isArray(points) || points.length < 2) return null;
+  const last = points[points.length - 1];
+  const end = Date.parse(last.date);
+  const target = end - days * 24 * 60 * 60 * 1000;
+  let start = null;
+  for (const point of points) {
+    if (Date.parse(point.date) <= target) start = point;
+  }
+  if (!start) {
+    const first = points[0];
+    const ageDays = (end - Date.parse(first.date)) / 86400000;
+    if (ageDays < days * 0.6) return null;
+    start = first;
+  }
+  if (!start || start.price <= 0 || start === last) return null;
+  return ((last.price - start.price) / start.price) * 100;
+}
+
+function sparkFromHistory(points, days) {
+  if (!Array.isArray(points) || !points.length) return [];
+  const last = points[points.length - 1];
+  const target = Date.parse(last.date) - days * 24 * 60 * 60 * 1000;
+  const slice = points.filter((point) => Date.parse(point.date) >= target);
+  const series = (slice.length >= 2 ? slice : points).map((point) => point.price);
+  return series.slice(-12);
+}
+
+function emptyPeriodMovers(fallback = {}) {
+  const day1 = {
+    gainers: Array.isArray(fallback.gainers) ? fallback.gainers : [],
+    losers: Array.isArray(fallback.losers) ? fallback.losers : [],
+  };
+  return {
+    1: day1,
+    7: { gainers: [], losers: [] },
+    30: { gainers: [], losers: [] },
+  };
+}
+
+function extractNuxtPayload(html) {
+  const page = String(html || '');
+  const start = page.indexOf('[["ShallowReactive"');
+  if (start < 0) return null;
+  const end = page.indexOf('</script>', start);
+  if (end < 0) return null;
+  try {
+    return JSON.parse(page.slice(start, end));
+  } catch {
+    return null;
+  }
+}
+
+function nuxtDeref(payload, value) {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < payload.length) {
+    return payload[value];
+  }
+  return value;
+}
+
+function csMarketCapMilliToUsd(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed / 1000;
+}
+
+function isJunkMoverName(name) {
+  const value = String(name || '');
+  return /^(Souvenir |Sticker \| |Sealed Graffiti|Graffiti \| |Patch \| |Charm \| |Music Kit \| |Pin \| )/.test(value)
+    || /Capsule|Viewer Pass|Souvenir Package/.test(value);
+}
+
+function sparkFromCsMarketCapChart(payload, chartRef) {
+  const chart = nuxtDeref(payload, chartRef);
+  if (!Array.isArray(chart)) return [];
+  const spark = [];
+  for (const entry of chart) {
+    const point = nuxtDeref(payload, entry);
+    const raw = point && typeof point === 'object' && !Array.isArray(point)
+      ? nuxtDeref(payload, point.min_price)
+      : point;
+    const price = csMarketCapMilliToUsd(raw);
+    if (Number.isFinite(price)) spark.push(price);
+  }
+  return spark.slice(-12);
+}
+
+function parseCsMarketCapIndexItems(html) {
+  const payload = extractNuxtPayload(html);
+  if (!Array.isArray(payload) || payload.length < 10) return [];
+  const rows = payload.find((entry) => (
+    entry && typeof entry === 'object' && !Array.isArray(entry)
+    && entry.items != null
+    && (entry.best30d != null || entry.worst30d != null)
+  ));
+  const items = rows ? nuxtDeref(payload, rows.items) : null;
+  if (!Array.isArray(items)) return [];
+  const parsed = [];
+  for (const ref of items) {
+    const obj = nuxtDeref(payload, ref);
+    if (!obj || typeof obj !== 'object') continue;
+    const marketHashName = nuxtDeref(payload, obj.market_hash_name);
+    if (typeof marketHashName !== 'string' || isJunkMoverName(marketHashName)) continue;
+    const price = csMarketCapMilliToUsd(nuxtDeref(payload, obj.current_min_price));
+    if (!Number.isFinite(price) || price < 2 || price > 20000) continue;
+    parsed.push({
+      marketHashName,
+      name: stripWear(marketHashName),
+      wear: getWear(marketHashName),
+      price,
+      changes: {
+        1: Number(nuxtDeref(payload, obj.change_24h_percent)),
+        7: Number(nuxtDeref(payload, obj.change_7d_percent)),
+        30: Number(nuxtDeref(payload, obj.change_30d_percent)),
+      },
+      spark: sparkFromCsMarketCapChart(payload, obj.seven_day_chart),
+      provider: 'csmarketcap',
+    });
+  }
+  return parsed;
+}
+
+function plausibleMoverDelta(price, delta, days) {
+  if (!Number.isFinite(delta)) return false;
+  const abs = Math.abs(delta);
+  if (abs < 0.3) return false;
+  if (days === 1 && abs > 80) return false;
+  if (days === 7 && abs > 200) return false;
+  if (days === 30 && abs > 400) return false;
+  if (price >= 50 && days >= 7 && abs > 80) return false;
+  return true;
+}
+
+async function loadCsMarketCapIndexMovers() {
+  const key = 'market:csmarketcap-index-movers';
+  const cached = await remember(key, MARKET_OVERVIEW_MAX_AGE_MS, async () => {
+    const pages = await Promise.all(CSMARKETCAP_INDEX_PATHS.map(async (pathName) => {
+      try {
+        const html = await fetchText(`https://csmarketcap.com/indexes/${pathName}`, {
+          timeoutMs: 25000,
+          headers: {
+            Accept: 'text/html,application/xhtml+xml',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'User-Agent': STEAM_FETCH_HEADERS['User-Agent'],
+          },
+        });
+        return parseCsMarketCapIndexItems(html);
+      } catch {
+        return [];
+      }
+    }));
+    const merged = [];
+    const seen = new Set();
+    for (const list of pages) {
+      for (const item of list) {
+        if (seen.has(item.marketHashName)) continue;
+        seen.add(item.marketHashName);
+        merged.push(item);
+      }
+    }
+    if (merged.length < 20) throw new Error('CSMarketCap index movers were not recognized.');
+    return merged;
+  });
+  return cached.value;
+}
+
+function periodMoversFromCsMarketCap(rows) {
+  const byPeriod = {};
+  for (const days of PERIOD_MOVER_DAYS) {
+    const maxAbs = days === 1 ? 80 : days === 7 ? 200 : 400;
+    const items = rows.map((row) => {
+      const delta = row.changes[days];
+      if (!plausibleMoverDelta(row.price, delta, days)) return null;
+      return {
+        name: row.name,
+        marketHashName: row.marketHashName,
+        wear: row.wear,
+        price: row.price,
+        delta,
+        tier: rarityToTier(''),
+        spark: Array.isArray(row.spark) && row.spark.length > 1 ? row.spark : [],
+        provider: 'csmarketcap',
+        iconUrl: null,
+      };
+    }).filter(Boolean);
+    byPeriod[days] = pickMoverLeaders(items, maxAbs);
+  }
+  return publicPeriodMovers(byPeriod);
+}
+
+async function fetchTakeSkinHistoryPoints(marketHashName) {
+  const urlName = encodeURIComponent(marketHashName);
+  const json = await fetchJson(
+    `https://take.skin/api/public/v1/skins/${urlName}/price-history?days=30`,
+    { timeoutMs: 5000 },
+  ).catch(() => null);
+  return parseTakeSkinHistoryPoints(json);
+}
+
+async function fetchCsfloatHistoryPoints(marketHashName) {
+  const urlName = encodeURIComponent(marketHashName);
+  const rows = await fetchJson(`https://csfloat.com/api/v1/history/${urlName}/graph`, {
+    timeoutMs: 5000,
+    headers: { Accept: 'application/json' },
+  }).catch(() => null);
+  if (!Array.isArray(rows) || !rows.length) return [];
+  return rows
+    .map((bucket) => {
+      const cents = Number(bucket?.avg_price);
+      if (!Number.isFinite(cents) || cents <= 0) return null;
+      const day = String(bucket.day || '').slice(0, 10);
+      if (!day || Number.isNaN(new Date(day).getTime())) return null;
+      return { date: day, price: Math.round(cents) / 100 };
+    })
+    .filter(Boolean)
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+}
+
+function isFreshHistory(points) {
+  if (!Array.isArray(points) || points.length < 2) return false;
+  const lastAge = Date.now() - Date.parse(points[points.length - 1].date);
+  return Number.isFinite(lastAge) && lastAge <= 10 * 24 * 60 * 60 * 1000;
+}
+
+async function fetchMoverHistoryPoints(marketHashName) {
+  const key = `market:mover-history:${marketHashName}`;
+  const cached = await getCached(key, 6 * 60 * 60 * 1000);
+  if (isFreshHistory(cached)) return cached;
+
+  let points = await fetchCsfloatHistoryPoints(marketHashName);
+  if (!isFreshHistory(points)) {
+    const take = await fetchTakeSkinHistoryPoints(marketHashName);
+    if (isFreshHistory(take)) points = take;
+    else points = [];
+  }
+  if (isFreshHistory(points)) await setCached(key, points);
+  return points;
+}
+
+let periodMoversInflight = null;
+
+async function getPeriodMovers(maps, fallbackLeaders) {
+  const key = 'market:period-movers:v4';
+  const cached = await getCached(key, MARKET_OVERVIEW_MAX_AGE_MS);
+  if (cached && typeof cached === 'object') return cached;
+  if (periodMoversInflight) return periodMoversInflight;
+
+  periodMoversInflight = (async () => {
+    try {
+      const liveRows = await loadCsMarketCapIndexMovers();
+      const live = periodMoversFromCsMarketCap(liveRows);
+      if ((live[1]?.gainers?.length || 0) >= 1 && (live[1]?.losers?.length || 0) >= 1) {
+        await setCached(key, live);
+        return live;
+      }
+    } catch (error) {
+      console.warn('[market] CSMarketCap movers failed, using fallback:', error.message);
+    }
+
+    const names = pickPeriodMoverUniverse();
+    const rows = [];
+    for (let i = 0; i < names.length; i += 2) {
+      const batch = names.slice(i, i + 2);
+      const fetched = await Promise.all(batch.map(async (name) => {
+        const points = await fetchMoverHistoryPoints(name);
+        if (points.length < 2) return null;
+        return { name, points, price: points[points.length - 1].price };
+      }));
+      rows.push(...fetched.filter(Boolean));
+    }
+    if (!rows.length) throw new Error('Not enough period-mover histories.');
+    const byPeriod = {};
+    for (const days of PERIOD_MOVER_DAYS) {
+      const maxAbs = days === 1 ? 80 : days === 7 ? 200 : 400;
+      const items = rows.map((row) => {
+        const delta = changeOverDays(row.points, days);
+        if (!Number.isFinite(delta)) return null;
+        return {
+          name: stripWear(row.name),
+          marketHashName: row.name,
+          wear: getWear(row.name),
+          price: row.price,
+          delta,
+          tier: rarityToTier(''),
+          spark: sparkFromHistory(row.points, days),
+          provider: 'csfloat',
+          iconUrl: null,
+        };
+      }).filter(Boolean);
+      byPeriod[days] = pickMoverLeaders(items, maxAbs);
+    }
+    const stamped = publicPeriodMovers(byPeriod);
+    await setCached(key, stamped);
+    return stamped;
+  })()
+    .catch(async () => {
+      const stale = await getCached(key, 7 * 24 * 60 * 60 * 1000);
+      if (stale && typeof stale === 'object' && stale[1]) return stale;
+      return emptyPeriodMovers({
+        gainers: (fallbackLeaders?.gainers || []).map(publicMover),
+        losers: (fallbackLeaders?.losers || []).map(publicMover),
+      });
+    })
+    .finally(() => {
+      periodMoversInflight = null;
+    });
+
+  return periodMoversInflight;
+}
+
+function publicPeriodMovers(byPeriod) {
+  const stamped = {};
+  for (const days of PERIOD_MOVER_DAYS) {
+    const pack = byPeriod[days] || { gainers: [], losers: [] };
+    stamped[days] = {
+      gainers: (pack.gainers || []).map(publicMover),
+      losers: (pack.losers || []).map(publicMover),
+    };
+  }
+  return stamped;
+}
+
+async function appendOverviewHistory(listedValue) {
+  const key = 'market:overview-history';
+  const now = Date.now();
+  const previous = await getCached(key, MARKET_OVERVIEW_HISTORY_MAX_AGE_MS);
+  const points = Array.isArray(previous) ? previous.filter((point) => Number.isFinite(point?.v) && Number.isFinite(point?.t)) : [];
+  const last = points[points.length - 1];
+  if (Number.isFinite(listedValue) && listedValue > 0 && (!last || now - last.t >= MARKET_OVERVIEW_HISTORY_POINT_GAP_MS)) {
+    points.push({ t: now, v: listedValue });
+    await setCached(key, points.slice(-24));
+  }
+  const spark = points.map((point) => point.v);
+  const dayAgo = now - 24 * 60 * 60 * 1000;
+  const baseline = [...points].reverse().find((point) => point.t <= dayAgo) || (points.length >= 2 ? points[0] : null);
+  const change24h = baseline && baseline.v > 0 && listedValue > 0
+    ? ((listedValue - baseline.v) / baseline.v) * 100
+    : null;
+  return { spark, change24h };
+}
+
+function parseSpacedUsd(text) {
+  const digits = String(text || '').replace(/[^\d.]/g, '');
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) && parsed > 1e8 ? parsed : null;
+}
+
+function milliDollarsToUsd(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed / 1000;
+}
+
+function interpolateLogChange(fromDays, fromPct, toDays, toPct, targetDays) {
+  if (![fromPct, toPct].every((value) => Number.isFinite(value))) return null;
+  if (!(toDays > fromDays) || targetDays <= fromDays || targetDays >= toDays) return null;
+  const start = Math.log(1 + fromPct / 100);
+  const end = Math.log(1 + toPct / 100);
+  const t = (targetDays - fromDays) / (toDays - fromDays);
+  return (Math.exp(start + (end - start) * t) - 1) * 100;
+}
+
+function csMarketCapChanges(change7d, change30d, change90d, change365d) {
+  const change180d = interpolateLogChange(90, change90d, 365, change365d, 180);
+  return {
+    7: Number.isFinite(change7d) ? change7d : null,
+    30: Number.isFinite(change30d) ? change30d : null,
+    90: Number.isFinite(change90d) ? change90d : null,
+    180: Number.isFinite(change180d) ? change180d : null,
+    365: Number.isFinite(change365d) ? change365d : null,
+  };
+}
+
+function parseCsMarketCapHistoryFromHtml(html) {
+  const history = [];
+  const page = String(html || '');
+  const dateRe = /"(\d{4}-\d{2}-\d{2})T00:00:00\.000Z",(\d{12,16})/g;
+  let match = dateRe.exec(page);
+  while (match) {
+    const t = Date.parse(`${match[1]}T00:00:00.000Z`);
+    const v = milliDollarsToUsd(match[2]);
+    if (Number.isFinite(t) && Number.isFinite(v) && v >= 1e9) history.push({ t, v });
+    match = dateRe.exec(page);
+  }
+  history.sort((a, b) => a.t - b.t);
+  const deduped = [];
+  for (const point of history) {
+    const prev = deduped[deduped.length - 1];
+    if (prev && prev.t === point.t) deduped[deduped.length - 1] = point;
+    else deduped.push(point);
+  }
+  return deduped;
+}
+
+function attachCsMarketCapHistory(parsed, html) {
+  if (!parsed) return null;
+  const fromHtml = parseCsMarketCapHistoryFromHtml(html);
+  if (fromHtml.length > (parsed.history || []).length) {
+    parsed.history = fromHtml;
+  }
+  if (parsed.history.length) {
+    parsed.history[parsed.history.length - 1] = {
+      t: parsed.history[parsed.history.length - 1].t,
+      v: parsed.marketCap,
+    };
+    parsed.spark = parsed.history.slice(-8).map((point) => point.v);
+  }
+  return parsed;
+}
+
+function parseCsMarketCapPayload(html) {
+  const payload = extractNuxtPayload(html);
+  if (!Array.isArray(payload)) return null;
+  let stats = null;
+  let bestChartLen = 0;
+  for (const entry of payload) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    if (entry.current_sum == null || entry.chart_data == null) continue;
+    const chart = nuxtDeref(payload, entry.chart_data);
+    const chartLen = Array.isArray(chart) ? chart.length : 0;
+    if (chartLen > bestChartLen) {
+      bestChartLen = chartLen;
+      stats = entry;
+    }
+  }
+  if (!stats) return null;
+  const currentSum = milliDollarsToUsd(nuxtDeref(payload, stats.current_sum));
+  const change7d = Number(nuxtDeref(payload, stats.percent_change_7d ?? stats.change_7d));
+  const change24h = Number(nuxtDeref(payload, stats.change_24h));
+  const change30d = Number(nuxtDeref(payload, stats.change_30d));
+  const change90d = Number(nuxtDeref(payload, stats.change_90d));
+  const change365d = Number(nuxtDeref(payload, stats.change_1y));
+  const chart = nuxtDeref(payload, stats.chart_data);
+  const history = [];
+  for (const ref of chart) {
+    const point = nuxtDeref(payload, ref);
+    if (!point || typeof point !== 'object' || Array.isArray(point)) continue;
+    const ts = Date.parse(nuxtDeref(payload, point.date));
+    const value = milliDollarsToUsd(nuxtDeref(payload, point.sum));
+    if (!Number.isFinite(ts) || !Number.isFinite(value) || value < 1e9) continue;
+    history.push({ t: ts, v: value });
+  }
+  history.sort((a, b) => a.t - b.t);
+  const marketCap = currentSum || (history.length ? history[history.length - 1].v : null);
+  if (!Number.isFinite(marketCap)) return null;
+  if (history.length) history[history.length - 1] = { t: history[history.length - 1].t, v: marketCap };
+  const spark = history.slice(-8).map((point) => point.v);
+  return {
+    marketCap,
+    change24h: Number.isFinite(change24h) ? change24h : null,
+    change7d: Number.isFinite(change7d) ? change7d : null,
+    changes: csMarketCapChanges(change7d, change30d, change90d, change365d),
+    history,
+    spark,
+    source: 'csmarketcap',
+  };
+}
+
+function parseCsMarketCapHtml(html) {
+  const fromPayload = attachCsMarketCapHistory(parseCsMarketCapPayload(html), html);
+  if (fromPayload && fromPayload.history.length >= 2) return fromPayload;
+
+  const page = String(html || '');
+  const faq = page.match(/CS2 market cap sits at \$([0-9\s\u00A0]+)\s*\(\s*([+-]?\d+(?:\.\d+)?)%\s+over the last 7 days\)/i);
+  const banner = page.match(/banner__price[\s\S]{0,500}?c-usd[^>]*>([0-9\s\u00A0]+)</i);
+  const marketCap = parseSpacedUsd(faq?.[1]) || parseSpacedUsd(banner?.[1]);
+  const stats = page.match(/"current_sum":\d+,"previous_sum":\d+,"percent_change_7d":\d+,"ath":\d+,"change_24h":\d+,"change_7d":\d+,"change_30d":\d+,"change_90d":\d+,"change_1y":\d+,"chart_data":\d+\},(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  const currentSum = stats ? milliDollarsToUsd(stats[1]) : null;
+  const previousSum = stats ? milliDollarsToUsd(stats[2]) : null;
+  const change7d = stats ? Number(stats[3]) : (faq ? Number(faq[2]) : null);
+  const change24h = stats ? Number(stats[5]) : null;
+  const change30d = stats ? Number(stats[6]) : null;
+  const change90d = stats ? Number(stats[7]) : null;
+  const change365d = stats ? Number(stats[8]) : null;
+
+  const chartStart = page.indexOf('"chart_data":');
+  const chartSlice = chartStart >= 0 ? page.slice(chartStart, chartStart + 1800) : '';
+  const spark = [];
+  const dateRe = /"(\d{4}-\d{2}-\d{2})T00:00:00\.000Z"(?:,(\d{12,14}))?/g;
+  let match = dateRe.exec(chartSlice);
+  let index = 0;
+  while (match) {
+    const inline = match[2] ? milliDollarsToUsd(match[2]) : null;
+    const point = inline
+      || (index === 0 ? previousSum : null)
+      || currentSum;
+    if (Number.isFinite(point) && point > 1e9) spark.push(point);
+    index += 1;
+    match = dateRe.exec(chartSlice);
+  }
+
+  const value = marketCap || currentSum || fromPayload?.marketCap;
+  if (Number.isFinite(value) && spark.length) spark[spark.length - 1] = value;
+
+  if (!Number.isFinite(value)) return fromPayload;
+  return attachCsMarketCapHistory({
+    marketCap: value,
+    change24h: Number.isFinite(change24h) ? change24h : fromPayload?.change24h ?? null,
+    change7d: Number.isFinite(change7d) ? change7d : fromPayload?.change7d ?? null,
+    changes: csMarketCapChanges(change7d, change30d, change90d, change365d),
+    history: Array.isArray(fromPayload?.history) ? fromPayload.history : [],
+    spark: spark.length > 1 ? spark : (fromPayload?.spark || []),
+    source: 'csmarketcap',
+  }, html);
+}
+
+async function fetchCsMarketCapPage(url) {
+  const headers = {
+    Accept: 'text/html,application/xhtml+xml',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'User-Agent': STEAM_FETCH_HEADERS['User-Agent'],
+  };
+  const args = ['-sS', '-L', '-4', '--max-time', '30'];
+  for (const [key, value] of Object.entries(headers)) {
+    args.push('-H', `${key}: ${value}`);
+  }
+  args.push(url);
+  try {
+    const { stdout } = await execFileAsync('curl', args, {
+      maxBuffer: 8 * 1024 * 1024,
+      encoding: 'utf8',
+      timeout: 35000,
+    });
+    if (stdout) return stdout;
+  } catch (error) {
+    try {
+      return await fetchText(url, { timeoutMs: 45000, headers });
+    } catch {
+      throw error;
+    }
+  }
+  return fetchText(url, { timeoutMs: 45000, headers });
+}
+
+async function getCsMarketCapIndex() {
+  const key = 'market:csmarketcap-index:v4';
+  try {
+    const cached = await remember(key, MARKET_OVERVIEW_MAX_AGE_MS, async () => {
+      const urls = [
+        'https://csmarketcap.com/market-cap',
+        'https://csmarketcap.com/market-cap',
+        'https://csmarketcap.com/',
+      ];
+      let lastError = null;
+      let best = null;
+      for (const url of urls) {
+        try {
+          const parsed = parseCsMarketCapHtml(await fetchCsMarketCapPage(url));
+          if (!parsed || !Number.isFinite(parsed.marketCap)) continue;
+          const points = Array.isArray(parsed.history) ? parsed.history.length : 0;
+          if (!best || points > (best.history || []).length) best = parsed;
+          if (points >= 30) return parsed;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      if (best) return best;
+      throw lastError || new Error('CSMarketCap market-cap markup was not recognized.');
+    });
+    return cached.value;
+  } catch (error) {
+    const stale = await getCached(key, 7 * 24 * 60 * 60 * 1000)
+      || await getCached('market:csmarketcap-index:v3', 7 * 24 * 60 * 60 * 1000)
+      || await getCached('market:csmarketcap-index:v2', 7 * 24 * 60 * 60 * 1000);
+    if (stale && Number.isFinite(stale.marketCap)) return stale;
+    return null;
+  }
+}
+
+function emptyMarketOverview() {
+  return {
+    listedValue: null,
+    listedCount: 0,
+    itemCount: 0,
+    change24h: null,
+    changes: {},
+    history: [],
+    spark: [],
+    gainers: [],
+    losers: [],
+    movers: [],
+    moversByPeriod: emptyPeriodMovers(),
+    source: null,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+async function getMarketOverview() {
+  const key = 'market:overview:v6';
+  try {
+    const cached = await remember(key, MARKET_OVERVIEW_MAX_AGE_MS, async () => {
+      const [rows, skinport, lisskins, csgomarket, capIndex] = await Promise.all([
+        loadTakeSkinRows(),
+        getSkinportPriceList().catch(() => ({})),
+        getLisSkinsPriceList().catch(() => ({})),
+        getMarketCsgoPriceList().catch(() => ({})),
+        getCsMarketCapIndex().catch(() => null),
+      ]);
+      const universe = rows
+        .map((item, index) => mapTakeSkinItem(item, index))
+        .filter((item) => item.price != null && item.delta != null);
+      const snapshotMap = [csgomarket, lisskins, skinport].find((map) => map && Object.keys(map).length) || {};
+      const snapshotUniverse = universe.length ? [] : await moversFromPriceSnapshot(snapshotMap);
+      const combined = universe.length ? universe : snapshotUniverse;
+      const liquidity = pickListedLiquidity({ skinport, lisskins, csgomarket });
+      const circulating = Boolean(capIndex && Number.isFinite(capIndex.marketCap));
+      const listedValue = circulating
+        ? capIndex.marketCap
+        : (liquidity.listedValue > 0 ? liquidity.listedValue : null);
+      const pulse = pulseFromMovers(combined);
+      let change24h = pulse;
+      let spark = [];
+      let history = [];
+      let changes = {};
+      if (circulating) {
+        change24h = Number.isFinite(capIndex.change24h) ? capIndex.change24h : pulse;
+        spark = Array.isArray(capIndex.spark) ? capIndex.spark : [];
+        history = Array.isArray(capIndex.history) ? capIndex.history : [];
+        changes = capIndex.changes && typeof capIndex.changes === 'object' ? capIndex.changes : {};
+      } else {
+        const pulseHistory = await appendOverviewHistory(liquidity.listedValue);
+        change24h = Number.isFinite(pulseHistory.change24h) ? pulseHistory.change24h : pulse;
+        spark = pulseHistory.spark.length >= 2
+          ? pulseHistory.spark
+          : (Number.isFinite(listedValue) && listedValue > 0
+            ? [
+              listedValue / (1 + (Number.isFinite(change24h) ? change24h : 0) / 100),
+              listedValue,
+            ]
+            : []);
+        if (Number.isFinite(change24h)) changes = { 7: change24h };
+      }
+      if (!Number.isFinite(listedValue)) {
+        throw new Error('Market overview sources returned no cap.');
+      }
+      const leaders = pickMoverLeaders(combined);
+      const [gainers, losers, movers] = await Promise.all([
+        attachMoverIcons(leaders.gainers),
+        attachMoverIcons(leaders.losers),
+        attachMoverIcons(leaders.movers),
+      ]);
+      const publicGainers = gainers.map(publicMover);
+      const publicLosers = losers.map(publicMover);
+      getPeriodMovers({ skinport, lisskins, csgomarket }, leaders).catch(() => {});
+      const cachedPeriodMovers = await getCached('market:period-movers:v4', MARKET_OVERVIEW_MAX_AGE_MS);
+      const periodMovers = cachedPeriodMovers && typeof cachedPeriodMovers === 'object'
+        ? cachedPeriodMovers
+        : emptyPeriodMovers({ gainers: publicGainers, losers: publicLosers });
+      const day1 = periodMovers?.[1] && (periodMovers[1].gainers?.length || periodMovers[1].losers?.length)
+        ? periodMovers[1]
+        : null;
+      return {
+        listedValue,
+        listedCount: circulating ? 0 : liquidity.listedCount,
+        itemCount: liquidity.itemCount,
+        change24h: Number.isFinite(change24h) ? change24h : null,
+        change7d: Number.isFinite(capIndex?.change7d) ? capIndex.change7d : (Number.isFinite(changes[7]) ? changes[7] : null),
+        changes,
+        history,
+        spark,
+        gainers: day1 ? day1.gainers : publicGainers,
+        losers: day1 ? day1.losers : publicLosers,
+        movers: movers.map(publicMover),
+        moversByPeriod: periodMovers,
+        source: circulating ? 'csmarketcap' : liquidity.source,
+        circulating,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    return cached.value;
+  } catch (error) {
+    const stale = await getCached(key, 7 * 24 * 60 * 60 * 1000);
+    if (stale && typeof stale === 'object') return stale;
+    return emptyMarketOverview();
+  }
+}
+
+async function getTopMovers() {
+  const overview = await getMarketOverview();
+  return Array.isArray(overview.movers) ? overview.movers : [];
 }
 
 async function getCases() {
@@ -2406,6 +3261,8 @@ module.exports = {
   getPriceHistory,
   getTickerItems,
   getTopMovers,
+  getMarketOverview,
+  getPeriodMovers,
   getCases,
   getMarketCatalog,
   getSteamMarketPrice,

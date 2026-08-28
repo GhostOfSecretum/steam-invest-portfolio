@@ -28,6 +28,8 @@ const I18N = {
       ticker: 'LIVE MARKET',
       movers: 'Portfolio leaders',
       moversSub: 'Top positions in your linked portfolio by unrealized return versus cost basis.',
+      marketCap: 'CS2 market cap',
+      marketCapSub: 'Estimated circulating value of all tracked CS2 items — price times supply, not just open listings.',
       market: 'CS2 market explorer',
       marketSub: 'Browse live prices for skins, knives, gloves, agents, stickers, and containers. Filter by category, rarity, wear, and StatTrak / Souvenir.',
       news: 'CS2 news',
@@ -38,6 +40,16 @@ const I18N = {
       pricing: 'Plans & prices',
       pricingSub: 'Website is free. Plus is $7.99/mo or $72/year — 7 days on first Steam login. Pay with card or crypto.',
       faq: 'FAQ',
+    },
+    marketBoard: {
+      stats: 'Stats',
+      listed: 'Market cap',
+      tracking: 'Estimated circulating CS2 market',
+      trackingListed: 'Tracking {n} listed skins',
+      gainers: 'Top gainers',
+      losers: 'Top losers',
+      viewAll: 'View all',
+      empty: 'Waiting for the market feed…',
     },
     news: {
       live: 'Live feed',
@@ -137,6 +149,8 @@ const I18N = {
       ticker: 'РЫНОК · LIVE',
       movers: 'Лидеры портфеля',
       moversSub: 'Лучшие позиции в подключённом портфеле по нереализованной доходности относительно себестоимости.',
+      marketCap: 'Капитализация CS2',
+      marketCapSub: 'Оценка стоимости всех отслеживаемых скинов CS2: цена × объём в обороте, а не только лоты на одной площадке.',
       market: 'Маркет CS2',
       marketSub: 'Live-цены на скины, ножи, перчатки, агентов, стикеры и контейнеры. Фильтры по категории, редкости, износу и StatTrak / Souvenir.',
       news: 'CS2 · новости',
@@ -147,6 +161,16 @@ const I18N = {
       pricing: 'Тарифы и цены',
       pricingSub: 'Сайт бесплатный. Платные тарифы открывают desktop. Во время беты Plus — бесплатно за Telegram; Investor — 7 дней тоже за канал. Оплата картой или криптой.',
       faq: 'Частые вопросы',
+    },
+    marketBoard: {
+      stats: 'Сводка',
+      listed: 'Капитализация',
+      tracking: 'Оценка всего рынка CS2',
+      trackingListed: 'Отслеживаем {n} предметов в продаже',
+      gainers: 'Лидеры роста',
+      losers: 'Лидеры падения',
+      viewAll: 'Все',
+      empty: 'Жду ленту рынка…',
     },
     news: {
       live: 'Live-лента',
@@ -243,6 +267,8 @@ const I18N = {
       ticker: '实时市场',
       movers: '库存领先项',
       moversSub: '已关联库存中相对成本基础未实现收益最高的持仓。',
+      marketCap: 'CS2 市值',
+      marketCapSub: '所有被追踪 CS2 物品的流通市值估算：价格 × 供给，而不是单一市场的挂单。',
       market: 'CS2 市场浏览器',
       marketSub: '浏览皮肤、刀具、手套、干员、贴纸和容器的实时价格。可按类别、稀有度、磨损以及 StatTrak / Souvenir 筛选。',
       news: 'CS2 新闻',
@@ -253,6 +279,16 @@ const I18N = {
       pricing: '套餐与价格',
       pricingSub: '网站免费。Plus 为 $7.99/月或 $72/年，首次 Steam 登录赠送 7 天。支持卡片或加密货币支付。',
       faq: '常见问题',
+    },
+    marketBoard: {
+      stats: '概况',
+      listed: '市值',
+      tracking: 'CS2 流通市值估算',
+      trackingListed: '追踪 {n} 件在售皮肤',
+      gainers: '涨幅榜',
+      losers: '跌幅榜',
+      viewAll: '全部',
+      empty: '正在等待市场数据…',
     },
     news: {
       live: '实时动态',
@@ -352,6 +388,8 @@ const I18N = {
       ticker: '即時市場',
       movers: '庫存領先項',
       moversSub: '已關聯庫存中相對成本基礎未實現收益最高的持倉。',
+      marketCap: 'CS2 市值',
+      marketCapSub: '所有被追蹤 CS2 物品的流通市值估算：價格 × 供給，而不是單一市場的掛單。',
       market: 'CS2 市場瀏覽器',
       marketSub: '瀏覽皮膚、刀具、手套、幹員、貼紙和容器的即時價格。可依類別、稀有度、磨損以及 StatTrak / Souvenir 篩選。',
       news: 'CS2 新聞',
@@ -362,6 +400,16 @@ const I18N = {
       pricing: '方案與價格',
       pricingSub: '網站免費。Plus 為 $7.99/月或 $72/年，首次 Steam 登入贈送 7 天。支援卡片或加密貨幣付款。',
       faq: '常見問題',
+    },
+    marketBoard: {
+      stats: '概況',
+      listed: '市值',
+      tracking: 'CS2 流通市值估算',
+      trackingListed: '追蹤 {n} 件在售皮膚',
+      gainers: '漲幅榜',
+      losers: '跌幅榜',
+      viewAll: '全部',
+      empty: '正在等待市場資料…',
     },
     news: {
       live: '即時動態',
@@ -469,26 +517,75 @@ function Logo() {
   );
 }
 
+function sparklinePath(pts, smooth) {
+  if (pts.length < 2) return '';
+  if (!smooth || pts.length === 2) {
+    return pts.map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`)).join(' ');
+  }
+  const n = pts.length;
+  const dx = [];
+  const slope = [];
+  for (let i = 0; i < n - 1; i += 1) {
+    dx[i] = pts[i + 1][0] - pts[i][0] || 1;
+    slope[i] = (pts[i + 1][1] - pts[i][1]) / dx[i];
+  }
+  const t = new Array(n).fill(0);
+  t[0] = slope[0];
+  t[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i += 1) {
+    t[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2;
+  }
+  for (let i = 0; i < n - 1; i += 1) {
+    if (Math.abs(slope[i]) < 1e-6) {
+      t[i] = 0;
+      t[i + 1] = 0;
+      continue;
+    }
+    const a = t[i] / slope[i];
+    const b = t[i + 1] / slope[i];
+    const s = a * a + b * b;
+    if (s > 9) {
+      const f = 3 / Math.sqrt(s);
+      t[i] = f * a * slope[i];
+      t[i + 1] = f * b * slope[i];
+    }
+  }
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < n - 1; i += 1) {
+    const x1 = pts[i][0] + dx[i] / 3;
+    const y1 = pts[i][1] + (t[i] * dx[i]) / 3;
+    const x2 = pts[i + 1][0] - dx[i] / 3;
+    const y2 = pts[i + 1][1] - (t[i + 1] * dx[i]) / 3;
+    d += ` C ${x1} ${y1}, ${x2} ${y2}, ${pts[i + 1][0]} ${pts[i + 1][1]}`;
+  }
+  return d;
+}
+
 /* ─────────── Sparkline ─────────── */
-function Sparkline({ data, color = 'var(--green)', height = 32, fill = true }) {
+function Sparkline({ data, color = 'var(--green)', height = 32, fill = true, smooth = false, pad = 0 }) {
   const safeData = Array.isArray(data) && data.length > 1 ? data : [0, 0];
-  const w = 120, h = height;
-  const min = Math.min(...safeData), max = Math.max(...safeData);
-  const range = max - min || 1;
-  const pts = safeData.map((v, i) => [(i / (safeData.length - 1)) * w, h - ((v - min) / range) * (h - 4) - 2]);
-  const d = pts.map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`)).join(' ');
+  const w = 360, h = height;
+  const min = Math.min(...safeData);
+  const max = Math.max(...safeData);
+  const padding = Math.max(0, pad) * (max - min || 1);
+  const range = (max - min) + padding * 2 || 1;
+  const pts = safeData.map((v, i) => [
+    (i / (safeData.length - 1)) * w,
+    h - ((v - min + padding) / range) * (h - 8) - 4,
+  ]);
+  const d = sparklinePath(pts, smooth);
   const area = `${d} L ${w} ${h} L 0 ${h} Z`;
-  const id = `g-${Math.random().toString(36).slice(2, 9)}`;
+  const idRef = useRef(`g-${Math.random().toString(36).slice(2, 9)}`);
   return (
     <svg className="sparkline" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height }}>
       <defs>
-        <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={idRef.current} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.35" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      {fill && <path d={area} fill={`url(#${id})`} />}
-      <path d={d} stroke={color} strokeWidth="1.4" fill="none" strokeLinejoin="round" strokeLinecap="round" />
+      {fill && <path d={area} fill={`url(#${idRef.current})`} />}
+      <path d={d} stroke={color} strokeWidth="1.8" fill="none" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
