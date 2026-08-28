@@ -5,3 +5,4 @@ node_modules/
 desktop/dist/
 downloads/*
 !downloads/.gitkeep
+AUDIT_*.md
