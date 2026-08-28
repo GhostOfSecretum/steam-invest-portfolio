@@ -5,6 +5,39 @@ const { useState, useRef, useMemo, useEffect, useCallback } = React;
    PORTFOLIO DASHBOARD — API backed
    ─────────────────────────────────────────────────── */
 
+function isShareableSteamProfile(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  if (/^\d{17}$/.test(raw)) return true;
+  return /steamcommunity\.com\/(id|profiles)\//i.test(raw);
+}
+
+function isPublicManualShareId(value) {
+  return /^manual-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+}
+
+function publicPortfolioShareRef({ data, auth, publicSteamId, publicProfileUrl }) {
+  const publicRef = String(publicProfileUrl || '').trim();
+  if (isShareableSteamProfile(publicRef) || isPublicManualShareId(publicRef)) return publicRef;
+
+  const currentId = String(data?.portfolioId || '').trim();
+  if ((data?.portfolioType === 'manual' || data?.portfolioType === 'public-manual') && isPublicManualShareId(currentId)) {
+    return currentId;
+  }
+
+  const steamIdFromPortfolio = /^\d{17}$/.test(String(data?.profile?.steamId || ''))
+    ? data.profile.steamId
+    : null;
+  const candidates = [
+    data?.profile?.profileurl,
+    publicSteamId,
+    steamIdFromPortfolio,
+    auth?.profile?.profileurl,
+    auth?.profile?.steamId,
+  ];
+  return candidates.map((value) => String(value || '').trim()).find(isShareableSteamProfile) || null;
+}
+
 function PortfolioChart({ history, range, lang }) {
   const sourcePoints = Array.isArray(history)
     ? history.map((value, index) => ({ date: String(index + 1), value }))
@@ -452,7 +485,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
             </div>
           </div>
           <div className="dash-head-actions">
-            {isPublicPortfolio && (
+            {isPublicPortfolio && publicSteamId && (
               <button
                 className="btn btn-sm btn-ghost"
                 onClick={toggleFavorite}
@@ -482,7 +515,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
               type="button"
               className="btn btn-sm btn-ghost"
               onClick={() => {
-                const profileRef = data.profile?.profileurl || data.profile?.steamId || publicSteamId || publicProfileUrl;
+                const profileRef = publicPortfolioShareRef({ data, auth, publicSteamId, publicProfileUrl });
                 const shareUrl = profileRef
                   ? `${window.location.origin}/dashboard?profile=${encodeURIComponent(profileRef)}`
                   : `${window.location.origin}/`;

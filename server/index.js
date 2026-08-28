@@ -11,6 +11,8 @@ const { getSteamRedirectUrl, authenticateSteam } = require('./services/auth');
 const { getSteamProfile, resolveSteamProfileInput, saveIngestedSteamInventory } = require('./services/steam');
 const {
   getPortfolio,
+  getPublicManualPortfolio,
+  isPublicManualShareId,
   listPortfolios,
   createManualPortfolio,
   deleteManualPortfolio,
@@ -473,6 +475,13 @@ app.get('/api/portfolio/public', asyncRoute(async (req, res) => {
   const profileInput = String(req.query.profile || '').trim();
   if (!profileInput) {
     res.status(400).json({ error: 'Steam profile URL is required.', code: 'missing_profile_url' });
+    return;
+  }
+
+  if (isPublicManualShareId(profileInput)) {
+    const planId = await getOwnerPlanId(resolveOwnerId(req));
+    const portfolio = await getPublicManualPortfolio(profileInput);
+    res.json(applyItemDisplayLimit(portfolio, planId));
     return;
   }
 

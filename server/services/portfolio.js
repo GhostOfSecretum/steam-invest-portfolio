@@ -784,6 +784,43 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   return result;
 }
 
+function isPublicManualShareId(value) {
+  return /^manual-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+}
+
+function notFoundPortfolioError() {
+  const err = new Error('Portfolio not found.');
+  err.status = 404;
+  err.code = 'portfolio_not_found';
+  return err;
+}
+
+async function getPublicManualPortfolio(portfolioId) {
+  const id = String(portfolioId || '').trim();
+  if (!isPublicManualShareId(id)) throw notFoundPortfolioError();
+
+  const store = await readManualPortfolioStore();
+  let ownerId = null;
+  for (const [key, bucket] of Object.entries(store.owners || {})) {
+    if ((bucket.portfolios || []).some((portfolio) => portfolio.id === id)) {
+      ownerId = key;
+      break;
+    }
+  }
+  if (!ownerId) throw notFoundPortfolioError();
+
+  const portfolio = await getManualPortfolio(ownerId, id, null);
+  if (!portfolio?.portfolioId || String(portfolio.portfolioId) !== id) throw notFoundPortfolioError();
+
+  return {
+    ...portfolio,
+    portfolioType: 'public-manual',
+    portfolios: [],
+    desktopConnected: false,
+    storageItemCount: 0,
+  };
+}
+
 function buildEmptyManualPortfolio(bucket, steamId = null, ownerId = null) {
   return {
     portfolioId: null,
@@ -1952,6 +1989,8 @@ function countStickerDescriptions(descriptions) {
 
 module.exports = {
   getPortfolio,
+  getPublicManualPortfolio,
+  isPublicManualShareId,
   listPortfolios,
   createManualPortfolio,
   deleteManualPortfolio,
