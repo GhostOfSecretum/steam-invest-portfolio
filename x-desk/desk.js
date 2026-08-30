@@ -233,6 +233,42 @@ function renderRules(data) {
   $('rules').innerHTML = data.rules.map((r) => `<li>${r}</li>`).join('');
 }
 
+function renderFocusBlock(focus, boxId, hintId, cols) {
+  const box = $(boxId);
+  const hint = $(hintId);
+  if (!box) return;
+  if (!focus) {
+    box.innerHTML = '';
+    if (hint) hint.textContent = '';
+    return;
+  }
+  if (hint) hint.textContent = `${focus.title || ''} · ${focus.hint || ''}`.replace(/^ · /, '');
+  box.innerHTML = cols.map(([key, tone]) => {
+    const col = focus[key];
+    if (!col) return '';
+    const people = (col.handles || []).map((h) => xProfile(h)).join('');
+    return `<article class="panel focus-col ${tone}">
+      <header>
+        <h2>${col.label}</h2>
+      </header>
+      <p class="hint">${col.note || ''}</p>
+      <div class="focus-handles">${people}</div>
+    </article>`;
+  }).join('');
+}
+
+function renderFocus(data) {
+  renderFocusBlock(data.repliesFocus, 'focus', 'focus-hint', [
+    ['unfollow', 'hot'],
+    ['priority', 'good'],
+    ['quiet', 'warn'],
+  ]);
+  renderFocusBlock(data.followsFocus, 'follows', 'follows-hint', [
+    ['core', 'good'],
+    ['watch', 'warn'],
+  ]);
+}
+
 let topsRange = 'day';
 let deskData = null;
 
@@ -311,6 +347,7 @@ function render(data) {
   lastPulled = (data.live && data.live.pulledAt) || lastPulled;
   renderHero(data);
   renderKpis(data);
+  renderFocus(data);
   renderVideos(data);
   renderCharts(data);
   renderDays(data);

@@ -21,8 +21,85 @@
     "Свои посты — текст, без картинки, кроме рила 31 авг",
     "30 авг: только текст, закреп не трогать. 31 авг: продуктовый рил — не закреплять. Больше видео на неделю 2–3 нет",
     "Лайки не фармить; взаимки с нишевых мелких — да",
-    "Не ядро: аккаунты «buying 95% Buff»"
+    "Реплаи: 10–12 в инвест-блок, 3–5 тем кто отвечает, 0 в витрины; lis-skins макс 1/день",
+    "Не ядро: чистые баеры «always buying 94%» и кейс-сайты — список в блоке Реплаи",
+    "Добрать ядро: CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs — список в блоке Подписки"
   ],
+  "followsFocus": {
+    "title": "Подписки · добрать",
+    "hint": "Ещё не в following. Ядро — подписать и отвечать. Трекеры — смотреть, не реплаить как коллеге.",
+    "core": {
+      "label": "Подписать и отвечать",
+      "note": "Тон как у нас. Rensorcs уже отвечал в день 2. Techsavvy — был один реплай",
+      "handles": [
+        "CSMarketCapCom",
+        "slykcs",
+        "VqltUK",
+        "TechsavvyCS",
+        "Rensorcs",
+        "fengyuanshi1",
+        "theSinedinCS",
+        "V1rdus",
+        "de_copium"
+      ]
+    },
+    "watch": {
+      "label": "Смотреть, почти не отвечать",
+      "note": "Патчи и чужие трекеры. Не комментировать треды SteamDB. Трекеров не звать коллегами",
+      "handles": [
+        "CS2Status",
+        "SteamDB",
+        "skinledger",
+        "skinpock",
+        "SkinSpecter"
+      ]
+    }
+  },
+  "repliesFocus": {
+    "title": "Реплаи · напоминание",
+    "hint": "15–20 в день. Не ядро — витрина бида, не любой, кто покупает.",
+    "unfollow": {
+      "label": "Снять",
+      "note": "Ломают «Для вас», тянут в гивы / 94% Buff",
+      "handles": [
+        "MrBeast",
+        "Steam",
+        "phrog_gaming",
+        "skinclubmedia",
+        "exampleaccount",
+        "Alkem1stCS",
+        "AstroooCs",
+        "I_am_jerm",
+        "YdeAsger",
+        "AlexCS2Trading"
+      ]
+    },
+    "priority": {
+      "label": "Упор",
+      "note": "10–12 из квоты. Pricempire — только цифры. ohne — Update, не основной",
+      "handles": [
+        "pricempire",
+        "cs2insiderX",
+        "cs2speculator",
+        "fanocsgo",
+        "xMercy_CS",
+        "CorbZcs",
+        "ohnePixelUpdate",
+        "ronin_invest",
+        "kooldeep_"
+      ]
+    },
+    "quiet": {
+      "label": "Не кормить",
+      "note": "Follow оставить. lis-skins макс 1/день и только тезис. GreenFire — не buy-посты",
+      "handles": [
+        "lisskins",
+        "tradeit_gg",
+        "csmoneytrade",
+        "TheGreenFireCS"
+      ]
+    }
+  },
   "assets": {
     "header": "media/header.png",
     "avatar": "media/avatar.png",
