@@ -6,7 +6,7 @@
   "bio": "CS2 skins as a portfolio. Live inventory value, real P&L, Armory ROI. For people who treat skins like a bag, not a wallpaper.",
   "location": "CS2 skin market",
   "premium": "Premium",
-  "pin": "Пост 1 до 30 авг. Thesis-ролик готов — закрепить вместо поста 1, не публиковать раньше.",
+  "pin": "Пост 1 остаётся закрепом. Thesis-ролик не публикуем. 31 авг — продуктовый рил, не закреплять.",
   "quota": {
     "repliesMin": 15,
     "repliesMax": 20,
@@ -18,8 +18,8 @@
     "1 свой пост в день, окно 19:30 МСК",
     "15–20 реплаев, пауза 2–4 мин, английский, свои мысли",
     "Ссылку в тело поста не ставить",
-    "Видео не публиковать до недели 2 (~30 авг–5 сен)",
-    "30 авг: закрепить thesis-ролик (30с). 31 авг: продуктовый рил — не закреплять",
+    "Свои посты — текст, без картинки, кроме рила 31 авг",
+    "30 авг: только текст, закреп не трогать. 31 авг: продуктовый рил — не закреплять. Больше видео на неделю 2–3 нет",
     "Лайки не фармить; взаимки с нишевых мелких — да",
     "Не ядро: аккаунты «buying 95% Buff»"
   ],
@@ -32,13 +32,14 @@
   "week2": {
     "window": "2026-08-30 — 2026-09-05",
     "pin": {
-      "title": "Закреп · неделя 2",
+      "title": "Закреп · отложен",
       "src": "media/pin.mp4",
       "file": "output/skinshead-x-pin-pnl.mp4",
-      "when": "30 авг · 19:30",
+      "when": "не 30 авг",
       "duration": "30с · 9:16",
-      "status": "готов · не публиковать раньше ~30 авг",
-      "action": "закрепить вместо поста 1",
+      "status": "не зашёл · не публикуем · закреп остаётся пост 1",
+      "action": "не публиковать",
+      "hidden": true,
       "caption": "Steam Market is a price tag.\nA portfolio is P&L.\n\nMost traders know the AK list price.\nAlmost none know what they could actually withdraw after tax.\n\nThat's the number that matters."
     },
     "reel": {
@@ -480,15 +481,14 @@
       "date": "2026-08-30",
       "kind": "planned",
       "dayNum": 8,
-      "label": "неделя 2 · закреп",
+      "label": "неделя 2 · текст",
       "post": {
         "n": 8,
         "time": "19:30",
-        "pinned": true,
-        "media": "pin",
-        "text": "Steam Market is a price tag.\nA portfolio is P&L.\n\nMost traders know the AK list price.\nAlmost none know what they could actually withdraw after tax.\n\nThat's the number that matters."
+        "pinned": false,
+        "text": "A week of writing this and the number still isn’t the Steam sticker.\n\nIt’s what you could actually withdraw if you had to sell.\n\nMost bags look fine until you run that math."
       },
-      "notes": "Thesis-ролик output/skinshead-x-pin-pnl.mp4 — закрепить вместо поста 1. Без URL, без скринов дашборда."
+      "notes": "Только текст, без ролика. Закреп не трогать — пост 1. Thesis-ролик не зашёл, продукт не светить до 31 авг."
     },
     {
       "date": "2026-08-31",
@@ -516,6 +516,149 @@
         "text": "Your public Steam inventory is not your portfolio.\n\nStorage doesn’t show.\nHalf the bag you actually hold isn’t in that URL.\n\nIf you’re tracking P&L off a public profile, you’re doing math on a fragment.\n\nDo you even know what’s sitting in Storage right now?"
       },
       "notes": "Не закреплять, только текст. Публичный инвентарь без Storage — обрубок."
+    },
+    {
+      "date": "2026-09-02",
+      "kind": "planned",
+      "dayNum": 11,
+      "label": "день 11",
+      "post": {
+        "n": 11,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You listed it.\n\nThat doesn’t mean you can take the money.\n\nA 7-day hold is not an exit. It’s a screenshot with a timer.\n\nIf you needed cash on Wednesday, which names actually leave the bag?"
+      },
+      "notes": "Не закреплять, только текст. Трейд-холд ≠ выход."
+    },
+    {
+      "date": "2026-09-03",
+      "kind": "planned",
+      "dayNum": 12,
+      "label": "день 12",
+      "post": {
+        "n": 12,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You left Steam to “get a real price”.\n\nSkinport still takes a cut.\nCSFloat still has to want the skin.\n\nThe sticker didn’t become cash. It became a different sticker.\n\nWhat do you actually net after the marketplace you use?"
+      },
+      "notes": "Не закреплять, только текст. Ушёл со Steam — всё равно комиссия, не кэш."
+    },
+    {
+      "date": "2026-09-04",
+      "kind": "planned",
+      "dayNum": 13,
+      "label": "день 13",
+      "post": {
+        "n": 13,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Checking the price every day is not a thesis.\n\nA thesis is why you still hold it if the number is down 20% on Monday.\n\nIf you can’t say that in one sentence, you’re watching a ticker.\n\nWhy is this skin still in the bag?"
+      },
+      "notes": "Не закреплять, только текст. Тикер ≠ тезис на холд."
+    },
+    {
+      "date": "2026-09-05",
+      "kind": "planned",
+      "dayNum": 14,
+      "label": "день 14",
+      "post": {
+        "n": 14,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Unopened cases are not a position.\n\nThey’re lottery tickets you haven’t scratched.\n\nA portfolio has a mark, a cost, and a reason to hold.\nA case has a drop table.\n\nHow much of the bag is still unopened?"
+      },
+      "notes": "Не закреплять, только текст. Кейсы — не позиция."
+    },
+    {
+      "date": "2026-09-06",
+      "kind": "planned",
+      "dayNum": 15,
+      "label": "неделя 3 · день 15",
+      "post": {
+        "n": 15,
+        "time": "19:30",
+        "pinned": false,
+        "text": "If you had to buy your whole inventory again today, at today’s marks — would you?\n\nNot “it’s already in the bag”.\nThe same cash, the same names, right now.\n\nIf the answer is no, the bag is leftover, not a portfolio.\n\nWhat would you not buy twice?"
+      },
+      "notes": "Не закреплять, только текст. Купил бы этот баг снова по текущему марку."
+    },
+    {
+      "date": "2026-09-07",
+      "kind": "planned",
+      "dayNum": 16,
+      "label": "день 16",
+      "post": {
+        "n": 16,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You paid for the craft.\n\nThe market pays for the gun.\n\nSticker overpay feels like value until you try to sell it to someone who didn’t want that exact combo.\n\nHow much of the last buy was stickers you can’t get back?"
+      },
+      "notes": "Не закреплять, только текст. Оверпей за стикеры не возвращается."
+    },
+    {
+      "date": "2026-09-08",
+      "kind": "planned",
+      "dayNum": 17,
+      "label": "день 17",
+      "post": {
+        "n": 17,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Buying more because it’s down is not a strategy.\n\nIt’s averaging a name you already don’t have a mark for.\n\nIf the first lot was a mistake, the second lot is a bigger one.\n\nAre you adding to a thesis — or to a hope?"
+      },
+      "notes": "Не закреплять, только текст. Усреднение падающего имени."
+    },
+    {
+      "date": "2026-09-09",
+      "kind": "planned",
+      "dayNum": 18,
+      "label": "день 18",
+      "post": {
+        "n": 18,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Steam wallet is not cash.\n\nYou sold. You got wallet, or a number you still can’t withdraw.\n\nThat’s a conversion, not an exit.\n\nIf the bag “printed”, where is the money sitting right now?"
+      },
+      "notes": "Не закреплять, только текст. Кошелёк Steam ≠ вывод."
+    },
+    {
+      "date": "2026-09-10",
+      "kind": "planned",
+      "dayNum": 19,
+      "label": "день 19",
+      "post": {
+        "n": 19,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A YouTuber’s inventory is not research.\n\nIt’s a screenshot of someone else’s bag, priced for a thumbnail.\n\nIf you copy the names and not the cost basis, you bought their flex.\n\nWhose inventory are you actually marking — yours, or theirs?"
+      },
+      "notes": "Не закреплять, только текст. Чужой инвентарь — не ресёрч."
+    },
+    {
+      "date": "2026-09-11",
+      "kind": "planned",
+      "dayNum": 20,
+      "label": "день 20",
+      "post": {
+        "n": 20,
+        "time": "19:30",
+        "pinned": false,
+        "text": "“I’m even on this one” is usually a story.\n\nYou picked a high, ignored the tax, and called it break-even.\n\nThe market doesn’t owe you the number you need to feel fine.\n\nWhat’s your real break-even after fees — not the one you screenshot?"
+      },
+      "notes": "Не закреплять, только текст. Безубыток после комиссий, не после скрина."
+    },
+    {
+      "date": "2026-09-12",
+      "kind": "planned",
+      "dayNum": 21,
+      "label": "день 21",
+      "post": {
+        "n": 21,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Forget the Steam total.\n\nIn 72 hours, with real buyers, how much cash can you actually raise?\n\nThat’s the only number that matters if something hits.\n\nWhat’s yours?"
+      },
+      "notes": "Не закреплять, только текст. Кэш за 72 часа, не Steam-тотал."
     }
   ],
   "weekTopReplies": [

@@ -34,8 +34,14 @@ function lastContent(data) {
   return rows[rows.length - 1] || null;
 }
 
+function mskDateIso() {
+  const n = mskNow();
+  return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`;
+}
+
 function planned(data) {
-  return data.days.find((d) => d.kind === 'planned') || null;
+  const today = mskDateIso();
+  return data.days.find((d) => d.kind === 'planned' && d.date >= today) || null;
 }
 
 function barChart(el, rows, { min, max, color = 'var(--cyan)' }) {
@@ -187,7 +193,8 @@ function renderVideos(data) {
     $('videos').innerHTML = '';
     return;
   }
-  $('videos').innerHTML = [week2.pin, week2.reel].filter(Boolean).map((v, i) => `
+  const clips = [week2.pin, week2.reel].filter((v) => v && !v.hidden);
+  $('videos').innerHTML = clips.map((v, i) => `
     <article class="panel video-card">
       <header>
         <h2>${v.title}</h2>
@@ -198,8 +205,7 @@ function renderVideos(data) {
       ${v.caption ? `<pre class="post-text">${v.caption}</pre><button type="button" class="copy" data-copy="${i}">Скопировать текст</button>` : '<p class="empty">Текст поста ещё не лочили</p>'}
     </article>`).join('');
   $('videos').querySelectorAll('[data-copy]').forEach((btn) => {
-    const item = [week2.pin, week2.reel][Number(btn.dataset.copy)];
-    bindCopy(btn, item && item.caption);
+    bindCopy(btn, clips[Number(btn.dataset.copy)].caption);
   });
 }
 
