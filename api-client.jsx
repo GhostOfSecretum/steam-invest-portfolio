@@ -611,10 +611,71 @@ function formatItemPrice(item, fallbackUsd, { digits = 2 } = {}) {
   return formatMoney(usdValue, { digits });
 }
 
+function itemQty(item) {
+  return Number(item?.qty) > 0 ? Number(item.qty) : 1;
+}
+
+function holdingUsd(item, source = 'market') {
+  const qty = itemQty(item);
+  if (source === 'steam') {
+    if (!Number.isFinite(item?.steamPrice) || item.steamPrice <= 0) return null;
+    return item.steamPrice * qty;
+  }
+  if (Number.isFinite(item?.totalValue)) return item.totalValue;
+  if (Number.isFinite(item?.value)) return item.value * qty;
+  return null;
+}
+
+function holdingPnl(item, source = 'market') {
+  if (source !== 'steam') {
+    return {
+      pnl: Number.isFinite(item?.pnl) ? item.pnl : 0,
+      pnlPct: Number.isFinite(item?.pnlPct) ? item.pnlPct : null,
+    };
+  }
+  if (!item?.hasBasis || !Number.isFinite(item?.steamPrice) || item.steamPrice <= 0) {
+    return { pnl: 0, pnlPct: null };
+  }
+
+  const qty = itemQty(item);
+  const steamUsd = item.steamPrice;
+  const steamRub = item.steamPriceRub;
+  const basisUsd = item.basis;
+  const basisOriginal = item.basisOriginal;
+  const rubAskLooksReal = steamUsd <= 0 || (Number.isFinite(steamRub) && steamRub >= steamUsd * 10);
+  if (
+    item.basisCurrency === 'rub'
+    && Number.isFinite(steamRub)
+    && Number.isFinite(basisOriginal)
+    && basisOriginal >= 0
+    && rubAskLooksReal
+  ) {
+    const pnlRub = (steamRub - basisOriginal) * qty;
+    const rate = steamUsd > 0 && steamRub > 0 ? steamRub / steamUsd : null;
+    const pnl = Number.isFinite(rate) && rate > 0
+      ? pnlRub / rate
+      : (steamUsd - basisUsd) * qty;
+    const pnlPct = basisOriginal > 0 ? ((steamRub - basisOriginal) / basisOriginal) * 100 : null;
+    return { pnl, pnlPct };
+  }
+
+  if (!Number.isFinite(basisUsd)) return { pnl: 0, pnlPct: null };
+  const pnl = (steamUsd - basisUsd) * qty;
+  const pnlPct = basisUsd > 0 ? ((steamUsd - basisUsd) / basisUsd) * 100 : null;
+  return { pnl, pnlPct };
+}
+
 // Portfolio row / stack total: mark-to-market in the active currency.
-function formatHoldingValue(item, { digits = 2, compact = false } = {}) {
-  const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
+function formatHoldingValue(item, { digits = 2, compact = false, source = 'market' } = {}) {
+  const qty = itemQty(item);
   const currencyKey = getActiveCurrency();
+  if (source === 'steam') {
+    if (currencyKey === 'rub' && Number.isFinite(item?.steamPriceRub)) {
+      return formatMoney(item.steamPriceRub * qty, { digits, compact, currency: 'rub' });
+    }
+    if (!Number.isFinite(item?.steamPrice)) return null;
+    return formatMoney(item.steamPrice * qty, { digits, compact });
+  }
   if (currencyKey === 'rub' && Number.isFinite(item?.priceRub)) {
     return formatMoney(item.priceRub * qty, { digits, compact, currency: 'rub' });
   }
@@ -625,13 +686,7 @@ function formatHoldingValue(item, { digits = 2, compact = false } = {}) {
 }
 
 function formatSteamSticker(item, { digits = 0, compact = true } = {}) {
-  const qty = Number(item?.qty) > 0 ? Number(item.qty) : 1;
-  const currencyKey = getActiveCurrency();
-  if (currencyKey === 'rub' && Number.isFinite(item?.steamPriceRub)) {
-    return formatMoney(item.steamPriceRub * qty, { digits, compact, currency: 'rub' });
-  }
-  if (!Number.isFinite(item?.steamPrice)) return null;
-  return formatMoney(item.steamPrice * qty, { digits, compact });
+  return formatHoldingValue(item, { digits, compact, source: 'steam' });
 }
 
 function compactUsd(value, options = {}) {
@@ -800,6 +855,8 @@ Object.assign(window, {
   formatItemPrice,
   formatHoldingValue,
   formatSteamSticker,
+  holdingUsd,
+  holdingPnl,
   compactUsd,
   getActiveCurrency,
   getRubPerUsdRate,

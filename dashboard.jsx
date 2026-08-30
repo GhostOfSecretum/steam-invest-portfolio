@@ -1,4 +1,4 @@
-/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, formatSteamSticker, getActiveCurrency, tt, localeFor */
+/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, formatSteamSticker, holdingUsd, holdingPnl, getActiveCurrency, tt, localeFor */
 const { useState, useRef, useMemo, useEffect, useCallback } = React;
 
 /* ───────────────────────────────────────────────────
@@ -294,29 +294,87 @@ function inventorySourceLabel(source, lang) {
 }
 
 function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
+  const [code, setCode] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  if (!canUseDesktop) {
+    return (
+      <button
+        className="btn btn-sm btn-ghost"
+        onClick={() => onPricing && onPricing()}
+        title={tt(lang, {
+          en: 'Desktop requires Plus / Investor',
+          ru: 'Desktop доступен на Plus / Investor',
+          zh: 'Desktop 需要 Plus / Investor',
+          'zh-TW': 'Desktop 需要 Plus / Investor',
+        })}
+      >
+        {tt(lang, { en: 'Desktop · Plus', ru: 'Desktop · Plus', zh: 'Desktop · Plus', 'zh-TW': 'Desktop · Plus' })}
+      </button>
+    );
+  }
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch('/api/desktop/pairing-code', { method: 'POST' });
+      setCode(data.code);
+    } catch (err) {
+      setCode(null);
+      setError(err?.message || tt(lang, {
+        en: 'Failed to create code',
+        ru: 'Не удалось создать код',
+        zh: '创建代码失败',
+        'zh-TW': '建立代碼失敗',
+      }));
+    }
+    setLoading(false);
+  };
+
   return (
-    <button
-      className="btn btn-sm btn-ghost"
-      onClick={() => onPricing && onPricing()}
-      title={tt(lang, {
-        en: canUseDesktop ? 'Desktop app coming soon' : 'Desktop coming soon on Plus',
-        ru: canUseDesktop ? 'Desktop-приложение скоро' : 'Desktop будет на Plus / Investor · скоро',
-        zh: canUseDesktop ? 'Desktop 应用即将推出' : 'Desktop 即将在 Plus / Investor 推出',
-        'zh-TW': canUseDesktop ? 'Desktop 應用即將推出' : 'Desktop 即將在 Plus / Investor 推出',
-      })}
-    >
-      {tt(lang, { en: 'Desktop · soon', ru: 'Desktop · скоро', zh: 'Desktop · 即将推出', 'zh-TW': 'Desktop · 即將推出' })}
-    </button>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <button className="btn btn-sm btn-ghost" onClick={generate} disabled={loading}>
+        {loading ? '...' : tt(lang, { en: 'Desktop code', ru: 'Код для desktop', zh: 'Desktop 代码', 'zh-TW': 'Desktop 代碼' })}
+      </button>
+      {code && (
+        <>
+          <span style={{ fontFamily: 'var(--f-mono)', fontSize: 14, color: 'var(--accent)', letterSpacing: '0.15em' }}>{code}</span>
+          <span style={{ fontSize: 12, opacity: 0.65 }}>
+            {tt(lang, { en: 'valid for 5 min', ru: 'действует 5 минут', zh: '有效期 5 分钟', 'zh-TW': '有效期 5 分鐘' })}
+          </span>
+        </>
+      )}
+      {error && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #ef4444)' }}>{error}</span>}
+    </div>
   );
 }
 
 const SELECTED_PORTFOLIO_KEY = 'skinshead:selectedPortfolioId';
+const PRICE_MODE_KEY = 'skinshead:priceMode';
 
 function readSelectedPortfolioId() {
   try {
     return window.sessionStorage.getItem(SELECTED_PORTFOLIO_KEY) || null;
   } catch {
     return null;
+  }
+}
+
+function readPriceMode() {
+  try {
+    return window.localStorage.getItem(PRICE_MODE_KEY) === 'steam' ? 'steam' : 'market';
+  } catch {
+    return 'market';
+  }
+}
+
+function writePriceMode(mode) {
+  try {
+    window.localStorage.setItem(PRICE_MODE_KEY, mode);
+  } catch {
+    // Ignore storage failures (private mode / blocked storage).
   }
 }
 
@@ -349,6 +407,13 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
   const [query, setQuery] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [priceMode, setPriceModeState] = useState(readPriceMode);
+  const setPriceMode = useCallback((mode) => {
+    const next = mode === 'steam' ? 'steam' : 'market';
+    setPriceModeState(next);
+    writePriceMode(next);
+  }, []);
+  const isSteamPrices = priceMode === 'steam';
   const prevConnectedRef = useRef(null);
   const data = portfolio.data;
   const items = data?.items || [];
@@ -423,24 +488,51 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
     }
   };
 
-  const pnlColor = data.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const displayTotal = isSteamPrices
+    ? (Number.isFinite(data.totalSteamValue) ? data.totalSteamValue : 0)
+    : data.totalValue;
+  const displayPricedCount = isSteamPrices
+    ? items.reduce((sum, item) => (
+      Number.isFinite(item.steamPrice) && item.steamPrice > 0
+        ? sum + (Number(item.qty) > 0 ? Number(item.qty) : 1)
+        : sum
+    ), 0)
+    : data.pricedCount;
+  let displayPnl = data.pnl;
+  let displayPnlPct = data.pnlPct;
+  if (isSteamPrices) {
+    displayPnl = 0;
+    let steamBasis = 0;
+    for (const item of items) {
+      if (!item.hasBasis || !Number.isFinite(item.steamPrice) || item.steamPrice <= 0) continue;
+      displayPnl += holdingPnl(item, 'steam').pnl || 0;
+      steamBasis += Number(item.totalBasis) || 0;
+    }
+    displayPnlPct = steamBasis > 0 ? (displayPnl / steamBasis) * 100 : 0;
+  }
+  const pnlColor = displayPnl >= 0 ? 'var(--green)' : 'var(--red)';
   const marketableQty = items.reduce((sum, item) => sum + (Number(item.marketableQty) || 0), 0);
   const marketableValue = items.reduce((sum, item) => {
+    const qty = Number(item.marketableQty) || 0;
+    if (qty <= 0) return sum;
+    if (isSteamPrices) {
+      return sum + (Number.isFinite(item.steamPrice) && item.steamPrice > 0 ? item.steamPrice * qty : 0);
+    }
     const unitValue = Number.isFinite(item.value) ? item.value : 0;
-    return sum + unitValue * (Number(item.marketableQty) || 0);
+    return sum + unitValue * qty;
   }, 0);
   const notMarketableQty = Math.max(0, data.totalInventoryCount - marketableQty);
   const valueRows = items
     .map((item) => ({
       name: item.name || item.marketHashName || 'Unknown item',
-      value: Number.isFinite(item.totalValue) ? item.totalValue : 0,
+      value: holdingUsd(item, priceMode) || 0,
     }))
     .filter((item) => item.value > 0)
     .sort((a, b) => b.value - a.value);
   const topItem = valueRows[0];
-  const topItemPct = topItem && data.totalValue > 0 ? (topItem.value / data.totalValue) * 100 : 0;
+  const topItemPct = topItem && displayTotal > 0 ? (topItem.value / displayTotal) * 100 : 0;
   const topFiveValue = valueRows.slice(0, 5).reduce((sum, item) => sum + item.value, 0);
-  const topFivePct = data.totalValue > 0 ? (topFiveValue / data.totalValue) * 100 : 0;
+  const topFivePct = displayTotal > 0 ? (topFiveValue / displayTotal) * 100 : 0;
   const historyMeta = data.history && !Array.isArray(data.history) ? data.history : {};
   const historySources = Array.isArray(historyMeta.sources) && historyMeta.sources.length
     ? historyMeta.sources.join(' + ')
@@ -485,6 +577,42 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
             </div>
           </div>
           <div className="dash-head-actions">
+            <div
+              className="dash-price-toggle"
+              role="radiogroup"
+              aria-label={tt(lang, { en: 'Price source', ru: 'Источник цены', zh: '价格来源', 'zh-TW': '價格來源' })}
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={isSteamPrices}
+                data-active={isSteamPrices}
+                onClick={() => setPriceMode('steam')}
+                title={tt(lang, {
+                  en: 'Steam Market listing prices',
+                  ru: 'Цены торговой площадки Steam',
+                  zh: 'Steam 市场挂牌价',
+                  'zh-TW': 'Steam 市場掛牌價',
+                })}
+              >
+                Steam
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!isSteamPrices}
+                data-active={!isSteamPrices}
+                onClick={() => setPriceMode('market')}
+                title={tt(lang, {
+                  en: 'Real third-party market prices',
+                  ru: 'Реальные цены сторонних маркетов',
+                  zh: '第三方真实市价',
+                  'zh-TW': '第三方真實市價',
+                })}
+              >
+                {tt(lang, { en: 'Real', ru: 'Реал', zh: '真实', 'zh-TW': '真實' })}
+              </button>
+            </div>
             {isPublicPortfolio && publicSteamId && (
               <button
                 className="btn btn-sm btn-ghost"
@@ -498,6 +626,13 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                     ? (tt(lang, { en: 'Favorited', ru: 'В избранном', zh: '已收藏', 'zh-TW': '已收藏' }))
                     : (tt(lang, { en: 'Add to favorites', ru: 'В избранное', zh: '加入收藏', 'zh-TW': '加入收藏' }))}
               </button>
+            )}
+            {auth?.connected && !isPublicPortfolio && (
+              <DesktopPairingButton
+                lang={lang}
+                canUseDesktop={Boolean(auth?.entitlements?.desktopDownload)}
+                onPricing={onPricing}
+              />
             )}
             {!isPublicPortfolio && (
               <button
@@ -519,7 +654,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 const shareUrl = profileRef
                   ? `${window.location.origin}/dashboard?profile=${encodeURIComponent(profileRef)}`
                   : `${window.location.origin}/`;
-                const valueLabel = compactUsd(data.totalValue);
+                const valueLabel = compactUsd(displayTotal);
                 const text = lang === 'ru'
                   ? `Мой инвентарь CS2 стоит ${valueLabel}. Считаю в SkinsHead`
                   : `My CS2 inventory is ${valueLabel}. Tracked on SkinsHead`;
@@ -572,7 +707,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   <span className="dash-control-index">01</span>
                   <div>
                     <h3>{tt(lang, { en: 'Steam sync', ru: 'Синхронизация Steam', zh: 'Steam 同步', 'zh-TW': 'Steam 同步' })}</h3>
-                    <p>{tt(lang, { en: 'Full inventory via Desktop — coming soon.', ru: 'Полный инвентарь через Desktop — скоро.', zh: '通过 Desktop 同步完整库存 — 即将推出。', 'zh-TW': '透過 Desktop 同步完整庫存 — 即將推出。' })}</p>
+                    <p>{tt(lang, { en: 'Import your full inventory through Desktop.', ru: 'Загрузите полный инвентарь через Desktop.', zh: '通过 Desktop 导入完整库存。', 'zh-TW': '透過 Desktop 匯入完整庫存。' })}</p>
                   </div>
                 </div>
                 <div className="dash-control-section-actions">
@@ -637,31 +772,38 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
               <StatCard
                 accent
                 label={t.dash.total}
-                value={compactUsd(data.totalValue)}
+                value={compactUsd(displayTotal)}
                 delta={tt(lang, {
-                  en: `${data.pricedCount} of ${data.totalInventoryCount} priced`,
-                  ru: `${data.pricedCount} из ${data.totalInventoryCount} оценено`,
-                  zh: `${data.pricedCount} / ${data.totalInventoryCount} 已估价`,
-                  'zh-TW': `${data.pricedCount} / ${data.totalInventoryCount} 已估價`,
+                  en: `${displayPricedCount} of ${data.totalInventoryCount} priced`,
+                  ru: `${displayPricedCount} из ${data.totalInventoryCount} оценено`,
+                  zh: `${displayPricedCount} / ${data.totalInventoryCount} 已估价`,
+                  'zh-TW': `${displayPricedCount} / ${data.totalInventoryCount} 已估價`,
                 })}
-                sub={Number.isFinite(data.totalSteamValue) && data.totalSteamValue > 0
+                sub={isSteamPrices
                   ? tt(lang, {
-                    en: `Steam ${compactUsd(data.totalSteamValue)}`,
-                    ru: `Steam ${compactUsd(data.totalSteamValue)}`,
-                    zh: `Steam ${compactUsd(data.totalSteamValue)}`,
-                    'zh-TW': `Steam ${compactUsd(data.totalSteamValue)}`,
+                    en: `Real ${compactUsd(data.totalValue)}`,
+                    ru: `Реал ${compactUsd(data.totalValue)}`,
+                    zh: `真实 ${compactUsd(data.totalValue)}`,
+                    'zh-TW': `真實 ${compactUsd(data.totalValue)}`,
                   })
-                  : tt(lang, {
-                    en: `${data.uniqueInventoryCount} unique positions`,
-                    ru: `${data.uniqueInventoryCount} уникальных позиций`,
-                    zh: `${data.uniqueInventoryCount} 个独立持仓`,
-                    'zh-TW': `${data.uniqueInventoryCount} 個獨立持倉`,
-                  })}
+                  : (Number.isFinite(data.totalSteamValue) && data.totalSteamValue > 0
+                    ? tt(lang, {
+                      en: `Steam ${compactUsd(data.totalSteamValue)}`,
+                      ru: `Steam ${compactUsd(data.totalSteamValue)}`,
+                      zh: `Steam ${compactUsd(data.totalSteamValue)}`,
+                      'zh-TW': `Steam ${compactUsd(data.totalSteamValue)}`,
+                    })
+                    : tt(lang, {
+                      en: `${data.uniqueInventoryCount} unique positions`,
+                      ru: `${data.uniqueInventoryCount} уникальных позиций`,
+                      zh: `${data.uniqueInventoryCount} 个独立持仓`,
+                      'zh-TW': `${data.uniqueInventoryCount} 個獨立持倉`,
+                    }))}
               />
               <StatCard
                 label={t.dash.pnl}
-                value={`${data.pnl >= 0 ? '+' : ''}${compactUsd(data.pnl)}`}
-                delta={`${data.pnlPct >= 0 ? '+' : ''}${data.pnlPct.toFixed(2)}%`}
+                value={`${displayPnl >= 0 ? '+' : ''}${compactUsd(displayPnl)}`}
+                delta={`${displayPnlPct >= 0 ? '+' : ''}${displayPnlPct.toFixed(2)}%`}
                 deltaColor={pnlColor}
                 sub={tt(lang, {
                   en: `Cost basis ${compactUsd(data.totalBasis)}`,
@@ -796,6 +938,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   lang={lang}
                   portfolioId={activePortfolioId}
                   portfolioType={data.portfolioType}
+                  priceMode={priceMode}
                   onBasisSaved={() => portfolio.reload(false)}
                   onItemDeleted={() => portfolio.reload(false)}
                 />
@@ -1394,13 +1537,14 @@ function BasisCell({ basisPerUnit, basisOriginal, basisCurrency, hasBasis, qty, 
   );
 }
 
-function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolioId, portfolioType, onBasisSaved, onItemDeleted }) {
+function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolioId, portfolioType, priceMode = 'market', onBasisSaved, onItemDeleted }) {
   const [editingItemId, setEditingItemId] = useState(null);
   const [editDraft, setEditDraft] = useState({ quantity: '', basisPerUnit: '' });
   const [savingItemId, setSavingItemId] = useState(null);
   const [sortKey, setSortKey] = useState('value');
   const [sortDir, setSortDir] = useState('desc');
   const isSteamPortfolio = portfolioType === 'steam';
+  const isSteamPrices = priceMode === 'steam';
 
   const rowEditKey = (item) => item.manualItemId || item.marketHashName;
 
@@ -1427,10 +1571,10 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
       } else if (sortKey === 'basis') {
         cmp = (num(a.basis) ?? -Infinity) - (num(b.basis) ?? -Infinity);
       } else if (sortKey === 'value') {
-        cmp = (num(a.totalValue ?? a.value) ?? -Infinity) - (num(b.totalValue ?? b.value) ?? -Infinity);
+        cmp = (num(holdingUsd(a, priceMode)) ?? -Infinity) - (num(holdingUsd(b, priceMode)) ?? -Infinity);
       } else if (sortKey === 'pnl') {
-        const aPnl = num(a.pnlPct);
-        const bPnl = num(b.pnlPct);
+        const aPnl = num(holdingPnl(a, priceMode).pnlPct);
+        const bPnl = num(holdingPnl(b, priceMode).pnlPct);
         cmp = (aPnl ?? -Infinity) - (bPnl ?? -Infinity);
       }
       if (cmp === 0) {
@@ -1439,7 +1583,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
       return cmp * dir;
     });
     return list;
-  }, [items, sortKey, sortDir]);
+  }, [items, sortKey, sortDir, priceMode]);
 
   const SortHeader = ({ label, column, title }) => {
     const active = sortKey === column;
@@ -1567,12 +1711,19 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         <SortHeader
           label={tt(lang, { en: 'Value', ru: 'Стоимость', zh: '价值', 'zh-TW': '價值' })}
           column="value"
-          title={tt(lang, {
-            en: 'Cash-market mark. Steam list price is shown underneath.',
-            ru: 'Оценка по сторонним маркетам. Ценник Steam — строкой ниже.',
-            zh: '第三方市场价格。Steam 标价显示在下方。',
-            'zh-TW': '第三方市場價格。Steam 標價顯示在下方。',
-          })}
+          title={isSteamPrices
+            ? tt(lang, {
+              en: 'Steam Market listing price. Real market mark is shown underneath.',
+              ru: 'Ценник Steam. Реальная оценка маркета — строкой ниже.',
+              zh: 'Steam 市场挂牌价。真实市价显示在下方。',
+              'zh-TW': 'Steam 市場掛牌價。真實市價顯示在下方。',
+            })
+            : tt(lang, {
+              en: 'Cash-market mark. Steam list price is shown underneath.',
+              ru: 'Оценка по сторонним маркетам. Ценник Steam — строкой ниже.',
+              zh: '第三方市场价格。Steam 标价显示在下方。',
+              'zh-TW': '第三方市場價格。Steam 標價顯示在下方。',
+            })}
         />
         <SortHeader label={tt(lang, { en: 'P&L', ru: 'Доход', zh: '盈亏', 'zh-TW': '盈虧' })} column="pnl" />
         <div>{tt(lang, { en: 'Source', ru: 'Источник', zh: 'Source', 'zh-TW': 'Source' })}</div>
@@ -1582,6 +1733,13 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         const isEditing = editingItemId === (h.manualItemId || h.marketHashName);
         const basisEditable = (portfolioType === 'manual' && h.manualItemId) || isSteamPortfolio;
         const steamSticker = formatSteamSticker(h);
+        const rowPnl = holdingPnl(h, priceMode);
+        const altValue = isSteamPrices
+          ? (Number.isFinite(h.totalValue) || Number.isFinite(h.value) ? formatHoldingValue(h, { digits: 0, compact: true }) : null)
+          : steamSticker;
+        const altLabel = isSteamPrices
+          ? tt(lang, { en: 'Real', ru: 'Реал', zh: '真实', 'zh-TW': '真實' })
+          : 'Steam';
         const lockLabel = h.tradableQty === h.qty
           ? null
           : h.tradableQty > 0
@@ -1594,7 +1752,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
             : (tt(lang, { en: 'restricted', ru: 'заблокировано', zh: '受限', 'zh-TW': '受限' }));
         return (
           <div
-            key={h.marketHashName || String(h.assetid || i)}
+            key={h.marketHashName ? `${h.marketHashName}::${h.assetIds?.[0] || h.assetid || i}` : String(h.assetid || i)}
             className="inv-grid inv-grid-row"
             data-last={i >= sortedItems.length - 1}
             onClick={() => onItemClick && onItemClick(h)}
@@ -1668,11 +1826,11 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
               />
             )}
             <div className="inv-value-cell">
-              <div className="mono inv-value-mark">{formatHoldingValue(h)}</div>
-              {steamSticker && <div className="inv-value-steam">Steam {steamSticker}</div>}
+              <div className="mono inv-value-mark">{formatHoldingValue(h, { source: priceMode }) || 'N/A'}</div>
+              {altValue && <div className="inv-value-steam">{altLabel} {altValue}</div>}
             </div>
-            <div className="mono" style={{ fontSize: 12, color: h.pnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
-              {Number.isFinite(h.pnlPct) ? `${h.pnlPct >= 0 ? '+' : ''}${h.pnlPct.toFixed(1)}%` : 'N/A'}
+            <div className="mono" style={{ fontSize: 12, color: Number.isFinite(rowPnl.pnlPct) ? (rowPnl.pnl >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--fg-3)' }}>
+              {Number.isFinite(rowPnl.pnlPct) ? `${rowPnl.pnlPct >= 0 ? '+' : ''}${rowPnl.pnlPct.toFixed(1)}%` : 'N/A'}
             </div>
             <div style={{ minWidth: 0 }} title={h.priceProvider}>
               {portfolioType === 'manual' && h.manualItemId ? (
