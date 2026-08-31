@@ -25,7 +25,7 @@ function CollectionDetail({ lang, loading = false, error = null, data = null, on
           <div className="glass item-detail-state-card">
             <button type="button" onClick={onBack} className="btn btn-sm btn-ghost">{lang === 'ru' ? '← Назад' : '← Back'}</button>
             <h1 className="display">{lang === 'ru' ? 'Коллекция не найдена' : 'Collection not found'}</h1>
-            <p>{lang === 'ru' ? 'Проверьте ссылку или откройте коллекцию со страницы предмета.' : 'Check the URL or open a collection from an item page.'}</p>
+            <p>{lang === 'ru' ? 'Проверьте ссылку или откройте коллекцию из раздела «Коллекции».' : 'Check the URL or open a collection from the Collections menu.'}</p>
           </div>
         </div>
       </main>

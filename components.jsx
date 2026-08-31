@@ -4,7 +4,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 /* ─────────── i18n ─────────── */
 const I18N = {
   en: {
-    nav: { home: 'Home', dashboard: 'Portfolio', market: 'Market', favorites: 'Favorite profiles', investors: 'Top investors', pricing: 'Pricing', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item', currency: 'Currency' },
+    nav: { home: 'Home', dashboard: 'Portfolio', market: 'Market', collections: 'Collections', favorites: 'Favorite profiles', investors: 'Top investors', pricing: 'Pricing', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item', currency: 'Currency' },
     hero: {
       eyebrow: 'SkinsHead · CS2 skin portfolio tracker',
       title1: 'Know the value of',
@@ -125,7 +125,7 @@ const I18N = {
     }
   },
   ru: {
-    nav: { home: 'Главная', dashboard: 'Портфель', market: 'Маркет', favorites: 'Избранные профили', investors: 'Топ инвесторы', pricing: 'Тарифы', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
+    nav: { home: 'Главная', dashboard: 'Портфель', market: 'Маркет', collections: 'Коллекции', favorites: 'Избранные профили', investors: 'Топ инвесторы', pricing: 'Тарифы', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
     hero: {
       eyebrow: 'SkinsHead · портфель скинов CS2',
       title1: 'Узнай стоимость',
@@ -243,7 +243,7 @@ const I18N = {
     }
   },
   zh: {
-    nav: { home: '首页', dashboard: '库存', market: '市场', favorites: '收藏的个人资料', investors: '顶尖投资者', pricing: '套餐', news: '新闻', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '货币' },
+    nav: { home: '首页', dashboard: '库存', market: '市场', collections: '收藏', favorites: '收藏的个人资料', investors: '顶尖投资者', pricing: '套餐', news: '新闻', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '货币' },
     hero: {
       eyebrow: 'SkinsHead · CS2 皮肤库存追踪',
       title1: '了解你的',
@@ -364,7 +364,7 @@ const I18N = {
     }
   },
   'zh-TW': {
-    nav: { home: '首頁', dashboard: '庫存', market: '市場', favorites: '收藏的個人資料', investors: '頂尖投資者', pricing: '方案', news: '新聞', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '貨幣' },
+    nav: { home: '首頁', dashboard: '庫存', market: '市場', collections: '收藏', favorites: '收藏的個人資料', investors: '頂尖投資者', pricing: '方案', news: '新聞', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '貨幣' },
     hero: {
       eyebrow: 'SkinsHead · CS2 皮膚庫存追蹤',
       title1: '了解你的',
@@ -661,6 +661,7 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
         { k: 'home', label: t.nav.home, icon: '⌂', desc: tt(lang, { en: 'Explore SkinsHead', ru: 'Возможности SkinsHead', zh: '探索 SkinsHead', 'zh-TW': '探索 SkinsHead' }) },
         { k: 'dashboard', label: t.nav.dashboard, icon: '▣', desc: tt(lang, { en: 'Value and inventory', ru: 'Стоимость и предметы', zh: '价值与库存', 'zh-TW': '價值與庫存' }) },
         { k: 'market', label: t.nav.market, icon: '⌕', desc: tt(lang, { en: 'Search and market prices', ru: 'Поиск и рыночные цены', zh: '搜索与市场价格', 'zh-TW': '搜尋與市場價格' }) },
+        { k: 'collections', label: t.nav.collections, icon: '▦', desc: tt(lang, { en: 'Browse skin collections', ru: 'Коллекции скинов', zh: '浏览皮肤收藏', 'zh-TW': '瀏覽皮膚收藏' }) },
       ],
     },
     {
@@ -770,7 +771,7 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
                         type="button"
                         role="menuitem"
                         className="nav-link"
-                        data-active={screen === it.k}
+                        data-active={screen === it.k || (it.k === 'collections' && screen === 'collection')}
                         onClick={() => {
                           closeMenu();
                           onNav(it.k);

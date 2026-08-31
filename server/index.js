@@ -75,7 +75,7 @@ const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
 const { getItemPageData, renderItemHtml, renderAppShellHtml, SITE_URL, buildSitemapXml } = require('./services/items');
-const { getCollectionPageData } = require('./services/collections');
+const { getCollectionPageData, getCollectionsList } = require('./services/collections');
 const {
   createPairingCode,
   redeemPairingCode,
@@ -922,6 +922,10 @@ app.get('/api/items/by-slug/:slug', asyncRoute(async (req, res) => {
   res.json(data);
 }));
 
+app.get('/api/collections', asyncRoute(async (req, res) => {
+  res.json(await getCollectionsList());
+}));
+
 app.get('/api/collections/:slug', asyncRoute(async (req, res) => {
   const data = await getCollectionPageData(req.params.slug, {
     page: req.query.page,
@@ -942,6 +946,10 @@ app.get('/item/:slug', asyncRoute(async (req, res) => {
   }
   const html = await renderItemHtml(path.join(rootDir, appFile), data.seo);
   res.type('html').send(html);
+}));
+
+app.get('/collections', asyncRoute(async (req, res) => {
+  await sendAppShell(res);
 }));
 
 app.get('/collection/:slug', asyncRoute(async (req, res) => {

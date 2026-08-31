@@ -756,6 +756,33 @@ function useItemBySlug(slug, enabled = true) {
   return state;
 }
 
+function useCollectionsIndex(enabled = true) {
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+
+  apiUseEffect(() => {
+    if (!enabled) {
+      setState({ loading: false, data: null, error: null });
+      return undefined;
+    }
+
+    let active = true;
+    setState({ loading: true, data: null, error: null });
+    apiFetch('/api/collections')
+      .then((payload) => {
+        if (!active) return;
+        setState({ loading: false, data: payload, error: null });
+      })
+      .catch((error) => {
+        if (!active) return;
+        setState({ loading: false, data: null, error });
+      });
+
+    return () => { active = false; };
+  }, [enabled]);
+
+  return state;
+}
+
 function useCollectionBySlug(slug, enabled = true) {
   const [state, setState] = apiUseState({
     loading: false,
@@ -872,6 +899,7 @@ Object.assign(window, {
   useItemVariants,
   useMultiWearHistory,
   useItemBySlug,
+  useCollectionsIndex,
   useCollectionBySlug,
   useArmoryRoi,
   useCsNews,

@@ -86,6 +86,7 @@
   <script type="text/babel" src="top-investors.jsx"></script>
   <script type="text/babel" src="item-detail.jsx"></script>
   <script type="text/babel" src="collection-detail.jsx"></script>
+  <script type="text/babel" src="collections-catalog.jsx"></script>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -169,6 +170,12 @@
         en: '3D Glock · SkinsHead',
         zh: '3D Glock · SkinsHead',
         'zh-TW': '3D Glock · SkinsHead',
+      },
+      collections: {
+        ru: 'Коллекции · SkinsHead',
+        en: 'Collections · SkinsHead',
+        zh: '收藏 · SkinsHead',
+        'zh-TW': '收藏 · SkinsHead',
       },
       collection: {
         ru: 'Коллекция · SkinsHead',
@@ -264,6 +271,9 @@
         const slug = decodeURIComponent(path.slice('/item/'.length)).toLowerCase();
         if (slug) return { screen: 'item', slug };
       }
+      if (path === '/collections') {
+        return { screen: 'collections' };
+      }
       if (path.startsWith('/collection/')) {
         const slug = decodeURIComponent(path.slice('/collection/'.length)).toLowerCase();
         if (slug) return { screen: 'collection', collectionSlug: slug };
@@ -325,6 +335,7 @@
       if (screen === 'favorites') return '/favorites';
       if (screen === 'investors') return '/investors';
       if (screen === 'market') return '/market';
+      if (screen === 'collections') return '/collections';
       if (screen === 'armory') return '/armory';
       if (screen === 'glock3d') return '/glock-3d';
       if (screen === 'dashboard') {
@@ -376,6 +387,9 @@
       const [activeItem, setActiveItem] = useState(null);
       const [itemReturnScreen, setItemReturnScreen] = useState(
         initialRoute.screen === 'item' || initialRoute.screen === 'collection' ? 'home' : initialRoute.screen
+      );
+      const [collectionReturnScreen, setCollectionReturnScreen] = useState(
+        initialRoute.screen === 'collection' ? 'collections' : initialRoute.screen
       );
       const [cursorStyle, setCursorStyle] = useState('default');
       const [publicProfileUrl, setPublicProfileUrl] = useState(initialRoute.profile || '');
@@ -477,6 +491,11 @@
             ? window.ItemSlugs.collectionNameToSlug(collectionName)
             : null);
         if (!nextSlug) return;
+        if (screen !== 'item' && screen !== 'collection') {
+          setCollectionReturnScreen(screen);
+        } else if (screen === 'item') {
+          setCollectionReturnScreen(itemReturnScreen === 'collection' ? 'collections' : itemReturnScreen);
+        }
         setItemReturnScreen(screen === 'item' ? itemReturnScreen : screen);
         setCollectionSlug(nextSlug);
         setItemSlug(null);
@@ -589,6 +608,12 @@
               <Footer lang={t.lang} />
             </>
           )}
+          {screen === 'collections' && (
+            <>
+              <CollectionsCatalog onCollectionClick={goCollection} />
+              <Footer lang={t.lang} />
+            </>
+          )}
           {screen === 'armory' && (
             <>
               <ArmoryROI />
@@ -645,7 +670,7 @@
               loading={collectionState.loading}
               error={collectionState.error}
               data={collectionState.data}
-              onBack={() => onNav(itemReturnScreen === 'collection' ? 'market' : itemReturnScreen)}
+              onBack={() => onNav(collectionReturnScreen || (itemReturnScreen === 'collection' ? 'collections' : itemReturnScreen))}
               onItemClick={goItem}
               onLoadMore={collectionState.loadMore}
             />

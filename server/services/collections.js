@@ -23,6 +23,13 @@ function pickCollectionName(raw = {}) {
     || null;
 }
 
+function collectionKind(raw = {}) {
+  if (raw.sticker_collection) return 'stickers';
+  if (raw.graffiti_collection) return 'graffiti';
+  if (raw.patch_collection) return 'patches';
+  return 'skins';
+}
+
 function baseSkinKey(raw) {
   let base = String(raw.hash_name || raw.market_hash_name || '').trim();
   base = base
@@ -82,6 +89,7 @@ async function buildCollectionIndex() {
       bySlug.set(slug, {
         name: collection,
         slug,
+        kind: collectionKind(raw),
         listingCount: 0,
         skinCount: 0,
       });
@@ -187,6 +195,37 @@ async function attachCollections(items) {
   });
 }
 
+async function getCollectionsList() {
+  const index = await getCollectionIndex();
+  const collections = [...index.bySlug.values()].map((meta) => {
+    const skins = index.skinsBySlug.get(meta.slug) || [];
+    const previewIcons = [];
+    for (const skin of skins) {
+      if (skin.iconUrl && !previewIcons.includes(skin.iconUrl)) {
+        previewIcons.push(skin.iconUrl);
+        if (previewIcons.length >= 4) break;
+      }
+    }
+    return {
+      name: meta.name,
+      slug: meta.slug,
+      kind: meta.kind || 'skins',
+      skinCount: meta.skinCount,
+      listingCount: meta.listingCount,
+      previewIcons,
+    };
+  }).sort((a, b) => {
+    if (b.skinCount !== a.skinCount) return b.skinCount - a.skinCount;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+
+  return {
+    collections,
+    totalCount: collections.length,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 async function getCollectionPageData(slug, options = {}) {
   const normalized = String(slug || '').trim().toLowerCase();
   if (!normalized) return null;
@@ -228,5 +267,6 @@ module.exports = {
   collectionFromItemFields,
   getCollectionForMarketHashName,
   attachCollections,
+  getCollectionsList,
   getCollectionPageData,
 };
