@@ -51,7 +51,7 @@ function InvestorActivityRows({ events, lang, showInvestor = false, onOpenItem }
               <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: kindColor }}>
                 {investorActivityKindLabel(row.kind, lang)}
               </div>
-              <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }} className="top-investors-event-time">
                 {new Date(row.at).toLocaleString()}
               </div>
             </div>
@@ -127,16 +127,16 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
     };
 
   return (
-    <div style={{ padding: '40px 64px 80px' }}>
+    <div className="top-investors-page">
       <div className="container">
         <div style={{ marginBottom: 28 }}>
           <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--accent)' }}>
             // WATCHLIST
           </div>
-          <h1 className="display" style={{ fontSize: 44, fontWeight: 500, letterSpacing: '-0.02em' }}>
+          <h1 className="display top-investors-title">
             {copy.title}
           </h1>
-          <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)', maxWidth: 640 }}>
+          <div className="top-investors-sub">
             {copy.sub}
           </div>
         </div>
@@ -181,23 +181,15 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
                         setSelectedSteamId(account.steamId);
                       }
                     }}
-                    style={{
-                      padding: '14px 16px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: 16,
-                      cursor: 'pointer',
-                    }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                    <div className="top-investors-account-meta">
                       {account.avatar ? (
-                        <img src={account.avatar} alt="" style={{ width: 36, height: 36, borderRadius: 18, border: '1px solid var(--line-strong)' }} />
+                        <img src={account.avatar} alt="" />
                       ) : (
-                        <div style={{ width: 36, height: 36, borderRadius: 18, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--line)' }} />
+                        <div className="top-investors-account-avatar" />
                       )}
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontFamily: 'var(--f-display)', fontSize: 15, fontWeight: 500 }}>{account.personaname}</div>
+                      <div className="top-investors-account-copy">
+                        <div className="top-investors-account-name">{account.personaname}</div>
                         {account.note ? (
                           <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {account.note}

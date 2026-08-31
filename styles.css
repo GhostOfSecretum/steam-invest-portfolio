@@ -6317,14 +6317,30 @@ button:disabled,
 }
 
 /* Top investors */
+.top-investors-page {
+  padding: 40px 64px 80px;
+}
+.top-investors-title {
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.top-investors-sub {
+  margin-top: 8px;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--fg-3);
+  max-width: 640px;
+}
 .top-investors-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 420px) minmax(320px, 1fr);
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
   grid-template-areas:
     "accounts personal"
     "accounts feed";
   gap: 18px;
   align-items: start;
+  min-width: 0;
 }
 .top-investors-accounts {
   grid-area: accounts;
@@ -6336,13 +6352,54 @@ button:disabled,
   position: sticky;
   top: 24px;
   isolation: isolate;
+  min-width: 0;
 }
 .top-investors-account.glass {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
   overflow: hidden;
   background: var(--bg-2);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.top-investors-account-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.top-investors-account-meta img,
+.top-investors-account-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line-strong);
+}
+.top-investors-account-avatar {
+  background: rgba(255,255,255,0.04);
+  border-color: var(--line);
+}
+.top-investors-account-copy {
+  min-width: 0;
+}
+.top-investors-account-name {
+  font-family: var(--f-display);
+  font-size: 15px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top-investors-account .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .top-investors-account.is-selected {
   border-color: var(--accent);
@@ -6359,6 +6416,7 @@ button:disabled,
   padding: 18px;
   max-height: 34vh;
   overflow: auto;
+  min-width: 0;
 }
 .top-investors-personal { grid-area: personal; }
 .top-investors-feed { grid-area: feed; }
@@ -6367,10 +6425,12 @@ button:disabled,
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  min-width: 0;
 }
 .top-investors-events {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 .top-investors-event {
   display: grid;
@@ -6379,6 +6439,7 @@ button:disabled,
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgba(255,255,255,0.02);
+  min-width: 0;
 }
 .top-investors-event.is-link {
   cursor: pointer;
@@ -6393,6 +6454,10 @@ button:disabled,
   justify-content: space-between;
   gap: 10px;
   align-items: baseline;
+  min-width: 0;
+}
+.top-investors-event-time {
+  white-space: nowrap;
 }
 .top-investors-event-name {
   overflow: hidden;
@@ -6400,6 +6465,7 @@ button:disabled,
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 .top-investors-event.is-link .top-investors-event-name {
   display: flex;
@@ -6413,18 +6479,44 @@ button:disabled,
   font-size: 12px;
 }
 @media (max-width: 960px) {
+  .top-investors-page {
+    padding: 24px 16px 56px;
+  }
+  .top-investors-title {
+    font-size: 32px;
+  }
   .top-investors-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "accounts"
       "personal"
       "feed";
   }
-  .top-investors-accounts,
+  .top-investors-accounts {
+    position: static;
+    max-height: min(38vh, 280px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 0;
+  }
   .top-investors-personal,
   .top-investors-feed {
     position: static;
     max-height: none;
+    overflow: visible;
+  }
+  .top-investors-account.glass {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .top-investors-account .btn {
+    margin-left: auto;
+  }
+  .top-investors-event-head {
+    flex-wrap: wrap;
+  }
+  .top-investors-event-time {
+    white-space: normal;
   }
 }
 
