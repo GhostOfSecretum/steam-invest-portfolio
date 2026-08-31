@@ -2,6 +2,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { getCached, getCachedEntry, setCached, remember } = require('./cache');
 const { collectionNameToSlug } = require('../../item-slugs');
+const { isSteamCommunityCoolingDown, markCommunityRateLimited } = require('./steam');
 
 const execFileAsync = promisify(execFile);
 
@@ -166,6 +167,9 @@ async function fetchJson(url, { timeoutMs = 6000, headers: extraHeaders = {} } =
     });
 
     if (!response.ok) {
+      if (isSteam && (response.status === 403 || response.status === 429)) {
+        markCommunityRateLimited(Number(response.headers.get('retry-after')));
+      }
       const error = new Error(`Price provider returned HTTP ${response.status}.`);
       error.status = response.status;
       throw error;
@@ -197,6 +201,9 @@ async function fetchText(url, { timeoutMs = 6000, headers: extraHeaders = {} } =
   }
 
   if (!response.ok) {
+    if (isSteam && (response.status === 403 || response.status === 429)) {
+      markCommunityRateLimited(Number(response.headers.get('retry-after')));
+    }
     const error = new Error(`Steam Market returned HTTP ${response.status}.`);
     error.status = response.status;
     throw error;
@@ -1298,6 +1305,34 @@ async function getCSMarketAPIIcon(marketHashName) {
   return csMarketIconIndex.map.get(name) || null;
 }
 
+async function getMarketIconsByName(names) {
+  const unique = [...new Set((names || []).map((name) => String(name || '').trim()).filter(Boolean))];
+  const result = {};
+  if (!unique.length) return result;
+
+  await Promise.all(unique.map(async (name) => {
+    const cached = await getSteamMarketIcon(name, { cachedOnly: true }).catch(() => null);
+    if (cached) result[name] = cached;
+  }));
+
+  const missing = unique.filter((name) => !result[name]);
+  if (!missing.length) return result;
+
+  try {
+    await getCSMarketAPIItems();
+    await Promise.all(missing.map(async (name) => {
+      const icon = await getCSMarketAPIIcon(name).catch(() => null);
+      if (icon) {
+        result[name] = icon;
+        await cacheIconUrl(`icon:${name}`, name, icon);
+      }
+    }));
+  } catch {
+    // Catalog dump is optional; rows without an icon keep the placeholder.
+  }
+  return result;
+}
+
 async function getSteamMarketIcon(marketHashName, options = {}) {
   const key = `icon:${marketHashName}`;
   const cached = await getCached(key, ICON_MAX_AGE_MS);
@@ -2286,6 +2321,11 @@ async function getCases() {
 }
 
 async function fetchSteamMarketSearch({ query = '', start = 0, count = 24, sort = 'popular', currency = 'usd' } = {}) {
+  if (isSteamCommunityCoolingDown()) {
+    const error = new Error('Steam community is cooling down.');
+    error.status = 429;
+    throw error;
+  }
   const sortMap = {
     popular: { column: 'popular', dir: 'desc' },
     'price-desc': { column: 'price', dir: 'desc' },
@@ -2735,29 +2775,32 @@ async function getMarketCatalogFromSteam(options = {}) {
 
 async function getMarketCatalog(options = {}) {
   const query = String(options.query || '').trim();
+  const provider = resolveMarketCatalogProvider();
 
-  // Name lookup must use Steam: the CSMarketAPI dump can omit stickers/commodities
-  // (e.g. "Sticker | Rainbow Route (Holo)" while only "Sticker Slab | ..." is present).
-  if (query) {
+  // Prefer CSMarketAPI so catalog search does not 403-storm steamcommunity.com
+  // (that same host is used for OpenID login). Steam remains a fallback for
+  // names the dump omits, e.g. some stickers.
+  if (provider === 'csmarketapi') {
     try {
-      return await getMarketCatalogFromSteam(options);
-    } catch (error) {
-      console.warn('[catalog] Steam search failed, trying CSMarketAPI:', error.message);
-      if (resolveMarketCatalogProvider() === 'csmarketapi') {
-        return getMarketCatalogFromCSMarketAPI(options);
-      }
-      throw error;
-    }
-  }
-
-  if (resolveMarketCatalogProvider() === 'csmarketapi') {
-    try {
-      return await getMarketCatalogFromCSMarketAPI(options);
+      const fromApi = await getMarketCatalogFromCSMarketAPI(options);
+      if (!query || fromApi?.items?.length) return fromApi;
     } catch (error) {
       console.warn('[catalog] CSMarketAPI failed, falling back to Steam:', error.message);
     }
+    if (isSteamCommunityCoolingDown()) {
+      return getMarketCatalogFromCSMarketAPI(options);
+    }
   }
-  return getMarketCatalogFromSteam(options);
+
+  try {
+    return await getMarketCatalogFromSteam(options);
+  } catch (error) {
+    console.warn('[catalog] Steam search failed, trying CSMarketAPI:', error.message);
+    if (provider === 'csmarketapi') {
+      return getMarketCatalogFromCSMarketAPI(options);
+    }
+    throw error;
+  }
 }
 
 async function hydrateCatalogPrices(items) {
@@ -3267,6 +3310,7 @@ module.exports = {
   getMarketCatalog,
   getSteamMarketPrice,
   getSteamMarketIcon,
+  getMarketIconsByName,
   getSteamRubRate,
   getSteamCnyRate,
   getSteamCurrencyRatio,

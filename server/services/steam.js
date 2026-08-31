@@ -459,5 +459,6 @@ module.exports = {
   getSteamProfile,
   getSteamInventory,
   isSteamCommunityCoolingDown,
+  markCommunityRateLimited,
   saveIngestedSteamInventory,
 };

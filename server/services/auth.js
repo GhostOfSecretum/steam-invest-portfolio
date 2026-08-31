@@ -1,3 +1,5 @@
+const { isSteamCommunityCoolingDown, markCommunityRateLimited } = require('./steam');
+
 const STEAM_OPENID = {
   ns: 'http://specs.openid.net/auth/2.0',
   opEndpoint: 'https://steamcommunity.com/openid/login',
@@ -5,8 +7,9 @@ const STEAM_OPENID = {
   identifierSelect: 'http://specs.openid.net/auth/2.0/identifier_select',
 };
 
-const VERIFY_RETRIES = 3;
-const VERIFY_RETRY_DELAY_MS = 700;
+const VERIFY_RETRIES = 4;
+const VERIFY_RETRY_DELAY_MS = 1000;
+const VERIFY_TIMEOUTS_MS = [15000, 20000, 25000];
 
 function resolveBaseUrl(req) {
   const configured = String(process.env.APP_BASE_URL || '').trim().replace(/\/+$/, '');
@@ -49,8 +52,15 @@ function isTransientVerifyStatus(status) {
 async function postOpenIdVerification(body) {
   let lastError = null;
 
+  if (isSteamCommunityCoolingDown()) {
+    // OpenID assertions expire; wait a short gap, not the full market cooldown.
+    console.warn('[auth] Steam community is cooling down; delaying OpenID verify 3s');
+    await sleep(3000);
+  }
+
   for (let attempt = 0; attempt < VERIFY_RETRIES; attempt += 1) {
     if (attempt > 0) await sleep(VERIFY_RETRY_DELAY_MS * attempt);
+    const timeoutMs = VERIFY_TIMEOUTS_MS[Math.min(attempt, VERIFY_TIMEOUTS_MS.length - 1)];
 
     let response;
     try {
@@ -58,14 +68,19 @@ async function postOpenIdVerification(body) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'text/plain,text/html,*/*',
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
         body,
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
+      const reason = error?.name === 'TimeoutError' || error?.cause?.name === 'TimeoutError'
+        ? `timeout after ${timeoutMs}ms`
+        : ((error && error.message) || 'Steam OpenID verification failed.');
+      console.warn(`[auth] Steam OpenID verify attempt ${attempt + 1}/${VERIFY_RETRIES} failed: ${reason}`);
       lastError = authError(
-        (error && error.message) || 'Steam OpenID verification failed.',
+        'Steam did not answer the login check. Please try again in a moment.',
         502,
         'steam_openid_verify_failed',
       );
@@ -74,6 +89,10 @@ async function postOpenIdVerification(body) {
 
     if (response.ok) return response.text();
 
+    console.warn(`[auth] Steam OpenID verify attempt ${attempt + 1}/${VERIFY_RETRIES} HTTP ${response.status}`);
+    if (response.status === 403 || response.status === 429) {
+      markCommunityRateLimited(Number(response.headers.get('retry-after')));
+    }
     lastError = authError(`Steam returned HTTP ${response.status}.`, 502, 'steam_openid_verify_failed');
     if (!isTransientVerifyStatus(response.status)) break;
   }

@@ -1,5 +1,10 @@
 require('dotenv').config();
 
+const dns = require('dns');
+// Node 17+ prefers IPv6. Steam Community often has broken AAAA from VPS networks,
+// which makes OpenID check_authentication hang until timeout and fail login.
+dns.setDefaultResultOrder('ipv4first');
+
 const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs/promises');
