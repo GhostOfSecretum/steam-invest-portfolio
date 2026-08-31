@@ -405,7 +405,10 @@
       const slugItem = useItemBySlug(itemSlug, screen === 'item' && itemSlug && !slugMatchesItem);
       const collectionState = useCollectionBySlug(collectionSlug, screen === 'collection' && Boolean(collectionSlug));
 
-      // Set lang/currency globally so child components without prop access can read it
+      // Set lang/currency during render so children like MarketCapBoard format on this frame,
+      // not after a useEffect that would leave the figure on the previous currency.
+      window.__lang = t.lang;
+      window.__currency = t.currency || 'usd';
       useEffect(() => { window.__lang = t.lang; }, [t.lang]);
       useEffect(() => {
         window.__currency = t.currency || 'usd';
@@ -582,7 +585,7 @@
                 onItemClick={goItem}
                 auth={auth}
               />
-              <MarketCapBoard onItemClick={goItem} onMarket={() => onNav('market')} />
+              <MarketCapBoard lang={t.lang} currency={t.currency || 'usd'} onItemClick={goItem} onMarket={() => onNav('market')} />
               <HowItWorks lang={t.lang} />
               <StatsBand />
               <Ticker onItemClick={goItem} />

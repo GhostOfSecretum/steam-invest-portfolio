@@ -1,4 +1,4 @@
-/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, startInvestorTrial, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo, Sparkline, withSteamImageSize, CURRENCIES, getCnyPerUsdRate */
+/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, startInvestorTrial, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo, Sparkline, withSteamImageSize, CURRENCIES, getCnyPerUsdRate, getActiveCurrency */
 const { useState, useEffect, useRef, useMemo } = React;
 
 /* ───────────────────────────────────────────────────
@@ -241,19 +241,46 @@ function MarketBoardPeriods({ days, value, onChange, label }) {
   );
 }
 
+function historyPointTime(point) {
+  if (!point) return NaN;
+  if (Number.isFinite(point.t)) return point.t;
+  return Date.parse(point.date);
+}
+
+function marketCapCurrentValue(overview) {
+  if (Number.isFinite(overview.listedValue)) return overview.listedValue;
+  const history = Array.isArray(overview.history) ? overview.history : [];
+  const last = history[history.length - 1];
+  return Number.isFinite(last?.v) ? last.v : null;
+}
+
+function marketCapChangeFromHistory(overview, period) {
+  const history = Array.isArray(overview.history) ? overview.history : [];
+  if (history.length < 2 || !Number.isFinite(period) || period <= 0) return null;
+  const last = history[history.length - 1];
+  const lastTs = historyPointTime(last);
+  const lastV = Number(last?.v);
+  if (!Number.isFinite(lastTs) || !Number.isFinite(lastV) || lastV <= 0) return null;
+  const cutoff = lastTs - period * 24 * 60 * 60 * 1000;
+  let baseline = history[0];
+  for (let i = 0; i < history.length; i += 1) {
+    if (historyPointTime(history[i]) >= cutoff) {
+      baseline = i > 0 ? history[i - 1] : history[i];
+      break;
+    }
+  }
+  const baseV = Number(baseline?.v);
+  if (!Number.isFinite(baseV) || baseV <= 0) return null;
+  return ((lastV - baseV) / baseV) * 100;
+}
+
 function marketCapPeriodChange(overview, period) {
   const changes = overview.changes && typeof overview.changes === 'object' ? overview.changes : {};
   const direct = Number(changes[period] ?? changes[String(period)]);
   if (Number.isFinite(direct)) return direct;
   if (period === 7 && Number.isFinite(overview.change7d)) return overview.change7d;
   if (period === 7 && Number.isFinite(overview.change24h)) return overview.change24h;
-  return null;
-}
-
-function historyPointTime(point) {
-  if (!point) return NaN;
-  if (Number.isFinite(point.t)) return point.t;
-  return Date.parse(point.date);
+  return marketCapChangeFromHistory(overview, period);
 }
 
 function downsampleSpark(series, maxPoints) {
@@ -280,14 +307,16 @@ function marketCapSpark(overview, period) {
   return [];
 }
 
-function MarketCapBoard({ onItemClick, onMarket }) {
-  const lang = window.__lang || 'en';
+function MarketCapBoard({ lang: langProp, currency: currencyProp, onItemClick, onMarket }) {
+  const lang = langProp || window.__lang || 'en';
   const t = useT(lang);
   const board = t.marketBoard || {};
   const [period, setPeriod] = useState(7);
+  const [currencyState, setCurrencyState] = useState(() => currencyProp || getActiveCurrency());
+  const currency = currencyProp || currencyState;
   const market = useMarketSnapshot({ ticker: TICKER_ITEMS });
   const overview = market.data?.overview || {};
-  const listedValue = Number.isFinite(overview.listedValue) ? overview.listedValue : null;
+  const listedValue = marketCapCurrentValue(overview);
   const change = marketCapPeriodChange(overview, period);
   const spark = marketCapSpark(overview, period);
   const positive = change == null || change >= 0;
@@ -297,6 +326,14 @@ function MarketCapBoard({ onItemClick, onMarket }) {
       '{n}',
       formatListedCount(overview.listedCount || overview.itemCount || 0),
     );
+
+  useEffect(() => {
+    if (currencyProp) return undefined;
+    const sync = () => setCurrencyState(getActiveCurrency());
+    sync();
+    window.addEventListener('currency-change', sync);
+    return () => window.removeEventListener('currency-change', sync);
+  }, [currencyProp]);
 
   return (
     <section className="section-tight landing-market-board">
@@ -319,8 +356,8 @@ function MarketCapBoard({ onItemClick, onMarket }) {
               <div className="market-board-stats-copy">
                 <div className="eyebrow">{board.listed}</div>
                 <div className="market-board-value-row">
-                  <div className="market-board-value">
-                    {listedValue != null ? formatMoney(listedValue, { digits: 0 }) : '—'}
+                  <div className="market-board-value" data-currency={currency} data-loading={market.loading && listedValue == null ? 'true' : undefined}>
+                    {listedValue != null ? formatMoney(listedValue, { digits: 0 }) : (market.loading ? '…' : '—')}
                   </div>
                   {change != null && (
                     <div className="market-board-delta" data-positive={positive}>

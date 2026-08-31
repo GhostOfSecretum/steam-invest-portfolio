@@ -2199,10 +2199,22 @@ function emptyMarketOverview() {
   };
 }
 
+let marketOverviewInflight = null;
+
+function isUsableOverview(value) {
+  return Boolean(value && typeof value === 'object' && Number.isFinite(value.listedValue));
+}
+
 async function getMarketOverview() {
   const key = 'market:overview:v6';
-  try {
-    const cached = await remember(key, MARKET_OVERVIEW_MAX_AGE_MS, async () => {
+  const fresh = await getCached(key, MARKET_OVERVIEW_MAX_AGE_MS);
+  if (isUsableOverview(fresh)) return fresh;
+
+  const stale = await getCached(key, 7 * 24 * 60 * 60 * 1000);
+  if (!marketOverviewInflight) {
+    marketOverviewInflight = (async () => {
+      try {
+        const cached = await remember(key, MARKET_OVERVIEW_MAX_AGE_MS, async () => {
       const [rows, skinport, lisskins, csgomarket, capIndex] = await Promise.all([
         loadTakeSkinRows(),
         getSkinportPriceList().catch(() => ({})),
@@ -2280,13 +2292,21 @@ async function getMarketOverview() {
         circulating,
         updatedAt: new Date().toISOString(),
       };
-    });
-    return cached.value;
-  } catch (error) {
-    const stale = await getCached(key, 7 * 24 * 60 * 60 * 1000);
-    if (stale && typeof stale === 'object') return stale;
-    return emptyMarketOverview();
+        });
+        return cached.value;
+      } catch (error) {
+        if (isUsableOverview(stale)) return stale;
+        const fallback = await getCached(key, 7 * 24 * 60 * 60 * 1000);
+        if (isUsableOverview(fallback)) return fallback;
+        return emptyMarketOverview();
+      } finally {
+        marketOverviewInflight = null;
+      }
+    })();
   }
+
+  if (isUsableOverview(stale)) return stale;
+  return marketOverviewInflight;
 }
 
 async function getTopMovers() {

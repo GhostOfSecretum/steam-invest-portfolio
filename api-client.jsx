@@ -355,19 +355,36 @@ function useMarketSnapshot(fallback = {}) {
 
   apiUseEffect(() => {
     let active = true;
-    apiFetch('/api/market/snapshot')
-      .then((data) => {
-        if (!active) return;
-        if (Number.isFinite(data.steamRubRate) && data.steamRubRate > 0) {
-          FX_RATES.rub = data.steamRubRate;
-        }
-        if (Number.isFinite(data.steamCnyRate) && data.steamCnyRate > 0) {
-          FX_RATES.cny = data.steamCnyRate;
-        }
-        setState({ loading: false, data, error: null });
-      })
-      .catch((error) => { if (active) setState({ loading: false, data: fallback, error }); });
-    return () => { active = false; };
+    const applySnapshot = (data) => {
+      if (Number.isFinite(data.steamRubRate) && data.steamRubRate > 0) {
+        FX_RATES.rub = data.steamRubRate;
+      }
+      if (Number.isFinite(data.steamCnyRate) && data.steamCnyRate > 0) {
+        FX_RATES.cny = data.steamCnyRate;
+      }
+      setState({ loading: false, data, error: null });
+    };
+    const load = ({ silent = false } = {}) => {
+      if (!silent) {
+        setState((current) => ({ ...current, loading: !current.data?.overview, error: null }));
+      }
+      return apiFetch('/api/market/snapshot')
+        .then((data) => { if (active) applySnapshot(data); })
+        .catch((error) => {
+          if (!active) return;
+          setState((current) => ({
+            loading: false,
+            data: current.data?.overview ? current.data : fallback,
+            error,
+          }));
+        });
+    };
+    load();
+    const timer = setInterval(() => load({ silent: true }), 60000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
   }, []);
 
   return state;
