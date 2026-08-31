@@ -1,9 +1,14 @@
 const { collectionNameToSlug } = require('../../item-slugs');
+const { remember, getCached } = require('./cache');
 const {
   getCSMarketAPIItems,
   normalizeCSMarketCatalogItem,
   hydrateCollectionPrices,
 } = require('./prices');
+
+const OFFICIAL_ICONS_URL = 'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/collections.json';
+const OFFICIAL_ICONS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const OFFICIAL_ICONS_STALE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const WEAR_PREF = {
   'Factory New': 0,
@@ -195,6 +200,31 @@ async function attachCollections(items) {
   });
 }
 
+async function getOfficialCollectionIcons() {
+  try {
+    const cached = await remember('collections:official-icons', OFFICIAL_ICONS_MAX_AGE_MS, async () => {
+      const response = await fetch(OFFICIAL_ICONS_URL, { signal: AbortSignal.timeout(20000) });
+      if (!response.ok) throw new Error(`official icons ${response.status}`);
+      const rows = await response.json();
+      const bySlug = {};
+      for (const row of Array.isArray(rows) ? rows : []) {
+        const slug = collectionNameToSlug(row?.name);
+        if (slug && row.image) bySlug[slug] = row.image;
+      }
+      return bySlug;
+    });
+    return cached.value || {};
+  } catch (error) {
+    const stale = await getCached('collections:official-icons', OFFICIAL_ICONS_STALE_MS);
+    if (stale) {
+      console.warn('[collection] official icons refresh failed, using stale map:', error.message);
+      return stale;
+    }
+    console.warn('[collection] official icons unavailable:', error.message);
+    return {};
+  }
+}
+
 async function getCollectionsList() {
   const index = await getCollectionIndex();
   const collections = [...index.bySlug.values()].map((meta) => {
@@ -219,9 +249,15 @@ async function getCollectionsList() {
     return String(a.name || '').localeCompare(String(b.name || ''));
   });
 
+  const officialIcons = await getOfficialCollectionIcons();
+  const withIcons = collections.map((entry) => ({
+    ...entry,
+    iconUrl: officialIcons[entry.slug] || null,
+  }));
+
   return {
-    collections,
-    totalCount: collections.length,
+    collections: withIcons,
+    totalCount: withIcons.length,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -243,6 +279,7 @@ async function getCollectionPageData(slug, options = {}) {
     console.warn('[collection] price hydrate failed:', error.message);
     return pageSlice;
   });
+  const officialIcons = await getOfficialCollectionIcons();
 
   return {
     collection: {
@@ -250,6 +287,7 @@ async function getCollectionPageData(slug, options = {}) {
       slug: meta.slug,
       skinCount: meta.skinCount,
       listingCount: meta.listingCount,
+      iconUrl: officialIcons[normalized] || null,
     },
     items: pageItems,
     page,

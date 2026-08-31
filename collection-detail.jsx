@@ -40,16 +40,21 @@ function CollectionDetail({ lang, loading = false, error = null, data = null, on
         </button>
 
         <header className="collection-head">
-          <div className="item-detail-tags">
-            <span className="chip chip-accent">{lang === 'ru' ? 'КОЛЛЕКЦИЯ' : 'COLLECTION'}</span>
-            <span className="chip">{collection.skinCount} {lang === 'ru' ? 'предметов' : 'items'}</span>
+          {collection.iconUrl && (
+            <img className="collection-head-logo" src={collection.iconUrl} alt="" />
+          )}
+          <div>
+            <div className="item-detail-tags">
+              <span className="chip chip-accent">{lang === 'ru' ? 'КОЛЛЕКЦИЯ' : 'COLLECTION'}</span>
+              <span className="chip">{collection.skinCount} {lang === 'ru' ? 'предметов' : 'items'}</span>
+            </div>
+            <h1 className="display item-detail-title">{collection.name}</h1>
+            <p className="item-detail-subtitle">
+              {lang === 'ru'
+                ? 'Все уникальные предметы из этой коллекции. Нажмите, чтобы открыть карточку.'
+                : 'All unique items from this collection. Click a card to open details.'}
+            </p>
           </div>
-          <h1 className="display item-detail-title">{collection.name}</h1>
-          <p className="item-detail-subtitle">
-            {lang === 'ru'
-              ? 'Все уникальные предметы из этой коллекции. Нажмите, чтобы открыть карточку.'
-              : 'All unique items from this collection. Click a card to open details.'}
-          </p>
         </header>
 
         {items.length ? (

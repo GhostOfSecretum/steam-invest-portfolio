@@ -179,19 +179,25 @@ function CollectionsCatalog({ onCollectionClick }) {
                   </span>
                 </div>
 
-                {entry.previewIcons?.length
+                {entry.iconUrl
                   ? (
-                    <div className={`collection-card-mosaic is-${Math.min(4, entry.previewIcons.length)}`}>
-                      {entry.previewIcons.slice(0, 4).map((iconUrl) => (
-                        <img
-                          key={iconUrl}
-                          src={withSteamImageSize(iconUrl, 256, 192)}
-                          alt=""
-                        />
-                      ))}
+                    <div className="collection-card-logo">
+                      <img src={entry.iconUrl} alt="" />
                     </div>
                   )
-                  : <ItemArt label={entry.name} tier={3} className="market-card-art" />}
+                  : entry.previewIcons?.length
+                    ? (
+                      <div className={`collection-card-mosaic is-${Math.min(4, entry.previewIcons.length)}`}>
+                        {entry.previewIcons.slice(0, 4).map((iconUrl) => (
+                          <img
+                            key={iconUrl}
+                            src={withSteamImageSize(iconUrl, 256, 192)}
+                            alt=""
+                          />
+                        ))}
+                      </div>
+                    )
+                    : <ItemArt label={entry.name} tier={3} className="market-card-art" />}
 
                 <div className="market-card-body">
                   <div className="market-card-name">{entry.name}</div>
