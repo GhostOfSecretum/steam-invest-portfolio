@@ -143,7 +143,7 @@ async function getPortfolio(steamId, options = {}) {
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const providerLabel = useDesktop ? 'desktop' : (inventory.inventoryProvider || 'steam-public');
-  const { history, leaders } = await buildPortfolioHistoryAndLeaders(pricedItems, totalValue);
+  const { history, leaders } = await buildPortfolioHistoryAndLeaders(items, totalValue);
   const activitySource = options.activitySource === 'public-diff' ? 'public-diff' : 'steam-diff';
   const activity = inventoryRateLimited
     ? []
@@ -736,7 +736,7 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   const pnl = pricedItems.reduce((sum, item) => sum + (Number(item.pnl) || 0), 0);
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
-  const { history, leaders } = await buildPortfolioHistoryAndLeaders(pricedItems, totalValue);
+  const { history, leaders } = await buildPortfolioHistoryAndLeaders(items, totalValue);
   const activity = backfillManualEvents(portfolio);
   if (!Array.isArray(portfolio.events) || !portfolio.events.length) {
     // Persist backfill once so subsequent mutations append cleanly.
@@ -1679,12 +1679,15 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue) {
     .sort((a, b) => (b.value * b.qty) - (a.value * a.qty));
 
   if (!priced.length) {
+    attachPeriodChanges(items, []);
     return { history: emptyPortfolioHistory(totalValue), leaders: [] };
   }
 
-  // Fetch enough for period leaders; chart uses the top slice of the same set.
-  const leaderTracked = priced.slice(0, 36);
-  const chartTracked = leaderTracked.slice(0, 12);
+  // Fetch enough for period leaders and the items-table 1d/7d/30d columns.
+  // Chart still uses the top slice of the same set.
+  const HISTORY_TRACK_CAP = 80;
+  const tracked = priced.slice(0, HISTORY_TRACK_CAP);
+  const chartTracked = tracked.slice(0, 12);
   const chartNames = new Set(chartTracked.map((item) => item.marketHashName));
   const chartTrackedValue = chartTracked.reduce((sum, item) => sum + item.value * item.qty, 0);
   const untrackedValue = priced
@@ -1692,7 +1695,7 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue) {
     .reduce((sum, item) => sum + item.value * item.qty, 0);
 
   // Bound concurrency so portfolio switches don't stampede price-history providers.
-  const histories = (await mapPool(leaderTracked, 8, async (item) => {
+  const histories = (await mapPool(tracked, 8, async (item) => {
     const history = await getPriceHistory(item.marketHashName, 365, {
       anchorPrice: item.value,
       currency: 'usd',
@@ -1719,10 +1722,29 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue) {
     ? composePortfolioHistory(chartHistories, untrackedValue, chartTrackedValue, totalValue)
     : emptyPortfolioHistory(totalValue);
 
+  const leaders = buildPeriodLeaders(histories);
+  attachPeriodChanges(items, leaders);
   return {
     history,
-    leaders: buildPeriodLeaders(histories),
+    leaders,
   };
+}
+
+function finiteOrNull(value) {
+  return Number.isFinite(value) ? value : null;
+}
+
+function attachPeriodChanges(items, leaders) {
+  const byName = new Map();
+  for (const row of Array.isArray(leaders) ? leaders : []) {
+    if (row?.marketHashName) byName.set(row.marketHashName, row.changes);
+  }
+  for (const item of Array.isArray(items) ? items : []) {
+    const changes = byName.get(item.marketHashName);
+    item.change1d = finiteOrNull(changes?.['1d']?.pct);
+    item.change7d = finiteOrNull(changes?.['7d']?.pct);
+    item.change30d = finiteOrNull(changes?.['30d']?.pct);
+  }
 }
 
 const LEADER_RANGE_DAYS = {

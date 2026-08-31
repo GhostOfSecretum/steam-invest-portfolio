@@ -1537,6 +1537,24 @@ function BasisCell({ basisPerUnit, basisOriginal, basisCurrency, hasBasis, qty, 
   );
 }
 
+function periodPct(item, key) {
+  const value = Number(item?.[key]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function PeriodChangeCell({ pct }) {
+  if (!Number.isFinite(pct)) {
+    return <div className="mono inv-change" data-empty="true">—</div>;
+  }
+  const dir = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+  const sign = pct > 0 ? '+' : '';
+  return (
+    <div className="mono inv-change" data-dir={dir} title={`${sign}${pct.toFixed(2)}%`}>
+      {`${sign}${pct.toFixed(1)}%`}
+    </div>
+  );
+}
+
 function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolioId, portfolioType, priceMode = 'market', onBasisSaved, onItemDeleted }) {
   const [editingItemId, setEditingItemId] = useState(null);
   const [editDraft, setEditDraft] = useState({ quantity: '', basisPerUnit: '' });
@@ -1572,6 +1590,8 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         cmp = (num(a.basis) ?? -Infinity) - (num(b.basis) ?? -Infinity);
       } else if (sortKey === 'value') {
         cmp = (num(holdingUsd(a, priceMode)) ?? -Infinity) - (num(holdingUsd(b, priceMode)) ?? -Infinity);
+      } else if (sortKey === 'change1d' || sortKey === 'change7d' || sortKey === 'change30d') {
+        cmp = (num(periodPct(a, sortKey)) ?? -Infinity) - (num(periodPct(b, sortKey)) ?? -Infinity);
       } else if (sortKey === 'pnl') {
         const aPnl = num(holdingPnl(a, priceMode).pnlPct);
         const bPnl = num(holdingPnl(b, priceMode).pnlPct);
@@ -1725,6 +1745,21 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
               'zh-TW': '第三方市場價格。Steam 標價顯示在下方。',
             })}
         />
+        <SortHeader
+          label="1d"
+          column="change1d"
+          title={tt(lang, { en: 'Price change over 1 day', ru: 'Изменение цены за 1 день', zh: '1 日涨跌', 'zh-TW': '1 日漲跌' })}
+        />
+        <SortHeader
+          label="7d"
+          column="change7d"
+          title={tt(lang, { en: 'Price change over 7 days', ru: 'Изменение цены за 7 дней', zh: '7 日涨跌', 'zh-TW': '7 日漲跌' })}
+        />
+        <SortHeader
+          label="30d"
+          column="change30d"
+          title={tt(lang, { en: 'Price change over 30 days', ru: 'Изменение цены за 30 дней', zh: '30 日涨跌', 'zh-TW': '30 日漲跌' })}
+        />
         <SortHeader label={tt(lang, { en: 'P&L', ru: 'Доход', zh: '盈亏', 'zh-TW': '盈虧' })} column="pnl" />
         <div>{tt(lang, { en: 'Source', ru: 'Источник', zh: 'Source', 'zh-TW': 'Source' })}</div>
       </div>
@@ -1829,6 +1864,9 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
               <div className="mono inv-value-mark">{formatHoldingValue(h, { source: priceMode }) || 'N/A'}</div>
               {altValue && <div className="inv-value-steam">{altLabel} {altValue}</div>}
             </div>
+            <PeriodChangeCell pct={periodPct(h, 'change1d')} />
+            <PeriodChangeCell pct={periodPct(h, 'change7d')} />
+            <PeriodChangeCell pct={periodPct(h, 'change30d')} />
             <div className="mono" style={{ fontSize: 12, color: Number.isFinite(rowPnl.pnlPct) ? (rowPnl.pnl >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--fg-3)' }}>
               {Number.isFinite(rowPnl.pnlPct) ? `${rowPnl.pnlPct >= 0 ? '+' : ''}${rowPnl.pnlPct.toFixed(1)}%` : 'N/A'}
             </div>
@@ -2008,8 +2046,8 @@ function errorMessage(error, lang) {
 
 function downloadPortfolioCsv(items) {
   const rows = [
-    ['assetid', 'market_hash_name', 'qty', 'basis_total_usd', 'value_total_usd', 'steam_total_usd', 'pnl_total_usd', 'pnl_pct', 'provider'],
-    ...items.map((item) => [item.assetid, item.marketHashName, item.qty, item.totalBasis ?? item.basis, item.totalValue ?? item.value, Number.isFinite(item.steamPrice) ? item.steamPrice * (item.qty || 1) : '', item.pnl, item.pnlPct, item.priceProvider]),
+    ['assetid', 'market_hash_name', 'qty', 'basis_total_usd', 'value_total_usd', 'steam_total_usd', 'change_1d_pct', 'change_7d_pct', 'change_30d_pct', 'pnl_total_usd', 'pnl_pct', 'provider'],
+    ...items.map((item) => [item.assetid, item.marketHashName, item.qty, item.totalBasis ?? item.basis, item.totalValue ?? item.value, Number.isFinite(item.steamPrice) ? item.steamPrice * (item.qty || 1) : '', item.change1d, item.change7d, item.change30d, item.pnl, item.pnlPct, item.priceProvider]),
   ];
   const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
