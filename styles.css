@@ -915,7 +915,9 @@ a { color: inherit; text-decoration: none; }
     rgba(0, 0, 0, 0.22);
 }
 .collection-card-logo img {
-  max-width: 58%;
+  width: 58%;
+  max-width: 256px;
+  height: auto;
   max-height: 78%;
   object-fit: contain;
   filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.5));
