@@ -613,6 +613,21 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 {tt(lang, { en: 'Real', ru: 'Реал', zh: '真实', 'zh-TW': '真實' })}
               </button>
             </div>
+            {!auth?.connected && !auth?.loading && (
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={() => auth?.login && auth.login()}
+                title={tt(lang, {
+                  en: 'Connect your Steam account',
+                  ru: 'Подключить аккаунт Steam',
+                  zh: '连接 Steam 账号',
+                  'zh-TW': '連線 Steam 帳號',
+                })}
+              >
+                {tt(lang, { en: 'Link Steam', ru: 'Подключить Steam', zh: '连接 Steam', 'zh-TW': '連線 Steam' })}
+              </button>
+            )}
             {isPublicPortfolio && publicSteamId && (
               <button
                 className="btn btn-sm btn-ghost"
