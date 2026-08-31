@@ -1,4 +1,4 @@
-/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, formatSteamSticker, holdingUsd, holdingPnl, getActiveCurrency, tt, localeFor */
+/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, formatHoldingUnitPrice, formatSteamSticker, holdingUsd, holdingUnitUsd, holdingPnl, getActiveCurrency, tt, localeFor */
 const { useState, useRef, useMemo, useEffect, useCallback } = React;
 
 /* ───────────────────────────────────────────────────
@@ -1603,6 +1603,8 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         cmp = (num(a.qty) ?? -Infinity) - (num(b.qty) ?? -Infinity);
       } else if (sortKey === 'basis') {
         cmp = (num(a.basis) ?? -Infinity) - (num(b.basis) ?? -Infinity);
+      } else if (sortKey === 'price') {
+        cmp = (num(holdingUnitUsd(a, priceMode)) ?? -Infinity) - (num(holdingUnitUsd(b, priceMode)) ?? -Infinity);
       } else if (sortKey === 'value') {
         cmp = (num(holdingUsd(a, priceMode)) ?? -Infinity) - (num(holdingUsd(b, priceMode)) ?? -Infinity);
       } else if (sortKey === 'change1d' || sortKey === 'change7d' || sortKey === 'change30d') {
@@ -1744,6 +1746,16 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
           title={tt(lang, { en: 'Cost per unit. Change it from the Edit button.', ru: 'Себестоимость за 1 шт. Меняется через кнопку Изменить.', zh: '单件成本。通过“编辑”按钮修改。', 'zh-TW': '單件成本。透過「編輯」按鈕修改。' })}
         />
         <SortHeader
+          label={tt(lang, { en: 'Now', ru: 'За шт.', zh: '现价', 'zh-TW': '現價' })}
+          column="price"
+          title={tt(lang, {
+            en: 'Current market price per item.',
+            ru: 'Текущая цена за 1 шт.',
+            zh: '当前单件市价。',
+            'zh-TW': '目前單件市價。',
+          })}
+        />
+        <SortHeader
           label={tt(lang, { en: 'Value', ru: 'Стоимость', zh: '价值', 'zh-TW': '價值' })}
           column="value"
           title={isSteamPrices
@@ -1790,6 +1802,10 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         const altLabel = isSteamPrices
           ? tt(lang, { en: 'Real', ru: 'Реал', zh: '真实', 'zh-TW': '真實' })
           : 'Steam';
+        const unitPrice = formatHoldingUnitPrice(h, { source: priceMode });
+        const altUnitPrice = isSteamPrices
+          ? formatHoldingUnitPrice(h, { source: 'market' })
+          : formatHoldingUnitPrice(h, { source: 'steam' });
         const lockLabel = h.tradableQty === h.qty
           ? null
           : h.tradableQty > 0
@@ -1875,6 +1891,12 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
                 onEdit={(event) => startManualEdit(h, event)}
               />
             )}
+            <div className="inv-value-cell">
+              <div className="mono inv-value-mark">{unitPrice || 'N/A'}</div>
+              {altUnitPrice && altUnitPrice !== unitPrice && (
+                <div className="inv-value-steam">{altLabel} {altUnitPrice}</div>
+              )}
+            </div>
             <div className="inv-value-cell">
               <div className="mono inv-value-mark">{formatHoldingValue(h, { source: priceMode }) || 'N/A'}</div>
               {altValue && <div className="inv-value-steam">{altLabel} {altValue}</div>}
@@ -2061,8 +2083,8 @@ function errorMessage(error, lang) {
 
 function downloadPortfolioCsv(items) {
   const rows = [
-    ['assetid', 'market_hash_name', 'qty', 'basis_total_usd', 'value_total_usd', 'steam_total_usd', 'change_1d_pct', 'change_7d_pct', 'change_30d_pct', 'pnl_total_usd', 'pnl_pct', 'provider'],
-    ...items.map((item) => [item.assetid, item.marketHashName, item.qty, item.totalBasis ?? item.basis, item.totalValue ?? item.value, Number.isFinite(item.steamPrice) ? item.steamPrice * (item.qty || 1) : '', item.change1d, item.change7d, item.change30d, item.pnl, item.pnlPct, item.priceProvider]),
+    ['assetid', 'market_hash_name', 'qty', 'basis_total_usd', 'unit_price_usd', 'value_total_usd', 'steam_total_usd', 'change_1d_pct', 'change_7d_pct', 'change_30d_pct', 'pnl_total_usd', 'pnl_pct', 'provider'],
+    ...items.map((item) => [item.assetid, item.marketHashName, item.qty, item.totalBasis ?? item.basis, item.value, item.totalValue ?? item.value, Number.isFinite(item.steamPrice) ? item.steamPrice * (item.qty || 1) : '', item.change1d, item.change7d, item.change30d, item.pnl, item.pnlPct, item.priceProvider]),
   ];
   const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });

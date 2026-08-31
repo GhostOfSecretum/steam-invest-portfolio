@@ -626,6 +626,16 @@ function holdingUsd(item, source = 'market') {
   return null;
 }
 
+function holdingUnitUsd(item, source = 'market') {
+  if (source === 'steam') {
+    return Number.isFinite(item?.steamPrice) && item.steamPrice > 0 ? item.steamPrice : null;
+  }
+  if (Number.isFinite(item?.value) && item.value > 0) return item.value;
+  const qty = itemQty(item);
+  if (Number.isFinite(item?.totalValue) && qty > 0) return item.totalValue / qty;
+  return null;
+}
+
 function holdingPnl(item, source = 'market') {
   if (source !== 'steam') {
     return {
@@ -683,6 +693,22 @@ function formatHoldingValue(item, { digits = 2, compact = false, source = 'marke
     ? item.totalValue
     : (Number.isFinite(item?.value) ? item.value * qty : null);
   return formatMoney(usdTotal, { digits, compact });
+}
+
+function formatHoldingUnitPrice(item, { digits = 2, compact = false, source = 'market' } = {}) {
+  const currencyKey = getActiveCurrency();
+  if (source === 'steam') {
+    if (currencyKey === 'rub' && Number.isFinite(item?.steamPriceRub) && item.steamPriceRub > 0) {
+      return formatMoney(item.steamPriceRub, { digits, compact, currency: 'rub' });
+    }
+    if (!Number.isFinite(item?.steamPrice) || item.steamPrice <= 0) return null;
+    return formatMoney(item.steamPrice, { digits, compact });
+  }
+  if (currencyKey === 'rub' && Number.isFinite(item?.priceRub) && item.priceRub > 0) {
+    return formatMoney(item.priceRub, { digits, compact, currency: 'rub' });
+  }
+  const usd = holdingUnitUsd(item, 'market');
+  return Number.isFinite(usd) ? formatMoney(usd, { digits, compact }) : null;
 }
 
 function formatSteamSticker(item, { digits = 0, compact = true } = {}) {
@@ -854,8 +880,10 @@ Object.assign(window, {
   formatItemMoney,
   formatItemPrice,
   formatHoldingValue,
+  formatHoldingUnitPrice,
   formatSteamSticker,
   holdingUsd,
+  holdingUnitUsd,
   holdingPnl,
   compactUsd,
   getActiveCurrency,
