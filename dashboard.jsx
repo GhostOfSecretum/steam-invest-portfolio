@@ -1573,6 +1573,8 @@ function PeriodChangeCell({ pct }) {
 function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolioId, portfolioType, priceMode = 'market', onBasisSaved, onItemDeleted }) {
   const [editingItemId, setEditingItemId] = useState(null);
   const [editDraft, setEditDraft] = useState({ quantity: '', basisPerUnit: '' });
+  const [addingItemId, setAddingItemId] = useState(null);
+  const [addDraft, setAddDraft] = useState({ quantity: '1', basisPerUnit: '' });
   const [savingItemId, setSavingItemId] = useState(null);
   const [sortKey, setSortKey] = useState('value');
   const [sortDir, setSortDir] = useState('desc');
@@ -1659,6 +1661,8 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         ? item.basisOriginal
         : Number(usdBasisToInputDraft(item.basis, inputCurrency)))
       : NaN;
+    setAddingItemId(null);
+    setAddDraft({ quantity: '1', basisPerUnit: '' });
     setEditingItemId(rowEditKey(item));
     setEditDraft({
       quantity: String(item.qty || 1),
@@ -1670,6 +1674,59 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
     event.stopPropagation();
     setEditingItemId(null);
     setEditDraft({ quantity: '', basisPerUnit: '' });
+  };
+
+  const startAddToPosition = (item, event) => {
+    event.stopPropagation();
+    setEditingItemId(null);
+    setEditDraft({ quantity: '', basisPerUnit: '' });
+    setAddingItemId(rowEditKey(item));
+    setAddDraft({ quantity: '1', basisPerUnit: '' });
+  };
+
+  const cancelAddToPosition = (event) => {
+    event.stopPropagation();
+    setAddingItemId(null);
+    setAddDraft({ quantity: '1', basisPerUnit: '' });
+  };
+
+  const saveAddToPosition = async (item, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!portfolioId || !item.marketHashName) return;
+    const quantity = Number(String(addDraft.quantity).trim().replace(',', '.'));
+    const basisPerUnit = Number(String(addDraft.basisPerUnit).trim().replace(',', '.'));
+    if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(basisPerUnit) || basisPerUnit < 0) {
+      window.alert(tt(lang, { en: 'Enter a valid quantity and price.', ru: 'Укажи корректное количество и цену.', zh: 'Enter a valid quantity and price.', 'zh-TW': 'Enter a valid quantity and price.' }));
+      return;
+    }
+
+    setSavingItemId(rowEditKey(item));
+    try {
+      await apiFetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          marketHashName: item.marketHashName,
+          name: item.name || item.marketHashName,
+          quantity,
+          basisPerUnit,
+          currency: getActiveCurrency(),
+          iconUrl: item.iconUrl,
+          marketUrl: item.marketUrl,
+          category: item.category,
+          rarity: item.rarity,
+          wear: item.wear,
+          tier: item.tier,
+        }),
+      });
+      setAddingItemId(null);
+      setAddDraft({ quantity: '1', basisPerUnit: '' });
+      if (onBasisSaved) onBasisSaved();
+    } catch (err) {
+      window.alert(err.message || (tt(lang, { en: 'Could not add item', ru: 'Не удалось добавить предмет', zh: 'Could not add item', 'zh-TW': 'Could not add item' })));
+    }
+    setSavingItemId(null);
   };
 
   const saveManualEdit = async (item, event) => {
@@ -1792,7 +1849,8 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
       </div>
       {sortedItems.map((h, i) => {
         const change = (h.spark || [0, 0]).at(-1) - (h.spark || [0, 0]).at(-2);
-        const isEditing = editingItemId === (h.manualItemId || h.marketHashName);
+        const isEditing = editingItemId === rowEditKey(h);
+        const isAdding = addingItemId === rowEditKey(h);
         const basisEditable = (portfolioType === 'manual' && h.manualItemId) || isSteamPortfolio;
         const steamSticker = formatSteamSticker(h);
         const rowPnl = holdingPnl(h, priceMode);
@@ -1909,7 +1967,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
             </div>
             <div style={{ minWidth: 0 }} title={h.priceProvider}>
               {portfolioType === 'manual' && h.manualItemId ? (
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <div className="inv-row-actions">
                   {isEditing ? (
                     <>
                       <button className="btn btn-sm btn-primary" onClick={(event) => saveManualEdit(h, event)} disabled={savingItemId === h.manualItemId}>
@@ -1919,8 +1977,52 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
                         {tt(lang, { en: 'Cancel', ru: 'Отмена', zh: '取消', 'zh-TW': '取消' })}
                       </button>
                     </>
+                  ) : isAdding ? (
+                    <form
+                      className="inv-add-lot-form"
+                      onClick={(event) => event.stopPropagation()}
+                      onSubmit={(event) => saveAddToPosition(h, event)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') cancelAddToPosition(event);
+                      }}
+                    >
+                      <input
+                        value={addDraft.quantity}
+                        onChange={(event) => setAddDraft((draft) => ({ ...draft, quantity: event.target.value }))}
+                        type="number"
+                        min="1"
+                        step="1"
+                        title={tt(lang, { en: 'Quantity to add', ru: 'Сколько добавить', zh: 'Quantity to add', 'zh-TW': 'Quantity to add' })}
+                        aria-label={tt(lang, { en: 'Quantity to add', ru: 'Сколько добавить', zh: 'Quantity to add', 'zh-TW': 'Quantity to add' })}
+                        style={portfolioInputStyle({ width: 56, fontFamily: 'var(--f-mono)' })}
+                      />
+                      <input
+                        autoFocus
+                        value={addDraft.basisPerUnit}
+                        onChange={(event) => setAddDraft((draft) => ({ ...draft, basisPerUnit: event.target.value }))}
+                        placeholder={getActiveCurrency() === 'rub' ? '₽ / шт.' : getActiveCurrency() === 'cny' ? '¥ / 件' : '$ / item'}
+                        title={tt(lang, { en: 'Purchase price per item', ru: 'Цена покупки за штуку', zh: 'Purchase price per item', 'zh-TW': 'Purchase price per item' })}
+                        aria-label={tt(lang, { en: 'Purchase price per item', ru: 'Цена покупки за штуку', zh: 'Purchase price per item', 'zh-TW': 'Purchase price per item' })}
+                        style={portfolioInputStyle({ width: 88, fontFamily: 'var(--f-mono)' })}
+                      />
+                      <button className="btn btn-sm btn-primary" type="submit" disabled={savingItemId === rowEditKey(h)}>
+                        {savingItemId === rowEditKey(h) ? '...' : (tt(lang, { en: 'Add', ru: 'Добавить', zh: 'Add', 'zh-TW': 'Add' }))}
+                      </button>
+                      <button className="btn btn-sm btn-ghost" type="button" onClick={cancelAddToPosition}>
+                        {tt(lang, { en: 'Cancel', ru: 'Отмена', zh: '取消', 'zh-TW': '取消' })}
+                      </button>
+                    </form>
                   ) : (
                     <>
+                      <button
+                        type="button"
+                        className="btn btn-sm inv-row-add"
+                        onClick={(event) => startAddToPosition(h, event)}
+                        title={tt(lang, { en: 'Add to this position', ru: 'Добавить в эту позицию', zh: 'Add to this position', 'zh-TW': 'Add to this position' })}
+                        aria-label={tt(lang, { en: 'Add to this position', ru: 'Добавить в эту позицию', zh: 'Add to this position', 'zh-TW': 'Add to this position' })}
+                      >
+                        +
+                      </button>
                       <button className="btn btn-sm btn-ghost" onClick={(event) => startManualEdit(h, event)}>
                         {tt(lang, { en: 'Edit', ru: 'Изменить', zh: '编辑', 'zh-TW': '編輯' })}
                       </button>
