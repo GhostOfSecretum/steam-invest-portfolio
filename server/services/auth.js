@@ -7,9 +7,10 @@ const STEAM_OPENID = {
   identifierSelect: 'http://specs.openid.net/auth/2.0/identifier_select',
 };
 
-const VERIFY_RETRIES = 4;
-const VERIFY_RETRY_DELAY_MS = 1000;
-const VERIFY_TIMEOUTS_MS = [15000, 20000, 25000];
+const VERIFY_RETRIES = 2;
+const VERIFY_RETRY_DELAY_MS = 800;
+const VERIFY_TIMEOUTS_MS = [12000, 18000];
+const OPENID_PROXY_UA = 'Mozilla/5.0';
 
 function resolveBaseUrl(req) {
   const configured = String(process.env.APP_BASE_URL || '').trim().replace(/\/+$/, '');
@@ -49,14 +50,17 @@ function isTransientVerifyStatus(status) {
   return status === 403 || status === 429 || status >= 500;
 }
 
-async function postOpenIdVerification(body) {
-  let lastError = null;
+function openIdAssertionValid(body) {
+  const text = String(body || '');
+  const markdownIdx = text.search(/Markdown Content:\s*/i);
+  const payload = markdownIdx >= 0
+    ? text.slice(markdownIdx).replace(/^Markdown Content:\s*/i, '')
+    : text;
+  return /(^|[\s])is_valid\s*:\s*true(\s|$)/.test(payload);
+}
 
-  if (isSteamCommunityCoolingDown()) {
-    // OpenID assertions expire; wait a short gap, not the full market cooldown.
-    console.warn('[auth] Steam community is cooling down; delaying OpenID verify 3s');
-    await sleep(3000);
-  }
+async function postOpenIdDirect(body) {
+  let lastError = null;
 
   for (let attempt = 0; attempt < VERIFY_RETRIES; attempt += 1) {
     if (attempt > 0) await sleep(VERIFY_RETRY_DELAY_MS * attempt);
@@ -92,12 +96,47 @@ async function postOpenIdVerification(body) {
     console.warn(`[auth] Steam OpenID verify attempt ${attempt + 1}/${VERIFY_RETRIES} HTTP ${response.status}`);
     if (response.status === 403 || response.status === 429) {
       markCommunityRateLimited(Number(response.headers.get('retry-after')));
+      // Akamai IP ban is not a brief blip — retrying the same origin wastes the nonce.
+      lastError = authError(`Steam returned HTTP ${response.status}.`, 502, 'steam_openid_verify_failed');
+      break;
     }
     lastError = authError(`Steam returned HTTP ${response.status}.`, 502, 'steam_openid_verify_failed');
     if (!isTransientVerifyStatus(response.status)) break;
   }
 
   throw lastError;
+}
+
+async function fetchOpenIdViaProxy(body) {
+  const target = `${STEAM_OPENID.opEndpoint}?${body}`;
+  const response = await fetch(`https://r.jina.ai/${target}`, {
+    headers: {
+      Accept: 'text/plain,text/html,*/*',
+      'User-Agent': OPENID_PROXY_UA,
+    },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!response.ok) {
+    throw authError(
+      'Steam did not answer the login check. Please try again in a moment.',
+      502,
+      'steam_openid_verify_failed',
+    );
+  }
+  return response.text();
+}
+
+async function postOpenIdVerification(body) {
+  if (!isSteamCommunityCoolingDown()) {
+    try {
+      return await postOpenIdDirect(body);
+    } catch (error) {
+      console.warn('[auth] Steam OpenID direct verify failed, using proxy:', error.message);
+    }
+  } else {
+    console.warn('[auth] Steam community is cooling down; verifying OpenID via proxy');
+  }
+  return fetchOpenIdViaProxy(body);
 }
 
 function getOpenIdParams(req) {
@@ -151,7 +190,7 @@ async function authenticateSteam(req) {
 
   const body = await postOpenIdVerification(verifyParams.toString());
 
-  if (!/(^|\n)is_valid\s*:\s*true(\r?\n|$)/.test(body)) {
+  if (!openIdAssertionValid(body)) {
     throw authError('Failed to authenticate user.', 401, 'steam_openid_not_authenticated');
   }
 
