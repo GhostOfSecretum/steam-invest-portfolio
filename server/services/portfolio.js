@@ -1723,17 +1723,23 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue, options = {}) 
     .filter((item) => item.marketHashName && Number.isFinite(item.value) && item.value > 0 && item.qty > 0)
     .sort((a, b) => (b.value * b.qty) - (a.value * a.qty));
 
-  const history = await loadRecordedEquity(totalValue, options);
+  const recorded = await loadRecordedEquity(totalValue, options);
 
   if (!priced.length) {
     attachPeriodChanges(items, []);
-    return { history, leaders: [] };
+    return { history: recorded, leaders: [] };
   }
 
-  // Leaders / 1d/7d/30d columns still use per-item CSFloat history.
-  // The portfolio chart itself is recorded equity, not reconstructed holdings.
+  // Fetch enough for period leaders and the items-table 1d/7d/30d columns.
+  // Chart uses the top slice of the same set, then overlays recorded snapshots.
   const HISTORY_TRACK_CAP = 80;
   const tracked = priced.slice(0, HISTORY_TRACK_CAP);
+  const chartTracked = tracked.slice(0, 12);
+  const chartNames = new Set(chartTracked.map((item) => item.marketHashName));
+  const chartTrackedValue = chartTracked.reduce((sum, item) => sum + item.value * item.qty, 0);
+  const untrackedValue = priced
+    .filter((item) => !chartNames.has(item.marketHashName))
+    .reduce((sum, item) => sum + item.value * item.qty, 0);
 
   const histories = (await mapPool(tracked, 8, async (item) => {
     const itemHistory = await getPriceHistory(item.marketHashName, 365, {
@@ -1757,10 +1763,15 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue, options = {}) 
     };
   })).filter(Boolean);
 
+  const chartHistories = histories.filter((history) => chartNames.has(history.marketHashName));
+  const reconstructed = chartHistories.length
+    ? composePortfolioHistory(chartHistories, untrackedValue, chartTrackedValue, totalValue)
+    : emptyPortfolioHistory(totalValue);
+
   const leaders = buildPeriodLeaders(histories);
   attachPeriodChanges(items, leaders);
   return {
-    history,
+    history: mergeEquityHistory(reconstructed, recorded),
     leaders,
   };
 }
@@ -1908,6 +1919,122 @@ function robustPriceAtDate(points, date, { windowDays = 7, maxRatio = 2.5 } = {}
     if (filtered.length) window = filtered;
   }
   return weightedMedianPrice(window);
+}
+
+function composePortfolioHistory(histories, untrackedValue, trackedValue, totalValue) {
+  const dateSet = new Set();
+  for (const history of histories) {
+    for (const point of history.points) dateSet.add(point.date);
+  }
+  const dates = [...dateSet].sort();
+
+  const points = dates.map((date) => {
+    let value = untrackedValue;
+    let coveredValue = 0;
+
+    for (const history of histories) {
+      const price = priceAtDate(history.points, date);
+      // Use the last known price on/before this date. If there is no known price
+      // yet (date precedes the item's earliest data point), treat the position as
+      // not-yet-held rather than injecting today's value into the past.
+      if (Number.isFinite(price) && price > 0) {
+        value += price * history.qty;
+        coveredValue += history.currentValue;
+      }
+    }
+
+    return {
+      date,
+      value: Math.round(value * 100) / 100,
+      coveredValue: Math.round(coveredValue * 100) / 100,
+    };
+  }).filter((point) => Number.isFinite(point.value) && point.value > 0);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const liveValue = Number.isFinite(totalValue) && totalValue > 0
+    ? Math.round(totalValue * 100) / 100
+    : null;
+  if (liveValue != null) {
+    if (!points.length) {
+      points.push({ date: today, value: liveValue, coveredValue: 0 });
+    } else {
+      const last = points[points.length - 1];
+      if (last.date === today) {
+        points[points.length - 1] = { ...last, value: liveValue };
+      } else if (last.date < today) {
+        let cursor = new Date(`${last.date}T12:00:00.000Z`);
+        const end = new Date(`${today}T12:00:00.000Z`);
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+        while (cursor.getTime() <= end.getTime()) {
+          const date = cursor.toISOString().slice(0, 10);
+          points.push({
+            date,
+            value: date === today ? liveValue : last.value,
+            coveredValue: last.coveredValue,
+          });
+          cursor.setUTCDate(cursor.getUTCDate() + 1);
+        }
+      }
+    }
+  }
+
+  return {
+    points,
+    coveragePct: totalValue > 0 ? Math.round((trackedValue / totalValue) * 100) : 0,
+    itemCount: histories.length,
+    sources: [...new Set(histories.map((history) => history.provider))],
+    synthetic: false,
+    recorded: false,
+    since: points[0]?.date || null,
+  };
+}
+
+function mergeEquityHistory(reconstructed, recorded) {
+  const reconstructedPoints = Array.isArray(reconstructed?.points) ? reconstructed.points : [];
+  const recordedPoints = (Array.isArray(recorded?.points) ? recorded.points : [])
+    .filter((point) => point?.date && Number.isFinite(point.value) && point.value > 0)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+  if (recordedPoints.length < 2) {
+    return {
+      ...reconstructed,
+      points: reconstructedPoints,
+      recorded: false,
+      since: reconstructed?.since || reconstructedPoints[0]?.date || null,
+    };
+  }
+
+  const firstRecorded = recordedPoints[0].date;
+  const past = reconstructedPoints.filter((point) => point.date < firstRecorded);
+  const recByDate = new Map(recordedPoints.map((point) => [point.date, point]));
+  const today = new Date().toISOString().slice(0, 10);
+  const filled = [];
+  const end = new Date(`${today}T12:00:00.000Z`);
+  let cursor = new Date(`${firstRecorded}T12:00:00.000Z`);
+  let last = recordedPoints[0];
+  while (Number.isFinite(cursor.getTime()) && cursor.getTime() <= end.getTime()) {
+    const date = cursor.toISOString().slice(0, 10);
+    const hit = recByDate.get(date);
+    if (hit) last = hit;
+    filled.push({
+      date,
+      value: last.value,
+      steamValue: last.steamValue,
+      coveredValue: last.coveredValue,
+    });
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  const points = [...past, ...filled];
+  return {
+    points,
+    coveragePct: reconstructed?.coveragePct ?? 100,
+    itemCount: reconstructed?.itemCount || recorded?.itemCount || 0,
+    sources: [...new Set([...(reconstructed?.sources || []), 'recorded'])],
+    synthetic: false,
+    recorded: true,
+    since: reconstructed?.since || recorded?.since || points[0]?.date || null,
+  };
 }
 
 function realHistoryPoints(history) {
