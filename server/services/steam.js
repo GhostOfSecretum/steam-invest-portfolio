@@ -1,3 +1,6 @@
+const fs = require('fs');
+const fsPromises = require('fs/promises');
+const path = require('path');
 const { getCached, getCachedEntry, setCached } = require('./cache');
 const { collectionNameToSlug } = require('../../item-slugs');
 
@@ -10,6 +13,7 @@ const PROFILE_STALE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const FETCH_RETRIES = 3;
 const COMMUNITY_GAP_MS = 1500;
 const COMMUNITY_COOLDOWN_MS = 2 * 60 * 1000;
+const COMMUNITY_COOLDOWN_FILE = path.join(__dirname, '..', '..', '.data', 'steam-community-cooldown.json');
 const STEAM_HEADERS = {
   Accept: 'application/json,text/javascript,*/*',
   'Accept-Language': 'en-US,en;q=0.9',
@@ -56,15 +60,34 @@ function isRetryableStatus(status) {
   return status === 500 || status === 502 || status === 503;
 }
 
+function readPersistedCooldown() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(COMMUNITY_COOLDOWN_FILE, 'utf8'));
+    const until = Number(parsed?.until);
+    return Number.isFinite(until) ? until : 0;
+  } catch {
+    return 0;
+  }
+}
+
+communityCooldownUntil = Math.max(communityCooldownUntil, readPersistedCooldown());
+
 function isSteamCommunityCoolingDown() {
   return Date.now() < communityCooldownUntil;
 }
 
-function markCommunityRateLimited(retryAfterSec) {
-  const retryMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0 ? retryAfterSec * 1000 : COMMUNITY_COOLDOWN_MS;
-  const waitMs = Math.max(COMMUNITY_COOLDOWN_MS, Math.min(10 * 60 * 1000, retryMs));
+function markCommunityRateLimited(retryAfterSec, options = {}) {
+  const minMs = Number.isFinite(options.minMs) && options.minMs > 0 ? options.minMs : COMMUNITY_COOLDOWN_MS;
+  const maxMs = Number.isFinite(options.maxMs) && options.maxMs > 0 ? options.maxMs : 60 * 60 * 1000;
+  const retryMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0 ? retryAfterSec * 1000 : minMs;
+  const waitMs = Math.max(minMs, Math.min(maxMs, retryMs));
   communityCooldownUntil = Math.max(communityCooldownUntil, Date.now() + waitMs);
-  console.warn(`[steam] community cooldown ${Math.round(waitMs / 1000)}s`);
+  console.warn(`[steam] community cooldown ${Math.round((communityCooldownUntil - Date.now()) / 1000)}s`);
+  fsPromises.mkdir(path.dirname(COMMUNITY_COOLDOWN_FILE), { recursive: true })
+    .then(() => fsPromises.writeFile(COMMUNITY_COOLDOWN_FILE, `${JSON.stringify({ until: communityCooldownUntil })}\n`))
+    .catch((error) => {
+      console.warn('[steam] failed to persist community cooldown:', error.message);
+    });
 }
 
 function steamErrorFromStatus(status) {

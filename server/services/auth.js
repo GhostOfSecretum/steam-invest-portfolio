@@ -7,10 +7,9 @@ const STEAM_OPENID = {
   identifierSelect: 'http://specs.openid.net/auth/2.0/identifier_select',
 };
 
-const VERIFY_RETRIES = 2;
-const VERIFY_RETRY_DELAY_MS = 800;
-const VERIFY_TIMEOUTS_MS = [12000, 18000];
+const VERIFY_TIMEOUT_MS = 8000;
 const OPENID_PROXY_UA = 'Mozilla/5.0';
+const OPENID_BLOCK_MS = 30 * 60 * 1000;
 
 function resolveBaseUrl(req) {
   const configured = String(process.env.APP_BASE_URL || '').trim().replace(/\/+$/, '');
@@ -40,71 +39,67 @@ function authError(message, status, code) {
   return err;
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Steam throttles the whole server IP with 403/429 on steamcommunity.com. A rejected login
-// answers 200 with is_valid:false, so these statuses never mean the claim itself is bad.
-function isTransientVerifyStatus(status) {
-  return status === 403 || status === 429 || status >= 500;
-}
-
-function openIdAssertionValid(body) {
-  const text = String(body || '');
+function normalizeOpenIdBody(body) {
+  let text = String(body || '').replace(/\\([_*])/g, '$1');
   const markdownIdx = text.search(/Markdown Content:\s*/i);
-  const payload = markdownIdx >= 0
-    ? text.slice(markdownIdx).replace(/^Markdown Content:\s*/i, '')
-    : text;
-  return /(^|[\s])is_valid\s*:\s*true(\s|$)/.test(payload);
+  if (markdownIdx >= 0) {
+    text = text.slice(markdownIdx).replace(/^Markdown Content:\s*/i, '');
+  }
+  return text;
+}
+
+function openIdValidity(body) {
+  const payload = normalizeOpenIdBody(body);
+  if (/is_valid\s*:\s*true\b/i.test(payload)) return true;
+  if (/is_valid\s*:\s*false\b/i.test(payload)) return false;
+  return null;
+}
+
+function looksLikeOpenIdAssertion(body) {
+  return openIdValidity(body) != null;
+}
+
+function bodySnippet(body) {
+  return String(body || '').replace(/\s+/g, ' ').slice(0, 180);
+}
+
+function markOpenIdOriginBlocked(retryAfterSec) {
+  markCommunityRateLimited(retryAfterSec, { minMs: OPENID_BLOCK_MS });
 }
 
 async function postOpenIdDirect(body) {
-  let lastError = null;
-
-  for (let attempt = 0; attempt < VERIFY_RETRIES; attempt += 1) {
-    if (attempt > 0) await sleep(VERIFY_RETRY_DELAY_MS * attempt);
-    const timeoutMs = VERIFY_TIMEOUTS_MS[Math.min(attempt, VERIFY_TIMEOUTS_MS.length - 1)];
-
-    let response;
-    try {
-      response = await fetch(STEAM_OPENID.opEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: 'text/plain,text/html,*/*',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        },
-        body,
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-    } catch (error) {
-      const reason = error?.name === 'TimeoutError' || error?.cause?.name === 'TimeoutError'
-        ? `timeout after ${timeoutMs}ms`
-        : ((error && error.message) || 'Steam OpenID verification failed.');
-      console.warn(`[auth] Steam OpenID verify attempt ${attempt + 1}/${VERIFY_RETRIES} failed: ${reason}`);
-      lastError = authError(
-        'Steam did not answer the login check. Please try again in a moment.',
-        502,
-        'steam_openid_verify_failed',
-      );
-      continue;
-    }
-
-    if (response.ok) return response.text();
-
-    console.warn(`[auth] Steam OpenID verify attempt ${attempt + 1}/${VERIFY_RETRIES} HTTP ${response.status}`);
-    if (response.status === 403 || response.status === 429) {
-      markCommunityRateLimited(Number(response.headers.get('retry-after')));
-      // Akamai IP ban is not a brief blip — retrying the same origin wastes the nonce.
-      lastError = authError(`Steam returned HTTP ${response.status}.`, 502, 'steam_openid_verify_failed');
-      break;
-    }
-    lastError = authError(`Steam returned HTTP ${response.status}.`, 502, 'steam_openid_verify_failed');
-    if (!isTransientVerifyStatus(response.status)) break;
+  let response;
+  try {
+    response = await fetch(STEAM_OPENID.opEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'text/plain,text/html,*/*',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      body,
+      signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const reason = error?.name === 'TimeoutError' || error?.cause?.name === 'TimeoutError'
+      ? `timeout after ${VERIFY_TIMEOUT_MS}ms`
+      : ((error && error.message) || 'Steam OpenID verification failed.');
+    console.warn(`[auth] Steam OpenID direct verify failed: ${reason}`);
+    throw authError(
+      'Steam did not answer the login check. Please try again in a moment.',
+      502,
+      'steam_openid_verify_failed',
+    );
   }
 
-  throw lastError;
+  const text = await response.text();
+  if (looksLikeOpenIdAssertion(text)) return text;
+
+  console.warn(`[auth] Steam OpenID direct verify HTTP ${response.status} (not an OpenID assertion): ${bodySnippet(text)}`);
+  if (response.status === 403 || response.status === 429 || response.ok) {
+    markOpenIdOriginBlocked(Number(response.headers.get('retry-after')));
+  }
+  throw authError(`Steam returned HTTP ${response.status}.`, 502, 'steam_openid_verify_failed');
 }
 
 async function fetchOpenIdViaProxy(body) {
@@ -189,8 +184,17 @@ async function authenticateSteam(req) {
   verifyParams.set('openid.mode', 'check_authentication');
 
   const body = await postOpenIdVerification(verifyParams.toString());
+  const validity = openIdValidity(body);
 
-  if (!openIdAssertionValid(body)) {
+  if (validity !== true) {
+    console.warn(`[auth] Steam OpenID assertion rejected (${validity == null ? 'no is_valid field' : 'is_valid:false'}): ${bodySnippet(body)}`);
+    if (validity == null) {
+      throw authError(
+        'Steam did not answer the login check. Please try again in a moment.',
+        502,
+        'steam_openid_verify_failed',
+      );
+    }
     throw authError('Failed to authenticate user.', 401, 'steam_openid_not_authenticated');
   }
 
