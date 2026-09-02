@@ -74,7 +74,8 @@ const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItem
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
-const { getItemPageData, renderItemHtml, renderAppShellHtml, SITE_URL, buildSitemapXml } = require('./services/items');
+const { getItemPageData, renderItemHtml, renderAppShellHtml, injectPortfolioShareSeo, SITE_URL, buildSitemapXml } = require('./services/items');
+const { renderSharePnlPng } = require('./services/share-card');
 const { getCollectionPageData, getCollectionsList } = require('./services/collections');
 const {
   createPairingCode,
@@ -182,6 +183,13 @@ const investorTrialLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many trial attempts. Try again later.', code: 'rate_limited' },
+});
+const ogLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Try again later.', code: 'rate_limited' },
 });
 
 function effectiveBillingReady() {
@@ -962,7 +970,27 @@ async function sendAppShell(res) {
 }
 
 app.get('/dashboard', asyncRoute(async (req, res) => {
-  await sendAppShell(res);
+  const profile = String(req.query.profile || '').trim();
+  if (!profile) {
+    await sendAppShell(res);
+    return;
+  }
+  const html = injectPortfolioShareSeo(
+    await renderAppShellHtml(path.join(rootDir, appFile)),
+    profile,
+  );
+  res.type('html').send(html);
+}));
+
+app.get('/og/pnl.png', ogLimiter, asyncRoute(async (req, res) => {
+  const profile = String(req.query.profile || '').trim();
+  if (!profile) {
+    res.status(400).json({ error: 'Steam profile URL is required.', code: 'missing_profile_url' });
+    return;
+  }
+  const png = await renderSharePnlPng(profile);
+  res.set('Cache-Control', 'public, max-age=120');
+  res.type('png').send(png);
 }));
 
 app.get('/favorites', asyncRoute(async (req, res) => {

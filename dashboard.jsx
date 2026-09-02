@@ -722,9 +722,11 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   ? `${window.location.origin}/dashboard?profile=${encodeURIComponent(profileRef)}`
                   : `${window.location.origin}/`;
                 const valueLabel = compactUsd(displayTotal);
+                const pnlLabel = `${displayPnl >= 0 ? '+' : ''}${compactUsd(displayPnl)}`;
+                const pctLabel = `${displayPnlPct >= 0 ? '+' : ''}${Number(displayPnlPct || 0).toFixed(2)}%`;
                 const text = lang === 'ru'
-                  ? `Мой инвентарь CS2 стоит ${valueLabel}. Считаю в SkinsHead`
-                  : `My CS2 inventory is ${valueLabel}. Tracked on SkinsHead`;
+                  ? `Мой инвентарь CS2: ${valueLabel}, ${pctLabel} (${pnlLabel}). Считаю в SkinsHead`
+                  : `My CS2 inventory is ${valueLabel}, ${pctLabel} (${pnlLabel}). Tracked on SkinsHead`;
                 const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
                 window.open(intent, '_blank', 'noopener,noreferrer');
               }}

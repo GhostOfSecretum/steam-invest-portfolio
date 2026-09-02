@@ -185,6 +185,30 @@ async function renderAppShellHtml(appFilePath) {
   return injectAppRouteSeo(html);
 }
 
+function injectPortfolioShareSeo(html, profileInput) {
+  const profile = String(profileInput || '').trim();
+  if (!profile) return html;
+  const pageUrl = `${SITE_URL}/dashboard?profile=${encodeURIComponent(profile)}`;
+  const imageUrl = `${SITE_URL}/og/pnl.png?profile=${encodeURIComponent(profile)}`;
+  const title = 'CS2 inventory P&L · SkinsHead';
+  const description = 'Live CS2 skin portfolio tracked on SkinsHead.';
+  let next = html;
+  next = next.replace(/<title>[^<]*<\/title>/i, `<title>${title.replace(/&/g, '&amp;')}</title>`);
+  next = upsertMetaTag(next, 'property', 'og:title', title);
+  next = upsertMetaTag(next, 'property', 'og:description', description);
+  next = upsertMetaTag(next, 'property', 'og:url', pageUrl);
+  next = upsertMetaTag(next, 'property', 'og:image', imageUrl);
+  next = upsertMetaTag(next, 'property', 'og:image:width', '1200');
+  next = upsertMetaTag(next, 'property', 'og:image:height', '630');
+  next = upsertMetaTag(next, 'property', 'og:image:type', 'image/png');
+  next = upsertMetaTag(next, 'name', 'twitter:card', 'summary_large_image');
+  next = upsertMetaTag(next, 'name', 'twitter:title', title);
+  next = upsertMetaTag(next, 'name', 'twitter:description', description);
+  next = upsertMetaTag(next, 'name', 'twitter:image', imageUrl);
+  next = upsertMetaTag(next, 'name', 'twitter:image:alt', 'CS2 portfolio P&L');
+  return next;
+}
+
 function buildSitemapXml() {
   const today = new Date().toISOString().slice(0, 10);
   const urls = [
@@ -217,5 +241,6 @@ module.exports = {
   renderAppShellHtml,
   injectItemSeo,
   injectAppRouteSeo,
+  injectPortfolioShareSeo,
   buildSitemapXml,
 };
