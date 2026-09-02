@@ -2106,13 +2106,51 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
   );
 }
 
-function PortfolioLoadingVisual({ lang }) {
-  const labels = tt(lang, {
+function portfolioLoadLabels(lang) {
+  return tt(lang, {
     en: ['Reading inventory', 'Matching prices', 'Building analytics'],
     ru: ['Читаем инвентарь', 'Сверяем цены', 'Строим аналитику'],
     zh: ['读取库存', '匹配价格', '生成分析'],
     'zh-TW': ['讀取庫存', '匹配價格', '產生分析'],
   });
+}
+
+function portfolioLoadStep(progress) {
+  if (progress < 34) return 0;
+  if (progress < 68) return 1;
+  return 2;
+}
+
+function useSimulatedLoadProgress(active) {
+  const [pct, setPct] = useState(active ? 3 : 0);
+
+  useEffect(() => {
+    if (!active) {
+      setPct(0);
+      return undefined;
+    }
+
+    setPct(3);
+    const startedAt = performance.now();
+    let frame = 0;
+
+    const tick = (now) => {
+      const elapsed = (now - startedAt) / 1000;
+      const next = Math.min(96, Math.round(3 + 93 * (1 - Math.exp(-elapsed / 2.6))));
+      setPct((current) => (current === next ? current : next));
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [active]);
+
+  return pct;
+}
+
+function PortfolioLoadingVisual({ lang, progress = 0 }) {
+  const labels = portfolioLoadLabels(lang);
+  const step = portfolioLoadStep(progress);
   const candles = [
     { bottom: 20, body: 22, wick: 38, up: true },
     { bottom: 27, body: 16, wick: 31, up: false },
@@ -2170,7 +2208,7 @@ function PortfolioLoadingVisual({ lang }) {
       </div>
       <div className="portfolio-loader__status">
         {labels.map((label, index) => (
-          <span key={label} style={{ '--loader-step': index }}>{label}</span>
+          <span key={label} className={index === step ? 'is-active' : undefined}>{label}</span>
         ))}
       </div>
     </div>
@@ -2179,6 +2217,9 @@ function PortfolioLoadingVisual({ lang }) {
 
 function DashboardState({ lang, title, auth, message, error, onRetry, loading = false }) {
   const suggestSteamApiKey = auth?.steamApiKeyConfigured === false;
+  const progress = useSimulatedLoadProgress(loading);
+  const labels = portfolioLoadLabels(lang);
+  const step = portfolioLoadStep(progress);
   const text = error
     ? errorMessage(error, lang)
     : message || tt(lang, {
@@ -2197,8 +2238,21 @@ function DashboardState({ lang, title, auth, message, error, onRetry, loading = 
             <h1 className="display">{title}</h1>
             <p aria-live="polite">{text}</p>
             {loading && (
-              <div className="dashboard-state__progress">
-                <span></span>
+              <div
+                className="dashboard-state__progress"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progress}
+                aria-label={labels[step]}
+              >
+                <div className="dashboard-state__progress-meta">
+                  <span className="dashboard-state__progress-step">{labels[step]}</span>
+                  <span className="dashboard-state__progress-pct">{progress}%</span>
+                </div>
+                <div className="dashboard-state__progress-track">
+                  <span className="dashboard-state__progress-fill" style={{ width: `${progress}%` }}></span>
+                </div>
               </div>
             )}
             {suggestSteamApiKey && !loading && (
@@ -2218,7 +2272,7 @@ function DashboardState({ lang, title, auth, message, error, onRetry, loading = 
               </div>
             )}
           </div>
-          {loading && <PortfolioLoadingVisual lang={lang} />}
+          {loading && <PortfolioLoadingVisual lang={lang} progress={progress} />}
         </div>
       </div>
     </div>
