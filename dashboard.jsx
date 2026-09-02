@@ -38,28 +38,73 @@ function publicPortfolioShareRef({ data, auth, publicSteamId, publicProfileUrl }
   return candidates.map((value) => String(value || '').trim()).find(isShareableSteamProfile) || null;
 }
 
-function PortfolioChart({ history, range, lang }) {
+function historyPointValue(point, priceMode) {
+  if (priceMode === 'steam' && Number.isFinite(point?.steamValue) && point.steamValue > 0) {
+    return point.steamValue;
+  }
+  return Number(point?.value);
+}
+
+function rangeWindowMs(range) {
+  if (range === '7d') return 7 * 86400000;
+  if (range === '90d') return 90 * 86400000;
+  if (range === 'ALL') return null;
+  return 30 * 86400000;
+}
+
+function PortfolioChart({ history, range, lang, priceMode = 'market' }) {
   const sourcePoints = Array.isArray(history)
     ? history.map((value, index) => ({ date: String(index + 1), value }))
     : (Array.isArray(history?.points) ? history.points : []);
-  const safeData = filterHistoryPoints(sourcePoints, range);
+  const safeData = filterHistoryPoints(sourcePoints, range, priceMode);
   const [hover, setHover] = useState(null);
   const ref = useRef(null);
   const w = 1000, h = 280;
+  const now = Date.now();
+  const today = new Date(now).toISOString().slice(0, 10);
+  const windowMs = rangeWindowMs(range);
+  const times = safeData.map((point) => (
+    point.date === today ? now : new Date(`${point.date}T12:00:00.000Z`).getTime()
+  ));
   const values = safeData.map((point) => Number(point.value)).filter((value) => Number.isFinite(value));
-  const hasRealLine = values.length > 1;
-  const chartValues = hasRealLine ? values : [0, Math.max(1, values[0] || 0)];
-  const min = Math.min(...chartValues) * 0.98, max = Math.max(...chartValues) * 1.02;
+  const hasLine = values.length >= 1;
+  const minT = windowMs != null
+    ? now - windowMs
+    : (times.length ? Math.min(...times) : now);
+  const maxT = now;
+  const tRange = Math.max(1, maxT - minT);
+  const chartValues = hasLine
+    ? (values.length === 1 ? [values[0], values[0]] : values)
+    : [0, 1];
+  const min = Math.min(...chartValues) * 0.98;
+  const max = Math.max(...chartValues) * 1.02;
   const yRange = max - min || 1;
-  const pts = chartValues.map((v, i) => [(i / (chartValues.length - 1)) * w, h - ((v - min) / yRange) * (h - 40) - 20]);
-  const d = pts.map((p, i) => i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`).join(' ');
-  const area = `${d} L ${w} ${h} L 0 ${h} Z`;
+  const yFor = (value) => h - ((value - min) / yRange) * (h - 40) - 20;
+  const pts = hasLine
+    ? safeData.map((point, index) => {
+      const time = Number.isFinite(times[index]) ? times[index] : maxT;
+      const x = (time - minT) / tRange * w;
+      return [Math.max(0, Math.min(w, x)), yFor(point.value)];
+    })
+    : [];
+  if (pts.length === 1) pts[0][0] = w;
+  const linePts = pts.length === 1 ? [[0, pts[0][1]], [w, pts[0][1]]] : pts;
+  const d = linePts.map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`)).join(' ');
+  const area = linePts.length ? `${d} L ${w} ${h} L 0 ${h} Z` : '';
 
   const onMove = (e) => {
-    if (!ref.current || !hasRealLine) return;
+    if (!ref.current || !pts.length) return;
     const r = ref.current.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width * w;
-    const idx = Math.min(safeData.length - 1, Math.max(0, Math.round((x / w) * (safeData.length - 1))));
+    let idx = 0;
+    let best = Infinity;
+    for (let i = 0; i < pts.length; i += 1) {
+      const dist = Math.abs(pts[i][0] - x);
+      if (dist < best) {
+        best = dist;
+        idx = i;
+      }
+    }
     setHover({ idx, x: pts[idx][0], y: pts[idx][1], point: safeData[idx] });
   };
 
@@ -79,21 +124,21 @@ function PortfolioChart({ history, range, lang }) {
         {[0.25, 0.5, 0.75].map((p, i) => (
           <line key={i} x1="0" x2={w} y1={p * h} y2={p * h} stroke="rgba(255,255,255,0.04)" strokeWidth="1" strokeDasharray="2 4" />
         ))}
-        {hasRealLine && <path d={area} fill="url(#chartFill)" />}
-        {hasRealLine && <path d={d} stroke="url(#chartLine)" strokeWidth="2" fill="none" strokeLinejoin="round" />}
-        {!hasRealLine && (
-          <text x={w / 2} y={h / 2} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontFamily: 'var(--f-mono)', fontSize: 28 }}>
-            {tt(lang, { en: 'not enough price history', ru: 'недостаточно истории цен', zh: '价格历史不足', 'zh-TW': '價格歷史不足' })}
+        {hasLine && <path d={area} fill="url(#chartFill)" />}
+        {hasLine && <path d={d} stroke="url(#chartLine)" strokeWidth="2" fill="none" strokeLinejoin="round" />}
+        {!hasLine && (
+          <text x={w / 2} y={h / 2} textAnchor="middle" fill="rgba(255,255,255,0.45)" style={{ fontFamily: 'var(--f-mono)', fontSize: 22 }}>
+            {tt(lang, { en: 'no recorded value yet', ru: 'пока нет записанной стоимости', zh: '暂无记录的价值', 'zh-TW': '暫無記錄的價值' })}
           </text>
         )}
-        {hover && hasRealLine && (
+        {hover && hasLine && (
           <g>
             <line x1={hover.x} x2={hover.x} y1="0" y2={h} stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="2 3" />
             <circle cx={hover.x} cy={hover.y} r="5" fill="oklch(0.68 0.22 5)" stroke="#fff" strokeWidth="1.5" />
           </g>
         )}
       </svg>
-      {hover && hasRealLine && (
+      {hover && hasLine && (
         <div style={{
           position: 'absolute', left: `${(hover.x / w) * 100}%`, top: 12, transform: 'translateX(-50%)',
           padding: '8px 12px', borderRadius: 8,
@@ -108,11 +153,11 @@ function PortfolioChart({ history, range, lang }) {
   );
 }
 
-function filterHistoryPoints(points, range) {
+function filterHistoryPoints(points, range, priceMode = 'market') {
   const clean = (Array.isArray(points) ? points : [])
     .map((point) => ({
       date: point.date,
-      value: Number(point.value),
+      value: historyPointValue(point, priceMode),
     }))
     .filter((point) => point.date && Number.isFinite(point.value) && point.value > 0)
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
@@ -120,13 +165,12 @@ function filterHistoryPoints(points, range) {
   if (!clean.length || range === 'ALL') return clean;
 
   const days = range === '7d' ? 7 : range === '90d' ? 90 : 30;
-  // Cut relative to today, not the last provider point (providers can lag months).
   const cutoff = Date.now() - days * 86400000;
   const sliced = clean.filter((point) => {
     const time = new Date(point.date).getTime();
     return Number.isFinite(time) && time >= cutoff;
   });
-  return sliced.length > 1 ? sliced : clean.slice(-Math.max(2, Math.min(days, clean.length)));
+  return sliced.length ? sliced : clean.slice(-1);
 }
 
 function formatHistoryDate(date) {
@@ -534,15 +578,23 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
   const topFiveValue = valueRows.slice(0, 5).reduce((sum, item) => sum + item.value, 0);
   const topFivePct = displayTotal > 0 ? (topFiveValue / displayTotal) * 100 : 0;
   const historyMeta = data.history && !Array.isArray(data.history) ? data.history : {};
-  const historySources = Array.isArray(historyMeta.sources) && historyMeta.sources.length
-    ? historyMeta.sources.join(' + ')
-    : (tt(lang, { en: 'no history', ru: 'нет истории', zh: '暂无历史', 'zh-TW': '暫無歷史' }));
-  const historySubtitle = tt(lang, {
-    en: `USD · real price history · ${historyMeta.coveragePct || 0}% coverage · ${historySources}`,
-    ru: `USD · история реальных цен · покрытие ${historyMeta.coveragePct || 0}% · ${historySources}`,
-    zh: `USD · 真实价格历史 · 覆盖 ${historyMeta.coveragePct || 0}% · ${historySources}`,
-    'zh-TW': `USD · 真實價格歷史 · 覆蓋 ${historyMeta.coveragePct || 0}% · ${historySources}`,
-  });
+  const historyPointCount = Array.isArray(historyMeta.points) ? historyMeta.points.length : 0;
+  const historySince = historyMeta.since
+    ? new Date(`${historyMeta.since}T12:00:00.000Z`).toLocaleDateString(localeFor(lang), { month: 'short', day: 'numeric' })
+    : null;
+  const historySubtitle = historyPointCount <= 1
+    ? tt(lang, {
+      en: 'USD · recorded portfolio value · history builds as the total changes',
+      ru: 'USD · записанная стоимость портфеля · история появится по мере изменения суммы',
+      zh: 'USD · 已记录的库存价值 · 总额变化后会形成历史',
+      'zh-TW': 'USD · 已記錄的庫存價值 · 總額變化後會形成歷史',
+    })
+    : tt(lang, {
+      en: `USD · recorded portfolio value · ${historyPointCount} days${historySince ? ` · since ${historySince}` : ''}`,
+      ru: `USD · записанная стоимость портфеля · ${historyPointCount} дн.${historySince ? ` · с ${historySince}` : ''}`,
+      zh: `USD · 已记录的库存价值 · ${historyPointCount} 天${historySince ? ` · 自 ${historySince}` : ''}`,
+      'zh-TW': `USD · 已記錄的庫存價值 · ${historyPointCount} 天${historySince ? ` · 自 ${historySince}` : ''}`,
+    });
   const activePortfolio = portfolios.find((entry) => String(entry.id) === String(activePortfolioId));
   const portfolioTitle = isPublicPortfolio
     ? (data.profile?.personaname || data.profile?.name || (tt(lang, { en: 'Public portfolio', ru: 'Публичный портфель', zh: '公开库存', 'zh-TW': '公開庫存' })))
@@ -875,7 +927,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                     ))}
                   </div>
                 </div>
-                <PortfolioChart history={data.history} range={range} lang={lang} />
+                <PortfolioChart history={data.history} range={range} lang={lang} priceMode={priceMode} />
               </div>
 
               <PortfolioLeaders leaders={data.leaders} lang={lang} onItemClick={onItemClick} />
