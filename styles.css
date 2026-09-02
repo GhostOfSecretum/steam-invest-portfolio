@@ -600,6 +600,12 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   margin-bottom: 8px;
 }
+.item-detail-chart-sub {
+  margin-top: 6px;
+  color: var(--fg-3);
+  font-family: var(--f-mono);
+  font-size: 11px;
+}
 .item-detail-periods {
   display: flex;
   gap: 3px;

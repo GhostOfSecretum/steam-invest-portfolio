@@ -994,6 +994,57 @@ async function getSkinportSalesHistory(marketHashName, currency = 'usd') {
   return { ...result, cached: false };
 }
 
+function roundChartPrice(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
+
+// Scale a third-party series so the last point equals the live Steam ask.
+// Shape stays from CSFloat/Skinport; the number on the chart matches the item card.
+function alignHistoryToAnchor(history, anchor) {
+  if (!history || !Array.isArray(history.data) || !history.data.length) return history;
+  if (!Number.isFinite(anchor) || anchor <= 0) return history;
+
+  const data = history.data.map((point) => ({ ...point }));
+  const last = data[data.length - 1];
+  const lastPrice = Number(last?.price);
+  if (!Number.isFinite(lastPrice) || lastPrice <= 0) return history;
+
+  const ratio = anchor / lastPrice;
+  if (Math.abs(ratio - 1) > 0.002) {
+    for (const point of data) {
+      const price = Number(point.price);
+      if (Number.isFinite(price) && price > 0) point.price = roundChartPrice(price * ratio);
+    }
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const lastDate = String(last.date || '').slice(0, 10);
+  data[data.length - 1] = { ...data[data.length - 1], price: roundChartPrice(anchor) };
+  if (lastDate && lastDate < today) {
+    data.push({
+      date: today,
+      price: roundChartPrice(anchor),
+      volume: last.volume ?? null,
+    });
+  }
+
+  return {
+    ...history,
+    data,
+    alignedTo: 'steam-market',
+  };
+}
+
+async function resolveSteamChartAnchor(marketHashName, currency, override) {
+  if (Number.isFinite(override) && override > 0) return override;
+  const live = await getSteamMarketPrice(marketHashName, currency).catch(() => null)
+    || (normalizeCurrency(currency) === 'usd'
+      ? await getSteamMarketSearchPrice(marketHashName, 'usd').catch(() => null)
+      : null);
+  const price = Number.isFinite(live?.price) ? live.price : live?.medianPrice;
+  return Number.isFinite(price) && price > 0 ? price : null;
+}
+
 async function getPriceHistory(marketHashName, days = 30, options = {}) {
   const allTime = days === 'all' || days === 'max' || Number(days) > 365;
   const requestedDays = allTime ? 'all' : Math.max(1, Math.min(365, Number(days) || 30));
@@ -1144,6 +1195,13 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
         await setCached(key, history);
       }
     }
+  }
+
+  // Align after cache so the last point tracks live Steam, not a stale CSFloat avg.
+  // Do not write the aligned series back — that would bake an old ask into the cache.
+  if (history?.data?.length) {
+    const steamAnchor = await resolveSteamChartAnchor(marketHashName, requestedCurrency, anchorOverride);
+    if (steamAnchor) history = alignHistoryToAnchor(history, steamAnchor);
   }
 
   // Slice to the requested period.
