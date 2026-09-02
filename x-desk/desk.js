@@ -267,6 +267,27 @@ function renderFocus(data) {
     ['core', 'good'],
     ['watch', 'warn'],
   ]);
+  renderPillars(data);
+}
+
+function renderPillars(data) {
+  const box = $('pillars');
+  const hint = $('pillars-hint');
+  const pillars = data.pillars;
+  if (!box) return;
+  if (!pillars || !pillars.cols || !pillars.cols.length) {
+    box.innerHTML = '';
+    if (hint) hint.textContent = '';
+    return;
+  }
+  if (hint) hint.textContent = `${pillars.title || ''} · ${pillars.hint || ''}`.replace(/^ · /, '');
+  box.innerHTML = pillars.cols.map((col) => `
+    <article class="panel focus-col ${col.tone || 'warn'}">
+      <header>
+        <h2>${col.label}</h2>
+      </header>
+      <p class="hint">${col.note || ''}</p>
+    </article>`).join('');
 }
 
 let topsRange = 'day';
@@ -332,6 +353,9 @@ function renderHero(data) {
   $('handle').href = data.url;
   $('bio').textContent = data.bio;
   $('pin').textContent = data.pin;
+  if (data.thesis) {
+    $('pin').textContent = `${data.thesis}\n${data.pin}`;
+  }
   $('clock').textContent = data.quota.window;
   $('clock').dataset.window = data.quota.window;
   $('countdown').textContent = `${countdownTo(data.quota.window)} · МСК`;

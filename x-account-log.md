@@ -43,9 +43,13 @@ https://x.com/SkinsheadPro
 - **30 авг, 19:30:** только текст, без ролика. Закреп не трогать — пост 1.
 - **31 авг, 19:30:** продуктовый рил `output/skinshead_reel_ms_v2_open.mp4` — не закреплять. Текст локнут. Больше видео на недели 2–3 нет.
 - Лайки не фармить; взаимки с нишевых мелких — да
-- Реплаи: 10–12 в инвест-блок, 3–5 тем кто отвечает, 0 в витрины; lis-skins макс 1/день
+- Реплаи: 8–10 в инвест-блок, 2–3 магазины на всех вместе, 2–4 тем кто отвечает / киты; витрины и 94% — ноль
+- Магазины (lis-skins, tradeit, cs.money, skinsmonkey): только цена / объём / просадка. Текст про fill, не 🤩. GreenFire — не buy-посты
+- Киты: вотчлист на сайте живой. В реплаях уже (activity ≠ your basis). В свои посты — с 13 сен, наблюдение с фида, не changelog /investors
 - Не ядро: чистые баеры «always buying 94%» и кейс-сайты. Список на столе в блоке «Реплаи»
 - Добрать ядро (подписать и отвечать): CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs, fengyuanshi1, theSinedinCS, V1rdus, de_copium. Смотреть: CS2Status, SteamDB, skinledger, skinpock, SkinSpecter — не реплаить как коллеге.
+
+X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. Второй столп (киты) входит в ленту с 13 сен. Storage / десктоп — после релиза. Коллекции — фон.
 
 Этот ритм — примерно до конца сентября, потом реплаи можно снизить до 10–15.
 
@@ -409,6 +413,127 @@ In 72 hours, with real buyers, how much cash can you actually raise?
 That’s the only number that matters if something hits.
 
 What’s yours?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 13 сен 2026 (вс) — неделя 4 · киты
+- 15–20 реплаев
+- 19:30 пост 22 (не закреплять, только текст, без картинки, без URL):
+
+```
+Watching a whale’s inventory is not a position.
+
+Their fill isn’t yours.
+Their cost isn’t yours.
+
+If you copy the names and not the basis, you bought a feed.
+
+Whose bag are you marking — yours, or the one on the watchlist?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 14 сен 2026 (пн) — день 23
+- 15–20 реплаев
+- 19:30 пост 23 (не закреплять, только текст, без картинки):
+
+```
+A whale adding size is a signal.
+
+It is not a market order for you 20 minutes later.
+
+If you didn’t have a mark before they moved, you’re not investing.
+You’re chasing a public diff.
+
+Did you have a number on that name before they did?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 15 сен 2026 (вт) — день 24
+- 15–20 реплаев
+- 19:30 пост 24 (не закреплять, только текст, без картинки):
+
+```
+Everyone screenshots what appeared in a whale bag.
+
+Almost nobody tracks what left.
+
+Appearances print. Exits don’t.
+
+The last dump on a watchlist is usually the more expensive lesson.
+
+What did they actually sell?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 16 сен 2026 (ср) — день 25
+- 15–20 реплаев
+- 19:30 пост 25 (не закреплять, только текст, без картинки):
+
+```
+A watchlist tells you who moved.
+
+It will not tell you if you are up.
+
+That’s a different number: your cost, your fees, your exit.
+
+Following raiders is research. Your P&L is still the job.
+
+Do you know your number, or only theirs?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 17 сен 2026 (чт) — день 26
+- 15–20 реплаев
+- 19:30 пост 26 (не закреплять, только текст, без картинки, без URL):
+
+```
+Posting your Steam total is a flex.
+
+Posting whether you’re up after fees is a portfolio.
+
+One is a sticker. The other is a score.
+
+If you share the bag, share the P&L — or don’t share it.
+
+Which number are you actually putting on the timeline?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 18 сен 2026 (пт) — день 27
+- 15–20 реплаев
+- 19:30 пост 27 (не закреплять, только текст, без картинки):
+
+```
+Finishing a collection is not an allocation.
+
+It’s a completionist flex with a market price attached.
+
+A portfolio has weights and a reason to hold the names.
+A set has a checklist.
+
+How much of the bag is there because the set wasn’t done?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 19 сен 2026 (сб) — день 28
+- 15–20 реплаев
+- 19:30 пост 28 (не закреплять, только текст, без картинки):
+
+```
+Public Steam still isn’t the whole bag.
+
+Storage doesn’t show. A watchlist doesn’t show yours.
+
+Until you can see the rest, you’re pricing a fragment and calling it a portfolio.
+
+What’s still off-profile?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __

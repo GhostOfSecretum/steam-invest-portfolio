@@ -6,7 +6,8 @@
   "bio": "CS2 skins as a portfolio. Live inventory value, real P&L, Armory ROI. For people who treat skins like a bag, not a wallpaper.",
   "location": "CS2 skin market",
   "premium": "Premium",
-  "pin": "Пост 1 остаётся закрепом. Thesis-ролик не публикуем. 31 авг — продуктовый рил, не закреплять.",
+  "pin": "Пост 1 остаётся закрепом. Thesis-ролик не публикуем. Киты в реплаях уже. Посты из вотчлиста — с 13 сен.",
+  "thesis": "Steam is a price tag. A portfolio is P&L — whether you’re up after fees, not the sticker.",
   "quota": {
     "repliesMin": 15,
     "repliesMax": 20,
@@ -19,15 +20,17 @@
     "15–20 реплаев, пауза 2–4 мин, английский, свои мысли",
     "Ссылку в тело поста не ставить",
     "Свои посты — текст, без картинки, кроме рила 31 авг",
-    "30 авг: только текст, закреп не трогать. 31 авг: продуктовый рил — не закреплять. Больше видео на неделю 2–3 нет",
+    "30 авг: только текст, закреп не трогать. 31 авг: продуктовый рил — не закреплять. Больше видео на недели 2–3 нет",
     "Лайки не фармить; взаимки с нишевых мелких — да",
-    "Реплаи: 10–12 в инвест-блок, 3–5 тем кто отвечает, 0 в витрины; lis-skins макс 1/день",
+    "Реплаи: 8–10 инвест, 2–3 магазины на всех, 2–4 кто отвечает / киты; витрины и 94% — ноль",
+    "Магазины (lis, tradeit, cs.money, skinsmonkey): только цена/объём/просадка, текст про fill, не 🤩",
+    "Киты: вотчлист живой. В реплаях уже. В свои посты — с 13 сен, наблюдение с фида, не changelog страницы",
     "Не ядро: чистые баеры «always buying 94%» и кейс-сайты — список в блоке Реплаи",
     "Добрать ядро: CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs — список в блоке Подписки"
   ],
   "followsFocus": {
     "title": "Подписки · добрать",
-    "hint": "Ещё не в following. Ядро — подписать и отвечать. Трекеры — смотреть, не реплаить как коллеге.",
+    "hint": "Ещё не в following. Ядро — подписать и отвечать. Трекеры — смотреть. Киты сайта — в реплаях, не как коллеги.",
     "core": {
       "label": "Подписать и отвечать",
       "note": "Тон как у нас. Rensorcs уже отвечал в день 2. Techsavvy — был один реплай",
@@ -45,7 +48,7 @@
     },
     "watch": {
       "label": "Смотреть, почти не отвечать",
-      "note": "Патчи и чужие трекеры. Не комментировать треды SteamDB. Трекеров не звать коллегами",
+      "note": "Патчи и чужие трекеры. Не комментировать треды SteamDB. Вотчлист /investors — в реплаях, не как коллега-трекер",
       "handles": [
         "CS2Status",
         "SteamDB",
@@ -57,7 +60,7 @@
   },
   "repliesFocus": {
     "title": "Реплаи · напоминание",
-    "hint": "15–20 в день. Не ядро — витрина бида, не любой, кто покупает.",
+    "hint": "15–20 в день. 8–10 инвест, 2–3 магазины, 2–4 кто отвечает / киты. Витрина и 94% — ноль.",
     "unfollow": {
       "label": "Снять",
       "note": "Ломают «Для вас», тянут в гивы / 94% Buff",
@@ -76,7 +79,7 @@
     },
     "priority": {
       "label": "Упор",
-      "note": "10–12 из квоты. Pricempire — только цифры. ohne — Update, не основной",
+      "note": "8–10 из квоты. Pricempire — только цифры. ohne — Update, не основной. Под китом на X — activity ≠ your basis",
       "handles": [
         "pricempire",
         "cs2insiderX",
@@ -90,15 +93,46 @@
       ]
     },
     "quiet": {
-      "label": "Не кормить",
-      "note": "Follow оставить. lis-skins макс 1/день и только тезис. GreenFire — не buy-посты",
+      "label": "Магазины · 2–3",
+      "note": "На все вместе в день. Только рынок, не витрина и не гив. Текст — fill/P&L. GreenFire — не buy-посты",
       "handles": [
         "lisskins",
         "tradeit_gg",
         "csmoneytrade",
+        "skinsmonkey",
         "TheGreenFireCS"
       ]
     }
+  },
+  "pillars": {
+    "title": "Столпы",
+    "hint": "Сайт широкий. X догоняет по очереди. Закреп и клин не трогаем.",
+    "cols": [
+      {
+        "key": "now",
+        "tone": "good",
+        "label": "Сейчас · клин",
+        "note": "Steam — ценник. Портфель — P&L после налога и маркета. Посты до 12 сен уже в календаре. Ссылку не ставить."
+      },
+      {
+        "key": "replies",
+        "tone": "good",
+        "label": "Реплаи · уже",
+        "note": "Вотчлист китов живой. Под чужим китом: activity ≠ your basis. Магазины 2–3/день на всех, только рынок."
+      },
+      {
+        "key": "week4",
+        "tone": "warn",
+        "label": "С 13 сен · киты",
+        "note": "Посты из фида: сигнал, не changelog /investors. Шаринг P&L — механика, не тема. Свежий дифф, не событие недели."
+      },
+      {
+        "key": "later",
+        "tone": "warn",
+        "label": "Позже",
+        "note": "Десктоп + Storage — третий столп после релиза. Коллекции на сайте; в X максимум редкий тезис. 3D Glock не пишем."
+      }
+    ]
   },
   "assets": {
     "header": "media/header.png",
@@ -736,6 +770,97 @@
         "text": "Forget the Steam total.\n\nIn 72 hours, with real buyers, how much cash can you actually raise?\n\nThat’s the only number that matters if something hits.\n\nWhat’s yours?"
       },
       "notes": "Не закреплять, только текст. Кэш за 72 часа, не Steam-тотал."
+    },
+    {
+      "date": "2026-09-13",
+      "kind": "planned",
+      "dayNum": 22,
+      "label": "неделя 4 · киты",
+      "post": {
+        "n": 22,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Watching a whale’s inventory is not a position.\n\nTheir fill isn’t yours.\nTheir cost isn’t yours.\n\nIf you copy the names and not the basis, you bought a feed.\n\nWhose bag are you marking — yours, or the one on the watchlist?"
+      },
+      "notes": "Не закреплять, только текст. Без URL. Вотчлист ≠ ваш портфель."
+    },
+    {
+      "date": "2026-09-14",
+      "kind": "planned",
+      "dayNum": 23,
+      "label": "день 23",
+      "post": {
+        "n": 23,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A whale adding size is a signal.\n\nIt is not a market order for you 20 minutes later.\n\nIf you didn’t have a mark before they moved, you’re not investing.\nYou’re chasing a public diff.\n\nDid you have a number on that name before they did?"
+      },
+      "notes": "Не закреплять, только текст. Дифф кита — сигнал, не buy."
+    },
+    {
+      "date": "2026-09-15",
+      "kind": "planned",
+      "dayNum": 24,
+      "label": "день 24",
+      "post": {
+        "n": 24,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Everyone screenshots what appeared in a whale bag.\n\nAlmost nobody tracks what left.\n\nAppearances print. Exits don’t.\n\nThe last dump on a watchlist is usually the more expensive lesson.\n\nWhat did they actually sell?"
+      },
+      "notes": "Не закреплять, только текст. Смотреть, что кит слил, не только что зашёл."
+    },
+    {
+      "date": "2026-09-16",
+      "kind": "planned",
+      "dayNum": 25,
+      "label": "день 25",
+      "post": {
+        "n": 25,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A watchlist tells you who moved.\n\nIt will not tell you if you are up.\n\nThat’s a different number: your cost, your fees, your exit.\n\nFollowing raiders is research. Your P&L is still the job.\n\nDo you know your number, or only theirs?"
+      },
+      "notes": "Не закреплять, только текст. Лента китов не заменяет свой P&L."
+    },
+    {
+      "date": "2026-09-17",
+      "kind": "planned",
+      "dayNum": 26,
+      "label": "день 26",
+      "post": {
+        "n": 26,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Posting your Steam total is a flex.\n\nPosting whether you’re up after fees is a portfolio.\n\nOne is a sticker. The other is a score.\n\nIf you share the bag, share the P&L — or don’t share it.\n\nWhich number are you actually putting on the timeline?"
+      },
+      "notes": "Не закреплять, только текст. Без URL. Шаринг — цифра P&L, не кнопка на сайте."
+    },
+    {
+      "date": "2026-09-18",
+      "kind": "planned",
+      "dayNum": 27,
+      "label": "день 27",
+      "post": {
+        "n": 27,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Finishing a collection is not an allocation.\n\nIt’s a completionist flex with a market price attached.\n\nA portfolio has weights and a reason to hold the names.\nA set has a checklist.\n\nHow much of the bag is there because the set wasn’t done?"
+      },
+      "notes": "Не закреплять, только текст. Сет ≠ аллокация. Каталог коллекций не пиарить."
+    },
+    {
+      "date": "2026-09-19",
+      "kind": "planned",
+      "dayNum": 28,
+      "label": "день 28",
+      "post": {
+        "n": 28,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Public Steam still isn’t the whole bag.\n\nStorage doesn’t show. A watchlist doesn’t show yours.\n\nUntil you can see the rest, you’re pricing a fragment and calling it a portfolio.\n\nWhat’s still off-profile?"
+      },
+      "notes": "Не закреплять, только текст. Storage — третий столп после десктопа, пока только тезис."
     }
   ],
   "weekTopReplies": [

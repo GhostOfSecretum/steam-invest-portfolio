@@ -100,10 +100,54 @@ async function ensureDataFile() {
   }
 }
 
+async function readJson(file) {
+  const raw = await fs.readFile(file, 'utf8');
+  return JSON.parse(raw);
+}
+
+const PLAN_KEYS = [
+  'rules',
+  'repliesFocus',
+  'followsFocus',
+  'pillars',
+  'week2',
+  'pin',
+  'thesis',
+  'bio',
+];
+
+function mergePlan(live, seed) {
+  const next = { ...live };
+  for (const key of PLAN_KEYS) {
+    if (seed[key] !== undefined) next[key] = seed[key];
+  }
+  const days = [...(live.days || [])];
+  const idx = new Map(days.map((day, i) => [day.date, i]));
+  for (const seedDay of seed.days || []) {
+    const i = idx.get(seedDay.date);
+    if (i == null) {
+      days.push(structuredClone(seedDay));
+      idx.set(seedDay.date, days.length - 1);
+      continue;
+    }
+    if (days[i].kind === 'planned') {
+      days[i] = structuredClone(seedDay);
+    }
+  }
+  days.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  next.days = days;
+  return next;
+}
+
 async function readData() {
   await ensureDataFile();
-  const raw = await fs.readFile(DATA_FILE, 'utf8');
-  return JSON.parse(raw);
+  const live = await readJson(DATA_FILE);
+  if (DATA_FILE === SEED_FILE) return live;
+  try {
+    return mergePlan(live, await readJson(SEED_FILE));
+  } catch {
+    return live;
+  }
 }
 
 async function writeData(data) {
