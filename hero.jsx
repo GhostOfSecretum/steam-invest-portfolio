@@ -444,6 +444,37 @@ const HERO_APP_DEMO = {
   ],
 };
 
+/* Daily-ish closes: accumulation, case dump, grind, knife jump, late chop. Ends at demo.totalValue. */
+const HERO_APP_HISTORY = [
+  1920, 1948, 1931, 2010, 1994, 2082, 2065, 2144, 2180, 2160,
+  2268, 2305, 2235, 2120, 2038, 2150, 2260, 2348, 2432, 2490,
+  2516, 2590, 2650, 2712, 2690, 2770, 2710, 2802, 2796, 2865,
+  2890, 2872, 2980, 3040, 3260, 3228, 3370, 3280, 3420, 3310,
+  3290, 3440, 3482, 3518, 3664, 3548, 3725, 3768, 3965, 3920,
+  4088, 4040, 4180, 4148, 4210, 4280,
+];
+
+function heroChartGeometry(values, w = 320, h = 92) {
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const span = hi - lo || 1;
+  const top = 8;
+  const bottom = 6;
+  const pts = values.map((value, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = top + (1 - (value - lo) / span) * (h - top - bottom);
+    return [x, y];
+  });
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  return {
+    line,
+    area: `${line} L${w} ${h} L0 ${h} Z`,
+    last: pts[pts.length - 1],
+  };
+}
+
+const HERO_APP_CHART = heroChartGeometry(HERO_APP_HISTORY);
+
 function HeroOperatorsBackdrop() {
   return (
     <div className="hero-backdrop hb-reticle" aria-hidden="true">
@@ -559,9 +590,17 @@ function HeroConcept_PortfolioSlides({ lang }) {
                         <stop offset="0%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0.34" />
                         <stop offset="100%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0" />
                       </linearGradient>
+                      <linearGradient id="heroAppLine" x1="0" x2="1">
+                        <stop offset="0%" stopColor="oklch(0.78 0.18 5)" />
+                        <stop offset="100%" stopColor="oklch(0.6 0.22 5)" />
+                      </linearGradient>
                     </defs>
-                    <path d="M0 38 C18 22 36 14 52 24 S78 58 98 46 S128 18 148 28 S176 62 198 54 S232 22 258 34 S292 70 320 58 L320 92 L0 92 Z" fill="url(#heroAppFill)" />
-                    <path d="M0 38 C18 22 36 14 52 24 S78 58 98 46 S128 18 148 28 S176 62 198 54 S232 22 258 34 S292 70 320 58" fill="none" stroke="var(--accent)" strokeWidth="1.8" />
+                    {[23, 46, 69].map((y) => (
+                      <line key={y} x1="0" x2="320" y1={y} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="2 4" />
+                    ))}
+                    <path d={HERO_APP_CHART.area} fill="url(#heroAppFill)" />
+                    <path d={HERO_APP_CHART.line} fill="none" stroke="url(#heroAppLine)" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+                    <circle cx={HERO_APP_CHART.last[0]} cy={HERO_APP_CHART.last[1]} r="2.4" fill="oklch(0.68 0.22 5)" stroke="#fff" strokeWidth="0.8" />
                   </svg>
                 </div>
 
