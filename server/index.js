@@ -28,6 +28,7 @@ const {
   setManualBasisPerUnitByMarketHashName,
   deleteManualPortfolioEvent,
   migrateOwnershipToSteam,
+  clearPortfolioViewCache,
 } = require('./services/portfolio');
 const {
   listFavoriteProfiles,
@@ -76,6 +77,7 @@ const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
 const { getItemPageData, renderItemHtml, renderAppShellHtml, injectPortfolioShareSeo, SITE_URL, buildSitemapXml } = require('./services/items');
 const { renderSharePnlPng, renderShareCardPng } = require('./services/share-card');
+const { createShareLink, getShareLink, isShareId } = require('./services/share-links');
 const { getCollectionPageData, getCollectionsList } = require('./services/collections');
 const {
   createPairingCode,
@@ -85,6 +87,8 @@ const {
   redeemDesktopLoginCode,
   saveDesktopInventory,
   getDesktopInventory,
+  MIN_DESKTOP_VERSION,
+  isDesktopVersionSupported,
 } = require('./services/desktop');
 const { recordSteamLogin, getSteamLoginStats } = require('./services/users');
 
@@ -97,6 +101,7 @@ if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
 }
 const rootDir = path.join(__dirname, '..');
 const appFile = 'Steam Invest Portfolio.html';
+const REPO_URL = 'https://github.com/GhostOfSecretum/steam-invest-portfolio';
 
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret) {
@@ -112,7 +117,31 @@ const cookieSecure = process.env.COOKIE_SECURE === '1' || process.env.COOKIE_SEC
 
 app.disable('x-powered-by');
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      // The frontend compiles JSX in the browser with @babel/standalone, which
+      // needs eval and reads inline <script type="text/babel"> blocks. Until JSX
+      // is precompiled at build time, script-src can only restrict *where*
+      // scripts come from — it cannot block injected inline code.
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://unpkg.com', 'https://mc.yandex.ru'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      // Item icons and Steam avatars are served from several *.steamstatic.com
+      // subdomains chosen by Steam at runtime, so the whole vendor domain is
+      // allowed rather than a list that silently breaks avatars in production.
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://*.steamstatic.com', 'https://mc.yandex.ru'],
+      // Yandex Metrika opens a websocket and a hidden match.html iframe; without
+      // these two it logs a CSP error on every page load.
+      connectSrc: ["'self'", 'https://steamcommunity.com', 'https://mc.yandex.ru', 'wss://mc.yandex.ru'],
+      objectSrc: ["'none'"],
+      frameSrc: ['https://mc.yandex.ru'],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
   crossOriginEmbedderPolicy: false,
 }));
 
@@ -163,6 +192,52 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many requests. Try again later.', code: 'rate_limited' },
 });
+
+// Desktop builds announce themselves with X-App-Version. Anything older than the
+// minimum supported release is stopped here, so a client with a known-bad bug
+// cannot keep talking to the API just because its device token is still valid.
+function requireSupportedDesktop(req, res, next) {
+  if (isDesktopVersionSupported(req.headers['x-app-version'])) {
+    next();
+    return;
+  }
+  res.status(426).json({
+    error: 'This desktop version is no longer supported. Please install the latest build.',
+    code: 'client_too_old',
+    minVersion: MIN_DESKTOP_VERSION,
+  });
+}
+
+// Desktop endpoints authenticate with a device token, not a session, so the plan
+// is resolved from the paired SteamID rather than through resolveOwnerId. Reuses
+// the existing `desktopDownload` entitlement: every plan that may download the
+// client is the same set that may use it.
+async function refuseIfPlanDisallowsDesktop(res, device) {
+  const planId = await getOwnerPlanId(`steam:${device.steamId}`);
+  if (planAllows(planId, 'desktopDownload')) return false;
+  res.status(403).json({
+    error: 'Desktop sync requires the Plus or Investor plan.',
+    code: 'plan_required',
+    requiredFeature: 'desktopDownload',
+    planId,
+  });
+  return true;
+}
+
+// Desktop clients sync on a timer, so an IP-keyed limit would throttle every
+// user behind the same NAT. Key these endpoints on the device token instead.
+const deviceTokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const token = String(req.headers['x-device-token'] || '');
+    if (!token) return `ip:${req.ip}`;
+    return `device:${crypto.createHash('sha256').update(token).digest('hex')}`;
+  },
+  message: { error: 'Too many requests for this device. Try again later.', code: 'rate_limited' },
+});
 const checkoutLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -187,6 +262,13 @@ const investorTrialLimiter = rateLimit({
 const ogLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Try again later.', code: 'rate_limited' },
+});
+const shareLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Try again later.', code: 'rate_limited' },
@@ -807,7 +889,7 @@ app.post('/api/top-investors', asyncRoute(async (req, res) => {
   res.status(201).json({ account });
 }));
 
-app.post('/api/desktop/pair', pairingLimiter, asyncRoute(async (req, res) => {
+app.post('/api/desktop/pair', pairingLimiter, requireSupportedDesktop, asyncRoute(async (req, res) => {
   const code = String(req.body?.code || '').trim();
   if (!code) {
     res.status(400).json({ error: 'Pairing code is required.', code: 'missing_code' });
@@ -821,13 +903,15 @@ app.post('/api/desktop/pair', pairingLimiter, asyncRoute(async (req, res) => {
   res.json({ ok: true, steamId: result.steamId, deviceToken: result.deviceToken });
 }));
 
-app.post('/api/desktop/inventory-sync', pairingLimiter, asyncRoute(async (req, res) => {
+app.post('/api/desktop/inventory-sync', deviceTokenLimiter, requireSupportedDesktop, asyncRoute(async (req, res) => {
   const deviceToken = String(req.headers['x-device-token'] || '').trim();
   const device = await validateDeviceToken(deviceToken);
   if (!device) {
     res.status(401).json({ error: 'Invalid or expired device token.', code: 'invalid_device_token' });
     return;
   }
+
+  if (await refuseIfPlanDisallowsDesktop(res, device)) return;
 
   const items = req.body?.items;
   if (!Array.isArray(items)) {
@@ -865,21 +949,25 @@ app.post('/api/desktop/inventory-sync', pairingLimiter, asyncRoute(async (req, r
     storageItemCount,
     items: mergedItems,
   });
+  clearPortfolioViewCache();
 
   res.json({ ok: true, steamId: device.steamId, itemCount: mergedItems.length, storageItemCount });
 }));
 
-app.post('/api/desktop/login-code', pairingLimiter, asyncRoute(async (req, res) => {
+app.post('/api/desktop/login-code', deviceTokenLimiter, requireSupportedDesktop, asyncRoute(async (req, res) => {
   const deviceToken = String(req.headers['x-device-token'] || '').trim();
-  const code = await createDesktopLoginCode(deviceToken);
-  if (!code) {
+  const device = await validateDeviceToken(deviceToken);
+  if (!device) {
     res.status(401).json({ error: 'Invalid or expired device token.', code: 'invalid_device_token' });
     return;
   }
+  if (await refuseIfPlanDisallowsDesktop(res, device)) return;
+
+  const code = await createDesktopLoginCode(deviceToken);
   res.json({ code, expiresIn: 60 });
 }));
 
-app.get('/api/desktop/login', pairingLimiter, asyncRoute(async (req, res) => {
+app.get('/api/desktop/login', authLimiter, asyncRoute(async (req, res) => {
   const code = String(req.query.code || '').trim();
   const loginSession = await redeemDesktopLoginCode(code);
   if (!loginSession) {
@@ -919,6 +1007,24 @@ app.get('/api/desktop/status', requireAuth, asyncRoute(async (req, res) => {
 
 app.get('/sitemap.xml', (req, res) => {
   res.type('application/xml').send(buildSitemapXml());
+});
+
+// Served from a route rather than a file: the static handler denies any path
+// containing a dot segment, so /.well-known/ would never reach it. RFC 9116
+// requires Expires, and a stale security.txt is worse than none — bump it when
+// it approaches.
+const SECURITY_TXT = [
+  `Contact: ${REPO_URL}/security/advisories/new`,
+  'Contact: https://t.me/GhostOfSecretum',
+  'Expires: 2027-08-28T00:00:00.000Z',
+  'Preferred-Languages: ru, en',
+  `Canonical: ${SITE_URL}/.well-known/security.txt`,
+  `Policy: ${REPO_URL}/blob/main/SECURITY.md`,
+  '',
+].join('\n');
+
+app.get(['/.well-known/security.txt', '/security.txt'], (req, res) => {
+  res.type('text/plain').send(SECURITY_TXT);
 });
 
 app.get('/api/items/by-slug/:slug', asyncRoute(async (req, res) => {
@@ -984,10 +1090,55 @@ app.get('/dashboard', asyncRoute(async (req, res) => {
   res.type('html').send(html);
 }));
 
+app.post('/api/share', shareLimiter, asyncRoute(async (req, res) => {
+  const link = await createShareLink({
+    card: req.body?.card,
+    profile: req.body?.profile,
+  });
+  if (!link) {
+    res.status(400).json({ error: 'Share card is invalid.', code: 'invalid_share_card' });
+    return;
+  }
+  res.json({ id: link.id, url: `${SITE_URL}/s/${link.id}` });
+}));
+
+function isSocialCrawler(userAgent) {
+  return /twitterbot|facebookexternalhit|facebot|slackbot|discordbot|telegrambot|whatsapp|linkedinbot|pinterest|vkshare|googlebot/i
+    .test(String(userAgent || ''));
+}
+
+app.get('/s/:id', ogLimiter, asyncRoute(async (req, res) => {
+  const link = await getShareLink(req.params.id);
+  if (!link) {
+    res.redirect(302, '/');
+    return;
+  }
+  if (!isSocialCrawler(req.get('user-agent'))) {
+    const dest = link.profile
+      ? `/dashboard?profile=${encodeURIComponent(link.profile)}`
+      : '/dashboard';
+    res.redirect(302, dest);
+    return;
+  }
+  const html = injectPortfolioShareSeo(
+    await renderAppShellHtml(path.join(rootDir, appFile)),
+    link.profile,
+    link.card,
+    link.id,
+  );
+  res.type('html').send(html);
+}));
+
 app.get('/og/pnl.png', ogLimiter, asyncRoute(async (req, res) => {
+  const shareId = String(req.query.s || '').trim();
   const card = String(req.query.card || '').trim();
   const profile = String(req.query.profile || '').trim();
-  let png = card ? renderShareCardPng(card) : null;
+  let png = null;
+  if (isShareId(shareId)) {
+    const link = await getShareLink(shareId);
+    if (link?.card) png = renderShareCardPng(link.card);
+  }
+  if (!png && card) png = renderShareCardPng(card);
   if (!png && profile) png = await renderSharePnlPng(profile);
   if (!png) {
     res.status(400).json({ error: 'Steam profile URL is required.', code: 'missing_profile_url' });

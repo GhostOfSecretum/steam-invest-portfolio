@@ -49,24 +49,50 @@ function canShareCardFile() {
   }
 }
 
-function ShareOnXButton({ card, shareUrl, text, label, title }) {
+function ShareOnXButton({ card, profile, text, label, title }) {
   const fileRef = useRef(null);
+  const shareRef = useRef({ url: '', ready: Promise.resolve('') });
 
   useEffect(() => {
     fileRef.current = null;
-    if (!card || !canShareCardFile()) return undefined;
     let active = true;
-    fetch(`/og/pnl.png?card=${card}`)
-      .then((res) => (res.ok ? res.blob() : null))
-      .then((blob) => {
-        if (!active || !blob || blob.type !== 'image/png' || !blob.size) return;
-        fileRef.current = new File([blob], 'skinshead-pnl.png', { type: 'image/png' });
-      })
-      .catch(() => {});
-    return () => { active = false; };
-  }, [card]);
+    const fallback = `${window.location.origin}/`;
+    const ready = (async () => {
+      if (!card) return fallback;
+      try {
+        const res = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ card, profile: profile || '' }),
+        });
+        const data = res.ok ? await res.json() : null;
+        if (!active || !data?.id) return fallback;
+        return `${window.location.origin}/s/${data.id}`;
+      } catch {
+        return fallback;
+      }
+    })();
+    shareRef.current = { url: '', ready };
+    ready.then((url) => {
+      if (active) shareRef.current.url = url;
+    });
 
-  const openIntent = () => {
+    if (card && canShareCardFile()) {
+      fetch(`/og/pnl.png?card=${card}`)
+        .then((res) => (res.ok ? res.blob() : null))
+        .then((blob) => {
+          if (!active || !blob || blob.type !== 'image/png' || !blob.size) return;
+          fileRef.current = new File([blob], 'skinshead-pnl.png', { type: 'image/png' });
+        })
+        .catch(() => {});
+    }
+    return () => { active = false; };
+  }, [card, profile]);
+
+  const resolveShareUrl = async () => shareRef.current.url || shareRef.current.ready;
+
+  const openIntent = async () => {
+    const shareUrl = await resolveShareUrl();
     const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
     window.open(intent, '_blank', 'noopener,noreferrer');
   };
@@ -76,10 +102,11 @@ function ShareOnXButton({ card, shareUrl, text, label, title }) {
       type="button"
       className="btn btn-sm btn-ghost"
       title={title}
-      onClick={() => {
+      onClick={async () => {
         const file = fileRef.current;
+        const shareUrl = await resolveShareUrl();
         if (!file) {
-          openIntent();
+          await openIntent();
           return;
         }
         navigator.share({ files: [file], text: `${text} ${shareUrl}` }).catch((error) => {
@@ -698,9 +725,6 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
     sellable: marketableValue,
     series: shareHistoryPoints.filter((value) => Number.isFinite(value) && value > 0),
   });
-  const shareUrl = shareProfileRef
-    ? `${window.location.origin}/dashboard?profile=${encodeURIComponent(shareProfileRef)}&card=${shareCard}`
-    : `${window.location.origin}/`;
   const sharePnlLabel = `${displayPnl >= 0 ? '+' : ''}${compactUsd(displayPnl)}`;
   const sharePctLabel = `${displayPnlPct >= 0 ? '+' : ''}${Number(displayPnlPct || 0).toFixed(2)}%`;
   const shareText = lang === 'ru'
@@ -815,7 +839,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
             )}
             <ShareOnXButton
               card={shareCard}
-              shareUrl={shareUrl}
+              profile={shareProfileRef}
               text={shareText}
               label={tt(lang, { en: 'Share on X', ru: 'В X', zh: '分享到 X', 'zh-TW': '分享到 X' })}
               title={tt(lang, { en: 'Share this portfolio on X', ru: 'Поделиться портфелем в X', zh: '分享到 X', 'zh-TW': '分享到 X' })}
