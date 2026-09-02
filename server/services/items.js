@@ -185,11 +185,18 @@ async function renderAppShellHtml(appFilePath) {
   return injectAppRouteSeo(html);
 }
 
-function injectPortfolioShareSeo(html, profileInput) {
+function injectPortfolioShareSeo(html, profileInput, cardToken) {
   const profile = String(profileInput || '').trim();
-  if (!profile) return html;
-  const pageUrl = `${SITE_URL}/dashboard?profile=${encodeURIComponent(profile)}`;
-  const imageUrl = `${SITE_URL}/og/pnl.png?profile=${encodeURIComponent(profile)}`;
+  const card = String(cardToken || '').trim();
+  if (!profile && !card) return html;
+  const pageParams = new URLSearchParams();
+  if (profile) pageParams.set('profile', profile);
+  if (card) pageParams.set('card', card);
+  const imageParams = new URLSearchParams();
+  if (card) imageParams.set('card', card);
+  else imageParams.set('profile', profile);
+  const pageUrl = `${SITE_URL}/dashboard?${pageParams.toString()}`;
+  const imageUrl = `${SITE_URL}/og/pnl.png?${imageParams.toString()}`;
   const title = 'CS2 inventory P&L · SkinsHead';
   const description = 'Live CS2 skin portfolio tracked on SkinsHead.';
   let next = html;

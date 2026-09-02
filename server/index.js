@@ -75,7 +75,7 @@ const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
 const { getTelegramPostMedia } = require('./services/telegram');
 const { getItemPageData, renderItemHtml, renderAppShellHtml, injectPortfolioShareSeo, SITE_URL, buildSitemapXml } = require('./services/items');
-const { renderSharePnlPng } = require('./services/share-card');
+const { renderSharePnlPng, renderShareCardPng } = require('./services/share-card');
 const { getCollectionPageData, getCollectionsList } = require('./services/collections');
 const {
   createPairingCode,
@@ -971,6 +971,7 @@ async function sendAppShell(res) {
 
 app.get('/dashboard', asyncRoute(async (req, res) => {
   const profile = String(req.query.profile || '').trim();
+  const card = String(req.query.card || '').trim();
   if (!profile) {
     await sendAppShell(res);
     return;
@@ -978,18 +979,21 @@ app.get('/dashboard', asyncRoute(async (req, res) => {
   const html = injectPortfolioShareSeo(
     await renderAppShellHtml(path.join(rootDir, appFile)),
     profile,
+    card,
   );
   res.type('html').send(html);
 }));
 
 app.get('/og/pnl.png', ogLimiter, asyncRoute(async (req, res) => {
+  const card = String(req.query.card || '').trim();
   const profile = String(req.query.profile || '').trim();
-  if (!profile) {
+  let png = card ? renderShareCardPng(card) : null;
+  if (!png && profile) png = await renderSharePnlPng(profile);
+  if (!png) {
     res.status(400).json({ error: 'Steam profile URL is required.', code: 'missing_profile_url' });
     return;
   }
-  const png = await renderSharePnlPng(profile);
-  res.set('Cache-Control', 'public, max-age=120');
+  res.set('Cache-Control', 'public, max-age=300');
   res.type('png').send(png);
 }));
 
@@ -1037,6 +1041,10 @@ app.get('/glock3d', (req, res) => {
 app.get('/pulse-preview', (req, res) => {
   res.set('X-Robots-Tag', 'noindex, nofollow');
   res.sendFile(path.join(rootDir, 'pulse-preview.html'));
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send(`User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
 });
 
 app.get('/', (req, res) => {

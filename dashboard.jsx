@@ -1,4 +1,4 @@
-/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, formatHoldingUnitPrice, formatSteamSticker, holdingUsd, holdingUnitUsd, holdingPnl, getActiveCurrency, tt, localeFor */
+/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, formatHoldingUnitPrice, formatSteamSticker, holdingUsd, holdingUnitUsd, holdingPnl, getActiveCurrency, getRubPerUsdRate, getCnyPerUsdRate, tt, localeFor */
 const { useState, useRef, useMemo, useEffect, useCallback } = React;
 
 /* ───────────────────────────────────────────────────
@@ -14,6 +14,50 @@ function isShareableSteamProfile(value) {
 
 function isPublicManualShareId(value) {
   return /^manual-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+}
+
+function shareFxMultiplier() {
+  const currency = getActiveCurrency();
+  if (currency === 'rub') return getRubPerUsdRate();
+  if (currency === 'cny') return getCnyPerUsdRate();
+  return 1;
+}
+
+function packPnlShareCard({ value, pnl, pnlPct, cost, itemsCount, sellable, series }) {
+  const fx = shareFxMultiplier() || 1;
+  const money = (amount) => Math.round((Number(amount) || 0) * fx * 100) / 100;
+  const payload = {
+    v: money(value),
+    p: money(pnl),
+    r: Math.round((Number(pnlPct) || 0) * 100) / 100,
+    c: money(cost),
+    n: Math.round(Number(itemsCount) || 0),
+    s: money(sellable),
+    y: getActiveCurrency(),
+    h: (Array.isArray(series) ? series : []).slice(-32).map(money),
+  };
+  return btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function copyPngToClipboard(blob) {
+  if (!blob || typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) return false;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function downloadPng(blob, filename) {
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 1500);
 }
 
 function publicPortfolioShareRef({ data, auth, publicSteamId, publicProfileUrl }) {
@@ -447,6 +491,8 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
   const favorites = useFavoriteProfiles();
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [favoriteError, setFavoriteError] = useState(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareHint, setShareHint] = useState('');
   const [range, setRange] = useState('30d');
   const [query, setQuery] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
@@ -716,10 +762,25 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
             <button
               type="button"
               className="btn btn-sm btn-ghost"
-              onClick={() => {
+              disabled={shareBusy}
+              onClick={async () => {
                 const profileRef = publicPortfolioShareRef({ data, auth, publicSteamId, publicProfileUrl });
+                const historyPoints = Array.isArray(data.history)
+                  ? data.history.map((value) => Number(value))
+                  : (Array.isArray(data.history?.points)
+                    ? data.history.points.map((point) => historyPointValue(point, priceMode))
+                    : []);
+                const card = packPnlShareCard({
+                  value: displayTotal,
+                  pnl: displayPnl,
+                  pnlPct: displayPnlPct,
+                  cost: data.totalBasis,
+                  itemsCount: data.totalInventoryCount,
+                  sellable: marketableValue,
+                  series: historyPoints.filter((value) => Number.isFinite(value) && value > 0),
+                });
                 const shareUrl = profileRef
-                  ? `${window.location.origin}/dashboard?profile=${encodeURIComponent(profileRef)}`
+                  ? `${window.location.origin}/dashboard?profile=${encodeURIComponent(profileRef)}&card=${card}`
                   : `${window.location.origin}/`;
                 const valueLabel = compactUsd(displayTotal);
                 const pnlLabel = `${displayPnl >= 0 ? '+' : ''}${compactUsd(displayPnl)}`;
@@ -729,11 +790,40 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   : `My CS2 inventory is ${valueLabel}, ${pctLabel} (${pnlLabel}). Tracked on SkinsHead`;
                 const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
                 window.open(intent, '_blank', 'noopener,noreferrer');
+                setShareBusy(true);
+                setShareHint('');
+                try {
+                  const pngRes = await fetch(`${window.location.origin}/og/pnl.png?card=${card}`);
+                  const blob = pngRes.ok ? await pngRes.blob() : null;
+                  const png = blob && blob.type === 'image/png' && blob.size > 0 ? blob : null;
+                  const copied = png ? await copyPngToClipboard(png) : false;
+                  if (!copied && png) downloadPng(png, 'skinshead-pnl.png');
+                  setShareHint(copied
+                    ? tt(lang, {
+                      en: 'Card copied — paste it into the post (⌘V)',
+                      ru: 'Карточка скопирована — вставь в пост ⌘V',
+                      zh: '卡片已复制，在帖子里粘贴',
+                      'zh-TW': '卡片已複製，在貼文裡貼上',
+                    })
+                    : tt(lang, {
+                      en: 'Image downloaded — attach skinshead-pnl.png to the post',
+                      ru: 'Картинка скачана — прикрепи skinshead-pnl.png к посту',
+                      zh: '图片已下载，请附加到帖子',
+                      'zh-TW': '圖片已下載，請附加到貼文',
+                    }));
+                } catch {
+                  setShareHint('');
+                } finally {
+                  setShareBusy(false);
+                }
               }}
               title={tt(lang, { en: 'Share this portfolio on X', ru: 'Поделиться портфелем в X', zh: '分享到 X', 'zh-TW': '分享到 X' })}
             >
-              {tt(lang, { en: 'Share on X', ru: 'В X', zh: '分享到 X', 'zh-TW': '分享到 X' })}
+              {shareBusy
+                ? '...'
+                : tt(lang, { en: 'Share on X', ru: 'В X', zh: '分享到 X', 'zh-TW': '分享到 X' })}
             </button>
+            {shareHint && <span className="dash-share-hint">{shareHint}</span>}
             <button
               className="btn btn-sm btn-ghost"
               onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}

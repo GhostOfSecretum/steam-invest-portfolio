@@ -1088,6 +1088,13 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   flex-wrap: wrap;
 }
+.dash-share-hint {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--green);
+  max-width: 240px;
+  line-height: 1.35;
+}
 .dash-price-toggle {
   display: inline-flex;
   align-items: stretch;

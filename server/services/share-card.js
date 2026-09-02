@@ -28,20 +28,26 @@ function escapeXml(value) {
     .replace(/"/g, '&quot;');
 }
 
-function formatUsd(value) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return '$0';
-  return new Intl.NumberFormat('en-US', {
+const CURRENCY = {
+  usd: { locale: 'en-US', currency: 'USD' },
+  rub: { locale: 'ru-RU', currency: 'RUB' },
+  cny: { locale: 'zh-CN', currency: 'CNY' },
+};
+
+function formatMoney(value, currencyKey) {
+  const meta = CURRENCY[currencyKey] || CURRENCY.usd;
+  const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+  return new Intl.NumberFormat(meta.locale, {
     style: 'currency',
-    currency: 'USD',
+    currency: meta.currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
 }
 
-function signedUsd(value) {
+function signedMoney(value, currencyKey) {
   const amount = Number(value) || 0;
-  const body = formatUsd(amount);
+  const body = formatMoney(amount, currencyKey);
   return amount >= 0 ? `+${body}` : body;
 }
 
@@ -102,7 +108,41 @@ function summarizeShareStats(portfolio) {
     itemsCount: Number(portfolio?.totalInventoryCount) || 0,
     sellable: sellableValue(portfolio?.items),
     series: historySeries(portfolio),
+    currency: 'usd',
   };
+}
+
+function parseShareCard(raw) {
+  const token = String(raw || '').trim();
+  if (!token || token.length > 4000) return null;
+  try {
+    const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    const data = JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+    const num = (value) => {
+      const amount = Number(value);
+      return Number.isFinite(amount) ? amount : 0;
+    };
+    const currency = String(data.y || data.ccy || 'usd').toLowerCase();
+    return {
+      value: num(data.v),
+      pnl: num(data.p),
+      pnlPct: num(data.r),
+      cost: num(data.c),
+      itemsCount: Math.max(0, Math.round(num(data.n))),
+      sellable: num(data.s),
+      series: Array.isArray(data.h) ? data.h.map(num).slice(0, 60) : [],
+      currency: CURRENCY[currency] ? currency : 'usd',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function renderShareCardPng(token) {
+  const stats = parseShareCard(token);
+  if (!stats) return null;
+  return renderPnlCardPng(stats);
 }
 
 async function loadSharePortfolio(profileInput) {
@@ -129,6 +169,7 @@ function buildCardSvg(stats) {
   const accent = up ? GREEN : RED;
   const pct = formatPct(stats.pnlPct);
   const fontSize = pctFontSize(pct);
+  const ccy = stats.currency || 'usd';
   const spark = sparkPath(stats.series, 48, 268, 1104, 168);
   const fillId = up ? 'gfill' : 'rfill';
 
@@ -186,7 +227,7 @@ function buildCardSvg(stats) {
   <text x="48" y="168" font-family="JetBrains Mono" font-size="13" letter-spacing="3.6" fill="#8b91a3">ROI</text>
   <text x="48" y="${168 + fontSize * 0.92}" font-family="Unbounded" font-weight="800" font-size="${fontSize}" letter-spacing="${Math.round(fontSize * -0.06)}" fill="${accent}">${escapeXml(pct)}</text>
   <text x="48" y="${168 + fontSize * 0.92 + 42}" font-family="Unbounded" font-weight="500" font-size="28" fill="${accent}">
-    ${escapeXml(signedUsd(stats.pnl))}<tspan dx="12" font-family="JetBrains Mono" font-size="13" letter-spacing="2" fill="#8b91a3">PNL</tspan>
+    ${escapeXml(signedMoney(stats.pnl, ccy))}<tspan dx="12" font-family="JetBrains Mono" font-size="13" letter-spacing="2" fill="#8b91a3">PNL</tspan>
   </text>
 
   <line x1="48" y1="478" x2="1152" y2="478" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
@@ -198,10 +239,10 @@ function buildCardSvg(stats) {
     <text x="876" y="504">SELLABLE</text>
   </g>
   <g font-family="Unbounded" font-weight="500" font-size="22" fill="#f6f7fb">
-    <text x="48" y="536">${escapeXml(formatUsd(stats.value))}</text>
-    <text x="324" y="536" fill="#8b91a3">${escapeXml(formatUsd(stats.cost))}</text>
+    <text x="48" y="536">${escapeXml(formatMoney(stats.value, ccy))}</text>
+    <text x="324" y="536" fill="#8b91a3">${escapeXml(formatMoney(stats.cost, ccy))}</text>
     <text x="600" y="536">${escapeXml(String(Math.round(stats.itemsCount || 0)))}</text>
-    <text x="876" y="536">${escapeXml(formatUsd(stats.sellable))}</text>
+    <text x="876" y="536">${escapeXml(formatMoney(stats.sellable, ccy))}</text>
   </g>
 
   <text x="48" y="592" font-family="JetBrains Mono" font-size="12" fill="#5a5f70">skinshead.pro</text>
@@ -260,6 +301,8 @@ module.exports = {
   WIDTH,
   HEIGHT,
   summarizeShareStats,
+  parseShareCard,
   renderPnlCardPng,
+  renderShareCardPng,
   renderSharePnlPng,
 };
