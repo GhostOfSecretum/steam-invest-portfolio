@@ -87,13 +87,24 @@ async function getPortfolio(steamId, options = {}) {
   ]);
 
   const useDesktop = desktopInventory && Array.isArray(desktopInventory.items) && desktopInventory.items.length > 0;
+  const allowCommunity = options.allowCommunity !== false;
   let inventoryRateLimited = false;
   let steamInventory = null;
   if (!useDesktop) {
     try {
-      steamInventory = await getSteamInventory(steamId, { ...options, priority: 0 });
+      steamInventory = await getSteamInventory(steamId, {
+        force: Boolean(options.force),
+        allowCommunity,
+        communityIfEmpty: options.communityIfEmpty === true,
+        staleWhileRevalidate: allowCommunity && options.staleWhileRevalidate !== false,
+        priority: 0,
+      });
+      // Own inventories refresh from the browser (per-user Steam IP), not this server.
+      if (!allowCommunity && (options.force || steamInventory.stale)) {
+        inventoryRateLimited = true;
+      }
     } catch (error) {
-      if (error?.code !== 'rate_limited' && error?.status !== 429) throw error;
+      if (error?.code !== 'rate_limited' && error?.status !== 429 && error?.code !== 'inventory_unavailable') throw error;
       inventoryRateLimited = true;
       steamInventory = {
         syncedAt: null,

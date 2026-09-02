@@ -549,6 +549,8 @@ app.get('/api/portfolio', asyncRoute(async (req, res) => {
     force: req.query.sync === '1',
     portfolioId: req.query.portfolioId,
     ownerId,
+    allowCommunity: false,
+    communityIfEmpty: true,
   });
   res.json(applyItemDisplayLimit(portfolio, planId));
 }));
@@ -562,7 +564,10 @@ app.post('/api/portfolio/steam-inventory', asyncRoute(async (req, res) => {
   await saveIngestedSteamInventory(req.session.steamId, req.body?.pages);
   const ownerId = resolveOwnerId(req);
   const planId = await getOwnerPlanId(ownerId);
-  const portfolio = await getPortfolio(req.session.steamId, { ownerId });
+  const portfolio = await getPortfolio(req.session.steamId, {
+    ownerId,
+    allowCommunity: false,
+  });
   res.json(applyItemDisplayLimit(portfolio, planId));
 }));
 
@@ -586,6 +591,7 @@ app.get('/api/portfolio/public', asyncRoute(async (req, res) => {
     force: req.query.sync === '1',
     includeDesktop: false,
     activitySource: 'public-diff',
+    staleWhileRevalidate: true,
   });
 
   res.json(applyItemDisplayLimit({

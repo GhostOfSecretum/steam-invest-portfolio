@@ -21,6 +21,7 @@ const STEAM_HEADERS = {
 };
 
 const inflight = new Map();
+const backgroundRefresh = new Set();
 const communityWaiters = [];
 let communityBusy = false;
 let communityCooldownUntil = 0;
@@ -278,7 +279,22 @@ async function getSteamProfile(steamId) {
   });
 }
 
-async function getSteamInventory(steamId, { force = false, allowCommunity = true, priority = 1 } = {}) {
+function scheduleBackgroundInventoryRefresh(steamId) {
+  if (backgroundRefresh.has(steamId) || isSteamCommunityCoolingDown()) return;
+  backgroundRefresh.add(steamId);
+  Promise.resolve()
+    .then(() => getSteamInventory(steamId, { force: true, allowCommunity: true, priority: 2 }))
+    .catch(() => {})
+    .finally(() => backgroundRefresh.delete(steamId));
+}
+
+async function getSteamInventory(steamId, {
+  force = false,
+  allowCommunity = true,
+  communityIfEmpty = false,
+  staleWhileRevalidate = false,
+  priority = 1,
+} = {}) {
   requireSteamId(steamId);
   const key = `steam:inventory:${steamId}`;
 
@@ -288,12 +304,23 @@ async function getSteamInventory(steamId, { force = false, allowCommunity = true
       if (cached) return { ...cached, cached: true };
     }
 
-    if (!allowCommunity) {
-      const stale = await getCachedEntry(key);
-      const ageMs = stale ? Date.now() - stale.updatedAt : Infinity;
-      if (stale?.value && ageMs <= INVENTORY_STALE_MAX_AGE_MS) {
-        return { ...stale.value, cached: true, stale: true };
+    const stale = await getCachedEntry(key);
+    const ageMs = stale ? Date.now() - stale.updatedAt : Infinity;
+    const hasStale = Boolean(stale?.value) && ageMs <= INVENTORY_STALE_MAX_AGE_MS;
+    const preferCached = hasStale && (!allowCommunity || (!force && staleWhileRevalidate));
+
+    if (preferCached) {
+      if (allowCommunity && staleWhileRevalidate && !force) {
+        scheduleBackgroundInventoryRefresh(steamId);
       }
+      return {
+        ...stale.value,
+        cached: true,
+        stale: force || ageMs > INVENTORY_MAX_AGE_MS,
+      };
+    }
+
+    if (!allowCommunity && !communityIfEmpty) {
       throw new SteamHttpError('Steam inventory is not cached.', 503, 'inventory_unavailable');
     }
 
@@ -305,9 +332,7 @@ async function getSteamInventory(steamId, { force = false, allowCommunity = true
       await setCached(key, value);
       return { ...value, cached: false };
     } catch (error) {
-      const stale = await getCachedEntry(key);
-      const ageMs = stale ? Date.now() - stale.updatedAt : Infinity;
-      if (stale?.value && ageMs <= INVENTORY_STALE_MAX_AGE_MS) {
+      if (hasStale) {
         return { ...stale.value, cached: true, stale: true };
       }
       throw error;

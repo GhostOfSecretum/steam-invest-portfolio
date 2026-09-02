@@ -161,6 +161,7 @@ async function loadSharePortfolio(profileInput) {
     force: false,
     includeDesktop: false,
     activitySource: 'public-diff',
+    staleWhileRevalidate: true,
   });
 }
 
