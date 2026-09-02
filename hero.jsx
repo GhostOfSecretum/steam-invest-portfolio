@@ -454,7 +454,7 @@ const HERO_APP_HISTORY = [
   4088, 4040, 4180, 4148, 4210, 4280,
 ];
 
-function heroChartGeometry(values, w = 320, h = 92) {
+function heroChartGeometry(values, w = 640, h = 184) {
   const lo = Math.min(...values);
   const hi = Math.max(...values);
   const span = hi - lo || 1;
@@ -584,24 +584,32 @@ function HeroConcept_PortfolioSlides({ lang }) {
                       ))}
                     </div>
                   </div>
-                  <svg className="hero-app-chart" viewBox="0 0 320 92" preserveAspectRatio="none" aria-hidden="true">
-                    <defs>
-                      <linearGradient id="heroAppFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0.34" />
-                        <stop offset="100%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0" />
-                      </linearGradient>
-                      <linearGradient id="heroAppLine" x1="0" x2="1">
-                        <stop offset="0%" stopColor="oklch(0.78 0.18 5)" />
-                        <stop offset="100%" stopColor="oklch(0.6 0.22 5)" />
-                      </linearGradient>
-                    </defs>
-                    {[23, 46, 69].map((y) => (
-                      <line key={y} x1="0" x2="320" y1={y} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="2 4" />
-                    ))}
-                    <path d={HERO_APP_CHART.area} fill="url(#heroAppFill)" />
-                    <path d={HERO_APP_CHART.line} fill="none" stroke="url(#heroAppLine)" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-                    <circle cx={HERO_APP_CHART.last[0]} cy={HERO_APP_CHART.last[1]} r="2.4" fill="oklch(0.68 0.22 5)" stroke="#fff" strokeWidth="0.8" />
-                  </svg>
+                  <div className="hero-app-chart-wrap">
+                    <svg className="hero-app-chart" viewBox="0 0 640 184" preserveAspectRatio="none" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="heroAppFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0.34" />
+                          <stop offset="100%" stopColor="oklch(0.68 0.22 5)" stopOpacity="0" />
+                        </linearGradient>
+                        <linearGradient id="heroAppLine" x1="0" x2="1">
+                          <stop offset="0%" stopColor="oklch(0.78 0.18 5)" />
+                          <stop offset="100%" stopColor="oklch(0.6 0.22 5)" />
+                        </linearGradient>
+                      </defs>
+                      {[46, 92, 138].map((y) => (
+                        <line key={y} x1="0" x2="640" y1={y} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="2 4" vectorEffect="nonScalingStroke" />
+                      ))}
+                      <path d={HERO_APP_CHART.area} fill="url(#heroAppFill)" />
+                      <path d={HERO_APP_CHART.line} fill="none" stroke="url(#heroAppLine)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="nonScalingStroke" />
+                    </svg>
+                    <i
+                      className="hero-app-chart-now"
+                      style={{
+                        left: `${(HERO_APP_CHART.last[0] / 640) * 100}%`,
+                        top: `${(HERO_APP_CHART.last[1] / 184) * 100}%`,
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div className="glass dash-panel hero-app-leaders">
