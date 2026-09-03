@@ -985,44 +985,36 @@ async function fetchFullInventory(steamId, steamSession) {
   let more = true;
   let pageNum = 0;
   let expectedTotal = null;
+  const inventoryPageUrl = `${STEAM_COMMUNITY}/profiles/${steamId}/inventory/`;
 
   while (more) {
     const params = new URLSearchParams({ l: 'english', count: '2000' });
     if (startAssetId) params.set('start_assetid', startAssetId);
 
     const url = `${STEAM_COMMUNITY}/inventory/${steamId}/730/2?${params}`;
-    const cookies = await steamSession.cookies.get({ url: STEAM_COMMUNITY });
-    const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
 
     if (pageNum > 0) {
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
 
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        Cookie: cookieHeader,
-        Referer: `${STEAM_COMMUNITY}/profiles/${steamId}/inventory/`,
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
+    // The request has to run inside the logged-in Steam window. A hand-built
+    // Cookie header gets the public view of the inventory, which leaves out
+    // trade-protected items entirely.
+    let json;
+    try {
+      json = await fetchJsonInSteamWindow({
+        steamSession,
+        loadUrl: inventoryPageUrl,
+        requestUrl: url,
+        referer: inventoryPageUrl,
+      });
+    } catch (error) {
+      if (/HTTP 429/.test(error.message)) {
         console.log('[inventory] rate limited, waiting 5s...');
         await new Promise((resolve) => setTimeout(resolve, 5000));
         continue;
       }
-      throw new Error(`Steam returned HTTP ${response.status}`);
-    }
-
-    const text = await response.text();
-    let json;
-    try {
-      json = JSON.parse(text || '{}');
-    } catch {
-      const preview = text.replace(/\s+/g, ' ').slice(0, 80);
-      throw new Error(`Steam вернул HTML вместо данных инвентаря. Нажмите «1. Войти в Steam (инвентарь)» и повторите синхронизацию. ${preview ? `Ответ: ${preview}` : ''}`.trim());
+      throw error;
     }
     if (!json.success && json.success !== 1) {
       throw new Error(json.Error || 'Steam inventory request failed');
@@ -1204,7 +1196,12 @@ function parseTradeUrl(url) {
 
 async function fetchJsonInSteamWindow({ steamSession, loadUrl, requestUrl, referer }) {
   const text = await fetchTextLikeBrowser({ steamSession, loadUrl, requestUrl, referer, parseAsJson: true });
-  return JSON.parse(text);
+  try {
+    return JSON.parse(text);
+  } catch {
+    const preview = String(text).replace(/\s+/g, ' ').slice(0, 80);
+    throw new Error(`Steam вернул не JSON. Нажмите «1. Войти в Steam (инвентарь)» и повторите синхронизацию. ${preview ? `Ответ: ${preview}` : ''}`.trim());
+  }
 }
 
 async function fetchTextInSteamWindow({ steamSession, loadUrl, requestUrl, referer }) {
