@@ -160,9 +160,9 @@ try {
   // SITE_URL misconfigured — skip host redirect.
 }
 
-// Default body limit is small; the large limit only applies to inventory sync.
+// Default body limit is small; the large limit only applies to desktop sync.
 // This runs first, marks the body as parsed, so the global parser skips it.
-app.use('/api/desktop/inventory-sync', express.json({ limit: '50mb' }));
+app.use('/api/desktop/inventory-sync', express.json({ limit: '200mb' }));
 app.use('/api/portfolio/steam-inventory', express.json({ limit: '10mb' }));
 app.use(express.json({ limit: '256kb' }));
 app.use(session({
