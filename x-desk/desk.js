@@ -39,9 +39,14 @@ function mskDateIso() {
   return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`;
 }
 
-function planned(data) {
+function plannedToday(data) {
   const today = mskDateIso();
-  return data.days.find((d) => d.kind === 'planned' && d.date >= today) || null;
+  return data.days.find((d) => d.kind === 'planned' && d.date === today) || null;
+}
+
+function plannedNext(data) {
+  const today = mskDateIso();
+  return data.days.find((d) => d.kind === 'planned' && d.date > today) || null;
 }
 
 function barChart(el, rows, { min, max, color = 'var(--cyan)' }) {
@@ -209,24 +214,52 @@ function renderVideos(data) {
   });
 }
 
-function renderNext(data) {
-  const day = planned(data);
+function buildPostCard(day, data, idSuffix) {
   const last = lastContent(data);
-  if (!day || !day.post) {
-    $('next-card').innerHTML = `<header><h2>Следующий пост</h2></header><p class="empty">Плана нет</p>`;
-    return;
-  }
   const pinHint = day.post.pinned ? 'закрепить' : 'не закреплять';
   const src = mediaSrc(data, day.post.media);
-  $('next-card').innerHTML = `
-    <header>
-      <h2>${day.label} · пост ${day.post.n}</h2>
-      <span class="hint">${day.date.slice(5)} · ${day.post.time} МСК · ${pinHint}</span>
-    </header>
+  const copyId = `copy-post-${idSuffix}`;
+  const html = `
     ${src ? `<video class="desk-video" controls preload="metadata" src="${src}"></video>` : ''}
-    ${day.post.text ? `<pre class="post-text">${day.post.text}</pre><button type="button" class="copy" id="copy-post">Скопировать</button>` : '<p class="empty">Текст поста ещё не лочили</p>'}
-    ${last && last.post && last.post.url ? `<p class="hint" style="margin-top:12px"><a href="${last.post.url}" target="_blank" rel="noreferrer">последний пост на X ↗</a></p>` : ''}`;
-  bindCopy($('copy-post'), day.post.text);
+    ${day.post.text ? `<pre class="post-text">${day.post.text}</pre><button type="button" class="copy" id="${copyId}">Скопировать</button>` : '<p class="empty">Текст поста ещё не лочили</p>'}
+    ${idSuffix === 'today' && last && last.post && last.post.url ? `<p class="hint" style="margin-top:12px"><a href="${last.post.url}" target="_blank" rel="noreferrer">последний пост на X ↗</a></p>` : ''}`;
+  return { html, copyId, text: day.post.text, pinHint, date: day.date, label: day.label, n: day.post.n, time: day.post.time };
+}
+
+function renderNext(data) {
+  const today = plannedToday(data);
+  const next = plannedNext(data);
+
+  const todayCard = $('today-card');
+  const nextCard = $('next-card');
+
+  if (today && today.post) {
+    const c = buildPostCard(today, data, 'today');
+    todayCard.innerHTML = `
+      <header>
+        <h2>Сегодня · ${c.label} · пост ${c.n}</h2>
+        <span class="hint">${c.date.slice(5)} · ${c.time} МСК · ${c.pinHint}</span>
+      </header>
+      ${c.html}`;
+    bindCopy($('copy-post-today'), c.text);
+    todayCard.style.display = '';
+  } else {
+    todayCard.innerHTML = `<header><h2>Сегодня</h2></header><p class="empty">Пост уже опубликован или не запланирован</p>`;
+    todayCard.style.display = '';
+  }
+
+  if (next && next.post) {
+    const c = buildPostCard(next, data, 'next');
+    nextCard.innerHTML = `
+      <header>
+        <h2>Завтра · ${c.label} · пост ${c.n}</h2>
+        <span class="hint">${c.date.slice(5)} · ${c.time} МСК · ${c.pinHint}</span>
+      </header>
+      ${c.html}`;
+    bindCopy($('copy-post-next'), c.text);
+  } else {
+    nextCard.innerHTML = `<header><h2>Завтра</h2></header><p class="empty">Плана нет</p>`;
+  }
 }
 
 function renderRules(data) {
