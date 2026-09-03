@@ -10,6 +10,28 @@ const PAIRING_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const PAIRING_CODE_LENGTH = 8;
 const PAIRING_CODE_RE = new RegExp(`^[${PAIRING_ALPHABET}]{${PAIRING_CODE_LENGTH}}$`);
 
+// Oldest desktop build the server will talk to. Raise this when a release fixes
+// something that must not keep running in the wild — older clients then get a
+// hard stop with an update prompt instead of silently misbehaving.
+const MIN_DESKTOP_VERSION = '0.1.0';
+
+function parseVersion(raw) {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(String(raw || '').trim());
+  return match ? match.slice(1, 4).map(Number) : null;
+}
+
+// An unparseable or absent version means a build from before version reporting
+// existed, which is by definition older than any minimum we set.
+function isDesktopVersionSupported(raw) {
+  const version = parseVersion(raw);
+  if (!version) return false;
+  const minimum = parseVersion(MIN_DESKTOP_VERSION);
+  for (let i = 0; i < 3; i += 1) {
+    if (version[i] !== minimum[i]) return version[i] > minimum[i];
+  }
+  return true;
+}
+
 function generateCode() {
   const bytes = crypto.randomBytes(PAIRING_CODE_LENGTH);
   let code = '';
@@ -115,6 +137,8 @@ async function getDesktopInventory(steamId) {
 module.exports = {
   PAIRING_CODE_TTL_MS,
   PAIRING_CODE_LENGTH,
+  MIN_DESKTOP_VERSION,
+  isDesktopVersionSupported,
   createPairingCode,
   redeemPairingCode,
   validateDeviceToken,
