@@ -720,11 +720,18 @@ function MarketCatalog({ onItemClick, onCollectionClick }) {
             <>
               <div className="market-grid">
                 {items.map((item) => (
-                  <button
+                  <article
                     key={item.assetid || item.marketHashName}
-                    type="button"
                     className={`market-card tier-${item.tier || 2}`}
+                    role="link"
+                    tabIndex={0}
                     onClick={() => onItemClick && onItemClick(item)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        if (onItemClick) onItemClick(item);
+                      }
+                    }}
                   >
                     <div className="market-card-top">
                       <span className="chip chip-accent">{formatTagLabel(item.category, categoryLabelMap)}</span>
@@ -781,7 +788,7 @@ function MarketCatalog({ onItemClick, onCollectionClick }) {
                         <i>→</i>
                       </div>
                     </div>
-                  </button>
+                  </article>
                 ))}
               </div>
 
@@ -1174,7 +1181,7 @@ function DesktopDownload({ lang, auth, onPricing }) {
       title: 'Desktop — полный инвентарь и Хранилища',
       sub: 'Публичный Steam показывает только основной инвентарь. Desktop-клиент SkinsHead зайдёт в Steam локально и подтянет полный портфель, включая Хранилища.',
       note: 'Приложение ещё в разработке. Скоро появится для macOS и Windows — скачивание и синхронизация будут доступны на тарифах Plus и Investor.',
-      security: 'Только чтение: пароль Steam не запрашивается, токены остаются на компьютере, на сервер уходит только список предметов.',
+      security: 'Пароль Steam не запрашивается. Вход по QR, токен остаётся на вашем компьютере в защищённом хранилище ОС и на сервер не уходит — туда отправляется только список предметов. Приложение не перемещает, не продаёт и не трейдит предметы.',
       soon: 'Скоро',
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',
@@ -1186,7 +1193,7 @@ function DesktopDownload({ lang, auth, onPricing }) {
       title: 'Desktop — full inventory and Storage',
       sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client will sign into Steam locally and sync the full portfolio, including Storage.',
       note: 'The app is still in development. macOS and Windows builds are coming soon — download and sync will be included with Plus. Pay with card or crypto.',
-      security: 'Read-only: Steam password is never requested, tokens stay on your computer, and only item lists are sent to the server.',
+      security: 'Your Steam password is never requested. You sign in with a QR code, the token stays on your computer in the OS secure store and is never sent to our server — only item lists are. The app never moves, sells or trades items.',
       soon: 'Coming soon',
       macApple: 'macOS · Apple Silicon',
       macIntel: 'macOS · Intel',

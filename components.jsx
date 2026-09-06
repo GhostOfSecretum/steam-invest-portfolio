@@ -971,31 +971,28 @@ function CollectionChip({ collection, collectionSlug, lang, onCollectionClick })
   const slug = collectionSlug || (window.ItemSlugs?.collectionNameToSlug
     ? window.ItemSlugs.collectionNameToSlug(collection)
     : null);
-  if (!slug || !onCollectionClick) {
+  if (!slug) {
     return <span className="chip chip-collection">{collection}</span>;
   }
 
   return (
-    <span
+    <a
+      href={`/collection/${encodeURIComponent(slug)}`}
       className="chip chip-collection is-link"
-      role="link"
-      tabIndex={0}
       title={tt(lang, { en: 'Open collection', ru: 'Открыть коллекцию', zh: '打开收藏', 'zh-TW': '開啟收藏' })}
       onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+          event.stopPropagation();
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
-        onCollectionClick(collection, slug);
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          event.stopPropagation();
-          onCollectionClick(collection, slug);
-        }
+        if (onCollectionClick) onCollectionClick(collection, slug);
+        else window.location.assign(`/collection/${encodeURIComponent(slug)}`);
       }}
     >
       {collection}
-    </span>
+    </a>
   );
 }
 

@@ -4,6 +4,18 @@ const { useMemo, useState } = React;
 
 const KIND_ORDER = ['all', 'skins', 'stickers', 'graffiti', 'patches'];
 
+function collectionHref(slug) {
+  return `/collection/${encodeURIComponent(slug)}`;
+}
+
+function handleCollectionLinkClick(event, onCollectionClick, name, slug) {
+  if (event.defaultPrevented || event.button !== 0) return;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (!onCollectionClick || !slug) return;
+  event.preventDefault();
+  onCollectionClick(name, slug);
+}
+
 function kindLabel(lang, kind) {
   const labels = {
     all: { en: 'All', ru: 'Все', zh: '全部', 'zh-TW': '全部' },
@@ -172,11 +184,11 @@ function CollectionsCatalog({ onCollectionClick }) {
         ) : filtered.length ? (
           <div className="market-grid">
             {filtered.map((entry) => (
-              <button
+              <a
                 key={entry.slug}
-                type="button"
+                href={collectionHref(entry.slug)}
                 className="market-card collection-card"
-                onClick={() => onCollectionClick && onCollectionClick(entry.name, entry.slug)}
+                onClick={(event) => handleCollectionLinkClick(event, onCollectionClick, entry.name, entry.slug)}
               >
                 <div className="market-card-top">
                   <span className="chip chip-accent">{kindLabel(lang, entry.kind)}</span>
@@ -212,7 +224,7 @@ function CollectionsCatalog({ onCollectionClick }) {
                     <i>→</i>
                   </div>
                 </div>
-              </button>
+              </a>
             ))}
           </div>
         ) : (
