@@ -22,7 +22,7 @@ function CollectionsCatalog({ onCollectionClick }) {
   const catalog = useCollectionsIndex(true);
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState('skins');
-  const [sort, setSort] = useState('size');
+  const [sort, setSort] = useState('newest');
 
   const collections = catalog.data?.collections || [];
   const filtered = useMemo(() => {
@@ -35,6 +35,11 @@ function CollectionsCatalog({ onCollectionClick }) {
     });
     next.sort((a, b) => {
       if (sort === 'name') return String(a.name || '').localeCompare(String(b.name || ''), locale);
+      if (sort === 'newest') {
+        const left = Date.parse(a.releaseDate) || 0;
+        const right = Date.parse(b.releaseDate) || 0;
+        if (right !== left) return right - left;
+      }
       if (b.skinCount !== a.skinCount) return b.skinCount - a.skinCount;
       return String(a.name || '').localeCompare(String(b.name || ''), locale);
     });
@@ -105,6 +110,7 @@ function CollectionsCatalog({ onCollectionClick }) {
             <label className="market-sort-control">
               <span>{tt(lang, { en: 'Sort', ru: 'Сортировка', zh: '排序', 'zh-TW': '排序' })}</span>
               <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                <option value="newest">{tt(lang, { en: 'Newest', ru: 'Новые', zh: '最新', 'zh-TW': '最新' })}</option>
                 <option value="size">{tt(lang, { en: 'Most items', ru: 'Больше предметов', zh: '物品最多', 'zh-TW': '物品最多' })}</option>
                 <option value="name">{tt(lang, { en: 'Name A-Z', ru: 'Имя A-Я', zh: '名称 A-Z', 'zh-TW': '名稱 A-Z' })}</option>
               </select>
