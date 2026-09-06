@@ -101,7 +101,7 @@ const MARK_PACK_HIGH = 1.6;
 const MARK_PACK_LOW = 0.45;
 const CSMARKET_ITEMS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const CSMARKET_LISTING_MAX_AGE_MS = 10 * 60 * 1000;
-const CSMARKET_CATALOG_PRICE_HYDRATE_CAP = 500;
+const CSMARKET_CATALOG_PRICE_CONCURRENCY = 16;
 
 // Ordered low→high wear. Used to build per-quality variants of a skin.
 const WEAR_TIERS = [
@@ -2555,31 +2555,57 @@ function pickCSMarketListingPrice(listing) {
   return null;
 }
 
-// Aggregate a CSMarketAPI listings payload into a Steam-comparable price.
-// Only STEAMCOMMUNITY rows are accepted — third-party mins (Buff/Skinport/…) are
-// typically 20–40% below Steam ask and must not drive portfolio valuation.
-function aggregateCSMarketListing(listings) {
+function listingCacheKey(marketHashName, currency, steamOnly) {
+  const prefix = steamOnly ? 'csmarketapi:listing:steam:' : 'csmarketapi:listing:';
+  return `${prefix}${marketHashName}:${currency}`;
+}
+
+// Portfolio path stays Steam-only: third-party mins are often 20–40% below Steam ask.
+// Catalog cards may fall back to the median of other markets when Steam is absent
+// from the current CSMarketAPI plan.
+function aggregateCSMarketListing(listings, { steamOnly = true } = {}) {
   if (!Array.isArray(listings) || !listings.length) return null;
 
   const steam = listings.find((row) => row.market === 'STEAMCOMMUNITY');
   const steamPrice = pickCSMarketListingPrice(steam);
-  if (!Number.isFinite(steamPrice)) return null;
+  if (Number.isFinite(steamPrice)) {
+    return {
+      price: steamPrice,
+      medianPrice: Number.isFinite(steam.median_price) ? steam.median_price : steamPrice,
+      sellListings: Number(steam.listings) || 0,
+    };
+  }
+  if (steamOnly) return null;
 
+  const prices = [];
+  let listingsCount = 0;
+  for (const row of listings) {
+    const price = pickCSMarketListingPrice(row);
+    if (Number.isFinite(price)) prices.push(price);
+    listingsCount += Number(row.listings) || 0;
+  }
+  if (!prices.length) return null;
+  prices.sort((a, b) => a - b);
+  const mid = prices[Math.floor(prices.length / 2)];
   return {
-    price: steamPrice,
-    medianPrice: Number.isFinite(steam.median_price) ? steam.median_price : steamPrice,
-    sellListings: Number(steam.listings) || 0,
+    price: mid,
+    medianPrice: mid,
+    sellListings: listingsCount,
   };
 }
 
-async function getCSMarketListingPrice(marketHashName, currency = 'usd') {
+async function getCSMarketListingPrice(marketHashName, currency = 'usd', options = {}) {
   if (!process.env.CSMARKET_API_KEY) return null;
 
+  const steamOnly = options.steamOnly !== false;
   const normalizedCurrency = normalizeCurrency(currency).toUpperCase();
-  // v2: only STEAMCOMMUNITY aggregates are stored (see aggregateCSMarketListing).
-  const cacheKey = `csmarketapi:listing:steam:${marketHashName}:${normalizedCurrency}`;
+  const cacheKey = listingCacheKey(marketHashName, normalizedCurrency, steamOnly);
   const cached = await getCached(cacheKey, CSMARKET_LISTING_MAX_AGE_MS);
   if (cached) return cached;
+  if (!steamOnly) {
+    const steamCached = await getCached(listingCacheKey(marketHashName, normalizedCurrency, true), CSMARKET_LISTING_MAX_AGE_MS);
+    if (steamCached) return steamCached;
+  }
 
   const params = new URLSearchParams({
     market_hash_name: marketHashName,
@@ -2589,11 +2615,12 @@ async function getCSMarketListingPrice(marketHashName, currency = 'usd') {
   const json = await fetchJson(`https://api.csmarketapi.com/v1/listings/latest/aggregate?${params}`, {
     timeoutMs: 10000,
   }).catch(() => null);
-  if (!json) return null;
-
-  const listings = Array.isArray(json.listings) ? json.listings : [];
-  const aggregated = aggregateCSMarketListing(listings);
-  if (!aggregated) return null;
+  const listings = Array.isArray(json?.listings) ? json.listings : [];
+  const aggregated = aggregateCSMarketListing(listings, { steamOnly });
+  if (!aggregated) {
+    const stale = await getCachedEntry(cacheKey);
+    return stale?.value || null;
+  }
 
   const result = {
     ...aggregated,
@@ -2607,18 +2634,13 @@ async function getCSMarketListingPrice(marketHashName, currency = 'usd') {
 async function getCSMarketAPIPrice(marketHashName) {
   if (!process.env.CSMARKET_API_KEY) return null;
 
-  const [usd, rub] = await Promise.all([
-    getCSMarketListingPrice(marketHashName, 'usd'),
-    getCSMarketListingPrice(marketHashName, 'rub'),
-  ]);
+  const usd = await getCSMarketListingPrice(marketHashName, 'usd');
   if (!Number.isFinite(usd?.price) && !Number.isFinite(usd?.medianPrice)) return null;
 
   return {
     marketHashName,
     price: usd.price,
     medianPrice: usd.medianPrice,
-    priceRub: Number.isFinite(rub?.price) ? rub.price : null,
-    medianPriceRub: Number.isFinite(rub?.medianPrice) ? rub.medianPrice : null,
     volume24h: usd.sellListings || null,
     provider: 'csmarketapi',
     currencyCode: 'USD',
@@ -2632,27 +2654,19 @@ async function hydrateCSMarketCatalogPrices(items) {
     .then((rate) => (Number.isFinite(rate) && rate > 0 ? rate : 78.5))
     .catch(() => 78.5);
 
-  for (let i = 0; i < items.length; i += 6) {
-    const batch = items.slice(i, i + 6);
+  for (let i = 0; i < items.length; i += CSMARKET_CATALOG_PRICE_CONCURRENCY) {
+    const batch = items.slice(i, i + CSMARKET_CATALOG_PRICE_CONCURRENCY);
     const pricedBatch = await Promise.all(batch.map(async (item) => {
       if (Number.isFinite(item.price) && item.price > 0) return item;
 
-      const [usd, rub] = await Promise.all([
-        getCSMarketListingPrice(item.marketHashName, 'usd'),
-        getCSMarketListingPrice(item.marketHashName, 'rub'),
-      ]);
+      const usd = await getCSMarketListingPrice(item.marketHashName, 'usd', { steamOnly: false });
       if (!Number.isFinite(usd?.price)) return item;
 
       const price = usd.price;
-      let priceRub = Number.isFinite(rub?.price) ? rub.price : null;
-      let medianPriceRub = Number.isFinite(rub?.medianPrice) ? rub.medianPrice : null;
-      if (priceRub == null || medianPriceRub == null) {
-        const rate = await rubPerUsdPromise;
-        if (Number.isFinite(rate) && rate > 0) {
-          if (priceRub == null) priceRub = Math.round(price * rate * 100) / 100;
-          if (medianPriceRub == null) medianPriceRub = Math.round((usd.medianPrice || price) * rate * 100) / 100;
-        }
-      }
+      const median = Number.isFinite(usd.medianPrice) ? usd.medianPrice : price;
+      const rate = await rubPerUsdPromise;
+      const priceRub = Number.isFinite(rate) && rate > 0 ? Math.round(price * rate * 100) / 100 : null;
+      const medianPriceRub = Number.isFinite(rate) && rate > 0 ? Math.round(median * rate * 100) / 100 : null;
 
       return {
         ...item,
@@ -2660,6 +2674,7 @@ async function hydrateCSMarketCatalogPrices(items) {
         value: price,
         basis: price,
         priceRub,
+        medianPrice: median,
         medianPriceRub,
         sellListings: usd.sellListings || item.sellListings,
         priceProvider: 'csmarketapi',
@@ -2733,7 +2748,9 @@ function sortCatalogItemsServer(items, sort) {
   if (sort === 'name-asc') {
     return sorted.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
   }
-  return sorted.sort((a, b) => (b.sellListings || 0) - (a.sellListings || 0) || String(a.name || '').localeCompare(String(b.name || '')));
+  // popular: keep CSMarket dump order. Live listing counts would need a per-item
+  // hydrate of hundreds of rows and stall the first page.
+  return sorted;
 }
 
 async function getMarketCatalogFromCSMarketAPI(options = {}) {
@@ -2747,7 +2764,6 @@ async function getMarketCatalogFromCSMarketAPI(options = {}) {
   const sort = String(options.sort || 'popular');
   const filters = { query, category, rarity, wear, special };
   const offset = (page - 1) * pageSize;
-  const priceSort = sort === 'popular' || sort === 'price-desc' || sort === 'price-asc';
 
   const rawItems = await getCSMarketAPIItems();
   if (!rawItems.length) {
@@ -2755,16 +2771,10 @@ async function getMarketCatalogFromCSMarketAPI(options = {}) {
   }
 
   const normalized = rawItems.map((item, index) => normalizeCSMarketCatalogItem(item, index));
-  let matched = normalized.filter((item) => matchesCatalogFilters(item, filters));
-
-  if (priceSort) {
-    const sortPool = matched.slice(0, CSMARKET_CATALOG_PRICE_HYDRATE_CAP);
-    const pricedPool = await hydrateCSMarketCatalogPrices(sortPool);
-    const pricedByName = new Map(pricedPool.map((item) => [item.marketHashName, item]));
-    matched = matched.map((item) => pricedByName.get(item.marketHashName) || item);
-  }
-
-  matched = sortCatalogItemsServer(matched, sort);
+  const matched = sortCatalogItemsServer(
+    normalized.filter((item) => matchesCatalogFilters(item, filters)),
+    sort,
+  );
   const pageItems = await hydrateCSMarketCatalogPrices(matched.slice(offset, offset + pageSize));
 
   return {
@@ -2775,7 +2785,6 @@ async function getMarketCatalogFromCSMarketAPI(options = {}) {
     filteredCount: matched.length,
     hasMore: offset + pageSize < matched.length,
     scanned: matched.length,
-    partial: priceSort && matched.length > CSMARKET_CATALOG_PRICE_HYDRATE_CAP,
     provider: 'csmarketapi',
     updatedAt: new Date().toISOString(),
   };
