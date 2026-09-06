@@ -1630,7 +1630,8 @@ a { color: inherit; text-decoration: none; }
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 48px;
-  align-items: center;
+  align-items: stretch;
+  align-content: center;
   min-height: 720px;
 }
 
@@ -1719,9 +1720,9 @@ a { color: inherit; text-decoration: none; }
 .hero-stage-wrap {
   position: relative;
   min-width: 0;
-  height: 640px;
+  min-height: 0;
   display: grid;
-  place-items: center;
+  place-items: stretch;
 }
 
 .hero-portfolio-preview {
@@ -2876,7 +2877,12 @@ button:disabled,
   position: relative;
 }
 
+.hero-stage-wrap .hero-3d-stage,
 .hero-desk-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   place-items: stretch;
 }
 
@@ -2885,7 +2891,7 @@ button:disabled,
   z-index: 2;
   width: 100%;
   height: 100%;
-  padding: 8px 2px 8px 6px;
+  padding: 0;
 }
 
 .hero-app-frame {
@@ -2895,7 +2901,7 @@ button:disabled,
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  padding: 12px 12px 10px;
+  padding: 8px 8px 7px;
   border: 1px solid rgba(255,255,255,0.14);
   background:
     linear-gradient(180deg, rgba(255,255,255,0.04), transparent 14%),
@@ -2936,7 +2942,7 @@ button:disabled,
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .hero-app-chrome .dash-section-tabs {
@@ -2946,8 +2952,8 @@ button:disabled,
 
 .hero-app-chrome .dash-section-tab {
   box-sizing: border-box;
-  min-width: 96px;
-  height: 30px;
+  min-width: 88px;
+  height: 26px;
   padding: 0 10px;
   font-size: 11px;
 }
@@ -2989,30 +2995,30 @@ button:disabled,
 
 .hero-app .dash-stats {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .hero-app .dash-stat-card {
-  padding: 10px 11px 9px;
+  padding: 8px 9px 7px;
 }
 
 .hero-app .dash-stat-value {
-  font-size: 18px;
-  margin-top: 6px;
+  font-size: 16px;
+  margin-top: 4px;
 }
 
 .hero-app .dash-stat-delta,
 .hero-app .dash-stat-sub {
   font-size: 10px;
-  margin-top: 5px;
+  margin-top: 3px;
 }
 
 .hero-app .dash-chart-row {
   flex: 1;
   min-height: 0;
   grid-template-columns: minmax(0, 1.35fr) minmax(148px, 0.8fr);
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 0;
 }
 
@@ -3020,7 +3026,7 @@ button:disabled,
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 10px 12px;
+  padding: 8px 10px;
 }
 
 .hero-app .dash-chart-toolbar {
@@ -3037,7 +3043,7 @@ button:disabled,
 .hero-app-chart-wrap {
   position: relative;
   flex: 1;
-  min-height: 92px;
+  min-height: 64px;
 }
 
 .hero-app-chart {
@@ -3067,7 +3073,7 @@ button:disabled,
 }
 
 .hero-app-leader-label {
-  margin: 8px 0 4px;
+  margin: 6px 0 3px;
   font-family: var(--f-display);
   font-size: 11px;
   font-weight: 500;
@@ -3080,7 +3086,7 @@ button:disabled,
   gap: 8px;
   align-items: center;
   width: 100%;
-  padding: 5px 0;
+  padding: 3px 0;
   border: 0;
   border-bottom: 1px solid rgba(255,255,255,0.04);
   background: transparent;
@@ -3119,7 +3125,7 @@ button:disabled,
 }
 
 .hero-app .dash-inventory-toolbar {
-  padding: 10px 12px 8px;
+  padding: 8px 10px 6px;
 }
 
 .hero-app .dash-inventory-search {
@@ -3142,8 +3148,8 @@ button:disabled,
 .hero-app-items-body .hero-app-grid-row {
   flex: 1;
   min-height: 0;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 .hero-app-grid {
@@ -3203,8 +3209,8 @@ button:disabled,
 .hero-app-item img,
 .hero-app-item i {
   flex-shrink: 0;
-  width: 42px;
-  height: 28px;
+  width: 36px;
+  height: 24px;
   object-fit: contain;
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.03);
@@ -4639,13 +4645,17 @@ button:disabled,
   .hero-stage-wrap {
     height: auto;
     min-height: 520px;
+    place-items: center;
   }
 
   .hero-portfolio-preview {
     left: max(10px, calc(50% - 340px));
   }
 
-  .hero-3d-stage {
+  .hero-stage-wrap .hero-3d-stage,
+  .hero-desk-stage {
+    position: relative;
+    inset: auto;
     height: 560px;
   }
 
@@ -4912,7 +4922,9 @@ button:disabled,
     padding: 48px 16px 32px !important;
   }
 
-  .hero-3d-stage {
+  .hero-3d-stage,
+  .hero-stage-wrap .hero-3d-stage,
+  .hero-desk-stage {
     height: 100%;
   }
 
@@ -5954,11 +5966,11 @@ button:disabled,
   color: var(--fg-2);
 }
 .dashboard-state__progress-pct {
-  font-family: var(--f-mono);
+  font-family: var(--f-display);
   font-size: 18px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.02em;
   color: var(--fg-0);
   min-width: 4ch;
   text-align: right;
