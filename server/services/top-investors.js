@@ -7,6 +7,7 @@ const {
   syncInventoryDiffActivity,
   isStructuredActivity,
 } = require('./activity');
+const { getSteamMarketIcon } = require('./prices');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const TOP_INVESTORS_FILE = path.join(DATA_DIR, 'top-investors.json');
@@ -84,7 +85,7 @@ async function listTopInvestorsActivityFeed({ limit = FEED_LIMIT } = {}) {
 
   return {
     updatedAt: listed.updatedAt,
-    events: events.map((event) => {
+    events: (await hydrateActivityIcons(events)).map((event) => {
       const account = accountsById.get(event.steamId);
       return {
         ...event,
@@ -104,15 +105,30 @@ function newestFirst(events) {
   return (Array.isArray(events) ? events : []).slice().sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
-async function syncTopInvestorInventory(account) {
-  const inventory = await getSteamInventory(account.steamId, { force: false, allowCommunity: false });
+async function hydrateActivityIcons(events) {
+  const rows = Array.isArray(events) ? events : [];
+  const names = [...new Set(rows.filter((event) => event?.marketHashName && !event.iconUrl).map((event) => event.marketHashName))];
+  if (!names.length) return rows;
+
+  const icons = {};
+  await Promise.all(names.map(async (name) => {
+    const iconUrl = await getSteamMarketIcon(name, { cachedOnly: true }).catch(() => null);
+    if (iconUrl) icons[name] = iconUrl;
+  }));
+
+  if (!Object.keys(icons).length) return rows;
+  return rows.map((event) => (event.iconUrl || !icons[event.marketHashName] ? event : { ...event, iconUrl: icons[event.marketHashName] }));
+}
+
+async function syncTopInvestorInventory(account, { force = false } = {}) {
+  const inventory = await getSteamInventory(account.steamId, { force, allowCommunity: force });
   const items = Array.isArray(inventory.items) ? inventory.items : [];
   const syncedAt = inventory.syncedAt || new Date().toISOString();
   const events = await syncInventoryDiffActivity(account.steamId, items, {
     source: 'public-diff',
     syncedAt,
   });
-  const activity = newestFirst(events.filter(isStructuredActivity));
+  const activity = newestFirst(await hydrateActivityIcons(events.filter(isStructuredActivity)));
   return {
     ...account,
     syncedAt,
@@ -134,7 +150,7 @@ async function getTopInvestorActivity(steamId, { sync = false } = {}) {
 
   if (sync) {
     try {
-      return await syncTopInvestorInventory(account);
+      return await syncTopInvestorInventory(account, { force: true });
     } catch (error) {
       const err = new Error(error.message || 'Failed to sync investor inventory.');
       err.status = error.status || 502;
@@ -149,7 +165,7 @@ async function getTopInvestorActivity(steamId, { sync = false } = {}) {
     syncedAt: stored.syncedAt,
     hasBaseline: stored.hasBaseline,
     baselineOnly: stored.hasBaseline && stored.events.length === 0,
-    activity: newestFirst(stored.events),
+    activity: newestFirst(await hydrateActivityIcons(stored.events)),
   };
 }
 

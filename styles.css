@@ -6600,6 +6600,14 @@ button:disabled,
   gap: 12px;
   min-width: 0;
 }
+.top-investors-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
 .top-investors-events {
   display: grid;
   gap: 8px;
@@ -6607,11 +6615,31 @@ button:disabled,
 }
 .top-investors-event {
   display: grid;
-  gap: 4px;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgba(255,255,255,0.02);
+  min-width: 0;
+}
+.top-investors-event-icon {
+  width: 44px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line);
+  flex-shrink: 0;
+}
+i.top-investors-event-icon {
+  display: block;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), #0a0c11);
+}
+.top-investors-event-copy {
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 .top-investors-event.is-link {

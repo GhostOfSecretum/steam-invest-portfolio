@@ -29,7 +29,25 @@ function makeActivityEvent(partial = {}) {
     basisPerUnit: Number.isFinite(partial.basisPerUnit) ? partial.basisPerUnit : null,
     currency: partial.currency || null,
     source: partial.source || 'manual',
+    iconUrl: typeof partial.iconUrl === 'string' && partial.iconUrl.trim() ? partial.iconUrl.trim() : null,
   };
+}
+
+function collectItemIcons(items) {
+  const icons = {};
+  for (const item of items || []) {
+    const name = String(item.marketHashName || '').trim();
+    const iconUrl = typeof item.iconUrl === 'string' ? item.iconUrl.trim() : '';
+    if (!name || !iconUrl) continue;
+    icons[name] = iconUrl;
+  }
+  return icons;
+}
+
+function withEventIcon(event, icons) {
+  if (!event || event.iconUrl || !event.marketHashName || !icons) return event;
+  const iconUrl = icons[event.marketHashName];
+  return iconUrl ? { ...event, iconUrl } : event;
 }
 
 function trimEvents(events) {
@@ -68,7 +86,7 @@ function snapshotsEqual(a, b) {
   return true;
 }
 
-function diffSnapshots(prevSnapshot, nextSnapshot, { source, at } = {}) {
+function diffSnapshots(prevSnapshot, nextSnapshot, { source, at, icons } = {}) {
   const prev = prevSnapshot || {};
   const next = nextSnapshot || {};
   const names = new Set([...Object.keys(prev), ...Object.keys(next)]);
@@ -95,6 +113,7 @@ function diffSnapshots(prevSnapshot, nextSnapshot, { source, at } = {}) {
       qtyAfter,
       qtyDelta: qtyAfter - qtyBefore,
       source: source || 'steam-diff',
+      iconUrl: icons?.[marketHashName] || null,
     }));
   }
 
@@ -153,11 +172,13 @@ async function syncInventoryDiffActivity(steamId, items, { source = 'steam-diff'
   const key = String(steamId);
   const entry = store[key] || { snapshot: null, syncedAt: null, events: [] };
   const nextSnapshot = buildQtySnapshot(items);
+  const nextIcons = { ...(entry.icons || {}), ...collectItemIcons(items) };
   const stamp = syncedAt || new Date().toISOString();
 
   if (!entry.snapshot || typeof entry.snapshot !== 'object') {
     store[key] = {
       snapshot: nextSnapshot,
+      icons: nextIcons,
       syncedAt: stamp,
       events: trimEvents(entry.events || []),
     };
@@ -166,13 +187,18 @@ async function syncInventoryDiffActivity(steamId, items, { source = 'steam-diff'
   }
 
   if (snapshotsEqual(entry.snapshot, nextSnapshot)) {
+    if (Object.keys(nextIcons).length !== Object.keys(entry.icons || {}).length) {
+      store[key] = { ...entry, icons: nextIcons, syncedAt: stamp };
+      await writeInventoryActivityStore(store);
+    }
     return trimEvents(entry.events || []);
   }
 
-  const diffEvents = diffSnapshots(entry.snapshot, nextSnapshot, { source, at: stamp });
+  const diffEvents = diffSnapshots(entry.snapshot, nextSnapshot, { source, at: stamp, icons: nextIcons });
   const events = trimEvents([...(entry.events || []), ...diffEvents]);
   store[key] = {
     snapshot: nextSnapshot,
+    icons: nextIcons,
     syncedAt: stamp,
     events,
   };
@@ -197,7 +223,7 @@ async function getInventoryActivityForSteamId(steamId) {
     steamId: key,
     syncedAt: entry?.syncedAt || null,
     hasBaseline: Boolean(entry?.snapshot && typeof entry.snapshot === 'object'),
-    events: trimEvents(entry?.events || []).filter(isStructuredActivity),
+    events: trimEvents(entry?.events || []).filter(isStructuredActivity).map((event) => withEventIcon(event, entry?.icons)),
   };
 }
 
@@ -211,7 +237,7 @@ async function listInventoryActivityForSteamIds(steamIds, { limit = 100 } = {}) 
     if (!entry) continue;
     for (const event of trimEvents(entry.events || []).filter(isStructuredActivity)) {
       events.push({
-        ...event,
+        ...withEventIcon(event, entry.icons),
         steamId,
       });
     }

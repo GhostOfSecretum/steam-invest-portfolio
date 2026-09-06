@@ -47,25 +47,30 @@ function InvestorActivityRows({ events, lang, showInvestor = false, onOpenItem }
               }
             } : undefined}
           >
-            <div className="top-investors-event-head">
+            {row.iconUrl
+              ? <img className="top-investors-event-icon" src={row.iconUrl} alt="" />
+              : <i className="top-investors-event-icon" aria-hidden="true" />}
+            <div className="top-investors-event-copy">
+              <div className="top-investors-event-head">
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: kindColor }}>
+                  {investorActivityKindLabel(row.kind, lang)}
+                </div>
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }} className="top-investors-event-time">
+                  {new Date(row.at).toLocaleString()}
+                </div>
+              </div>
+              {showInvestor && row.personaname ? (
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>
+                  {row.personaname}
+                </div>
+              ) : null}
+              <div className="top-investors-event-name" title={row.marketHashName || row.name}>
+                {row.name || row.marketHashName || '—'}
+                {canOpen ? <span>↗</span> : null}
+              </div>
               <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: kindColor }}>
-                {investorActivityKindLabel(row.kind, lang)}
+                {qtyLabel}
               </div>
-              <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }} className="top-investors-event-time">
-                {new Date(row.at).toLocaleString()}
-              </div>
-            </div>
-            {showInvestor && row.personaname ? (
-              <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>
-                {row.personaname}
-              </div>
-            ) : null}
-            <div className="top-investors-event-name" title={row.marketHashName || row.name}>
-              {row.name || row.marketHashName || '—'}
-              {canOpen ? <span>↗</span> : null}
-            </div>
-            <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: kindColor }}>
-              {qtyLabel}
             </div>
           </div>
         );
@@ -105,6 +110,8 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
       watchlistFeed: 'Общая лента',
       selected: 'Выбранный аккаунт',
       live: 'автообновление',
+      refresh: 'Обновить',
+      refreshing: 'Обновляю…',
       loading: 'Загрузка…',
       noEvents: 'Пока нет изменений по этому аккаунту. Новые сделки появятся здесь сами.',
       baselineOnly: 'Базовая точка сохранена. Изменения появятся, когда инвентарь изменится.',
@@ -120,6 +127,8 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
       watchlistFeed: 'Watchlist feed',
       selected: 'Selected account',
       live: 'auto-updating',
+      refresh: 'Refresh',
+      refreshing: 'Refreshing…',
       loading: 'Loading…',
       noEvents: 'No changes for this account yet. New trades will show up here automatically.',
       baselineOnly: 'Baseline saved. Changes will appear once the inventory moves.',
@@ -225,7 +234,20 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
                     </div>
                   ) : null}
                 </div>
-                <span className="item-detail-live"><span className="live-dot" /> {copy.live}</span>
+                <div className="top-investors-panel-actions">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    disabled={!selectedSteamId || selectedActivity.syncing}
+                    onClick={async () => {
+                      await selectedActivity.sync();
+                      feed.reload({ silent: true });
+                    }}
+                  >
+                    {selectedActivity.syncing ? copy.refreshing : copy.refresh}
+                  </button>
+                  <span className="item-detail-live"><span className="live-dot" /> {copy.live}</span>
+                </div>
               </div>
 
               {selectedActivity.loading && !selectedActivity.data && (
