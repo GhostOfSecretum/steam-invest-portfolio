@@ -39,9 +39,13 @@ function mskDateIso() {
   return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`;
 }
 
+function dayOn(data, date) {
+  return data.days.find((d) => d.date === date) || null;
+}
+
 function plannedToday(data) {
-  const today = mskDateIso();
-  return data.days.find((d) => d.kind === 'planned' && d.date === today) || null;
+  const day = dayOn(data, mskDateIso());
+  return day && day.post ? day : null;
 }
 
 function plannedNext(data) {
@@ -216,13 +220,15 @@ function renderVideos(data) {
 
 function buildPostCard(day, data, idSuffix) {
   const last = lastContent(data);
-  const pinHint = day.post.pinned ? 'закрепить' : 'не закреплять';
+  const published = Boolean(day.post.url);
+  const pinHint = published ? 'опубликован' : (day.post.pinned ? 'закрепить' : 'не закреплять');
   const src = mediaSrc(data, day.post.media);
   const copyId = `copy-post-${idSuffix}`;
+  const liveUrl = day.post.url || (idSuffix === 'today' && last && last.post && last.post.url);
   const html = `
     ${src ? `<video class="desk-video" controls preload="metadata" src="${src}"></video>` : ''}
     ${day.post.text ? `<pre class="post-text">${day.post.text}</pre><button type="button" class="copy" id="${copyId}">Скопировать</button>` : '<p class="empty">Текст поста ещё не лочили</p>'}
-    ${idSuffix === 'today' && last && last.post && last.post.url ? `<p class="hint" style="margin-top:12px"><a href="${last.post.url}" target="_blank" rel="noreferrer">последний пост на X ↗</a></p>` : ''}`;
+    ${liveUrl ? `<p class="hint" style="margin-top:12px"><a href="${liveUrl}" target="_blank" rel="noreferrer">${published && idSuffix === 'today' ? 'пост на X ↗' : 'последний пост на X ↗'}</a></p>` : ''}`;
   return { html, copyId, text: day.post.text, pinHint, date: day.date, label: day.label, n: day.post.n, time: day.post.time };
 }
 
@@ -244,7 +250,7 @@ function renderNext(data) {
     bindCopy($('copy-post-today'), c.text);
     todayCard.style.display = '';
   } else {
-    todayCard.innerHTML = `<header><h2>Сегодня</h2></header><p class="empty">Пост уже опубликован или не запланирован</p>`;
+    todayCard.innerHTML = `<header><h2>Сегодня</h2></header><p class="empty">Пост на сегодня не запланирован</p>`;
     todayCard.style.display = '';
   }
 
