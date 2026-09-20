@@ -130,8 +130,20 @@ function mergePlan(live, seed) {
       idx.set(seedDay.date, days.length - 1);
       continue;
     }
-    if (days[i].kind === 'planned') {
+    const liveDay = days[i];
+    if (liveDay.kind === 'planned') {
       days[i] = structuredClone(seedDay);
+      continue;
+    }
+    // Auto-pull can stamp today as empty `content` before the plan lands.
+    // Keep live stats; fill missing post text and labels from seed.
+    if (seedDay.post && !(liveDay.post && liveDay.post.text)) {
+      liveDay.post = { ...structuredClone(seedDay.post), ...(liveDay.post || {}) };
+    }
+    if (seedDay.dayNum != null && liveDay.dayNum == null) liveDay.dayNum = seedDay.dayNum;
+    if (seedDay.notes && !liveDay.notes) liveDay.notes = seedDay.notes;
+    if (seedDay.label && (!liveDay.label || /^\d{2}-\d{2}$/.test(liveDay.label))) {
+      liveDay.label = seedDay.label;
     }
   }
   days.sort((a, b) => String(a.date).localeCompare(String(b.date)));
