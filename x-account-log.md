@@ -45,13 +45,14 @@ https://x.com/SkinsheadPro
 - Лайки не фармить; взаимки с нишевых мелких — да
 - Реплаи: 8–10 в инвест-блок, 2–3 магазины на всех вместе, 2–4 тем кто отвечает / киты; витрины и 94% — ноль. xMercy_CS с 21 авг не CS — не отвечать, снять.
 - Магазины (lis-skins, tradeit, cs.money, skinsmonkey): только цена / объём / просадка. Текст про fill, не 🤩. GreenFire — не buy-посты
-- Киты: вотчлист на сайте живой. В реплаях уже (activity ≠ your basis). В свои посты — с 13 сен, наблюдение с фида, не changelog /investors
+- Киты: вотчлист на сайте живой. В реплаях уже (activity ≠ your basis). В свои посты — наблюдение с фида, не changelog /investors, не чаще раза в неделю
+- **С 1 окт:** реплаи можно снизить до 10–15. Пост тот же, 19:30. Десктоп / QR / скачать — не писать до релиза. Storage только тезисом.
 - Не ядро: чистые баеры «always buying 94%» и кейс-сайты. Список на столе в блоке «Реплаи»
 - Добрать ядро (подписать и отвечать): CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs, fengyuanshi1, theSinedinCS, V1rdus, de_copium. Смотреть: CS2Status, SteamDB, skinledger, skinpock, SkinSpecter — не реплаить как коллеге.
 
-X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. Второй столп (киты) входит в ленту с 13 сен. Storage / десктоп — после релиза. Коллекции — фон.
+X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. Киты уже в ленте. С 20 сен — второй слой клина: два марка (Steam vs market), sellable now, капитал в стикерах, кэш как позиция. Storage / десктоп — после релиза, в постах только тезис. Коллекции — фон. 3D Glock не пишем.
 
-Этот ритм — примерно до конца сентября, потом реплаи можно снизить до 10–15.
+Этот ритм — пост каждый день до 10 окт. С 1 окт реплаи можно снизить до 10–15.
 
 ---
 
@@ -538,11 +539,371 @@ What’s still off-profile?
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
 
+### 20 сен 2026 (вс) — неделя 5 · два марка
+- 15–20 реплаев
+- 19:30 пост 29 (не закреплять, только текст, без картинки):
+
+```
+You can be up on Steam and down on the market the same afternoon.
+
+Steam is a list price.
+The other number is what a buyer is actually paying.
+
+If you only watch one book, the P&L is a costume.
+
+Which mark are you using when you say you’re up?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 21 сен 2026 (пн) — день 30
+- 15–20 реплаев
+- 19:30 пост 30 (не закреплять, только текст, без картинки):
+
+```
+The inventory total includes names you cannot sell today.
+
+Trade lock.
+Storage.
+A listing nobody will take.
+
+“What’s it worth” and “what can leave this week” are different columns.
+
+How much of the bag is actually sellable now?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 22 сен 2026 (вт) — день 31
+- 15–20 реплаев
+- 19:30 пост 31 (не закреплять, только текст, без картинки):
+
+```
+A chunk of the bag is not the gun.
+
+It’s paper on the gun.
+
+Buyers pay for the skin. The stickers are a maybe.
+If you count them at last-sale, you’ve marked a hope.
+
+What % of the bag is sticker capital you couldn’t get back tomorrow?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 23 сен 2026 (ср) — день 32
+- 15–20 реплаев
+- 19:30 пост 32 (не закреплять, только текст, без картинки):
+
+```
+The bag printed this week.
+
+Usually one name did.
+The other twenty just sat there.
+
+That’s not a portfolio win. That’s a single.
+
+Can you name the mover, or only the Steam total?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 24 сен 2026 (чт) — день 33
+- 15–20 реплаев
+- 19:30 пост 33 (не закреплять, только текст, без картинки):
+
+```
+You’ve held it for three years.
+
+That is not a thesis.
+That’s inertia with a purchase date.
+
+A position has a reason to still be there.
+Time in the bag is not that reason.
+
+Why is it still here — besides “I already own it”?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 25 сен 2026 (пт) — день 34
+- 15–20 реплаев
+- 19:30 пост 34 (не закреплять, только текст, без картинки):
+
+```
+You sold.
+
+The cash is still sitting in the portfolio as cash.
+Zero skins. Zero thesis. A number.
+
+That’s not an exit until it leaves.
+It’s an undeployed position.
+
+What’s the cash doing in the bag right now?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 26 сен 2026 (сб) — день 35
+- 15–20 реплаев
+- 19:30 пост 35 (не закреплять, только текст, без картинки):
+
+```
+Storage is not a vault.
+
+For most people it’s a junk drawer with a Steam label.
+
+Names you forgot. Cases you meant to open. A knife you “put away”.
+
+If you can’t list what’s in there, it isn’t allocated. It’s lost.
+
+What’s in Storage that you wouldn’t buy again?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 27 сен 2026 (вс) — неделя 6 · книга
+- 15–20 реплаев
+- 19:30 пост 36 (не закреплять, только текст, без картинки):
+
+```
+Paper P&L is not a result.
+
+You are not up until you sold, paid the cut, and the money is actually yours.
+
+Unrealized is a mark.
+Realized is a score.
+
+Which one are you quoting — the one that still has to find a buyer?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 28 сен 2026 (пн) — день 37
+- 15–20 реплаев
+- 19:30 пост 37 (не закреплять, только текст, без картинки):
+
+```
+“I’m diversified. Knives, rifles, gloves.”
+
+That’s a wardrobe, not a book.
+
+If 60% is still one type, a dump in that type is the bag.
+
+Allocation is weights. Categories are labels.
+
+What’s your largest type as a % — not your favorite skin?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 29 сен 2026 (вт) — день 38
+- 15–20 реплаев
+- 19:30 пост 38 (не закреплять, только текст, без картинки):
+
+```
+“Read-only Steam login” is a marketing sentence.
+
+Steam does not issue a scoped token.
+A QR login is a full session. Always.
+
+The only limit is what the app does after.
+
+If they told you it was read-only, what did you actually hand them?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 30 сен 2026 (ср) — день 39
+- 15–20 реплаев
+- 19:30 пост 39 (не закреплять, только текст, без картинки):
+
+```
+End of the month.
+
+Forget the Steam high you screenshotted on a Tuesday.
+
+After fees, after names that wouldn’t sell, after the stickers nobody paid for — are you actually up?
+
+That’s the only monthly number.
+
+What’s yours?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 1 окт 2026 (чт) — день 40
+- 10–15 реплаев (можно снизить)
+- 19:30 пост 40 (не закреплять, только текст, без картинки):
+
+```
+You marked it as FN.
+
+The listing you copied was 0.01.
+Yours is 0.06 with the same wear label.
+
+The market does not pay for the label.
+It pays for the float.
+
+Are you marking your item, or a prettier one with the same name?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 2 окт 2026 (пт) — день 41
+- 10–15 реплаев
+- 19:30 пост 41 (не закреплять, только текст, без картинки):
+
+```
+Souvenir and trade are not the same skin.
+
+Same screenshot. Different book. Different buyer.
+
+If you mark them off one Steam name, you’ve blended two markets and called it a price.
+
+Which bid are you actually using?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 3 окт 2026 (сб) — день 42
+- 10–15 реплаев
+- 19:30 пост 42 (не закреплять, только текст, без картинки):
+
+```
+A patch is not a hedge.
+
+Valve does not owe your bag a catalyst.
+If the thesis was “they’ll add this to the Armory”, that wasn’t a mark. It was a wish.
+
+What happens to the position if nothing drops this quarter?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 4 окт 2026 (вс) — неделя 7 · дыры
+- 10–15 реплаев
+- 19:30 пост 43 (не закреплять, только текст, без картинки):
+
+```
+Part of the bag has no bid.
+
+No listings. No last sale you trust. A name that only exists in your inventory.
+
+You still added it to the total.
+
+That’s not a mark. That’s a blank you filled in.
+
+How much of the bag is unpriced and still in the number?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 5 окт 2026 (пн) — день 44
+- 10–15 реплаев
+- 19:30 пост 44 (не закреплять, только текст, без картинки):
+
+```
+You paid for the pattern.
+
+The bid is for the finish.
+
+#661 looks like a story until the buyer wants any blue gem and yours isn’t it.
+
+How much of the last fill was a pattern you can’t transfer?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 6 окт 2026 (вт) — день 45
+- 10–15 реплаев
+- 19:30 пост 45 (не закреплять, только текст, без картинки):
+
+```
+The market prints in dollars.
+
+You feel the bag in another currency.
+
+A quiet FX move can look like a win you didn’t trade.
+
+If you don’t pick a book, the P&L is two numbers arguing.
+
+What currency is the real score in?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 7 окт 2026 (ср) — день 46
+- 10–15 реплаев
+- 19:30 пост 46 (не закреплять, только текст, без картинки):
+
+```
+The bag got bigger.
+
+Was that a new deposit, or did you just rotate cash that was already there?
+
+Growth and reshuffling look the same on a screenshot.
+
+Did you add money — or just move it?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 8 окт 2026 (чт) — день 47
+- 10–15 реплаев
+- 19:30 пост 47 (не закреплять, только текст, без картинки):
+
+```
+Friday’s Steam number is not Monday’s bid.
+
+Thin book. Weekend listings. A mark that only exists because nobody is selling into it.
+
+If you need the money on Monday, that Friday total is fiction.
+
+What’s the Monday number, not the Friday one?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 9 окт 2026 (пт) — день 48
+- 10–15 реплаев
+- 19:30 пост 48 (не закреплять, только текст, без картинки):
+
+```
+You remember the skin that printed.
+
+You forget the three that quietly bled 8% and still sit in the bag.
+
+Winners are a highlight reel.
+The book is the whole list.
+
+What’s your worst name this month — still held?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 10 окт 2026 (сб) — день 49
+- 10–15 реплаев
+- 19:30 пост 49 (не закреплять, только текст, без картинки, без URL):
+
+```
+A whale’s public inventory still isn’t a fill.
+
+You can watch the diff every day and still not have a cost, a size, or an exit.
+
+Research is watching.
+A position is a number you own.
+
+Did you trade, or did you just refresh the watchlist?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
 ---
 
 ## Шаблон дня (копировать вниз)
 
-### ДД авг 2026
+### ДД окт 2026
 - Реплаев: 
 - Свой пост (время + 1 строка о чём): 
 - Просмотры / лайки / ответы / репосты: 

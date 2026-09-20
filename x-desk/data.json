@@ -6,7 +6,7 @@
   "bio": "CS2 skins as a portfolio. Live inventory value, real P&L, Armory ROI. For people who treat skins like a bag, not a wallpaper.",
   "location": "CS2 skin market",
   "premium": "Premium",
-  "pin": "Пост 1 остаётся закрепом. Thesis-ролик не публикуем. Киты в реплаях уже. Посты из вотчлиста — с 13 сен.",
+  "pin": "Пост 1 остаётся закрепом. Thesis-ролик не публикуем. Киты в ленте уже, не чаще раза в неделю. Десктоп не анонсировать.",
   "thesis": "Steam is a price tag. A portfolio is P&L — whether you’re up after fees, not the sticker.",
   "quota": {
     "repliesMin": 15,
@@ -24,7 +24,8 @@
     "Лайки не фармить; взаимки с нишевых мелких — да",
     "Реплаи: 8–10 инвест, 2–3 магазины на всех, 2–4 кто отвечает / киты; витрины и 94% — ноль",
     "Магазины (lis, tradeit, cs.money, skinsmonkey): только цена/объём/просадка, текст про fill, не 🤩",
-    "Киты: вотчлист живой. В реплаях уже. В свои посты — с 13 сен, наблюдение с фида, не changelog страницы",
+    "Киты: вотчлист живой. В реплаях уже. В свои посты — наблюдение с фида, не changelog страницы, не чаще раза в неделю",
+    "С 1 окт реплаи можно 10–15. Пост тот же, 19:30. Десктоп не анонсировать до релиза",
     "Не ядро: чистые баеры «always buying 94%» и кейс-сайты — список в блоке Реплаи",
     "Добрать ядро: CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs — список в блоке Подписки"
   ],
@@ -113,25 +114,25 @@
         "key": "now",
         "tone": "good",
         "label": "Сейчас · клин",
-        "note": "Steam — ценник. Портфель — P&L после налога и маркета. Посты до 12 сен уже в календаре. Ссылку не ставить."
+        "note": "Steam — ценник. Портфель — P&L после налога и маркета. С 20 сен в ленте: два марка, sellable, стикеры, кэш. Ссылку не ставить."
       },
       {
         "key": "replies",
         "tone": "good",
         "label": "Реплаи · уже",
-        "note": "Вотчлист китов живой. Под чужим китом: activity ≠ your basis. Магазины 2–3/день на всех, только рынок."
+        "note": "Вотчлист китов живой. Под чужим китом: activity ≠ your basis. Магазины 2–3/день на всех, только рынок. С 1 окт можно 10–15."
       },
       {
         "key": "week4",
-        "tone": "warn",
-        "label": "С 13 сен · киты",
-        "note": "Посты из фида: сигнал, не changelog /investors. Шаринг P&L — механика, не тема. Свежий дифф, не событие недели."
+        "tone": "good",
+        "label": "Киты · уже в ленте",
+        "note": "Сигнал с фида, не changelog /investors. Не чаще раза в неделю. Шаринг P&L — механика, не тема."
       },
       {
         "key": "later",
         "tone": "warn",
         "label": "Позже",
-        "note": "Десктоп + Storage — третий столп после релиза. Коллекции на сайте; в X максимум редкий тезис. 3D Glock не пишем."
+        "note": "Десктоп ещё не релиз — не анонсировать, не QR, не скачать. Storage только тезисом. «Read-only Steam» — отраслевой тезис, без имени продукта. 3D Glock не пишем."
       }
     ]
   },
@@ -862,6 +863,279 @@
         "text": "Public Steam still isn’t the whole bag.\n\nStorage doesn’t show. A watchlist doesn’t show yours.\n\nUntil you can see the rest, you’re pricing a fragment and calling it a portfolio.\n\nWhat’s still off-profile?"
       },
       "notes": "Не закреплять, только текст. Storage — третий столп после десктопа, пока только тезис."
+    },
+    {
+      "date": "2026-09-20",
+      "kind": "planned",
+      "dayNum": 29,
+      "label": "неделя 5 · два марка",
+      "post": {
+        "n": 29,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You can be up on Steam and down on the market the same afternoon.\n\nSteam is a list price.\nThe other number is what a buyer is actually paying.\n\nIf you only watch one book, the P&L is a costume.\n\nWhich mark are you using when you say you’re up?"
+      },
+      "notes": "Не закреплять, только текст. Steam vs market — два марка, не «где продавать» (это был пост 6)."
+    },
+    {
+      "date": "2026-09-21",
+      "kind": "planned",
+      "dayNum": 30,
+      "label": "день 30",
+      "post": {
+        "n": 30,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The inventory total includes names you cannot sell today.\n\nTrade lock.\nStorage.\nA listing nobody will take.\n\n“What’s it worth” and “what can leave this week” are different columns.\n\nHow much of the bag is actually sellable now?"
+      },
+      "notes": "Не закреплять, только текст. Sellable now vs тотал. Не путать с постом 11 (7-day hold) и 7 (дни на выход)."
+    },
+    {
+      "date": "2026-09-22",
+      "kind": "planned",
+      "dayNum": 31,
+      "label": "день 31",
+      "post": {
+        "n": 31,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A chunk of the bag is not the gun.\n\nIt’s paper on the gun.\n\nBuyers pay for the skin. The stickers are a maybe.\nIf you count them at last-sale, you’ve marked a hope.\n\nWhat % of the bag is sticker capital you couldn’t get back tomorrow?"
+      },
+      "notes": "Не закреплять, только текст. Капитал в стикерах как % бага. Не крафт-оверпей (пост 16)."
+    },
+    {
+      "date": "2026-09-23",
+      "kind": "planned",
+      "dayNum": 32,
+      "label": "день 32",
+      "post": {
+        "n": 32,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The bag printed this week.\n\nUsually one name did.\nThe other twenty just sat there.\n\nThat’s not a portfolio win. That’s a single.\n\nCan you name the mover, or only the Steam total?"
+      },
+      "notes": "Не закреплять, только текст. Муверы в портфеле: один имя, не тотал."
+    },
+    {
+      "date": "2026-09-24",
+      "kind": "planned",
+      "dayNum": 33,
+      "label": "день 33",
+      "post": {
+        "n": 33,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You’ve held it for three years.\n\nThat is not a thesis.\nThat’s inertia with a purchase date.\n\nA position has a reason to still be there.\nTime in the bag is not that reason.\n\nWhy is it still here — besides “I already own it”?"
+      },
+      "notes": "Не закреплять, только текст. Held age ≠ тезис. Не путать с постом 13 (тикер vs тезис)."
+    },
+    {
+      "date": "2026-09-25",
+      "kind": "planned",
+      "dayNum": 34,
+      "label": "день 34",
+      "post": {
+        "n": 34,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You sold.\n\nThe cash is still sitting in the portfolio as cash.\nZero skins. Zero thesis. A number.\n\nThat’s not an exit until it leaves.\nIt’s an undeployed position.\n\nWhat’s the cash doing in the bag right now?"
+      },
+      "notes": "Не закреплять, только текст. Кэш как позиция. Не кошелёк Steam (пост 18)."
+    },
+    {
+      "date": "2026-09-26",
+      "kind": "planned",
+      "dayNum": 35,
+      "label": "день 35",
+      "post": {
+        "n": 35,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Storage is not a vault.\n\nFor most people it’s a junk drawer with a Steam label.\n\nNames you forgot. Cases you meant to open. A knife you “put away”.\n\nIf you can’t list what’s in there, it isn’t allocated. It’s lost.\n\nWhat’s in Storage that you wouldn’t buy again?"
+      },
+      "notes": "Не закреплять, только текст. Storage как ящик, не «публичный профиль не показывает» (10, 28). Десктоп не светить."
+    },
+    {
+      "date": "2026-09-27",
+      "kind": "planned",
+      "dayNum": 36,
+      "label": "неделя 6 · книга",
+      "post": {
+        "n": 36,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Paper P&L is not a result.\n\nYou are not up until you sold, paid the cut, and the money is actually yours.\n\nUnrealized is a mark.\nRealized is a score.\n\nWhich one are you quoting — the one that still has to find a buyer?"
+      },
+      "notes": "Не закреплять, только текст. Unrealized vs realized. Не путать с постом 20 (фейковый break-even)."
+    },
+    {
+      "date": "2026-09-28",
+      "kind": "planned",
+      "dayNum": 37,
+      "label": "день 37",
+      "post": {
+        "n": 37,
+        "time": "19:30",
+        "pinned": false,
+        "text": "“I’m diversified. Knives, rifles, gloves.”\n\nThat’s a wardrobe, not a book.\n\nIf 60% is still one type, a dump in that type is the bag.\n\nAllocation is weights. Categories are labels.\n\nWhat’s your largest type as a % — not your favorite skin?"
+      },
+      "notes": "Не закреплять, только текст. Аллокация по типу. Не один нож = 70% (пост 5) и не сет (пост 27)."
+    },
+    {
+      "date": "2026-09-29",
+      "kind": "planned",
+      "dayNum": 38,
+      "label": "день 38",
+      "post": {
+        "n": 38,
+        "time": "19:30",
+        "pinned": false,
+        "text": "“Read-only Steam login” is a marketing sentence.\n\nSteam does not issue a scoped token.\nA QR login is a full session. Always.\n\nThe only limit is what the app does after.\n\nIf they told you it was read-only, what did you actually hand them?"
+      },
+      "notes": "Не закреплять, только текст. Без имени продукта, без десктопа, без скачать. Отраслевой тезис из SECURITY.md."
+    },
+    {
+      "date": "2026-09-30",
+      "kind": "planned",
+      "dayNum": 39,
+      "label": "день 39",
+      "post": {
+        "n": 39,
+        "time": "19:30",
+        "pinned": false,
+        "text": "End of the month.\n\nForget the Steam high you screenshotted on a Tuesday.\n\nAfter fees, after names that wouldn’t sell, after the stickers nobody paid for — are you actually up?\n\nThat’s the only monthly number.\n\nWhat’s yours?"
+      },
+      "notes": "Не закреплять, только текст. Закрытие сентября: P&L после комиссий, не стикер."
+    },
+    {
+      "date": "2026-10-01",
+      "kind": "planned",
+      "dayNum": 40,
+      "label": "день 40",
+      "post": {
+        "n": 40,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You marked it as FN.\n\nThe listing you copied was 0.01.\nYours is 0.06 with the same wear label.\n\nThe market does not pay for the label.\nIt pays for the float.\n\nAre you marking your item, or a prettier one with the same name?"
+      },
+      "notes": "Не закреплять, только текст. Float ≠ wear label. С 1 окт реплаи можно 10–15."
+    },
+    {
+      "date": "2026-10-02",
+      "kind": "planned",
+      "dayNum": 41,
+      "label": "день 41",
+      "post": {
+        "n": 41,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Souvenir and trade are not the same skin.\n\nSame screenshot. Different book. Different buyer.\n\nIf you mark them off one Steam name, you’ve blended two markets and called it a price.\n\nWhich bid are you actually using?"
+      },
+      "notes": "Не закреплять, только текст. Souvenir vs trade — две книги."
+    },
+    {
+      "date": "2026-10-03",
+      "kind": "planned",
+      "dayNum": 42,
+      "label": "день 42",
+      "post": {
+        "n": 42,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A patch is not a hedge.\n\nValve does not owe your bag a catalyst.\nIf the thesis was “they’ll add this to the Armory”, that wasn’t a mark. It was a wish.\n\nWhat happens to the position if nothing drops this quarter?"
+      },
+      "notes": "Не закреплять, только текст. Патч/Armory как wish, не марк. Не ROI пасса (пост 4)."
+    },
+    {
+      "date": "2026-10-04",
+      "kind": "planned",
+      "dayNum": 43,
+      "label": "неделя 7 · дыры",
+      "post": {
+        "n": 43,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Part of the bag has no bid.\n\nNo listings. No last sale you trust. A name that only exists in your inventory.\n\nYou still added it to the total.\n\nThat’s not a mark. That’s a blank you filled in.\n\nHow much of the bag is unpriced and still in the number?"
+      },
+      "notes": "Не закреплять, только текст. Unpriced в тотале. Не Storage-дыру (10, 28, 35)."
+    },
+    {
+      "date": "2026-10-05",
+      "kind": "planned",
+      "dayNum": 44,
+      "label": "день 44",
+      "post": {
+        "n": 44,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You paid for the pattern.\n\nThe bid is for the finish.\n\n#661 looks like a story until the buyer wants any blue gem and yours isn’t it.\n\nHow much of the last fill was a pattern you can’t transfer?"
+      },
+      "notes": "Не закреплять, только текст. Pattern overpay. Рядом со стикерами (16, 31), не повторять формулировку."
+    },
+    {
+      "date": "2026-10-06",
+      "kind": "planned",
+      "dayNum": 45,
+      "label": "день 45",
+      "post": {
+        "n": 45,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The market prints in dollars.\n\nYou feel the bag in another currency.\n\nA quiet FX move can look like a win you didn’t trade.\n\nIf you don’t pick a book, the P&L is two numbers arguing.\n\nWhat currency is the real score in?"
+      },
+      "notes": "Не закреплять, только текст. Валюта марки. Не два марка Steam/market (пост 29)."
+    },
+    {
+      "date": "2026-10-07",
+      "kind": "planned",
+      "dayNum": 46,
+      "label": "день 46",
+      "post": {
+        "n": 46,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The bag got bigger.\n\nWas that a new deposit, or did you just rotate cash that was already there?\n\nGrowth and reshuffling look the same on a screenshot.\n\nDid you add money — or just move it?"
+      },
+      "notes": "Не закреплять, только текст. Депозит vs ротация кэша. Не «кэш как позиция» (пост 34)."
+    },
+    {
+      "date": "2026-10-08",
+      "kind": "planned",
+      "dayNum": 47,
+      "label": "день 47",
+      "post": {
+        "n": 47,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Friday’s Steam number is not Monday’s bid.\n\nThin book. Weekend listings. A mark that only exists because nobody is selling into it.\n\nIf you need the money on Monday, that Friday total is fiction.\n\nWhat’s the Monday number, not the Friday one?"
+      },
+      "notes": "Не закреплять, только текст. Пятничный стикер vs понедельник. Не 72 часа (пост 21)."
+    },
+    {
+      "date": "2026-10-09",
+      "kind": "planned",
+      "dayNum": 48,
+      "label": "день 48",
+      "post": {
+        "n": 48,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You remember the skin that printed.\n\nYou forget the three that quietly bled 8% and still sit in the bag.\n\nWinners are a highlight reel.\nThe book is the whole list.\n\nWhat’s your worst name this month — still held?"
+      },
+      "notes": "Не закреплять, только текст. Худшие имена, не мувер-победитель (пост 32)."
+    },
+    {
+      "date": "2026-10-10",
+      "kind": "planned",
+      "dayNum": 49,
+      "label": "день 49",
+      "post": {
+        "n": 49,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A whale’s public inventory still isn’t a fill.\n\nYou can watch the diff every day and still not have a cost, a size, or an exit.\n\nResearch is watching.\nA position is a number you own.\n\nDid you trade, or did you just refresh the watchlist?"
+      },
+      "notes": "Не закреплять, только текст, без URL. Киты: refresh ≠ сделка. Не копипаст недели 4."
     }
   ],
   "weekTopReplies": [
