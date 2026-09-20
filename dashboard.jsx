@@ -386,13 +386,8 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
 
   return (
     <div className="glass dash-panel dash-leaders-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16, minHeight: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <div>
-          <div className="eyebrow">{t.dash.leaders}</div>
-          <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-            {t.dash.leadersHint}
-          </div>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <div className="eyebrow">{t.dash.leaders}</div>
         <div className="dash-range-switch" style={{ flexShrink: 0 }}>
           {['1d', '7d', '30d', '90d'].map((r) => (
             <button
@@ -423,11 +418,92 @@ function StatCard({ label, value, delta, deltaColor, sub, accent, children }) {
     <div className="glass dash-stat-card">
       {accent && <div className="dash-stat-accent" />}
       <div className="eyebrow">{label}</div>
-      <div className="display dash-stat-value">{value}</div>
+      {value != null && value !== '' && <div className="display dash-stat-value">{value}</div>}
       {delta && <div className="dash-stat-delta" style={{ color: deltaColor || 'var(--green)' }}>{delta}</div>}
       {sub && <div className="dash-stat-sub">{sub}</div>}
       {children}
     </div>
+  );
+}
+
+function allocationTypeLabel(lang, key) {
+  const labels = {
+    Knives: { en: 'Knives', ru: 'Ножи', zh: '刀具', 'zh-TW': '刀具' },
+    Gloves: { en: 'Gloves', ru: 'Перчатки', zh: '手套', 'zh-TW': '手套' },
+    Rifles: { en: 'Rifles', ru: 'Винтовки', zh: '步枪', 'zh-TW': '步槍' },
+    Snipers: { en: 'Snipers', ru: 'Снайперские', zh: '狙击枪', 'zh-TW': '狙擊槍' },
+    SMGs: { en: 'SMGs', ru: 'ПП', zh: '冲锋枪', 'zh-TW': '衝鋒槍' },
+    Shotguns: { en: 'Shotguns', ru: 'Дробовики', zh: '霰弹枪', 'zh-TW': '霰彈槍' },
+    Machineguns: { en: 'Machine guns', ru: 'Пулемёты', zh: '机枪', 'zh-TW': '機槍' },
+    Pistols: { en: 'Pistols', ru: 'Пистолеты', zh: '手枪', 'zh-TW': '手槍' },
+    Agents: { en: 'Agents', ru: 'Агенты', zh: '探员', 'zh-TW': '探員' },
+    Stickers: { en: 'Stickers', ru: 'Стикеры', zh: '贴纸', 'zh-TW': '貼紙' },
+    Cases: { en: 'Cases', ru: 'Кейсы', zh: '武器箱', 'zh-TW': '武器箱' },
+    Capsules: { en: 'Capsules', ru: 'Капсулы', zh: '胶囊', 'zh-TW': '膠囊' },
+    Graffiti: { en: 'Graffiti', ru: 'Граффити', zh: '涂鸦', 'zh-TW': '塗鴉' },
+    Patches: { en: 'Patches', ru: 'Патчи', zh: '补丁', 'zh-TW': '補丁' },
+    Charms: { en: 'Charms', ru: 'Брелоки', zh: '挂件', 'zh-TW': '掛件' },
+    Music: { en: 'Music kits', ru: 'Музыка', zh: '音乐盒', 'zh-TW': '音樂盒' },
+    Tools: { en: 'Tools', ru: 'Инструменты', zh: '工具', 'zh-TW': '工具' },
+    Other: { en: 'Other', ru: 'Другое', zh: '其他', 'zh-TW': '其他' },
+  };
+  return tt(lang, labels[key] || { en: key, ru: key, zh: key, 'zh-TW': key });
+}
+
+function AllocationStatCard({ lang, allocation }) {
+  const t = useT(lang);
+  const rows = (Array.isArray(allocation) ? allocation : [])
+    .filter((row) => row && Number(row.v) > 0)
+    .map((row) => ({
+      key: String(row.l || 'Other'),
+      value: Number(row.v) || 0,
+      pct: Number(row.p) || 0,
+      color: row.c || 'var(--fg-3)',
+    }));
+  const shown = rows.slice(0, 4);
+  const hiddenCount = Math.max(0, rows.length - shown.length);
+
+  return (
+    <StatCard label={t.dash.breakdown}>
+      {rows.length === 0 ? (
+        <div className="dash-stat-sub">
+          {tt(lang, { en: 'No priced items', ru: 'Нет оценённых предметов', zh: '暂无已估价物品', 'zh-TW': '暫無已估價物品' })}
+        </div>
+      ) : (
+        <div className="dash-alloc">
+          <div className="dash-alloc-bar" aria-hidden="true">
+            {rows.map((row) => (
+              <span
+                key={row.key}
+                style={{ flex: `${Math.max(row.value, 0.01)} 1 0`, background: row.color }}
+                title={`${allocationTypeLabel(lang, row.key)} ${row.pct}%`}
+              />
+            ))}
+          </div>
+          <ul className="dash-alloc-list">
+            {shown.map((row) => (
+              <li key={row.key} className="dash-alloc-row">
+                <span className="dash-alloc-name">
+                  <i className="dash-alloc-dot" style={{ background: row.color }} />
+                  {allocationTypeLabel(lang, row.key)}
+                </span>
+                <span className="dash-alloc-pct">{row.pct}%</span>
+              </li>
+            ))}
+          </ul>
+          {hiddenCount > 0 && (
+            <div className="dash-stat-sub">
+              {tt(lang, {
+                en: `+${hiddenCount} more types`,
+                ru: `ещё ${hiddenCount} типов`,
+                zh: `另有 ${hiddenCount} 类`,
+                'zh-TW': `另有 ${hiddenCount} 類`,
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </StatCard>
   );
 }
 
@@ -768,27 +844,6 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
     return sum + unitValue * qty;
   }, 0);
   const notMarketableQty = Math.max(0, data.totalInventoryCount - marketableQty);
-  const valueRows = items
-    .map((item) => ({
-      name: item.name || item.marketHashName || 'Unknown item',
-      value: holdingUsd(item, priceMode) || 0,
-    }))
-    .filter((item) => item.value > 0)
-    .sort((a, b) => b.value - a.value);
-  const topItem = valueRows[0];
-  const topItemPct = topItem && displayTotal > 0 ? (topItem.value / displayTotal) * 100 : 0;
-  const topFiveValue = valueRows.slice(0, 5).reduce((sum, item) => sum + item.value, 0);
-  const topFivePct = displayTotal > 0 ? (topFiveValue / displayTotal) * 100 : 0;
-  const historyMeta = data.history && !Array.isArray(data.history) ? data.history : {};
-  const historySources = Array.isArray(historyMeta.sources) && historyMeta.sources.length
-    ? historyMeta.sources.join(' + ')
-    : (tt(lang, { en: 'no history', ru: 'нет истории', zh: '暂无历史', 'zh-TW': '暫無歷史' }));
-  const historySubtitle = tt(lang, {
-    en: `USD · real price history · ${historyMeta.coveragePct || 0}% coverage · ${historySources}`,
-    ru: `USD · история реальных цен · покрытие ${historyMeta.coveragePct || 0}% · ${historySources}`,
-    zh: `USD · 真实价格历史 · 覆盖 ${historyMeta.coveragePct || 0}% · ${historySources}`,
-    'zh-TW': `USD · 真實價格歷史 · 覆蓋 ${historyMeta.coveragePct || 0}% · ${historySources}`,
-  });
   const activePortfolio = portfolios.find((entry) => String(entry.id) === String(activePortfolioId));
   const portfolioTitle = isPublicPortfolio
     ? (data.profile?.personaname || data.profile?.name || (tt(lang, { en: 'Public portfolio', ru: 'Публичный портфель', zh: '公开库存', 'zh-TW': '公開庫存' })))
@@ -1078,10 +1133,10 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 deltaColor={pnlColor}
                 sub={isManualPortfolio
                   ? tt(lang, {
-                    en: `Open ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Sold ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
-                    ru: `Открытый ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Продажи ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
-                    zh: `Open ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Sold ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
-                    'zh-TW': `Open ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Sold ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
+                    en: `Unrealized P&L ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Realized P&L ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
+                    ru: `Нереализ. P&L ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Реализ. P&L ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
+                    zh: `未实现 P&L ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · 已实现 P&L ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
+                    'zh-TW': `未實現 P&L ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · 已實現 P&L ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
                   })
                   : tt(lang, {
                     en: `Cost basis ${compactUsd(data.totalBasis)}`,
@@ -1117,27 +1172,13 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 })}
               />
               )}
-              <StatCard
-                label={tt(lang, { en: 'CONCENTRATION', ru: 'КОНЦЕНТРАЦИЯ', zh: '集中度', 'zh-TW': '集中度' })}
-                value={topItem ? `${topItemPct.toFixed(0)}%` : '0%'}
-                delta={topItem ? topItem.name : (tt(lang, { en: 'No priced items', ru: 'Нет оценённых предметов', zh: '暂无已估价物品', 'zh-TW': '暫無已估價物品' }))}
-                deltaColor="var(--amber)"
-                sub={tt(lang, {
-                  en: `Top 5 = ${topFivePct.toFixed(0)}% of portfolio`,
-                  ru: `Топ-5 = ${topFivePct.toFixed(0)}% портфеля`,
-                  zh: `前 5 = 库存的 ${topFivePct.toFixed(0)}%`,
-                  'zh-TW': `前 5 = 庫存的 ${topFivePct.toFixed(0)}%`,
-                })}
-              />
+              <AllocationStatCard lang={lang} allocation={data.allocation} />
             </div>
 
             <div className="dash-chart-row">
               <div className="glass dash-panel">
                 <div className="dash-chart-toolbar">
-                  <div>
-                    <div className="eyebrow">{tt(lang, { en: 'VALUE OVER TIME', ru: 'СТОИМОСТЬ ВО ВРЕМЕНИ', zh: '价值随时间', 'zh-TW': '價值隨時間' })}</div>
-                    <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{historySubtitle}</div>
-                  </div>
+                  <div className="eyebrow">{tt(lang, { en: 'VALUE OVER TIME', ru: 'СТОИМОСТЬ ВО ВРЕМЕНИ', zh: '价值随时间', 'zh-TW': '價值隨時間' })}</div>
                   <div className="dash-range-switch">
                     {['7d', '30d', '90d', 'ALL'].map(r => (
                       <button key={r} onClick={() => setRange(r)} style={{
@@ -1832,47 +1873,54 @@ function portfolioInputStyle(extra = {}) {
 
 function BasisCell({ basisPerUnit, basisOriginal, basisCurrency, hasBasis, qty, totalBasis, lang, editable, onEdit }) {
   const inputCurrency = getActiveCurrency();
+  const qtyNum = Number(qty);
+  const safeQty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1;
 
-  const editHint = editable ? (tt(lang, { en: ' · click to edit', ru: ' · клик, чтобы изменить', zh: ' · click to edit', 'zh-TW': ' · click to edit' })) : '';
-  const titleTotal = hasBasis && qty > 1
-    ? ((basisCurrency === 'rub' || basisCurrency === 'cny') && Number.isFinite(basisOriginal)
-      ? formatMoney(basisOriginal * qty, { currency: basisCurrency })
-      : (Number.isFinite(totalBasis) ? formatUsd(totalBasis) : null))
-    : null;
-  const title = (titleTotal
-    ? tt(lang, {
-      en: `Total: ${titleTotal} · per unit`,
-      ru: `Всего: ${titleTotal} · за шт.`,
-      zh: `合计: ${titleTotal} · 每件`,
-      'zh-TW': `合計: ${titleTotal} · 每件`,
-    })
-    : (tt(lang, { en: 'Buy price per item', ru: 'Цена покупки за шт.', zh: '每件买入价', 'zh-TW': '每件買入價' }))) + editHint;
-
-  // basisOriginal keeps the exact amount the user typed in its original currency.
-  // When the active currency differs, convert the USD basis (basisPerUnit) instead of
-  // formatting the USD number as if it were already in the active currency.
-  const displayBasis = !hasBasis
+  const displayUnit = !hasBasis
     ? (tt(lang, { en: 'not set', ru: 'не задан', zh: 'not set', 'zh-TW': 'not set' }))
     : (basisCurrency === inputCurrency && Number.isFinite(basisOriginal)
       ? formatMoney(basisOriginal, { currency: inputCurrency })
       : (Number.isFinite(basisPerUnit) ? formatMoney(basisPerUnit) : '—'));
 
+  const displayTotal = !hasBasis
+    ? null
+    : (basisCurrency === inputCurrency && Number.isFinite(basisOriginal)
+      ? formatMoney(basisOriginal * safeQty, { currency: inputCurrency })
+      : (Number.isFinite(totalBasis) && totalBasis > 0
+        ? formatMoney(totalBasis)
+        : (Number.isFinite(basisPerUnit) ? formatMoney(basisPerUnit * safeQty) : null)));
+
+  const editHint = editable ? (tt(lang, { en: ' · click to edit', ru: ' · клик, чтобы изменить', zh: ' · click to edit', 'zh-TW': ' · click to edit' })) : '';
+  const title = (displayTotal
+    ? tt(lang, {
+      en: `${displayUnit} each · ${displayTotal} total`,
+      ru: `${displayUnit} за шт. · ${displayTotal} сумма`,
+      zh: `${displayUnit} / 件 · 合计 ${displayTotal}`,
+      'zh-TW': `${displayUnit} / 件 · 合計 ${displayTotal}`,
+    })
+    : (tt(lang, { en: 'Buy price per item', ru: 'Цена покупки за шт.', zh: '每件买入价', 'zh-TW': '每件買入價' }))) + editHint;
+
   return (
     <div
-      className="mono"
+      className="inv-value-cell"
       title={title}
       onClick={editable ? onEdit : undefined}
-      style={{
-        fontSize: 12,
-        color: hasBasis ? 'var(--fg-2)' : 'var(--fg-3)',
-        display: 'inline-block',
-        maxWidth: '100%',
-        cursor: editable ? 'pointer' : 'inherit',
-        textDecoration: editable ? 'underline dotted' : 'none',
-        textUnderlineOffset: 3,
-      }}
+      style={{ cursor: editable ? 'pointer' : 'inherit' }}
     >
-      {displayBasis}
+      <div
+        className="mono inv-value-mark"
+        style={{
+          fontSize: 12,
+          color: hasBasis ? 'var(--fg-2)' : 'var(--fg-3)',
+          textDecoration: editable ? 'underline dotted' : 'none',
+          textUnderlineOffset: 3,
+        }}
+      >
+        {displayUnit}
+      </div>
+      {displayTotal && safeQty > 1 && (
+        <div className="inv-value-steam">{displayTotal}</div>
+      )}
     </div>
   );
 }
@@ -2269,7 +2317,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         <SortHeader
           label={tt(lang, { en: 'Basis', ru: 'Покупка', zh: '成本', 'zh-TW': '成本' })}
           column="basis"
-          title={tt(lang, { en: 'Cost per unit. Change it from the Edit button.', ru: 'Себестоимость за 1 шт. Меняется через кнопку Изменить.', zh: '单件成本。通过“编辑”按钮修改。', 'zh-TW': '單件成本。透過「編輯」按鈕修改。' })}
+          title={tt(lang, { en: 'Cost per item, with the total purchase cost underneath.', ru: 'Цена покупки за шт. Ниже — сумма покупки.', zh: '单件成本，下方为总买入金额。', 'zh-TW': '單件成本，下方為總買入金額。' })}
         />
         <SortHeader
           label={tt(lang, { en: 'Now', ru: 'За шт.', zh: '现价', 'zh-TW': '現價' })}
