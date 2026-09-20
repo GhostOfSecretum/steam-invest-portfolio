@@ -997,6 +997,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
               activePortfolioId={activePortfolioId}
               portfolioType={isSwitchingPortfolio ? (activePortfolioId === 'steam' ? 'steam' : 'manual') : data.portfolioType}
               switching={isSwitchingPortfolio}
+              cashUsd={cashUsd}
               onSelect={(id) => setSelectedPortfolioId(id)}
               onChanged={(id) => {
                 if (id) setSelectedPortfolioId(id);
@@ -1226,6 +1227,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   portfolioId={activePortfolioId}
                   portfolioType={data.portfolioType}
                   priceMode={priceMode}
+                  cashUsd={cashUsd}
                   onBasisSaved={() => portfolio.reload(false)}
                   onItemDeleted={() => portfolio.reload(false)}
                 />
@@ -1438,7 +1440,7 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
   );
 }
 
-function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfolioType, switching = false, onSelect, onChanged, onPublicProfile }) {
+function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfolioType, switching = false, cashUsd = 0, onSelect, onChanged, onPublicProfile }) {
   const t = useT(lang);
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -1591,6 +1593,7 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
         <ManualItemForm
           lang={lang}
           portfolioId={manualActive ? activePortfolioId : null}
+          cashUsd={cashUsd}
           onSaved={() => onChanged(activePortfolioId)}
         />
       </section>
@@ -1598,10 +1601,11 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
   );
 }
 
-function ManualItemForm({ lang, portfolioId, onSaved }) {
+function ManualItemForm({ lang, portfolioId, cashUsd = 0, onSaved }) {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [basisPerUnit, setBasisPerUnit] = useState('');
+  const [payFrom, setPayFrom] = useState('cash');
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
@@ -1656,6 +1660,21 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
     event.preventDefault();
     if (!portfolioId) return;
     const selectedMarketHashName = selectedSuggestion?.marketHashName === name.trim() ? selectedSuggestion : null;
+    const qty = Number(quantity);
+    const price = Number(String(basisPerUnit).replace(',', '.'));
+    const source = Number(cashUsd) > 0 ? (payFrom === 'external' ? 'external' : 'cash') : 'external';
+    if (source === 'cash') {
+      const costUsd = estimatePurchaseUsd(qty, price);
+      if (Number.isFinite(costUsd) && costUsd > Number(cashUsd) + 0.005) {
+        window.alert(tt(lang, {
+          en: 'Not enough cash for this purchase. Choose outside money, or lower the amount.',
+          ru: 'Не хватает кэша на эту покупку. Выбери «Со стороны» или уменьши сумму.',
+          zh: 'Not enough cash for this purchase. Choose outside money, or lower the amount.',
+          'zh-TW': 'Not enough cash for this purchase. Choose outside money, or lower the amount.',
+        }));
+        return;
+      }
+    }
     setSaving(true);
     try {
       await apiFetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/items`, {
@@ -1664,9 +1683,10 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
         body: JSON.stringify({
           marketHashName: name.trim(),
           name: name.trim(),
-          quantity: Number(quantity),
-          basisPerUnit: Number(String(basisPerUnit).replace(',', '.')),
+          quantity: qty,
+          basisPerUnit: price,
           currency,
+          payFrom: source,
           iconUrl: selectedMarketHashName?.iconUrl,
           marketUrl: selectedMarketHashName?.marketUrl,
           category: selectedMarketHashName?.category,
@@ -1781,6 +1801,12 @@ function ManualItemForm({ lang, portfolioId, onSaved }) {
           aria-label={tt(lang, { en: 'Purchase price per item', ru: 'Цена покупки за штуку', zh: 'Purchase price per item', 'zh-TW': 'Purchase price per item' })}
           style={portfolioInputStyle({ width: 120, height: 34 })}
         />
+        <PayFromPicker
+          lang={lang}
+          cashUsd={cashUsd}
+          value={payFrom === 'external' ? 'external' : 'cash'}
+          onChange={setPayFrom}
+        />
         <button className="btn btn-sm btn-primary" disabled={!portfolioId || saving}>
           {saving ? '...' : (tt(lang, { en: 'Add', ru: 'Добавить', zh: 'Add', 'zh-TW': 'Add' }))}
         </button>
@@ -1869,11 +1895,73 @@ function PeriodChangeCell({ pct }) {
   );
 }
 
-function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolioId, portfolioType, priceMode = 'market', onBasisSaved, onItemDeleted }) {
+function estimatePurchaseUsd(quantity, pricePerUnit) {
+  const qty = Number(quantity);
+  const price = Number(pricePerUnit);
+  if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(price) || price < 0) return null;
+  const currency = getActiveCurrency();
+  if (currency === 'rub') {
+    const rate = getRubPerUsdRate();
+    return Number.isFinite(rate) && rate > 0 ? (price * qty) / rate : null;
+  }
+  if (currency === 'cny') {
+    const rate = getCnyPerUsdRate();
+    return Number.isFinite(rate) && rate > 0 ? (price * qty) / rate : null;
+  }
+  return price * qty;
+}
+
+function PayFromPicker({ lang, cashUsd, value, onChange }) {
+  const cash = Number(cashUsd) || 0;
+  if (!(cash > 0)) return null;
+  const cashLabel = tt(lang, {
+    en: `From cash (${compactUsd(cash)})`,
+    ru: `С кэша (${compactUsd(cash)})`,
+    zh: `From cash (${compactUsd(cash)})`,
+    'zh-TW': `From cash (${compactUsd(cash)})`,
+  });
+  const externalLabel = tt(lang, {
+    en: 'Outside money',
+    ru: 'Со стороны',
+    zh: 'Outside money',
+    'zh-TW': 'Outside money',
+  });
+  return (
+    <div
+      className="pay-from-picker"
+      role="radiogroup"
+      aria-label={tt(lang, { en: 'Pay from', ru: 'Оплата', zh: 'Pay from', 'zh-TW': 'Pay from' })}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        role="radio"
+        aria-checked={value === 'cash'}
+        data-active={value === 'cash'}
+        onClick={() => onChange('cash')}
+        title={tt(lang, { en: 'Spend tracked cash from sales and deposits', ru: 'Списать учтённые наличные с продаж и пополнений', zh: 'Spend tracked cash from sales and deposits', 'zh-TW': 'Spend tracked cash from sales and deposits' })}
+      >
+        {cashLabel}
+      </button>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={value === 'external'}
+        data-active={value === 'external'}
+        onClick={() => onChange('external')}
+        title={tt(lang, { en: 'Buy with money that is not in this cash balance', ru: 'Купить на деньги, которых нет в кэше портфеля', zh: 'Buy with money that is not in this cash balance', 'zh-TW': 'Buy with money that is not in this cash balance' })}
+      >
+        {externalLabel}
+      </button>
+    </div>
+  );
+}
+
+function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolioId, portfolioType, priceMode = 'market', cashUsd = 0, onBasisSaved, onItemDeleted }) {
   const [editingItemId, setEditingItemId] = useState(null);
   const [editDraft, setEditDraft] = useState({ quantity: '', basisPerUnit: '' });
   const [addingItemId, setAddingItemId] = useState(null);
-  const [addDraft, setAddDraft] = useState({ quantity: '1', basisPerUnit: '' });
+  const [addDraft, setAddDraft] = useState({ quantity: '1', basisPerUnit: '', payFrom: 'cash' });
   const [sellingItemId, setSellingItemId] = useState(null);
   const [sellDraft, setSellDraft] = useState({ quantity: '1', proceedsPerUnit: '' });
   const [savingItemId, setSavingItemId] = useState(null);
@@ -1963,7 +2051,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         : Number(usdBasisToInputDraft(item.basis, inputCurrency)))
       : NaN;
     setAddingItemId(null);
-    setAddDraft({ quantity: '1', basisPerUnit: '' });
+    setAddDraft({ quantity: '1', basisPerUnit: '', payFrom: 'cash' });
     setSellingItemId(null);
     setSellDraft({ quantity: '1', proceedsPerUnit: '' });
     setEditingItemId(rowEditKey(item));
@@ -1986,13 +2074,13 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
     setSellingItemId(null);
     setSellDraft({ quantity: '1', proceedsPerUnit: '' });
     setAddingItemId(rowEditKey(item));
-    setAddDraft({ quantity: '1', basisPerUnit: '' });
+    setAddDraft({ quantity: '1', basisPerUnit: '', payFrom: 'cash' });
   };
 
   const cancelAddToPosition = (event) => {
     event.stopPropagation();
     setAddingItemId(null);
-    setAddDraft({ quantity: '1', basisPerUnit: '' });
+    setAddDraft({ quantity: '1', basisPerUnit: '', payFrom: 'cash' });
   };
 
   const sellPriceDraft = (item) => {
@@ -2006,7 +2094,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
     setEditingItemId(null);
     setEditDraft({ quantity: '', basisPerUnit: '' });
     setAddingItemId(null);
-    setAddDraft({ quantity: '1', basisPerUnit: '' });
+    setAddDraft({ quantity: '1', basisPerUnit: '', payFrom: 'cash' });
     setSellingItemId(rowEditKey(item));
     setSellDraft({
       quantity: '1',
@@ -2067,6 +2155,19 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
       window.alert(tt(lang, { en: 'Enter a valid quantity and price.', ru: 'Укажи корректное количество и цену.', zh: 'Enter a valid quantity and price.', 'zh-TW': 'Enter a valid quantity and price.' }));
       return;
     }
+    const payFrom = Number(cashUsd) > 0 ? (addDraft.payFrom === 'external' ? 'external' : 'cash') : 'external';
+    if (payFrom === 'cash') {
+      const costUsd = estimatePurchaseUsd(quantity, basisPerUnit);
+      if (Number.isFinite(costUsd) && costUsd > Number(cashUsd) + 0.005) {
+        window.alert(tt(lang, {
+          en: 'Not enough cash for this purchase. Withdraw less, or pay with outside money.',
+          ru: 'Не хватает кэша на эту покупку. Выбери «Со стороны» или уменьши сумму.',
+          zh: 'Not enough cash for this purchase. Withdraw less, or pay with outside money.',
+          'zh-TW': 'Not enough cash for this purchase. Withdraw less, or pay with outside money.',
+        }));
+        return;
+      }
+    }
 
     setSavingItemId(rowEditKey(item));
     try {
@@ -2079,6 +2180,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
           quantity,
           basisPerUnit,
           currency: getActiveCurrency(),
+          payFrom,
           iconUrl: item.iconUrl,
           marketUrl: item.marketUrl,
           category: item.category,
@@ -2088,7 +2190,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         }),
       });
       setAddingItemId(null);
-      setAddDraft({ quantity: '1', basisPerUnit: '' });
+      setAddDraft({ quantity: '1', basisPerUnit: '', payFrom: 'cash' });
       if (onBasisSaved) onBasisSaved();
     } catch (err) {
       window.alert(err.message || (tt(lang, { en: 'Could not add item', ru: 'Не удалось добавить предмет', zh: 'Could not add item', 'zh-TW': 'Could not add item' })));
@@ -2372,6 +2474,12 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
                         title={tt(lang, { en: 'Purchase price per item', ru: 'Цена покупки за штуку', zh: 'Purchase price per item', 'zh-TW': 'Purchase price per item' })}
                         aria-label={tt(lang, { en: 'Purchase price per item', ru: 'Цена покупки за штуку', zh: 'Purchase price per item', 'zh-TW': 'Purchase price per item' })}
                         style={portfolioInputStyle({ width: 88, fontFamily: 'var(--f-mono)' })}
+                      />
+                      <PayFromPicker
+                        lang={lang}
+                        cashUsd={cashUsd}
+                        value={addDraft.payFrom === 'external' ? 'external' : 'cash'}
+                        onChange={(next) => setAddDraft((draft) => ({ ...draft, payFrom: next }))}
                       />
                       <button className="btn btn-sm btn-primary" type="submit" disabled={savingItemId === rowEditKey(h)}>
                         {savingItemId === rowEditKey(h) ? '...' : (tt(lang, { en: 'Add', ru: 'Добавить', zh: 'Add', 'zh-TW': 'Add' }))}

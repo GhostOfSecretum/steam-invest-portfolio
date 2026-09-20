@@ -307,7 +307,8 @@ async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
   const basis = await makeBasisRecord(marketHashName, payload.basisPerUnit, payload.currency);
   const now = new Date().toISOString();
   const costUsd = roundUsd((Number(basis.usdPerUnit) || 0) * quantity);
-  const cashSpentUsd = spendCashForPurchase(portfolio, costUsd);
+  const payFrom = normalizePayFrom(payload.payFrom, portfolio.cashUsd);
+  const cashSpentUsd = payFrom === 'cash' ? spendCashForPurchase(portfolio, costUsd) : 0;
   // Manual table stacks by marketHashName — keep a single row per name so edit/delete match UI totals.
   const siblings = (portfolio.items || []).filter((entry) => entry.marketHashName === marketHashName);
   const existing = siblings[0];
@@ -1749,12 +1750,25 @@ function applyCashDelta(portfolio, deltaUsd) {
   return portfolio.cashUsd;
 }
 
+function normalizePayFrom(value, cashUsd) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'cash' || raw === 'balance') return 'cash';
+  if (raw === 'external' || raw === 'outside' || raw === 'untracked') return 'external';
+  return safeCash(cashUsd) > 0.005 ? 'cash' : 'external';
+}
+
 function spendCashForPurchase(portfolio, costUsd) {
   const cost = Math.max(0, roundUsd(costUsd));
+  if (cost <= 0) return 0;
   const cash = safeCash(portfolio.cashUsd);
-  const spent = Math.min(cash, cost);
-  if (spent > 0) applyCashDelta(portfolio, -spent);
-  return spent;
+  if (cash + 0.005 < cost) {
+    const err = new Error('Not enough cash for this purchase');
+    err.status = 400;
+    err.code = 'insufficient_cash';
+    throw err;
+  }
+  applyCashDelta(portfolio, -cost);
+  return cost;
 }
 
 function reverseLedgerFromEvent(portfolio, event) {

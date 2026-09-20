@@ -1594,6 +1594,33 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   min-width: 0;
 }
+.pay-from-picker {
+  display: inline-flex;
+  align-items: stretch;
+  height: 31px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 0 1 auto;
+  background: rgba(255,255,255,0.02);
+}
+.pay-from-picker button {
+  padding: 0 10px;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  background: transparent;
+  white-space: nowrap;
+  transition: color 140ms ease, background 140ms ease;
+}
+.pay-from-picker button:hover {
+  color: var(--fg-1);
+}
+.pay-from-picker button[data-active="true"] {
+  color: var(--fg-0);
+  background: rgba(255,255,255,0.08);
+}
 .inv-value-steam {
   margin-top: 2px;
   font-family: var(--f-mono);
