@@ -17,6 +17,11 @@ function makeActivityEvent(partial = {}) {
     ? partial.qtyDelta
     : (qtyBefore != null && qtyAfter != null ? qtyAfter - qtyBefore : null);
 
+  const finiteOrNull = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+
   return {
     id: partial.id || `evt-${crypto.randomUUID()}`,
     at: partial.at || new Date().toISOString(),
@@ -26,8 +31,15 @@ function makeActivityEvent(partial = {}) {
     qtyBefore,
     qtyAfter,
     qtyDelta,
-    basisPerUnit: Number.isFinite(partial.basisPerUnit) ? partial.basisPerUnit : null,
+    basisPerUnit: finiteOrNull(partial.basisPerUnit),
+    proceedsPerUnit: finiteOrNull(partial.proceedsPerUnit),
+    proceedsUsd: finiteOrNull(partial.proceedsUsd),
+    realizedPnlUsd: finiteOrNull(partial.realizedPnlUsd),
+    cashDeltaUsd: finiteOrNull(partial.cashDeltaUsd),
+    costUsd: finiteOrNull(partial.costUsd),
+    amount: finiteOrNull(partial.amount),
     currency: partial.currency || null,
+    proceedsCurrency: partial.proceedsCurrency || null,
     source: partial.source || 'manual',
     iconUrl: typeof partial.iconUrl === 'string' && partial.iconUrl.trim() ? partial.iconUrl.trim() : null,
   };

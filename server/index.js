@@ -22,6 +22,8 @@ const {
   createManualPortfolio,
   deleteManualPortfolio,
   addManualPortfolioItem,
+  sellManualPortfolioItem,
+  adjustManualPortfolioCash,
   deleteManualPortfolioItem,
   updateManualPortfolioItem,
   setBasisPerUnitByMarketHashName,
@@ -664,6 +666,25 @@ app.delete('/api/portfolios/:portfolioId', asyncRoute(async (req, res) => {
 app.post('/api/portfolios/:portfolioId/items', asyncRoute(async (req, res) => {
   const portfolio = await addManualPortfolioItem(resolveOwnerId(req, { create: true }), req.params.portfolioId, req.body);
   res.status(201).json({ portfolio });
+}));
+
+app.post('/api/portfolios/:portfolioId/items/:itemId/sell', asyncRoute(async (req, res) => {
+  const portfolio = await sellManualPortfolioItem(
+    resolveOwnerId(req, { create: true }),
+    req.params.portfolioId,
+    req.params.itemId,
+    req.body,
+  );
+  res.json({ portfolio });
+}));
+
+app.post('/api/portfolios/:portfolioId/cash', asyncRoute(async (req, res) => {
+  const portfolio = await adjustManualPortfolioCash(
+    resolveOwnerId(req, { create: true }),
+    req.params.portfolioId,
+    req.body,
+  );
+  res.json({ portfolio });
 }));
 
 app.patch('/api/portfolios/:portfolioId/items/:itemId', asyncRoute(async (req, res) => {

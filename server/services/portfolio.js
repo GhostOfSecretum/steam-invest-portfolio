@@ -198,9 +198,13 @@ async function getPortfolio(steamId, options = {}) {
     uniqueInventoryCount: items.length,
     pricedCount,
     totalValue,
+    itemsValue: totalValue,
     totalSteamValue,
     valuation: 'market',
     totalBasis,
+    cashUsd: 0,
+    realizedPnlUsd: 0,
+    unrealizedPnl: pnl,
     pnl,
     pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
     steamRubRate: Number.isFinite(steamRubRate) ? steamRubRate : null,
@@ -247,6 +251,9 @@ async function createManualPortfolio(ownerId, name) {
     type: 'manual',
     items: [],
     events: [],
+    cashUsd: 0,
+    realizedPnlUsd: 0,
+    realizedCostUsd: 0,
     createdAt: now,
     updatedAt: now,
   };
@@ -299,6 +306,8 @@ async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
 
   const basis = await makeBasisRecord(marketHashName, payload.basisPerUnit, payload.currency);
   const now = new Date().toISOString();
+  const costUsd = roundUsd((Number(basis.usdPerUnit) || 0) * quantity);
+  const cashSpentUsd = spendCashForPurchase(portfolio, costUsd);
   // Manual table stacks by marketHashName — keep a single row per name so edit/delete match UI totals.
   const siblings = (portfolio.items || []).filter((entry) => entry.marketHashName === marketHashName);
   const existing = siblings[0];
@@ -335,6 +344,8 @@ async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
       qtyDelta: quantity,
       basisPerUnit: Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit,
       currency: basis.currency || null,
+      cashDeltaUsd: cashSpentUsd ? -cashSpentUsd : 0,
+      costUsd,
       source: 'manual',
     }));
   } else {
@@ -365,11 +376,159 @@ async function addManualPortfolioItem(ownerId, portfolioId, payload = {}) {
       qtyDelta: quantity,
       basisPerUnit: Number.isFinite(basis.amount) ? basis.amount : basis.usdPerUnit,
       currency: basis.currency || null,
+      cashDeltaUsd: cashSpentUsd ? -cashSpentUsd : 0,
+      costUsd,
       source: 'manual',
     }));
   }
   portfolio.updatedAt = now;
   bucket.activePortfolioId = portfolio.id;
+  await writeManualPortfolioStore(store);
+  return portfolio;
+}
+
+async function sellManualPortfolioItem(ownerId, portfolioId, itemId, payload = {}) {
+  const store = await readManualPortfolioStore();
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
+  const portfolio = bucket.portfolios.find((entry) => entry.id === portfolioId);
+  if (!portfolio) {
+    const err = new Error('Manual portfolio not found');
+    err.status = 404;
+    err.code = 'portfolio_not_found';
+    throw err;
+  }
+
+  const item = portfolio.items.find((entry) => entry.id === itemId);
+  if (!item) {
+    const err = new Error('Manual portfolio item not found');
+    err.status = 404;
+    err.code = 'item_not_found';
+    throw err;
+  }
+
+  const quantity = safeQty(payload.quantity ?? payload.qty);
+  if (quantity <= 0) {
+    const err = new Error('quantity must be a positive number');
+    err.status = 400;
+    err.code = 'invalid_quantity';
+    throw err;
+  }
+
+  const siblings = (portfolio.items || []).filter((entry) => entry.marketHashName === item.marketHashName);
+  const qtyBefore = siblings.reduce((sum, entry) => sum + safeQty(entry.quantity ?? entry.amount), 0);
+  if (quantity > qtyBefore) {
+    const err = new Error('Cannot sell more than the current position');
+    err.status = 400;
+    err.code = 'insufficient_quantity';
+    throw err;
+  }
+
+  const proceedsPerUnit = Number(payload.proceedsPerUnit ?? payload.pricePerUnit ?? payload.basisPerUnit);
+  if (!Number.isFinite(proceedsPerUnit) || proceedsPerUnit < 0) {
+    const err = new Error('Sale price must be a non-negative number');
+    err.status = 400;
+    err.code = 'invalid_proceeds';
+    throw err;
+  }
+
+  const currentBasis = averageBasisRecords(
+    siblings.map((entry) => ({ qty: safeQty(entry.quantity ?? entry.amount), basis: entry.basis })),
+  ) || item.basis;
+  const costEntry = resolveBasisEntry(currentBasis);
+  const saleRecord = await makeBasisRecord(item.marketHashName, proceedsPerUnit, payload.currency);
+  const proceedsUsd = roundUsd((Number(saleRecord.usdPerUnit) || 0) * quantity);
+  const costUsd = roundUsd((Number(costEntry.usdPerUnit) || 0) * quantity);
+  const realizedPnlUsd = roundUsd(proceedsUsd - costUsd);
+  const now = new Date().toISOString();
+  const qtyAfter = qtyBefore - quantity;
+
+  await applyRemoveLotFromPortfolio(portfolio, {
+    marketHashName: item.marketHashName,
+    qty: quantity,
+    basisPerUnit: costEntry.hasBasis ? costEntry.originalAmount : undefined,
+    currency: costEntry.currency || payload.currency || 'usd',
+    now,
+  });
+
+  applyCashDelta(portfolio, proceedsUsd);
+  portfolio.realizedPnlUsd = roundUsd((Number(portfolio.realizedPnlUsd) || 0) + realizedPnlUsd);
+  portfolio.realizedCostUsd = roundUsd((Number(portfolio.realizedCostUsd) || 0) + costUsd);
+  portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
+    at: now,
+    kind: 'sold',
+    marketHashName: item.marketHashName,
+    name: item.name || item.marketHashName,
+    qtyBefore,
+    qtyAfter,
+    qtyDelta: -quantity,
+    basisPerUnit: costEntry.hasBasis ? costEntry.originalAmount : null,
+    proceedsPerUnit,
+    proceedsUsd,
+    realizedPnlUsd,
+    cashDeltaUsd: proceedsUsd,
+    costUsd,
+    currency: costEntry.currency || saleRecord.currency || payload.currency || null,
+    proceedsCurrency: saleRecord.currency || payload.currency || null,
+    source: 'manual',
+  }));
+  portfolio.updatedAt = now;
+  await writeManualPortfolioStore(store);
+  return portfolio;
+}
+
+async function adjustManualPortfolioCash(ownerId, portfolioId, payload = {}) {
+  const action = String(payload.action || payload.kind || '').toLowerCase();
+  const isDeposit = action === 'deposit' || action === 'cash_in' || action === 'in';
+  const isWithdraw = action === 'withdraw' || action === 'cash_out' || action === 'out';
+  if (!isDeposit && !isWithdraw) {
+    const err = new Error('action must be deposit or withdraw');
+    err.status = 400;
+    err.code = 'invalid_cash_action';
+    throw err;
+  }
+
+  const store = await readManualPortfolioStore();
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
+  const portfolio = bucket.portfolios.find((entry) => entry.id === portfolioId);
+  if (!portfolio) {
+    const err = new Error('Manual portfolio not found');
+    err.status = 404;
+    err.code = 'portfolio_not_found';
+    throw err;
+  }
+
+  const converted = await convertAmountToUsd(payload.amount, payload.currency);
+  if (!(converted.usd > 0)) {
+    const err = new Error('amount must be a positive number');
+    err.status = 400;
+    err.code = 'invalid_amount';
+    throw err;
+  }
+
+  const cashBefore = safeCash(portfolio.cashUsd);
+  if (isWithdraw && converted.usd > cashBefore + 0.005) {
+    const err = new Error('Not enough cash to withdraw');
+    err.status = 400;
+    err.code = 'insufficient_cash';
+    throw err;
+  }
+
+  const cashDeltaUsd = isDeposit ? converted.usd : -Math.min(converted.usd, cashBefore);
+  const now = new Date().toISOString();
+  applyCashDelta(portfolio, cashDeltaUsd);
+  portfolio.events = appendEvent(portfolio.events, makeActivityEvent({
+    at: now,
+    kind: isDeposit ? 'cash_in' : 'cash_out',
+    name: isDeposit ? 'Cash deposit' : 'Cash withdrawal',
+    qtyBefore: null,
+    qtyAfter: null,
+    qtyDelta: 0,
+    amount: converted.amount,
+    currency: converted.currency,
+    cashDeltaUsd,
+    source: 'manual',
+  }));
+  portfolio.updatedAt = now;
   await writeManualPortfolioStore(store);
   return portfolio;
 }
@@ -443,6 +602,8 @@ async function deleteManualPortfolioEvent(ownerId, portfolioId, eventId) {
   const marketHashName = String(event.marketHashName || '').trim();
   const qtyDelta = Number(event.qtyDelta);
   const now = new Date().toISOString();
+
+  reverseLedgerFromEvent(portfolio, event);
 
   if (marketHashName && Number.isFinite(qtyDelta) && qtyDelta !== 0) {
     if (qtyDelta > 0) {
@@ -757,13 +918,20 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
   refreshManualItemIconsInBackground(ownerId, portfolio.id);
   const pricedItems = items.filter((item) => item.value != null);
   const totalInventoryCount = items.reduce((sum, item) => sum + item.qty, 0);
-  const totalValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
-  const totalSteamValue = sumSteamValue(items);
+  const itemsValue = pricedItems.reduce((sum, item) => sum + item.value * item.qty, 0);
+  const itemsSteamValue = sumSteamValue(items);
+  const cashUsd = safeCash(portfolio.cashUsd);
+  const realizedPnlUsd = roundUsd(portfolio.realizedPnlUsd);
+  const realizedCostUsd = Math.max(0, roundUsd(portfolio.realizedCostUsd));
+  const totalValue = itemsValue + cashUsd;
+  const totalSteamValue = itemsSteamValue + cashUsd;
   const totalBasis = items.reduce((sum, item) => sum + item.basis * item.qty, 0);
   // P&L must ignore cost of still-unpriced rows, otherwise Steam 429s fake a deep loss.
   // Sum per-position P&L so RUB-entered bases aren't distorted by historical USD FX.
   const pricedBasis = pricedItems.reduce((sum, item) => sum + item.basis * item.qty, 0);
-  const pnl = pricedItems.reduce((sum, item) => sum + (Number(item.pnl) || 0), 0);
+  const unrealizedPnl = pricedItems.reduce((sum, item) => sum + (Number(item.pnl) || 0), 0);
+  const pnl = unrealizedPnl + realizedPnlUsd;
+  const pnlBase = pricedBasis + realizedCostUsd;
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
   const { history, leaders } = await buildPortfolioHistoryAndLeaders(items, totalValue, {
@@ -799,17 +967,22 @@ async function getManualPortfolio(ownerId, portfolioId, steamId = null) {
     assetEntriesCount: portfolio.items.length,
     uniqueInventoryCount: items.length,
     pricedCount,
+    itemsValue,
     totalValue,
     totalSteamValue,
     valuation: 'market',
     totalBasis,
+    cashUsd,
+    realizedPnlUsd,
+    realizedCostUsd,
+    unrealizedPnl,
     pnl,
-    pnlPct: pricedBasis > 0 ? (pnl / pricedBasis) * 100 : 0,
+    pnlPct: pnlBase > 0 ? (pnl / pnlBase) * 100 : 0,
     steamRubRate: Number.isFinite(steamRubRate) ? steamRubRate : null,
     steamCnyRate: Number.isFinite(steamCnyRate) ? steamCnyRate : null,
     liquidityScore: scoreLiquidity(pricedItems),
     totalVolume24h: totalVolume,
-    allocation: buildAllocation(pricedItems, totalValue),
+    allocation: buildAllocation(pricedItems, itemsValue),
     history,
     leaders,
     items,
@@ -882,10 +1055,15 @@ function buildEmptyManualPortfolio(bucket, steamId = null, ownerId = null) {
     assetEntriesCount: 0,
     uniqueInventoryCount: 0,
     pricedCount: 0,
+    itemsValue: 0,
     totalValue: 0,
     totalSteamValue: 0,
     valuation: 'market',
     totalBasis: 0,
+    cashUsd: 0,
+    realizedPnlUsd: 0,
+    realizedCostUsd: 0,
+    unrealizedPnl: 0,
     pnl: 0,
     pnlPct: 0,
     liquidityScore: 0,
@@ -1446,6 +1624,9 @@ function normalizeManualBucket(raw) {
         type: 'manual',
         items: Array.isArray(portfolio.items) ? portfolio.items : [],
         events: Array.isArray(portfolio.events) ? portfolio.events : [],
+        cashUsd: roundUsd(portfolio.cashUsd),
+        realizedPnlUsd: roundUsd(portfolio.realizedPnlUsd),
+        realizedCostUsd: Math.max(0, roundUsd(portfolio.realizedCostUsd)),
         createdAt: portfolio.createdAt || new Date().toISOString(),
         updatedAt: portfolio.updatedAt || portfolio.createdAt || new Date().toISOString(),
       })),
@@ -1551,6 +1732,86 @@ function resolveActiveManualPortfolio(bucket, requestedId = '') {
   const id = String(requestedId || '').trim();
   if (id) return bucket.portfolios.find((portfolio) => portfolio.id === id) || null;
   return bucket.portfolios.find((portfolio) => portfolio.id === bucket.activePortfolioId) || bucket.portfolios[0] || null;
+}
+
+function roundUsd(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return 0;
+  return Math.round(amount * 100) / 100;
+}
+
+function safeCash(value) {
+  return roundUsd(value);
+}
+
+function applyCashDelta(portfolio, deltaUsd) {
+  portfolio.cashUsd = roundUsd(safeCash(portfolio.cashUsd) + Number(deltaUsd || 0));
+  return portfolio.cashUsd;
+}
+
+function spendCashForPurchase(portfolio, costUsd) {
+  const cost = Math.max(0, roundUsd(costUsd));
+  const cash = safeCash(portfolio.cashUsd);
+  const spent = Math.min(cash, cost);
+  if (spent > 0) applyCashDelta(portfolio, -spent);
+  return spent;
+}
+
+function reverseLedgerFromEvent(portfolio, event) {
+  if (!event) return;
+  const cashDelta = Number(event.cashDeltaUsd);
+  if (Number.isFinite(cashDelta) && cashDelta !== 0) {
+    applyCashDelta(portfolio, -cashDelta);
+  }
+  const realized = Number(event.realizedPnlUsd);
+  if (Number.isFinite(realized) && realized !== 0) {
+    portfolio.realizedPnlUsd = roundUsd((Number(portfolio.realizedPnlUsd) || 0) - realized);
+  }
+  const cost = Number(event.costUsd);
+  const isSale = event.kind === 'sold' || (Number(event.qtyDelta) < 0 && Number.isFinite(Number(event.proceedsUsd)));
+  if (isSale && Number.isFinite(cost) && cost !== 0) {
+    portfolio.realizedCostUsd = Math.max(0, roundUsd((Number(portfolio.realizedCostUsd) || 0) - cost));
+  }
+}
+
+async function convertAmountToUsd(amount, currency = 'usd') {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) {
+    const err = new Error('amount must be a number');
+    err.status = 400;
+    err.code = 'invalid_amount';
+    throw err;
+  }
+
+  const cur = String(currency || 'usd').toLowerCase();
+  if (cur === 'usd') return { usd: roundUsd(n), currency: 'usd', amount: n };
+
+  if (cur === 'rub' || cur === 'rur') {
+    const rate = await getSteamRubRate().catch(() => null);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      const err = new Error('Could not convert RUB to USD right now. Try again later or enter the amount in USD.');
+      err.status = 502;
+      err.code = 'steam_fx_unavailable';
+      throw err;
+    }
+    return { usd: roundUsd(n / rate), currency: 'rub', amount: n };
+  }
+
+  if (cur === 'cny' || cur === 'rmb' || cur === 'yuan') {
+    const rate = await getSteamCnyRate().catch(() => null);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      const err = new Error('Could not convert CNY to USD right now. Try again later or enter the amount in USD.');
+      err.status = 502;
+      err.code = 'steam_fx_unavailable';
+      throw err;
+    }
+    return { usd: roundUsd(n / rate), currency: 'cny', amount: n };
+  }
+
+  const err = new Error('currency must be usd, rub, or cny');
+  err.status = 400;
+  err.code = 'invalid_currency';
+  throw err;
 }
 
 function safeQty(value) {
@@ -2124,6 +2385,8 @@ module.exports = {
   createManualPortfolio,
   deleteManualPortfolio,
   addManualPortfolioItem,
+  sellManualPortfolioItem,
+  adjustManualPortfolioCash,
   deleteManualPortfolioItem,
   updateManualPortfolioItem,
   setBasisPerUnitByMarketHashName,

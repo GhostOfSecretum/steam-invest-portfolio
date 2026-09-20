@@ -1,4 +1,4 @@
-/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, formatHoldingUnitPrice, formatSteamSticker, holdingUsd, holdingUnitUsd, holdingPnl, getActiveCurrency, getRubPerUsdRate, getCnyPerUsdRate, tt, localeFor */
+/* global React, useT, usePortfolio, useFavoriteProfiles, compactUsd, formatMoney, formatUsd, formatHoldingValue, formatHoldingUnitPrice, formatSteamSticker, holdingUsd, holdingUnitUsd, holdingPnl, getActiveCurrency, getRubPerUsdRate, getCnyPerUsdRate, usdBasisToInputDraft, tt, localeFor */
 const { useState, useRef, useMemo, useEffect, useCallback } = React;
 
 /* ───────────────────────────────────────────────────
@@ -418,7 +418,7 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
   );
 }
 
-function StatCard({ label, value, delta, deltaColor, sub, accent }) {
+function StatCard({ label, value, delta, deltaColor, sub, accent, children }) {
   return (
     <div className="glass dash-stat-card">
       {accent && <div className="dash-stat-accent" />}
@@ -426,7 +426,104 @@ function StatCard({ label, value, delta, deltaColor, sub, accent }) {
       <div className="display dash-stat-value">{value}</div>
       {delta && <div className="dash-stat-delta" style={{ color: deltaColor || 'var(--green)' }}>{delta}</div>}
       {sub && <div className="dash-stat-sub">{sub}</div>}
+      {children}
     </div>
+  );
+}
+
+function CashStatCard({ lang, cashUsd, portfolioId, editable, onChanged }) {
+  const [mode, setMode] = useState(null);
+  const [amount, setAmount] = useState('');
+  const [saving, setSaving] = useState(false);
+  const cash = Number(cashUsd) || 0;
+  const currency = getActiveCurrency();
+  const placeholder = currency === 'rub' ? '₽' : currency === 'cny' ? '¥' : '$';
+
+  const closeForm = () => {
+    setMode(null);
+    setAmount('');
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!editable || !portfolioId || !mode) return;
+    const value = Number(String(amount).trim().replace(',', '.'));
+    if (!Number.isFinite(value) || value <= 0) {
+      window.alert(tt(lang, { en: 'Enter a valid amount.', ru: 'Укажи корректную сумму.', zh: 'Enter a valid amount.', 'zh-TW': 'Enter a valid amount.' }));
+      return;
+    }
+    setSaving(true);
+    try {
+      await apiFetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/cash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: mode, amount: value, currency }),
+      });
+      closeForm();
+      if (onChanged) onChanged();
+    } catch (err) {
+      window.alert(err.message || (tt(lang, { en: 'Could not update cash', ru: 'Не удалось обновить наличные', zh: 'Could not update cash', 'zh-TW': 'Could not update cash' })));
+    }
+    setSaving(false);
+  };
+
+  return (
+    <StatCard
+      label={tt(lang, { en: 'CASH', ru: 'НАЛИЧНЫЕ', zh: '现金', 'zh-TW': '現金' })}
+      value={compactUsd(cash)}
+      delta={cash >= 0
+        ? tt(lang, { en: 'From sales and deposits', ru: 'С продаж и пополнений', zh: 'From sales and deposits', 'zh-TW': 'From sales and deposits' })
+        : tt(lang, { en: 'Cash is negative', ru: 'Наличные в минусе', zh: 'Cash is negative', 'zh-TW': 'Cash is negative' })}
+      deltaColor={cash >= 0 ? 'var(--cyan)' : 'var(--red)'}
+      sub={tt(lang, {
+        en: 'Withdraw later or spend on a new buy',
+        ru: 'Потом вывести или купить другое',
+        zh: 'Withdraw later or spend on a new buy',
+        'zh-TW': 'Withdraw later or spend on a new buy',
+      })}
+    >
+      {editable && (
+        mode ? (
+          <form className="dash-cash-form" onSubmit={submit}>
+            <input
+              autoFocus
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') closeForm();
+              }}
+              type="number"
+              min="0"
+              step="any"
+              placeholder={placeholder}
+              aria-label={mode === 'deposit'
+                ? tt(lang, { en: 'Deposit amount', ru: 'Сумма пополнения', zh: 'Deposit amount', 'zh-TW': 'Deposit amount' })
+                : tt(lang, { en: 'Withdraw amount', ru: 'Сумма вывода', zh: 'Withdraw amount', 'zh-TW': 'Withdraw amount' })}
+              style={portfolioInputStyle({ width: '100%', fontFamily: 'var(--f-mono)', height: 32 })}
+            />
+            <div className="dash-cash-form-actions">
+              <button className="btn btn-sm btn-primary" type="submit" disabled={saving}>
+                {saving ? '...' : (mode === 'deposit'
+                  ? tt(lang, { en: 'Deposit', ru: 'Ввод', zh: 'Deposit', 'zh-TW': 'Deposit' })
+                  : tt(lang, { en: 'Withdraw', ru: 'Вывод', zh: 'Withdraw', 'zh-TW': 'Withdraw' }))}
+              </button>
+              <button className="btn btn-sm btn-ghost" type="button" onClick={closeForm}>
+                {tt(lang, { en: 'Cancel', ru: 'Отмена', zh: '取消', 'zh-TW': '取消' })}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="dash-cash-actions">
+            <button className="btn btn-sm btn-ghost" type="button" onClick={() => setMode('deposit')}>
+              {tt(lang, { en: 'Deposit', ru: 'Ввод', zh: 'Deposit', 'zh-TW': 'Deposit' })}
+            </button>
+            <button className="btn btn-sm btn-ghost" type="button" onClick={() => setMode('withdraw')} disabled={cash <= 0}>
+              {tt(lang, { en: 'Withdraw', ru: 'Вывод', zh: 'Withdraw', 'zh-TW': 'Withdraw' })}
+            </button>
+          </div>
+        )
+      )}
+    </StatCard>
   );
 }
 
@@ -643,6 +740,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
     : data.pricedCount;
   let displayPnl = data.pnl;
   let displayPnlPct = data.pnlPct;
+  const realizedPnl = Number(data.realizedPnlUsd) || 0;
   if (isSteamPrices) {
     displayPnl = 0;
     let steamBasis = 0;
@@ -651,9 +749,14 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
       displayPnl += holdingPnl(item, 'steam').pnl || 0;
       steamBasis += Number(item.totalBasis) || 0;
     }
-    displayPnlPct = steamBasis > 0 ? (displayPnl / steamBasis) * 100 : 0;
+    displayPnl += realizedPnl;
+    const steamPnlBase = steamBasis + (Number(data.realizedCostUsd) || 0);
+    displayPnlPct = steamPnlBase > 0 ? (displayPnl / steamPnlBase) * 100 : 0;
   }
   const pnlColor = displayPnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const openPnl = displayPnl - realizedPnl;
+  const isManualPortfolio = data.portfolioType === 'manual' || data.portfolioType === 'public-manual';
+  const cashUsd = Number(data.cashUsd) || 0;
   const marketableQty = items.reduce((sum, item) => sum + (Number(item.marketableQty) || 0), 0);
   const marketableValue = items.reduce((sum, item) => {
     const qty = Number(item.marketableQty) || 0;
@@ -972,13 +1075,29 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 value={`${displayPnl >= 0 ? '+' : ''}${compactUsd(displayPnl)}`}
                 delta={`${displayPnlPct >= 0 ? '+' : ''}${displayPnlPct.toFixed(2)}%`}
                 deltaColor={pnlColor}
-                sub={tt(lang, {
-                  en: `Cost basis ${compactUsd(data.totalBasis)}`,
-                  ru: `Себестоимость ${compactUsd(data.totalBasis)}`,
-                  zh: `成本基础 ${compactUsd(data.totalBasis)}`,
-                  'zh-TW': `成本基礎 ${compactUsd(data.totalBasis)}`,
-                })}
+                sub={isManualPortfolio
+                  ? tt(lang, {
+                    en: `Open ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Sold ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
+                    ru: `Открытый ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Продажи ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
+                    zh: `Open ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Sold ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
+                    'zh-TW': `Open ${openPnl >= 0 ? '+' : ''}${compactUsd(openPnl)} · Sold ${realizedPnl >= 0 ? '+' : ''}${compactUsd(realizedPnl)}`,
+                  })
+                  : tt(lang, {
+                    en: `Cost basis ${compactUsd(data.totalBasis)}`,
+                    ru: `Себестоимость ${compactUsd(data.totalBasis)}`,
+                    zh: `成本基础 ${compactUsd(data.totalBasis)}`,
+                    'zh-TW': `成本基礎 ${compactUsd(data.totalBasis)}`,
+                  })}
               />
+              {isManualPortfolio ? (
+                <CashStatCard
+                  lang={lang}
+                  cashUsd={cashUsd}
+                  portfolioId={activePortfolioId}
+                  editable={data.portfolioType === 'manual' && !isPublicPortfolio}
+                  onChanged={() => portfolio.reload(false)}
+                />
+              ) : (
               <StatCard
                 label={tt(lang, { en: 'SELLABLE NOW', ru: 'ДОСТУПНО К ПРОДАЖЕ', zh: '现在可售', 'zh-TW': '現在可售' })}
                 value={compactUsd(marketableValue)}
@@ -996,6 +1115,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   'zh-TW': `${notMarketableQty} 鎖定或在倉庫`,
                 })}
               />
+              )}
               <StatCard
                 label={tt(lang, { en: 'CONCENTRATION', ru: 'КОНЦЕНТРАЦИЯ', zh: '集中度', 'zh-TW': '集中度' })}
                 value={topItem ? `${topItemPct.toFixed(0)}%` : '0%'}
@@ -1144,10 +1264,10 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
 
 function activityKindLabel(kind, lang) {
   return tt(lang, {
-    en: { added: 'Added', removed: 'Removed', qty_up: 'Qty +', qty_down: 'Qty −', updated: 'Updated' },
-    ru: { added: 'Купил / добавлен', removed: 'Удалён', qty_up: 'Кол-во +', qty_down: 'Кол-во −', updated: 'Изменён' },
-    zh: { added: '已添加', removed: '已移除', qty_up: '数量 +', qty_down: '数量 −', updated: '已更新' },
-    'zh-TW': { added: '已新增', removed: '已移除', qty_up: '數量 +', qty_down: '數量 −', updated: '已更新' },
+    en: { added: 'Added', removed: 'Removed', qty_up: 'Qty +', qty_down: 'Qty −', updated: 'Updated', sold: 'Sold', cash_in: 'Cash in', cash_out: 'Cash out' },
+    ru: { added: 'Купил / добавлен', removed: 'Удалён', qty_up: 'Кол-во +', qty_down: 'Кол-во −', updated: 'Изменён', sold: 'Продал', cash_in: 'Ввод наличных', cash_out: 'Вывод наличных' },
+    zh: { added: '已添加', removed: '已移除', qty_up: '数量 +', qty_down: '数量 −', updated: '已更新', sold: '已卖出', cash_in: '现金转入', cash_out: '现金转出' },
+    'zh-TW': { added: '已新增', removed: '已移除', qty_up: '數量 +', qty_down: '數量 −', updated: '已更新', sold: '已賣出', cash_in: '現金轉入', cash_out: '現金轉出' },
   })[kind] || kind;
 }
 
@@ -1224,26 +1344,43 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
             <th style={{ ...headerStyle, textAlign: 'left' }}>{tt(lang, { en: 'Item', ru: 'Предмет', zh: '物品', 'zh-TW': '物品' })}</th>
             <th style={{ ...headerStyle, textAlign: 'right' }}>{tt(lang, { en: 'Qty', ru: 'Кол-во', zh: '数量', 'zh-TW': '數量' })}</th>
             {isManual && (
-              <th style={{ ...headerStyle, textAlign: 'right' }}>{tt(lang, { en: 'Basis', ru: 'Цена/шт.', zh: '成本', 'zh-TW': '成本' })}</th>
+              <th style={{ ...headerStyle, textAlign: 'right' }}>{tt(lang, { en: 'Price', ru: 'Цена/шт.', zh: '价格', 'zh-TW': '價格' })}</th>
+            )}
+            {isManual && (
+              <th style={{ ...headerStyle, textAlign: 'right' }}>{tt(lang, { en: 'P&L', ru: 'Доход', zh: '盈亏', 'zh-TW': '盈虧' })}</th>
             )}
             {isManual && <th style={{ ...headerStyle, textAlign: 'right' }} />}
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => {
-            const kindColor = row.kind === 'removed' || row.kind === 'qty_down'
+            const kindColor = row.kind === 'removed' || row.kind === 'qty_down' || row.kind === 'sold' || row.kind === 'cash_out'
               ? 'var(--red)'
-              : (row.kind === 'added' || row.kind === 'qty_up' ? 'var(--green)' : 'var(--fg-1)');
+              : (row.kind === 'added' || row.kind === 'qty_up' || row.kind === 'cash_in' ? 'var(--green)' : 'var(--fg-1)');
             const qtyLabel = Number.isFinite(row.qtyDelta) && row.qtyDelta !== 0
               ? `${row.qtyDelta > 0 ? '+' : ''}${row.qtyDelta}`
-              : (Number.isFinite(row.qtyAfter) ? String(row.qtyAfter) : '—');
-            const basisLabel = Number.isFinite(row.basisPerUnit)
-              ? formatMoney(row.basisPerUnit, {
-                currency: row.currency === 'rub' || row.currency === 'rur'
+              : (row.kind === 'cash_in' || row.kind === 'cash_out'
+                ? '—'
+                : (Number.isFinite(row.qtyAfter) ? String(row.qtyAfter) : '—'));
+            const priceValue = Number.isFinite(row.proceedsPerUnit)
+              ? row.proceedsPerUnit
+              : (Number.isFinite(row.amount) ? row.amount : row.basisPerUnit);
+            const priceCurrency = Number.isFinite(row.proceedsPerUnit)
+              ? (row.proceedsCurrency || row.currency)
+              : row.currency;
+            const priceLabel = Number.isFinite(priceValue)
+              ? formatMoney(priceValue, {
+                currency: priceCurrency === 'rub' || priceCurrency === 'rur'
                   ? 'rub'
-                  : (row.currency === 'cny' ? 'cny' : 'usd'),
+                  : (priceCurrency === 'cny' ? 'cny' : 'usd'),
                 digits: 2,
               })
+              : '—';
+            const realizedRaw = row.realizedPnlUsd;
+            const realized = Number(realizedRaw);
+            const hasRealized = realizedRaw != null && Number.isFinite(realized);
+            const realizedLabel = hasRealized
+              ? `${realized >= 0 ? '+' : ''}${formatMoney(realized, { digits: 2 })}`
               : '—';
             const canDelete = isManual && portfolioId && row.id;
             return (
@@ -1264,7 +1401,17 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
                 </td>
                 {isManual && (
                   <td style={{ ...cellStyle, textAlign: 'right', fontFamily: 'var(--f-mono)', color: 'var(--fg-2)' }}>
-                    {basisLabel}
+                    {priceLabel}
+                  </td>
+                )}
+                {isManual && (
+                  <td style={{
+                    ...cellStyle,
+                    textAlign: 'right',
+                    fontFamily: 'var(--f-mono)',
+                    color: hasRealized ? (realized >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--fg-3)',
+                  }}>
+                    {realizedLabel}
                   </td>
                 )}
                 {isManual && (
@@ -1727,6 +1874,8 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
   const [editDraft, setEditDraft] = useState({ quantity: '', basisPerUnit: '' });
   const [addingItemId, setAddingItemId] = useState(null);
   const [addDraft, setAddDraft] = useState({ quantity: '1', basisPerUnit: '' });
+  const [sellingItemId, setSellingItemId] = useState(null);
+  const [sellDraft, setSellDraft] = useState({ quantity: '1', proceedsPerUnit: '' });
   const [savingItemId, setSavingItemId] = useState(null);
   const [sortKey, setSortKey] = useState('value');
   const [sortDir, setSortDir] = useState('desc');
@@ -1815,6 +1964,8 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
       : NaN;
     setAddingItemId(null);
     setAddDraft({ quantity: '1', basisPerUnit: '' });
+    setSellingItemId(null);
+    setSellDraft({ quantity: '1', proceedsPerUnit: '' });
     setEditingItemId(rowEditKey(item));
     setEditDraft({
       quantity: String(item.qty || 1),
@@ -1832,6 +1983,8 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
     event.stopPropagation();
     setEditingItemId(null);
     setEditDraft({ quantity: '', basisPerUnit: '' });
+    setSellingItemId(null);
+    setSellDraft({ quantity: '1', proceedsPerUnit: '' });
     setAddingItemId(rowEditKey(item));
     setAddDraft({ quantity: '1', basisPerUnit: '' });
   };
@@ -1840,6 +1993,68 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
     event.stopPropagation();
     setAddingItemId(null);
     setAddDraft({ quantity: '1', basisPerUnit: '' });
+  };
+
+  const sellPriceDraft = (item) => {
+    const unitUsd = holdingUnitUsd(item, priceMode);
+    if (!Number.isFinite(unitUsd) || unitUsd < 0) return '';
+    return String(usdBasisToInputDraft(unitUsd, getActiveCurrency()));
+  };
+
+  const startSellPosition = (item, event) => {
+    event.stopPropagation();
+    setEditingItemId(null);
+    setEditDraft({ quantity: '', basisPerUnit: '' });
+    setAddingItemId(null);
+    setAddDraft({ quantity: '1', basisPerUnit: '' });
+    setSellingItemId(rowEditKey(item));
+    setSellDraft({
+      quantity: '1',
+      proceedsPerUnit: sellPriceDraft(item),
+    });
+  };
+
+  const cancelSellPosition = (event) => {
+    event.stopPropagation();
+    setSellingItemId(null);
+    setSellDraft({ quantity: '1', proceedsPerUnit: '' });
+  };
+
+  const saveSellPosition = async (item, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!portfolioId || !item.manualItemId) return;
+    const quantity = Number(String(sellDraft.quantity).trim().replace(',', '.'));
+    const proceedsPerUnit = Number(String(sellDraft.proceedsPerUnit).trim().replace(',', '.'));
+    const heldQty = Number(item.qty) || 0;
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > heldQty || !Number.isFinite(proceedsPerUnit) || proceedsPerUnit < 0) {
+      window.alert(tt(lang, {
+        en: 'Enter a valid quantity and sale price. Quantity cannot exceed the position.',
+        ru: 'Укажи корректное количество и цену продажи. Нельзя продать больше, чем есть в позиции.',
+        zh: 'Enter a valid quantity and sale price. Quantity cannot exceed the position.',
+        'zh-TW': 'Enter a valid quantity and sale price. Quantity cannot exceed the position.',
+      }));
+      return;
+    }
+
+    setSavingItemId(rowEditKey(item));
+    try {
+      await apiFetch(`/api/portfolios/${encodeURIComponent(portfolioId)}/items/${encodeURIComponent(item.manualItemId)}/sell`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quantity,
+          proceedsPerUnit,
+          currency: getActiveCurrency(),
+        }),
+      });
+      setSellingItemId(null);
+      setSellDraft({ quantity: '1', proceedsPerUnit: '' });
+      if (onBasisSaved) onBasisSaved();
+    } catch (err) {
+      window.alert(err.message || (tt(lang, { en: 'Could not sell item', ru: 'Не удалось продать предмет', zh: 'Could not sell item', 'zh-TW': 'Could not sell item' })));
+    }
+    setSavingItemId(null);
   };
 
   const saveAddToPosition = async (item, event) => {
@@ -2003,6 +2218,7 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         const change = (h.spark || [0, 0]).at(-1) - (h.spark || [0, 0]).at(-2);
         const isEditing = editingItemId === rowEditKey(h);
         const isAdding = addingItemId === rowEditKey(h);
+        const isSelling = sellingItemId === rowEditKey(h);
         const basisEditable = (portfolioType === 'manual' && h.manualItemId) || isSteamPortfolio;
         const steamSticker = formatSteamSticker(h);
         const rowPnl = holdingPnl(h, priceMode);
@@ -2164,6 +2380,42 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
                         {tt(lang, { en: 'Cancel', ru: 'Отмена', zh: '取消', 'zh-TW': '取消' })}
                       </button>
                     </form>
+                  ) : isSelling ? (
+                    <form
+                      className="inv-add-lot-form"
+                      onClick={(event) => event.stopPropagation()}
+                      onSubmit={(event) => saveSellPosition(h, event)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') cancelSellPosition(event);
+                      }}
+                    >
+                      <input
+                        value={sellDraft.quantity}
+                        onChange={(event) => setSellDraft((draft) => ({ ...draft, quantity: event.target.value }))}
+                        type="number"
+                        min="1"
+                        max={h.qty}
+                        step="1"
+                        title={tt(lang, { en: 'Quantity to sell', ru: 'Сколько продать', zh: 'Quantity to sell', 'zh-TW': 'Quantity to sell' })}
+                        aria-label={tt(lang, { en: 'Quantity to sell', ru: 'Сколько продать', zh: 'Quantity to sell', 'zh-TW': 'Quantity to sell' })}
+                        style={portfolioInputStyle({ width: 56, fontFamily: 'var(--f-mono)' })}
+                      />
+                      <input
+                        autoFocus
+                        value={sellDraft.proceedsPerUnit}
+                        onChange={(event) => setSellDraft((draft) => ({ ...draft, proceedsPerUnit: event.target.value }))}
+                        placeholder={getActiveCurrency() === 'rub' ? '₽ / шт.' : getActiveCurrency() === 'cny' ? '¥ / 件' : '$ / item'}
+                        title={tt(lang, { en: 'Sale price per item', ru: 'Цена продажи за штуку', zh: 'Sale price per item', 'zh-TW': 'Sale price per item' })}
+                        aria-label={tt(lang, { en: 'Sale price per item', ru: 'Цена продажи за штуку', zh: 'Sale price per item', 'zh-TW': 'Sale price per item' })}
+                        style={portfolioInputStyle({ width: 88, fontFamily: 'var(--f-mono)' })}
+                      />
+                      <button className="btn btn-sm btn-primary" type="submit" disabled={savingItemId === rowEditKey(h)}>
+                        {savingItemId === rowEditKey(h) ? '...' : (tt(lang, { en: 'Sell', ru: 'Продать', zh: 'Sell', 'zh-TW': 'Sell' }))}
+                      </button>
+                      <button className="btn btn-sm btn-ghost" type="button" onClick={cancelSellPosition}>
+                        {tt(lang, { en: 'Cancel', ru: 'Отмена', zh: '取消', 'zh-TW': '取消' })}
+                      </button>
+                    </form>
                   ) : (
                     <>
                       <button
@@ -2174,6 +2426,15 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
                         aria-label={tt(lang, { en: 'Add to this position', ru: 'Добавить в эту позицию', zh: 'Add to this position', 'zh-TW': 'Add to this position' })}
                       >
                         +
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm inv-row-sell"
+                        onClick={(event) => startSellPosition(h, event)}
+                        title={tt(lang, { en: 'Sell from this position', ru: 'Продать из этой позиции', zh: 'Sell from this position', 'zh-TW': 'Sell from this position' })}
+                        aria-label={tt(lang, { en: 'Sell from this position', ru: 'Продать из этой позиции', zh: 'Sell from this position', 'zh-TW': 'Sell from this position' })}
+                      >
+                        −
                       </button>
                       <button className="btn btn-sm btn-ghost" onClick={(event) => startManualEdit(h, event)}>
                         {tt(lang, { en: 'Edit', ru: 'Изменить', zh: '编辑', 'zh-TW': '編輯' })}

@@ -1376,6 +1376,18 @@ a { color: inherit; text-decoration: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.dash-cash-actions,
+.dash-cash-form-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.dash-cash-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
 .dash-chart-row {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(200px, 0.9fr);
@@ -1557,6 +1569,23 @@ a { color: inherit; text-decoration: none; }
   background: var(--accent);
   border-color: color-mix(in oklch, var(--accent), white 16%);
   box-shadow: 0 6px 16px var(--accent-glow);
+}
+.inv-row-sell {
+  min-width: 31px;
+  justify-content: center;
+  padding: 7px 9px;
+  color: var(--red);
+  border-color: color-mix(in oklch, var(--red), transparent 42%);
+  background: color-mix(in oklch, var(--red), transparent 88%);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1;
+}
+.inv-row-sell:hover {
+  color: #fff;
+  background: var(--red);
+  border-color: color-mix(in oklch, var(--red), white 16%);
+  box-shadow: 0 6px 16px color-mix(in oklch, var(--red), transparent 55%);
 }
 .inv-add-lot-form {
   display: flex;
