@@ -5,6 +5,12 @@ www.skinshead.pro {
 
 skinshead.pro {
 	encode gzip
-	# The app runs on the same host, plain HTTP, bound to localhost.
-	reverse_proxy 127.0.0.1:3000
+	# The app and the private X desk run on this host, plain HTTP, bound to localhost.
+	route {
+		redir /x-desk /x-desk/ permanent
+		handle_path /x-desk/* {
+			reverse_proxy 127.0.0.1:3847
+		}
+		reverse_proxy 127.0.0.1:3000
+	}
 }
