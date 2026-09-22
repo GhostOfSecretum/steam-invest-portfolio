@@ -160,6 +160,15 @@ function mediaLabel(key) {
   return key || '';
 }
 
+function esc(s) {
+  return String(s || '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+}
+
+function shotLabel(post) {
+  if (!post || !post.visual) return '';
+  return post.shot === 'reel' ? 'рил' : 'кадр';
+}
+
 function bindCopy(btn, text) {
   if (!btn || !text) return;
   btn.onclick = async () => {
@@ -183,6 +192,7 @@ function renderDays(data) {
     const extra = [
       d.post && d.post.pinned && !(d.label || '').includes('закреп') ? 'закреп' : '',
       d.post && d.post.media ? mediaLabel(d.post.media) : '',
+      shotLabel(d.post),
     ].filter(Boolean);
     const titleExtra = extra.length ? ` · ${extra.join(' · ')}` : '';
     return `<div class="day kind-${d.kind}">
@@ -225,8 +235,10 @@ function buildPostCard(day, data, idSuffix) {
   const src = mediaSrc(data, day.post.media);
   const copyId = `copy-post-${idSuffix}`;
   const liveUrl = day.post.url || (idSuffix === 'today' && last && last.post && last.post.url);
+  const shot = shotLabel(day.post);
   const html = `
     ${src ? `<video class="desk-video" controls preload="metadata" src="${src}"></video>` : ''}
+    ${day.post.visual ? `<p class="shot">${esc(shot)}. ${esc(day.post.visual)}</p>` : ''}
     ${day.post.text ? `<pre class="post-text">${day.post.text}</pre><button type="button" class="copy" id="${copyId}">Скопировать</button>` : '<p class="empty">Текст поста ещё не лочили</p>'}
     ${liveUrl ? `<p class="hint" style="margin-top:12px"><a href="${liveUrl}" target="_blank" rel="noreferrer">${published && idSuffix === 'today' ? 'пост на X ↗' : 'последний пост на X ↗'}</a></p>` : ''}`;
   return { html, copyId, text: day.post.text, pinHint, date: day.date, label: day.label, n: day.post.n, time: day.post.time };

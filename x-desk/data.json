@@ -19,13 +19,14 @@
     "1 свой пост в день, окно 19:30 МСК",
     "15–20 реплаев, пауза 2–4 мин, английский, свои мысли",
     "Ссылку в тело поста не ставить",
-    "Свои посты — текст, без картинки, кроме рила 31 авг",
+    "Свои посты — текст. С 23 сен картинка только если у поста в столе есть пометка «кадр» или «рил»",
     "30 авг: только текст, закреп не трогать. 31 авг: продуктовый рил — не закреплять. Больше видео на недели 2–3 нет",
     "Лайки не фармить; взаимки с нишевых мелких — да",
     "Реплаи: 8–10 инвест, 2–3 магазины на всех, 2–4 кто отвечает / киты; витрины и 94% — ноль",
     "Магазины (lis, tradeit, cs.money, skinsmonkey): только цена/объём/просадка, текст про fill, не 🤩",
     "Киты: вотчлист живой. В реплаях уже. В свои посты — наблюдение с фида, не changelog страницы, не чаще раза в неделю",
     "С 1 окт реплаи можно 10–15. Пост тот же, 19:30. Десктоп не анонсировать до релиза",
+    "Кадр: сайт на EN, кроп блока, без шапки браузера и без URL. Десктоп, QR и скачивание не снимать. 30 сен — ролик 9:16, 8–12 сек, не закреплять, старый рил 31 авг не использовать",
     "Не ядро: чистые баеры «always buying 94%» и кейс-сайты — список в блоке Реплаи",
     "Добрать ядро: CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs — список в блоке Подписки"
   ],
@@ -912,7 +913,9 @@
         "n": 32,
         "time": "19:30",
         "pinned": false,
-        "text": "The bag printed this week.\n\nUsually one name did.\nThe other twenty just sat there.\n\nThat’s not a portfolio win. That’s a single.\n\nCan you name the mover, or only the Steam total?"
+        "text": "The bag printed this week.\n\nUsually one name did.\nThe other twenty just sat there.\n\nThat’s not a portfolio win. That’s a single.\n\nCan you name the mover, or only the Steam total?",
+        "shot": "still",
+        "visual": "Портфель → обзор, колонка справа от графика: Best movers и Worst movers. Кроп только этого блока. В кадре одно имя явно в плюсе и несколько почти без движения."
       },
       "notes": "Не закреплять, только текст. Муверы в портфеле: один имя, не тотал."
     },
@@ -938,7 +941,9 @@
         "n": 34,
         "time": "19:30",
         "pinned": false,
-        "text": "You sold.\n\nThe cash is still sitting in the portfolio as cash.\nZero skins. Zero thesis. A number.\n\nThat’s not an exit until it leaves.\nIt’s an undeployed position.\n\nWhat’s the cash doing in the bag right now?"
+        "text": "You sold.\n\nThe cash is still sitting in the portfolio as cash.\nZero skins. Zero thesis. A number.\n\nThat’s not an exit until it leaves.\nIt’s an undeployed position.\n\nWhat’s the cash doing in the bag right now?",
+        "shot": "still",
+        "visual": "Свой ручной портфель, не Steam-инвентарь: на Steam вместо кэша стоит SELLABLE NOW. Обзор → карточка CASH. Кроп только её: сумма и строка From sales and deposits."
       },
       "notes": "Не закреплять, только текст. Кэш как позиция. Не кошелёк Steam (пост 18)."
     },
@@ -964,7 +969,9 @@
         "n": 36,
         "time": "19:30",
         "pinned": false,
-        "text": "Paper P&L is not a result.\n\nYou are not up until you sold, paid the cut, and the money is actually yours.\n\nUnrealized is a mark.\nRealized is a score.\n\nWhich one are you quoting — the one that still has to find a buyer?"
+        "text": "Paper P&L is not a result.\n\nYou are not up until you sold, paid the cut, and the money is actually yours.\n\nUnrealized is a mark.\nRealized is a score.\n\nWhich one are you quoting — the one that still has to find a buyer?",
+        "shot": "still",
+        "visual": "Тот же ручной портфель. Обзор → карточка All-time P&L. В кропе должны читаться обе строки: Unrealized P&L и Realized P&L. Не карточка шаринга и не весь дашборд."
       },
       "notes": "Не закреплять, только текст. Unrealized vs realized. Не путать с постом 20 (фейковый break-even)."
     },
@@ -977,7 +984,9 @@
         "n": 37,
         "time": "19:30",
         "pinned": false,
-        "text": "“I’m diversified. Knives, rifles, gloves.”\n\nThat’s a wardrobe, not a book.\n\nIf 60% is still one type, a dump in that type is the bag.\n\nAllocation is weights. Categories are labels.\n\nWhat’s your largest type as a % — not your favorite skin?"
+        "text": "“I’m diversified. Knives, rifles, gloves.”\n\nThat’s a wardrobe, not a book.\n\nIf 60% is still one type, a dump in that type is the bag.\n\nAllocation is weights. Categories are labels.\n\nWhat’s your largest type as a % — not your favorite skin?",
+        "shot": "still",
+        "visual": "Портфель → обзор, карточка Allocation by type. Кроп полоски и подписей типов. Должно быть видно, что один тип занимает большую долю."
       },
       "notes": "Не закреплять, только текст. Аллокация по типу. Не один нож = 70% (пост 5) и не сет (пост 27)."
     },
@@ -1003,7 +1012,9 @@
         "n": 39,
         "time": "19:30",
         "pinned": false,
-        "text": "End of the month.\n\nForget the Steam high you screenshotted on a Tuesday.\n\nAfter fees, after names that wouldn’t sell, after the stickers nobody paid for — are you actually up?\n\nThat’s the only monthly number.\n\nWhat’s yours?"
+        "text": "End of the month.\n\nForget the Steam high you screenshotted on a Tuesday.\n\nAfter fees, after names that wouldn’t sell, after the stickers nobody paid for — are you actually up?\n\nThat’s the only monthly number.\n\nWhat’s yours?",
+        "shot": "reel",
+        "visual": "Запись экрана 9:16, 8–12 сек, не закреплять, без ссылки. Портфель → обзор, график VALUE OVER TIME, диапазон 30d. В ролике переключи Steam → Real, чтобы сменились и график, и подпись под Market value. Старый рил 31 авг не использовать."
       },
       "notes": "Не закреплять, только текст. Закрытие сентября: P&L после комиссий, не стикер."
     },
@@ -1016,7 +1027,9 @@
         "n": 40,
         "time": "19:30",
         "pinned": false,
-        "text": "You marked it as FN.\n\nThe listing you copied was 0.01.\nYours is 0.06 with the same wear label.\n\nThe market does not pay for the label.\nIt pays for the float.\n\nAre you marking your item, or a prettier one with the same name?"
+        "text": "You marked it as FN.\n\nThe listing you copied was 0.01.\nYours is 0.06 with the same wear label.\n\nThe market does not pay for the label.\nIt pays for the float.\n\nAre you marking your item, or a prettier one with the same name?",
+        "shot": "still",
+        "visual": "Портфель → открой скин с биркой FN, у которого float не на нижнем крае диапазона. Карточка предмета: в одном кропе Wear и Float."
       },
       "notes": "Не закреплять, только текст. Float ≠ wear label. С 1 окт реплаи можно 10–15."
     },
@@ -1029,7 +1042,9 @@
         "n": 41,
         "time": "19:30",
         "pinned": false,
-        "text": "Souvenir and trade are not the same skin.\n\nSame screenshot. Different book. Different buyer.\n\nIf you mark them off one Steam name, you’ve blended two markets and called it a price.\n\nWhich bid are you actually using?"
+        "text": "Souvenir and trade are not the same skin.\n\nSame screenshot. Different book. Different buyer.\n\nIf you mark them off one Steam name, you’ve blended two markets and called it a price.\n\nWhich bid are you actually using?",
+        "shot": "still",
+        "visual": "Портфель → предметы, поиск одного имени. Две строки в одном кропе: Souvenir и обычная версия, обе с ценой. Если пары нет в инвентаре — Маркет, поиск того же имени, те же две строки."
       },
       "notes": "Не закреплять, только текст. Souvenir vs trade — две книги."
     },
@@ -1055,7 +1070,9 @@
         "n": 43,
         "time": "19:30",
         "pinned": false,
-        "text": "Part of the bag has no bid.\n\nNo listings. No last sale you trust. A name that only exists in your inventory.\n\nYou still added it to the total.\n\nThat’s not a mark. That’s a blank you filled in.\n\nHow much of the bag is unpriced and still in the number?"
+        "text": "Part of the bag has no bid.\n\nNo listings. No last sale you trust. A name that only exists in your inventory.\n\nYou still added it to the total.\n\nThat’s not a mark. That’s a blank you filled in.\n\nHow much of the bag is unpriced and still in the number?",
+        "shot": "still",
+        "visual": "Портфель → предметы. Строка, у которой цена N/A. Если влезает в тот же кадр — карточка Market value со строкой «N of M priced». Storage не снимать."
       },
       "notes": "Не закреплять, только текст. Unpriced в тотале. Не Storage-дыру (10, 28, 35)."
     },
@@ -1081,7 +1098,9 @@
         "n": 45,
         "time": "19:30",
         "pinned": false,
-        "text": "The market prints in dollars.\n\nYou feel the bag in another currency.\n\nA quiet FX move can look like a win you didn’t trade.\n\nIf you don’t pick a book, the P&L is two numbers arguing.\n\nWhat currency is the real score in?"
+        "text": "The market prints in dollars.\n\nYou feel the bag in another currency.\n\nA quiet FX move can look like a win you didn’t trade.\n\nIf you don’t pick a book, the P&L is two numbers arguing.\n\nWhat currency is the real score in?",
+        "shot": "still",
+        "visual": "Одна картинка из двух кропов карточки Market value на обзоре. Слева валюта USD, справа RUB. Переключатель: меню сайта → Currency. В кадре цифра и валюта, не всё меню."
       },
       "notes": "Не закреплять, только текст. Валюта марки. Не два марка Steam/market (пост 29)."
     },
@@ -1120,7 +1139,9 @@
         "n": 48,
         "time": "19:30",
         "pinned": false,
-        "text": "You remember the skin that printed.\n\nYou forget the three that quietly bled 8% and still sit in the bag.\n\nWinners are a highlight reel.\nThe book is the whole list.\n\nWhat’s your worst name this month — still held?"
+        "text": "You remember the skin that printed.\n\nYou forget the three that quietly bled 8% and still sit in the bag.\n\nWinners are a highlight reel.\nThe book is the whole list.\n\nWhat’s your worst name this month — still held?",
+        "shot": "still",
+        "visual": "Портфель → обзор, блок Worst movers. Кроп списка имён в минусе. Best movers в этот кадр не бери."
       },
       "notes": "Не закреплять, только текст. Худшие имена, не мувер-победитель (пост 32)."
     },

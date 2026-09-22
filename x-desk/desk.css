@@ -171,6 +171,16 @@ h1 { font-size: 28px; font-weight: 500; letter-spacing: -.04em; }
 }
 h2 { font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #c9ceda; }
 .hint { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+.shot {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(232, 178, 74, .45);
+  background: rgba(232, 178, 74, .08);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
 .chart { height: 200px; }
 
 .days { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow: auto; }
