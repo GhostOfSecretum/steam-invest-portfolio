@@ -359,7 +359,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
               <div className="item-detail-section-head">
                 <div>
                   <div className="eyebrow">{lang === 'ru' ? 'СРАВНЕНИЕ ПЛОЩАДОК' : 'MARKETPLACE COMPARISON'}</div>
-                  <p>{lang === 'ru' ? 'Переход откроется в новой вкладке' : 'Links open in a new tab'}</p>
                 </div>
                 {offersState.loading && <span className="item-detail-loading">{lang === 'ru' ? 'загрузка…' : 'loading…'}</span>}
               </div>
