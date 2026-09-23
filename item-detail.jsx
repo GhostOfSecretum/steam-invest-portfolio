@@ -391,11 +391,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
             <div className="item-detail-chart-head">
               <div>
                 <div className="eyebrow">{lang === 'ru' ? 'МЕДИАННЫЕ ЦЕНЫ' : 'MEDIAN SALE PRICES'}</div>
-                <div className="item-detail-chart-sub">
-                  {lang === 'ru'
-                    ? 'серия Steam Market · столбцы — число продаж'
-                    : 'Steam Market series · bars are sales'}
-                </div>
               </div>
               <div className="item-detail-periods">
                 {PERIOD_OPTIONS.map(p => (
