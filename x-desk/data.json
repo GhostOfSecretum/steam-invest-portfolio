@@ -908,16 +908,14 @@
       "date": "2026-09-23",
       "kind": "planned",
       "dayNum": 32,
-      "label": "день 32",
+      "label": "день 32 · обнова",
       "post": {
         "n": 32,
         "time": "19:30",
         "pinned": false,
-        "text": "The bag printed this week.\n\nUsually one name did.\nThe other twenty just sat there.\n\nThat’s not a portfolio win. That’s a single.\n\nCan you name the mover, or only the Steam total?",
-        "shot": "still",
-        "visual": "Портфель → обзор, колонка справа от графика: Best movers и Worst movers. Кроп только этого блока. В кадре одно имя явно в плюсе и несколько почти без движения."
+        "text": "Last night you could sticker the bomb.\nThe weekly drop also handed some people an egg.\n\nThe egg isn’t in the patch notes.\nNobody has hatched one.\nThere is no bid.\n\nA bomb sticker ends when the round does.\nAn egg is a case you haven’t opened.\n\nIf you put a number on either, whose number was it?"
       },
-      "notes": "Не закреплять, только текст. Муверы в портфеле: один имя, не тотал."
+      "notes": "Не закреплять, только текст, без кадра. Стикеры на C4 — в патчноутах. Яйцо в дропе есть, в нотах его нет, кнопки вылупления нет. Не писать, что курица уже вылупляется."
     },
     {
       "date": "2026-09-24",
@@ -928,9 +926,11 @@
         "n": 33,
         "time": "19:30",
         "pinned": false,
-        "text": "You’ve held it for three years.\n\nThat is not a thesis.\nThat’s inertia with a purchase date.\n\nA position has a reason to still be there.\nTime in the bag is not that reason.\n\nWhy is it still here — besides “I already own it”?"
+        "shot": "still",
+        "visual": "Портфель → обзор, колонка справа от графика: Best movers и Worst movers. Кроп только этого блока. В кадре одно имя явно в плюсе и несколько почти без движения.",
+        "text": "The bag printed this week.\n\nUsually one name did.\nThe other twenty just sat there.\n\nThat’s not a portfolio win. That’s a single.\n\nCan you name the mover, or only the Steam total?"
       },
-      "notes": "Не закреплять, только текст. Held age ≠ тезис. Не путать с постом 13 (тикер vs тезис)."
+      "notes": "Не закреплять, текст + кадр. Муверы: один имя, не тотал. Сдвинуто с 23 сен из-за обновы."
     },
     {
       "date": "2026-09-25",
@@ -1057,9 +1057,9 @@
         "n": 42,
         "time": "19:30",
         "pinned": false,
-        "text": "A patch is not a hedge.\n\nValve does not owe your bag a catalyst.\nIf the thesis was “they’ll add this to the Armory”, that wasn’t a mark. It was a wish.\n\nWhat happens to the position if nothing drops this quarter?"
+        "text": "You’ve held it for three years.\n\nThat is not a thesis.\nThat’s inertia with a purchase date.\n\nA position has a reason to still be there.\nTime in the bag is not that reason.\n\nWhy is it still here — besides “I already own it”?"
       },
-      "notes": "Не закреплять, только текст. Патч/Armory как wish, не марк. Не ROI пасса (пост 4)."
+      "notes": "Не закреплять, только текст. Held age ≠ тезис. Перенесено с 24 сен: патч уже закрыт постом 32."
     },
     {
       "date": "2026-10-04",

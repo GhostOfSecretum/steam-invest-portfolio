@@ -592,9 +592,29 @@ What % of the bag is sticker capital you couldn’t get back tomorrow?
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
 
-### 23 сен 2026 (ср) — день 32
+### 23 сен 2026 (ср) — день 32 · обнова
 - 15–20 реплаев
-- 19:30 пост 32 (не закреплять, текст + кадр):
+- 19:30 пост 32 (не закреплять, только текст, без картинки):
+
+```
+Last night you could sticker the bomb.
+The weekly drop also handed some people an egg.
+
+The egg isn’t in the patch notes.
+Nobody has hatched one.
+There is no bid.
+
+A bomb sticker ends when the round does.
+An egg is a case you haven’t opened.
+
+If you put a number on either, whose number was it?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 24 сен 2026 (чт) — день 33
+- 15–20 реплаев
+- 19:30 пост 33 (не закреплять, текст + кадр):
 - Кадр. Портфель → обзор, колонка справа от графика: Best movers и Worst movers. Кроп только этого блока. В кадре одно имя явно в плюсе и несколько почти без движения.
 
 ```
@@ -606,24 +626,6 @@ The other twenty just sat there.
 That’s not a portfolio win. That’s a single.
 
 Can you name the mover, or only the Steam total?
-```
-
-- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
-
-### 24 сен 2026 (чт) — день 33
-- 15–20 реплаев
-- 19:30 пост 33 (не закреплять, только текст, без картинки):
-
-```
-You’ve held it for three years.
-
-That is not a thesis.
-That’s inertia with a purchase date.
-
-A position has a reason to still be there.
-Time in the bag is not that reason.
-
-Why is it still here — besides “I already own it”?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
@@ -779,12 +781,15 @@ Which bid are you actually using?
 - 19:30 пост 42 (не закреплять, только текст, без картинки):
 
 ```
-A patch is not a hedge.
+You’ve held it for three years.
 
-Valve does not owe your bag a catalyst.
-If the thesis was “they’ll add this to the Armory”, that wasn’t a mark. It was a wish.
+That is not a thesis.
+That’s inertia with a purchase date.
 
-What happens to the position if nothing drops this quarter?
+A position has a reason to still be there.
+Time in the bag is not that reason.
+
+Why is it still here — besides “I already own it”?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
