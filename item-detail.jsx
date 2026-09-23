@@ -221,8 +221,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
     : item.hasBasis && item.basisCurrency === 'usd' && Number.isFinite(item.basisOriginal)
       ? formatMoney(item.basisOriginal, { currency: 'usd' })
       : (item.hasBasis && Number.isFinite(item.basis) ? formatUsd(item.basis) : '—');
-  const tradableQty = Number.isFinite(item.tradableQty) ? item.tradableQty : (item.tradable ? item.qty : 0);
-  // Portfolio holdings (Steam / manual / public profile) keep Buy·Qty·P&L·lock.
+  // Portfolio holdings (Steam / manual / public profile) keep Buy·Qty·P&L.
   // Market search, ticker, movers, hero, and /item/:slug pages do not.
   const isPortfolioHolding = Boolean(
     item.manualItemId
@@ -549,7 +548,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                 { l: t.item.buy, v: buyCostLabel },
                 { l: lang === 'ru' ? 'Количество' : 'Quantity', v: item.qty },
                 { l: 'P&L', v: `${Number.isFinite(item.pnl) && item.pnl >= 0 ? '+' : ''}${formatUsd(item.pnl)}`, c: pnlColor },
-                { l: t.item.tradelock, v: tradableQty === item.qty ? (lang === 'ru' ? 'открыт' : 'open') : (tradableQty > 0 ? (lang === 'ru' ? 'частично' : 'partial') : (lang === 'ru' ? 'ограничен' : 'restricted')) },
               ].map((s, i) => (
                 <div key={i} className="glass item-detail-stat">
                   <div className="eyebrow">{s.l}</div>
