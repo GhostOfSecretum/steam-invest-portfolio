@@ -442,7 +442,13 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
             <div ref={chartRef} className="item-detail-chart"
                  onMouseMove={onMove} onMouseLeave={() => setChartHover(null)}>
               {hasHistory ? (
-                <svg viewBox={`0 0 ${chart.w} ${chart.h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
+                <>
+                <div className="item-detail-chart-axes">
+                  <span>{chart.priceLabel}</span>
+                  <span>{chart.volumeLabel}</span>
+                </div>
+                <div className="item-detail-chart-plot">
+                <svg viewBox={`0 0 ${chart.w} ${chart.h}`} preserveAspectRatio="none">
                   <rect x={chart.padX} y={chart.padY} width={chart.plotW} height={chart.plotH} fill="#23262e" />
                   {chart.bars.map((bar, i) => (
                     <rect key={`v-${i}`} x={bar.x} y={bar.y} width={bar.w} height={bar.h}
@@ -462,14 +468,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                       {tick.label}
                     </text>
                   ))}
-                  <text x={chart.padX - 8} y={chart.padY - 4} textAnchor="end"
-                        fill="var(--fg-3)" fontFamily="var(--f-mono)" fontSize="9">
-                    {chart.priceLabel}
-                  </text>
-                  <text x={chart.w - chart.padXRight + 8} y={chart.padY - 4} textAnchor="start"
-                        fill="rgba(59,158,255,0.85)" fontFamily="var(--f-mono)" fontSize="9">
-                    {chart.volumeLabel}
-                  </text>
                   {chart.xTicks.map((tick, i) => (
                     <text key={`x-${i}`} x={tick.x} y={chart.h - 6}
                           textAnchor="middle"
@@ -497,6 +495,8 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                     </g>
                   )}
                 </svg>
+                </div>
+                </>
               ) : (
                 <div style={{
                   height: '100%',
