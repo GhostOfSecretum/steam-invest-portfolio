@@ -444,25 +444,30 @@ const HERO_APP_DEMO = {
   ],
 };
 
-/* Daily-ish closes: two-way tape — grind, dump, recover, fade, bounce. Ends at demo.totalValue. */
+/* Gentle rise, one soft dip, a few small bends. Ends at demo.totalValue. */
 const HERO_APP_HISTORY = [
-  3900, 3980, 3920, 4050, 4120, 4080, 4210, 4290, 4240, 4380,
-  4450, 4520, 4480, 4600, 4540, 4380, 4120, 3880, 3620, 3480,
-  3400, 3560, 3720, 3650, 3890, 4010, 4140, 4080, 4220, 4300,
-  4240, 4160, 4020, 3880, 3740, 3600, 3680, 3820, 3760, 3940,
-  4100, 4280, 4420, 4500, 4440, 4310, 4180, 4040, 4120, 4060,
-  4180, 4240, 4160, 4220, 4200, 4280,
+  4020, 4035, 4055, 4065, 4085, 4100, 4110, 4125, 4140, 4130,
+  4150, 4165, 4180, 4190, 4205, 4195, 4180, 4160, 4140, 4125,
+  4110, 4095, 4085, 4075, 4085, 4100, 4120, 4140, 4165, 4185,
+  4205, 4220, 4240, 4255, 4270, 4260, 4280, 4300, 4315, 4330,
+  4345, 4355, 4345, 4335, 4320, 4310, 4300, 4290, 4285, 4290,
+  4286, 4282, 4280, 4280, 4280, 4280,
 ];
 
 function heroChartGeometry(values, w = 640, h = 184) {
   const lo = Math.min(...values);
   const hi = Math.max(...values);
   const span = hi - lo || 1;
-  const top = 8;
-  const bottom = 6;
+  // Extra range above the peak and below the trough, so a dip does not fill the card.
+  const headroom = span * 0.28;
+  const plotLo = lo - headroom;
+  const plotHi = hi + headroom;
+  const plotSpan = plotHi - plotLo;
+  const top = 16;
+  const bottom = 18;
   const pts = values.map((value, i) => {
     const x = (i / (values.length - 1)) * w;
-    const y = top + (1 - (value - lo) / span) * (h - top - bottom);
+    const y = top + (1 - (value - plotLo) / plotSpan) * (h - top - bottom);
     return [x, y];
   });
   const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
