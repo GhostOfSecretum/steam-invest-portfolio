@@ -76,7 +76,8 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
     setChartHover(null);
   }, [baseName]);
 
-  // Opening an item shows every exterior. A chip click focuses the chart on that one.
+  // Opening an item shows every exterior. A chip click focuses the chart on that one;
+  // clicking the focused chip again brings every exterior back.
   detailUseEffect(() => {
     if (!variantsState.data) return;
     if (variantsState.data.hasWear) {
@@ -196,8 +197,10 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
   };
 
   const showOnlyWear = (mhn) => {
-    setSelectedWears([mhn]);
-    setActiveName(mhn);
+    const allNames = variants.map(v => v.marketHashName).filter(Boolean);
+    const onlyThis = selectedWears?.length === 1 && selectedWears[0] === mhn;
+    setSelectedWears(onlyThis ? allNames : [mhn]);
+    if (!onlyThis) setActiveName(mhn);
     setChartHover(null);
   };
 
