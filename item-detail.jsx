@@ -320,7 +320,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                 <div className="item-detail-section-head">
                   <div>
                     <div className="eyebrow">{lang === 'ru' ? 'ВЫБЕРИТЕ КАЧЕСТВО' : 'SELECT EXTERIOR'}</div>
-                    <p>{lang === 'ru' ? 'Цена и предложения обновятся автоматически' : 'Price and offers update automatically'}</p>
                   </div>
                   {!parsedBase.isSouvenir && (
                     <button onClick={toggleStattrak} className="item-detail-stattrak" data-active={stattrak}>
