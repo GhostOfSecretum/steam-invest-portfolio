@@ -650,14 +650,16 @@ function buildMultiChart(seriesList, currency = 'usd', options = {}) {
   const volMax = rawVol > 0 ? niceCeil(rawVol) : 0;
   const volToY = (volume) => padY + (1 - volume / (volMax || 1)) * plotH;
   const barW = Math.max(0.6, (plotW / Math.max(1, volumePoints.length)) * 0.72);
+  const plotRight = padX + plotW;
+  const plotBottom = padY + plotH;
   const bars = volumePoints.map((p) => {
     const y = volToY(p.volume);
-    const bottom = padY + plotH;
+    const x = Math.min(plotRight - barW, Math.max(padX, timeToX(p.t) - barW / 2));
     return {
-      x: timeToX(p.t) - barW / 2,
+      x,
       y,
       w: barW,
-      h: Math.max(0, bottom - y),
+      h: Math.max(0, plotBottom - y),
     };
   });
 
