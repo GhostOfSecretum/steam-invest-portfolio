@@ -1453,6 +1453,7 @@ a { color: inherit; text-decoration: none; }
 }
 .dash-leaders-panel {
   align-self: stretch;
+  overflow: hidden;
 }
 .dash-risk-summary {
   display: grid;

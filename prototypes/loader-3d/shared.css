@@ -1,0 +1,117 @@
+@font-face {
+  font-family: Unbounded;
+  src: url("../../assets/fonts/Unbounded.ttf") format("truetype");
+  font-weight: 300 800;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../../assets/fonts/JetBrainsMono.ttf") format("truetype");
+  font-weight: 300 700;
+}
+
+:root {
+  --bg-1: #0a0c11;
+  --fg-0: #f6f7fb;
+  --fg-1: #cdd1dc;
+  --fg-2: #8b91a3;
+  --fg-3: #5a5f70;
+  --accent: #ff2a8e;
+  --accent-glow: rgba(255, 42, 142, 0.45);
+  --cyan: #7fd9e9;
+  --line: rgba(255, 255, 255, 0.08);
+  --f-display: Unbounded, system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg-1);
+  color: var(--fg-0);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+.bg {
+  position: fixed; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 58% 55% at 68% 52%, rgba(255, 42, 142, 0.16), transparent 62%),
+    radial-gradient(ellipse 42% 40% at 28% 82%, rgba(127, 217, 233, 0.07), transparent 60%);
+}
+.grid {
+  position: fixed; inset: 0; pointer-events: none; opacity: 0.4;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 30px 30px;
+  mask-image: linear-gradient(90deg, transparent, #000 45%);
+}
+
+.topbar {
+  position: fixed; top: 20px; left: 24px; right: 24px; z-index: 3;
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--fg-2);
+}
+.topbar a { color: var(--fg-1); text-decoration: none; }
+.topbar a:hover { color: var(--fg-0); }
+.tag { border: 1px solid var(--line); padding: 4px 8px; border-radius: 4px; }
+
+.hud {
+  position: fixed; left: clamp(24px, 6vw, 96px); top: 50%; transform: translateY(-50%);
+  max-width: 400px; z-index: 3;
+}
+.eyebrow {
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--accent);
+}
+h1 {
+  margin: 12px 0 0;
+  font-family: var(--f-display); font-weight: 500;
+  font-size: clamp(34px, 4vw, 52px); line-height: 1.06; letter-spacing: -0.01em;
+}
+.hud p { margin: 14px 0 0; max-width: 360px; color: var(--fg-2); line-height: 1.6; font-size: 15px; }
+
+.progress { margin-top: 28px; width: min(100%, 330px); }
+.meta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.step {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--fg-2);
+}
+.pct {
+  font-family: var(--f-display); font-size: 18px; font-weight: 500;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  min-width: 4ch; text-align: right; text-shadow: 0 0 12px var(--accent-glow);
+}
+.track { position: relative; height: 3px; background: rgba(255, 255, 255, 0.07); }
+.fill {
+  position: relative; display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+  box-shadow: 0 0 12px var(--accent-glow);
+  transition: width 180ms linear;
+}
+.fill::after {
+  content: ""; position: absolute; right: 0; top: -5px; width: 10px; height: 13px;
+  background: var(--cyan); filter: blur(5px); opacity: 0.9;
+}
+.steps { display: flex; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
+.steps span {
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--fg-3); transition: color 0.3s;
+}
+.steps span.is-active { color: var(--fg-0); text-shadow: 0 0 10px var(--accent-glow); }
+
+.note {
+  position: fixed; right: 24px; bottom: 20px; z-index: 3;
+  font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--fg-3);
+}
+
+@media (max-width: 900px) {
+  .hud { top: auto; bottom: 48px; right: 24px; transform: none; max-width: none; }
+  h1 { font-size: 30px; }
+  .note { display: none; }
+}

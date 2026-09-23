@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loader 3D · варианты</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  html, body { overflow: auto; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 72px 32px 80px; position: relative; z-index: 2; }
+  .wrap h1 { font-size: clamp(28px, 3vw, 40px); }
+  .wrap > p { color: var(--fg-2); max-width: 640px; line-height: 1.6; margin-top: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 40px; }
+  .card {
+    display: block; text-decoration: none; color: inherit;
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    background: rgba(20, 24, 33, 0.55); transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover { border-color: rgba(255, 42, 142, 0.5); transform: translateY(-2px); }
+  .preview { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: #050608; }
+  .preview iframe {
+    position: absolute; top: 0; left: 0; border: 0;
+    width: 200%; height: 200%; transform: scale(0.5); transform-origin: 0 0; pointer-events: none;
+  }
+  .body { padding: 18px 20px 20px; }
+  .body .eyebrow { font-size: 10px; }
+  .body h2 { font-family: var(--f-display); font-weight: 500; font-size: 18px; margin: 8px 0 0; }
+  .body p { margin: 10px 0 0; color: var(--fg-2); font-size: 13px; line-height: 1.55; }
+  .body ul { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .body li { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-1); border: 1px solid var(--line); padding: 3px 7px; border-radius: 4px; }
+  @media (max-width: 1000px) { .cards { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="grid"></div>
+<div class="wrap">
+  <div class="eyebrow">// PROTOTYPE · НЕ ПОДКЛЮЧЕНО К САЙТУ</div>
+  <h1>3D-модели для экрана загрузки инвентаря</h1>
+  <p>Три процедурных варианта на three.js (без текстур и внешних моделей). Каждый переиспользует
+    текущую логику лоадера: три шага «Читаем инвентарь → Сверяем цены → Строим аналитику»
+    и симулированный прогресс 3 → 96 → 100%. Клик по карточке открывает вариант во весь экран.</p>
+
+  <div class="cards">
+    <a class="card" href="v1-case.html">
+      <div class="preview"><iframe src="v1-case.html" loading="lazy" title="V1"></iframe></div>
+      <div class="body">
+        <div class="eyebrow">V1</div>
+        <h2>Case Unlock</h2>
+        <p>Металлический кейс с неоновым швом. По мере прогресса крышка открывается, изнутри вылетают карточки предметов (цвета редкости) и встают на орбиту.</p>
+        <ul><li>rounded box</li><li>orbit cards</li><li>particles</li><li>progress ring</li></ul>
+      </div>
+    </a>
+
+    <a class="card" href="v2-cube.html">
+      <div class="preview"><iframe src="v2-cube.html" loading="lazy" title="V2"></iframe></div>
+      <div class="body">
+        <div class="eyebrow">V2</div>
+        <h2>Inventory Index</h2>
+        <p>27 ячеек-предметов слетаются из хаоса в куб 3×3×3. Сканирующая плоскость подсвечивает слои, угловые скобки фиксируют «захват» когда индекс собран.</p>
+        <ul><li>27 cells</li><li>scan plane</li><li>wire cage</li><li>HUD brackets</li></ul>
+      </div>
+    </a>
+
+    <a class="card" href="v3-market.html">
+      <div class="preview"><iframe src="v3-market.html" loading="lazy" title="V3"></iframe></div>
+      <div class="body">
+        <div class="eyebrow">V3</div>
+        <h2>Market Orbit</h2>
+        <p>Монета с эмблемой-свечами (наш логотип) в центре, вокруг кольцо 3D-свечей растёт вслед за прогрессом, а по их вершинам «отрисовывается» линия цены.</p>
+        <ul><li>brand coin</li><li>28 candles</li><li>price ribbon</li><li>polar grid</li></ul>
+      </div>
+    </a>
+  </div>
+</div>
+</body>
+</html>

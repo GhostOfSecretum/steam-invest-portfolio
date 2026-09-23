@@ -1,9 +1,16 @@
 const path = require('path');
 const { app } = require('electron');
+const Store = require('electron-store');
 const SteamUser = require('steam-user');
 const GlobalOffensive = require('globaloffensive');
 const { LoginSession, EAuthTokenPlatformType } = require('steam-session');
 const { buildItemFields } = require('./gc-item-names');
+const { t, DEFAULT_LANG, normalizeLang } = require('./i18n');
+
+const langStore = new Store({ encryptionKey: 'steam-invest-local-only' });
+function tx(key, vars) {
+  return t(normalizeLang(langStore.get('lang', DEFAULT_LANG)), key, vars);
+}
 
 const STORAGE_UNIT_DEF_INDEX = 1201;
 const GC_CONNECT_TIMEOUT_MS = 120000;
@@ -22,9 +29,11 @@ function isSessionReplacedError(err) {
 async function renewRefreshToken(refreshToken) {
   const loginSession = new LoginSession(EAuthTokenPlatformType.SteamClient);
   loginSession.refreshToken = refreshToken;
-  await loginSession.startWithRefresh();
+  // steam-session never had startWithRefresh; renewRefreshToken is the method
+  // that both refreshes the access token and may rotate the refresh token.
+  await loginSession.renewRefreshToken();
   if (!loginSession.refreshToken) {
-    throw new Error('Steam не выдал обновлённый токен для складов');
+    throw new Error(tx('errNoStorageRefreshToken'));
   }
   return loginSession.refreshToken;
 }
@@ -158,7 +167,7 @@ async function mapGcItem(gcItem, storageUnitId, storageUnitName) {
     tags: [],
     inStorage: true,
     storageUnitId: String(storageUnitId),
-    storageUnitName: storageUnitName || 'Хранилище',
+    storageUnitName: storageUnitName || tx('storageUnitFallback'),
   };
 }
 
@@ -185,7 +194,7 @@ async function fetchStorageContents(refreshToken, expectedSteamId) {
     const results = [];
 
     for (const casket of caskets) {
-      const unitName = casket.custom_name || 'Хранилище';
+      const unitName = casket.custom_name || tx('storageUnitFallback');
       const contents = await getCasketContentsAsync(csgo, casket.id);
       console.log(`[gc-storage] unit "${unitName}" (${casket.id}): ${contents.length} items`);
       for (const item of contents) {
@@ -203,6 +212,37 @@ async function fetchStorageContents(refreshToken, expectedSteamId) {
       user.logOff();
     } catch { /* ignore */ }
     await new Promise((r) => setTimeout(r, 800));
+  }
+}
+
+// Invalidates the token at Valve, so deleting our local copy is not the only
+// thing standing between a stolen disk image and the account. Steam has no
+// endpoint that accepts a bare refresh token: IAuthenticationService/RevokeToken
+// needs an access token, and the only way to get one is to spend the refresh
+// token first. RevokeRefreshToken would avoid that but requires a signature over
+// the token id that only Steam's own clients can produce.
+async function revokeRefreshToken(refreshToken) {
+  const loginSession = new LoginSession(EAuthTokenPlatformType.SteamClient);
+  loginSession.refreshToken = refreshToken;
+  await loginSession.refreshAccessToken();
+  if (!loginSession.accessToken) {
+    throw new Error(tx('errNoRevokeAccessToken'));
+  }
+
+  const response = await fetch('https://api.steampowered.com/IAuthenticationService/RevokeToken/v1/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      access_token: loginSession.accessToken,
+      token: refreshToken,
+      // Permanent, not Logout: the point is to make the token unusable, not to
+      // end one session.
+      revoke_action: '1',
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(tx('errSteamHttp', { status: response.status }));
   }
 }
 
@@ -245,4 +285,5 @@ async function startQrLogin({ onQrUrl, onAuthenticated }) {
 module.exports = {
   fetchStorageContents,
   startQrLogin,
+  revokeRefreshToken,
 };

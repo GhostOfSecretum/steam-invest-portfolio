@@ -1213,7 +1213,8 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
 
   // Align after cache so the last point tracks live Steam, not a stale CSFloat avg.
   // Do not write the aligned series back — that would bake an old ask into the cache.
-  if (history?.data?.length) {
+  // Leaders pass skipAlign: scaling to the card keeps the noisy shape and hides the real move.
+  if (!options.skipAlign && history?.data?.length) {
     const steamAnchor = await resolveSteamChartAnchor(marketHashName, requestedCurrency, anchorOverride);
     if (steamAnchor) history = alignHistoryToAnchor(history, steamAnchor);
   }

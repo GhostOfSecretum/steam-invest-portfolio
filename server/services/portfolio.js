@@ -2055,8 +2055,29 @@ async function buildPortfolioHistoryAndLeaders(items, totalValue, options = {}) 
     : emptyPortfolioHistory(totalValue);
 
   const leaders = (await mapPool(tracked, 4, async (item) => {
-    const sales = await getSkinportSalesHistory(item.marketHashName, 'usd').catch(() => null);
-    return leaderFromCardPrice(item, sales?.saleMedians);
+    const history = await getPriceHistory(item.marketHashName, 365, {
+      currency: 'usd',
+      skipAlign: true,
+    }).catch(() => null);
+    const points = history && history.provider !== 'synthetic'
+      ? filterPriceOutliers(realHistoryPoints(history))
+      : [];
+    let changes = changesFromDailySeries(points, item.qty);
+    let provider = history?.provider || 'history';
+    if (!changes) {
+      const sales = await getSkinportSalesHistory(item.marketHashName, 'usd').catch(() => null);
+      changes = changesFromSaleWindows(sales?.saleMedians, item.qty);
+      provider = 'skinport-median';
+    }
+    if (!changes) return null;
+    return {
+      marketHashName: item.marketHashName,
+      name: item.name || item.marketHashName,
+      iconUrl: item.iconUrl || null,
+      qty: item.qty,
+      provider,
+      changes,
+    };
   })).filter(Boolean);
   attachPeriodChanges(items, leaders);
   return {
@@ -2082,45 +2103,106 @@ function attachPeriodChanges(items, leaders) {
   }
 }
 
-// Thin windows are one or two odd sales, not a price. Skip them.
-const LEADER_MIN_VOLUME = {
+const LEADER_RANGE_DAYS = {
+  '1d': 1,
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+};
+
+// Recent window vs the next longer one. Used only when the daily series is too
+// spiky to trust a day-to-day percent.
+const SALE_WINDOW_PAIRS = {
+  '1d': ['1d', '7d'],
+  '7d': ['7d', '30d'],
+  '30d': ['30d', '90d'],
+  '90d': ['7d', '90d'],
+};
+
+const SALE_WINDOW_MIN_VOLUME = {
   '1d': 3,
   '7d': 5,
   '30d': 5,
   '90d': 5,
 };
 
-// Card price (item.value) against the median sale on Skinport over that window.
-// This is "is the price on the card above or below typical sales", not a
-// day-by-day CSFloat average.
-function leaderFromCardPrice(item, saleMedians) {
-  const endPrice = Number(item?.value);
-  if (!item?.marketHashName || !Number.isFinite(endPrice) || endPrice <= 0) return null;
-  const changes = {};
-  for (const range of Object.keys(LEADER_MIN_VOLUME)) {
-    const bucket = saleMedians?.[range];
-    const startPrice = Number(bucket?.median);
-    const volume = Number(bucket?.volume);
-    if (!Number.isFinite(startPrice) || startPrice <= 0) continue;
-    if (!(volume >= (LEADER_MIN_VOLUME[range] || 5))) continue;
-    const unitChange = endPrice - startPrice;
-    const amount = Number.isFinite(item.qty) && item.qty > 0 ? item.qty : 1;
-    changes[range] = {
-      pct: Math.round((unitChange / startPrice) * 10000) / 100,
-      change: Math.round(unitChange * amount * 100) / 100,
-      startPrice,
-      endPrice,
-    };
+function shiftUtcDate(date, deltaDays) {
+  const base = new Date(`${date}T12:00:00.000Z`);
+  if (!Number.isFinite(base.getTime())) return null;
+  base.setUTCDate(base.getUTCDate() + deltaDays);
+  return base.toISOString().slice(0, 10);
+}
+
+function pointNear(points, date, slackDays) {
+  const target = new Date(`${date}T12:00:00.000Z`).getTime();
+  if (!Number.isFinite(target)) return null;
+  let best = null;
+  let bestDist = Infinity;
+  for (const point of points) {
+    const time = new Date(`${point.date}T12:00:00.000Z`).getTime();
+    if (!Number.isFinite(time)) continue;
+    const dist = Math.abs(time - target);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = point;
+    }
   }
-  if (!Object.keys(changes).length) return null;
+  if (!best || bestDist > slackDays * 86400000) return null;
+  return best;
+}
+
+function recentSeriesIsCalm(points) {
+  const end = points[points.length - 1]?.date;
+  const from = end && shiftUtcDate(end, -14);
+  if (!from) return false;
+  const prices = points
+    .filter((point) => point.date >= from && point.date <= end && point.price > 0)
+    .map((point) => point.price);
+  if (prices.length < 5) return false;
+  return Math.max(...prices) / Math.min(...prices) <= 1.8;
+}
+
+function packChange(endPrice, startPrice, qty) {
+  if (!(endPrice > 0) || !(startPrice > 0)) return null;
+  const unitChange = endPrice - startPrice;
+  const amount = Number.isFinite(qty) && qty > 0 ? qty : 1;
   return {
-    marketHashName: item.marketHashName,
-    name: item.name || item.marketHashName,
-    iconUrl: item.iconUrl || null,
-    qty: item.qty,
-    provider: 'card-vs-sale-median',
-    changes,
+    pct: Math.round((unitChange / startPrice) * 10000) / 100,
+    change: Math.round(unitChange * amount * 100) / 100,
+    startPrice,
+    endPrice,
   };
+}
+
+function changesFromDailySeries(points, qty) {
+  if (!Array.isArray(points) || points.length < 2 || !recentSeriesIsCalm(points)) return null;
+  const endPoint = points[points.length - 1];
+  const changes = {};
+  for (const [range, days] of Object.entries(LEADER_RANGE_DAYS)) {
+    const startDate = shiftUtcDate(endPoint.date, -days);
+    const startPoint = startDate && pointNear(points, startDate, 1);
+    if (!startPoint || startPoint.date >= endPoint.date) continue;
+    const spanDays = (new Date(`${endPoint.date}T12:00:00.000Z`) - new Date(`${startPoint.date}T12:00:00.000Z`)) / 86400000;
+    if (!(spanDays >= days * 0.6)) continue;
+    const entry = packChange(endPoint.price, startPoint.price, qty);
+    if (entry) changes[range] = entry;
+  }
+  return Object.keys(changes).length ? changes : null;
+}
+
+function changesFromSaleWindows(saleMedians, qty) {
+  if (!saleMedians) return null;
+  const changes = {};
+  for (const [range, [recentKey, olderKey]] of Object.entries(SALE_WINDOW_PAIRS)) {
+    const recent = saleMedians[recentKey];
+    const older = saleMedians[olderKey];
+    const minVolume = SALE_WINDOW_MIN_VOLUME[recentKey] || 5;
+    if (!(Number(recent?.volume) >= minVolume)) continue;
+    if (!(Number(older?.volume) >= (SALE_WINDOW_MIN_VOLUME[olderKey] || 5))) continue;
+    const entry = packChange(Number(recent?.median), Number(older?.median), qty);
+    if (entry) changes[range] = entry;
+  }
+  return Object.keys(changes).length ? changes : null;
 }
 
 function medianNumbers(values) {

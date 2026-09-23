@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Storage · Read-only</title>
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+  <title>Storage · QR login</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -20,17 +22,48 @@
   </style>
 </head>
 <body>
-  <h1>Scan with Steam Mobile</h1>
-  <p>Read-only access to Storage contents. We never move or trade items. Token stays on this computer only.</p>
+  <h1 id="qr-title">Scan in Steam Mobile</h1>
+  <p id="qr-body">Steam issues a full-access token — it cannot issue a limited one. We only read Storage contents and do not move or trade items. The token stays on this computer and is never sent to the server.</p>
   <div id="qr"><span class="loading">Loading QR…</span></div>
   <div id="status"></div>
   <script>
+    let lang = window.i18n.defaultLang;
+    let lastAccountName = '';
+
+    function t(key, vars) {
+      return window.i18n.t(lang, key, vars);
+    }
+
+    function applyI18n() {
+      document.documentElement.lang = window.i18n.htmlLangFor(lang);
+      document.title = t('qrWindowTitle');
+      document.getElementById('qr-title').textContent = t('qrTitle');
+      document.getElementById('qr-body').textContent = t('qrBody');
+      const loading = document.querySelector('#qr .loading');
+      if (loading) loading.textContent = t('qrLoading');
+      if (lastAccountName) {
+        const status = document.getElementById('status');
+        status.className = 'ok';
+        status.textContent = t('qrConnected', { accountName: lastAccountName });
+      }
+    }
+
+    window.gcQr.getLang().then((nextLang) => {
+      lang = window.i18n.normalize(nextLang);
+      applyI18n();
+    });
+    window.gcQr.onLangChanged((nextLang) => {
+      lang = window.i18n.normalize(nextLang);
+      applyI18n();
+    });
     window.gcQr.onQrImage((dataUrl) => {
       document.getElementById('qr').innerHTML = `<img src="${dataUrl}" alt="Steam QR">`;
     });
     window.gcQr.onLoginSuccess(({ accountName }) => {
-      document.getElementById('status').className = 'ok';
-      document.getElementById('status').textContent = `Подключено: ${accountName}. Окно закроется автоматически.`;
+      lastAccountName = accountName;
+      const status = document.getElementById('status');
+      status.className = 'ok';
+      status.textContent = t('qrConnected', { accountName });
     });
     window.gcQr.onLoginError((message) => {
       document.getElementById('status').className = 'err';

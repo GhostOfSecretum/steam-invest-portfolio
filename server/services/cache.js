@@ -7,6 +7,69 @@ const CACHE_FILE = path.join(DATA_DIR, 'cache.json');
 const ENTRIES_DIR = path.join(DATA_DIR, 'cache-entries');
 const SIDECAR_BYTES = 48 * 1024;
 const FLUSH_DEBOUNCE_MS = 75;
+const DIR_MODE = 0o700;
+const FILE_MODE = 0o600;
+
+// Values under these prefixes are user data: inventories, device tokens, pairing
+// and login codes. Market price lists are deliberately left in plaintext — they
+// are public, they are the bulk of the cache, and encrypting them would burn CPU
+// on every read for nothing.
+const SENSITIVE_KEY_RE = /^(desktop:|steam:inventory:)/;
+
+// Encryption protects a leaked copy of .data — a stray backup, a snapshot, a
+// misconfigured file server. It cannot protect against an attacker who already
+// runs code on this host, since the key is readable there by definition.
+function loadEncryptionKey() {
+  const raw = String(process.env.DATA_ENCRYPTION_KEY || '').trim();
+  if (!raw) return null;
+  const key = /^[0-9a-f]{64}$/i.test(raw) ? Buffer.from(raw, 'hex') : Buffer.from(raw, 'base64');
+  if (key.length !== 32) {
+    throw new Error('DATA_ENCRYPTION_KEY must be 32 bytes: 64 hex characters or base64.');
+  }
+  return key;
+}
+
+const encryptionKey = loadEncryptionKey();
+if (!encryptionKey && process.env.NODE_ENV === 'production') {
+  console.warn('[cache] DATA_ENCRYPTION_KEY is not set — inventories and device tokens are stored unencrypted.');
+}
+
+// An entry carries data either as a plain `value` or as encrypted `enc`.
+function hasPayload(entry) {
+  return Object.prototype.hasOwnProperty.call(entry, 'value')
+    || Object.prototype.hasOwnProperty.call(entry, 'enc');
+}
+
+function encodeEntry(key, entry) {
+  if (!encryptionKey || !SENSITIVE_KEY_RE.test(String(key))) return entry;
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', encryptionKey, iv);
+  const payload = Buffer.concat([
+    cipher.update(JSON.stringify(entry.value), 'utf8'),
+    cipher.final(),
+  ]);
+  return {
+    updatedAt: entry.updatedAt,
+    enc: Buffer.concat([iv, cipher.getAuthTag(), payload]).toString('base64'),
+  };
+}
+
+// A key that is missing, rotated or wrong turns into a cache miss rather than a
+// crash: inventories get re-synced and device tokens get re-paired, which is
+// recoverable, whereas a boot loop is not.
+function decodeEntry(entry) {
+  if (!entry || !entry.enc) return entry;
+  if (!encryptionKey) return null;
+  try {
+    const raw = Buffer.from(entry.enc, 'base64');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', encryptionKey, raw.subarray(0, 12));
+    decipher.setAuthTag(raw.subarray(12, 28));
+    const json = Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]).toString('utf8');
+    return { updatedAt: entry.updatedAt, value: JSON.parse(json) };
+  } catch {
+    return null;
+  }
+}
 
 let writeQueue = Promise.resolve();
 let memoryCache = null;
@@ -15,9 +78,27 @@ let flushTimer = null;
 let flushWaiters = [];
 const sidecarMemory = new Map();
 
+let permissionsTightened = false;
+
+// mkdir's mode is subject to umask and does nothing for directories that already
+// exist, so existing data written before this change is chmod'ed once on boot.
 async function ensureDataDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.mkdir(ENTRIES_DIR, { recursive: true });
+  await fs.mkdir(DATA_DIR, { recursive: true, mode: DIR_MODE });
+  await fs.mkdir(ENTRIES_DIR, { recursive: true, mode: DIR_MODE });
+  if (permissionsTightened) return;
+  permissionsTightened = true;
+
+  for (const dir of [DATA_DIR, ENTRIES_DIR]) {
+    try {
+      await fs.chmod(dir, DIR_MODE);
+      const names = await fs.readdir(dir, { withFileTypes: true });
+      await Promise.all(names
+        .filter((item) => item.isFile())
+        .map((item) => fs.chmod(path.join(dir, item.name), FILE_MODE).catch(() => {})));
+    } catch (error) {
+      console.warn(`[cache] could not tighten permissions on ${dir}:`, error.message);
+    }
+  }
 }
 
 async function getCacheMtimeMs() {
@@ -72,7 +153,7 @@ async function readSidecar(key) {
   try {
     const raw = await fs.readFile(sidecarPathForKey(key), 'utf8');
     const entry = JSON.parse(raw);
-    if (!entry || typeof entry !== 'object' || !Object.prototype.hasOwnProperty.call(entry, 'value')) {
+    if (!entry || typeof entry !== 'object' || !hasPayload(entry)) {
       return null;
     }
     sidecarMemory.set(key, entry);
@@ -87,7 +168,7 @@ async function writeSidecar(key, entry) {
   await ensureDataDir();
   const filePath = sidecarPathForKey(key);
   const tmpFile = `${filePath}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
-  await fs.writeFile(tmpFile, JSON.stringify(entry));
+  await fs.writeFile(tmpFile, JSON.stringify(entry), { mode: FILE_MODE });
   await fs.rename(tmpFile, filePath);
   sidecarMemory.set(key, entry);
 }
@@ -96,6 +177,8 @@ async function migrateLargeEntries(cache) {
   let changed = false;
   for (const [key, entry] of Object.entries(cache)) {
     if (!entry || entry.sidecar) continue;
+    // Encrypted entries are already written in their final shape and their size
+    // says nothing about item count, so they are left where they are.
     if (!Object.prototype.hasOwnProperty.call(entry, 'value')) continue;
     if (!shouldUseSidecar(key, entry.value)) continue;
     await writeSidecar(key, entry);
@@ -135,7 +218,7 @@ async function loadCache(force = false) {
 async function writeCacheNow(cache) {
   await ensureDataDir();
   const tmpFile = `${CACHE_FILE}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
-  await fs.writeFile(tmpFile, JSON.stringify(cache));
+  await fs.writeFile(tmpFile, JSON.stringify(cache), { mode: FILE_MODE });
   await fs.rename(tmpFile, CACHE_FILE);
   memoryCache = cache;
   memoryCacheMtimeMs = await getCacheMtimeMs();
@@ -162,9 +245,8 @@ function scheduleMainFlush() {
 async function resolveEntry(key) {
   const cache = await loadCache();
   const entry = cache[key];
-  if (!entry) return readSidecar(key);
-  if (entry.sidecar) return readSidecar(key);
-  return entry;
+  if (!entry || entry.sidecar) return decodeEntry(await readSidecar(key));
+  return decodeEntry(entry);
 }
 
 async function getCached(key, maxAgeMs) {
@@ -181,9 +263,11 @@ async function getCachedEntry(key) {
 }
 
 async function setCached(key, value) {
-  const entry = { updatedAt: Date.now(), value };
+  const entry = encodeEntry(key, { updatedAt: Date.now(), value });
   const cache = memoryCache || await loadCache();
 
+  // The sidecar decision is made on the plaintext value: ciphertext size says
+  // nothing useful about how many items an entry holds.
   if (shouldUseSidecar(key, value)) {
     await writeSidecar(key, entry);
     cache[key] = { updatedAt: entry.updatedAt, sidecar: true };
@@ -218,6 +302,12 @@ async function backupCorruptCache() {
     if (error.code !== 'ENOENT') throw error;
   }
 }
+
+// Tightening permissions must not depend on the cache being touched: an instance
+// that only serves static pages would otherwise leave .data world-readable.
+ensureDataDir().catch((error) => {
+  console.warn('[cache] could not prepare the data directory:', error.message);
+});
 
 module.exports = {
   getCached,

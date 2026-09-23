@@ -234,17 +234,18 @@ function applyItemDisplayLimit(portfolio, planId) {
   };
 }
 
+// Must stay in sync with `artifactName` in desktop/electron-builder.js.
 const DOWNLOAD_ARTIFACTS = {
   'mac-arm64': {
-    file: 'Steam-Invest-Portfolio-mac-arm64.dmg',
+    file: 'SkinsHead-mac-arm64.dmg',
     contentType: 'application/x-apple-diskimage',
   },
   'mac-x64': {
-    file: 'Steam-Invest-Portfolio-mac-x64.dmg',
+    file: 'SkinsHead-mac-x64.dmg',
     contentType: 'application/x-apple-diskimage',
   },
   'win-x64': {
-    file: 'Steam-Invest-Portfolio-win-x64.exe',
+    file: 'SkinsHead-win-x64.exe',
     contentType: 'application/octet-stream',
   },
 };

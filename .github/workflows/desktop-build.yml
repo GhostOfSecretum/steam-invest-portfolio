@@ -1,7 +1,36 @@
 name: Desktop Builds
 
+# Signing and notarization stay dormant until the corresponding repository
+# secrets exist, so this workflow keeps producing unsigned builds until then.
+#
+# macOS secrets:
+#   MAC_CSC_LINK            base64 of the Developer ID Application .p12
+#   MAC_CSC_KEY_PASSWORD    password for that .p12
+#   APPLE_API_KEY_B64       base64 of the App Store Connect AuthKey_XXX.p8
+#   APPLE_API_KEY_ID        key id shown next to the key in App Store Connect
+#   APPLE_API_ISSUER        issuer id from the App Store Connect Keys page
+#
+# Windows secrets (Azure Trusted Signing):
+#   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
+#   AZURE_CODE_SIGNING_ENDPOINT   e.g. https://eus.codesigning.azure.net/
+#   AZURE_CODE_SIGNING_ACCOUNT    Trusted Signing account name
+#   AZURE_CODE_SIGNING_PROFILE    certificate profile name
+#   AZURE_CODE_SIGNING_PUBLISHER  publisher name, exactly as in the certificate
+
+# Pushing a v* tag publishes a GitHub Release, which is also the update feed
+# electron-updater reads. The tag must match `version` in desktop/package.json:
+# electron-builder names the release from package.json, not from the tag, so a
+# mismatch silently publishes to a different release than the one you tagged.
+# Manual runs build the same artifacts without publishing anything.
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+# Needed to create the release and upload assets to it.
+permissions:
+  contents: write
 
 jobs:
   mac:
@@ -16,17 +45,74 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
         working-directory: desktop
-      - run: npm run dist:mac
+
+      # Only export variables whose secret is actually set: electron-builder and
+      # @electron/notarize decide what to do based on presence, and an empty
+      # CSC_LINK is not the same as a missing one. @electron/notarize also wants
+      # APPLE_API_KEY to be a path, not the key material.
+      - name: Configure signing environment
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_B64: ${{ secrets.APPLE_API_KEY_B64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          if [ -n "$MAC_CSC_LINK" ]; then
+            echo "CSC_LINK=$MAC_CSC_LINK" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=$MAC_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "Developer ID certificate configured."
+          else
+            echo "::warning::No Developer ID certificate — the build will be unsigned."
+          fi
+
+          if [ -n "$APPLE_API_KEY_B64" ] && [ -n "$APPLE_API_KEY_ID" ] && [ -n "$APPLE_API_ISSUER" ]; then
+            mkdir -p "$RUNNER_TEMP/private_keys"
+            printf '%s' "$APPLE_API_KEY_B64" | base64 --decode > "$RUNNER_TEMP/private_keys/AuthKey.p8"
+            echo "APPLE_API_KEY=$RUNNER_TEMP/private_keys/AuthKey.p8" >> "$GITHUB_ENV"
+            echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID" >> "$GITHUB_ENV"
+            echo "APPLE_API_ISSUER=$APPLE_API_ISSUER" >> "$GITHUB_ENV"
+            echo "Notarization credentials configured."
+          else
+            echo "::warning::No App Store Connect key — the build will not be notarized."
+          fi
+
+      - name: Build
         working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:mac -- --publish ${{ startsWith(github.ref, 'refs/tags/v') && 'always' || 'never' }}
+
+      # Lets users verify a download matches what CI produced. The ZIPs are what
+      # Squirrel.Mac installs from, so they are worth checksumming too.
+      - name: Publish checksums
+        run: shasum -a 256 downloads/*.dmg downloads/*.zip | tee downloads/SHA256SUMS-macos.txt
+
       - uses: actions/upload-artifact@v4
         with:
-          name: steam-invest-portfolio-macos
-          path: downloads/*.dmg
+          name: skinshead-macos
+          path: |
+            downloads/*.dmg
+            downloads/*.zip
+            downloads/latest-mac.yml
+            downloads/SHA256SUMS-macos.txt
           if-no-files-found: error
 
   windows:
     name: Windows Installer
     runs-on: windows-latest
+    # electron-builder.js switches Azure Trusted Signing on only when
+    # AZURE_CODE_SIGNING_ACCOUNT is non-empty, so unset secrets simply mean an
+    # unsigned installer. The AZURE_TENANT_ID/CLIENT_ID/CLIENT_SECRET trio is
+    # read by Azure Identity inside the TrustedSigning PowerShell module.
+    env:
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_CODE_SIGNING_ENDPOINT: ${{ secrets.AZURE_CODE_SIGNING_ENDPOINT }}
+      AZURE_CODE_SIGNING_ACCOUNT: ${{ secrets.AZURE_CODE_SIGNING_ACCOUNT }}
+      AZURE_CODE_SIGNING_PROFILE: ${{ secrets.AZURE_CODE_SIGNING_PROFILE }}
+      AZURE_CODE_SIGNING_PUBLISHER: ${{ secrets.AZURE_CODE_SIGNING_PUBLISHER }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,10 +122,34 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
         working-directory: desktop
-      - run: npm run dist:win
+
+      - name: Report signing configuration
+        shell: pwsh
+        run: |
+          if ($env:AZURE_CODE_SIGNING_ACCOUNT) {
+            Write-Output "Azure Trusted Signing configured."
+          } else {
+            Write-Output "::warning::No Azure Trusted Signing secrets — the installer will be unsigned."
+          }
+
+      - name: Build
         working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:win -- --publish ${{ startsWith(github.ref, 'refs/tags/v') && 'always' || 'never' }}
+
+      - name: Publish checksums
+        shell: pwsh
+        run: |
+          Get-FileHash -Algorithm SHA256 downloads/*.exe |
+            ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
+            Tee-Object -FilePath downloads/SHA256SUMS-windows.txt
+
       - uses: actions/upload-artifact@v4
         with:
-          name: steam-invest-portfolio-windows
-          path: downloads/*.exe
+          name: skinshead-windows
+          path: |
+            downloads/*.exe
+            downloads/latest.yml
+            downloads/SHA256SUMS-windows.txt
           if-no-files-found: error

@@ -8,27 +8,41 @@ const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 let schemaPromise = null;
 
-async function loadSchema(cacheDir) {
-  if (schemaPromise) return schemaPromise;
-  schemaPromise = (async () => {
-    await fs.mkdir(cacheDir, { recursive: true });
-    const cacheFile = path.join(cacheDir, 'schema.json');
-    try {
-      const stat = await fs.stat(cacheFile);
-      if (Date.now() - stat.mtimeMs < CACHE_MAX_AGE_MS) {
-        return JSON.parse(await fs.readFile(cacheFile, 'utf8'));
-      }
-    } catch { /* refresh */ }
+function fetchErrorDetail(err) {
+  const cause = err?.cause?.message || err?.cause?.code;
+  return cause ? `${err.message}: ${cause}` : (err?.message || String(err));
+}
 
+async function readCachedSchema(cacheFile) {
+  return JSON.parse(await fs.readFile(cacheFile, 'utf8'));
+}
+
+async function fetchText(url) {
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'SkinsHead-desktop/0.1' },
+  });
+  if (!response.ok) throw new Error(`${url.split('/').pop()} HTTP ${response.status}`);
+  return response.text();
+}
+
+async function loadSchemaUncached(cacheDir) {
+  await fs.mkdir(cacheDir, { recursive: true });
+  const cacheFile = path.join(cacheDir, 'schema.json');
+
+  try {
+    const stat = await fs.stat(cacheFile);
+    if (Date.now() - stat.mtimeMs < CACHE_MAX_AGE_MS) {
+      const cached = await readCachedSchema(cacheFile);
+      if (cached?.keychain_defs && Object.keys(cached.keychain_defs).length) {
+        return cached;
+      }
+    }
+  } catch { /* refresh */ }
+
+  try {
     const [itemsRaw, englishRaw] = await Promise.all([
-      fetch(ITEMS_GAME_URL).then((r) => {
-        if (!r.ok) throw new Error(`items_game HTTP ${r.status}`);
-        return r.text();
-      }),
-      fetch(ENGLISH_URL).then((r) => {
-        if (!r.ok) throw new Error(`csgo_english HTTP ${r.status}`);
-        return r.text();
-      }),
+      fetchText(ITEMS_GAME_URL),
+      fetchText(ENGLISH_URL),
     ]);
 
     const itemsGame = VDF.parse(itemsRaw);
@@ -41,11 +55,28 @@ async function loadSchema(cacheDir) {
       sticker_kits: root.sticker_kits || {},
       music_kits: root.music_definitions || {},
       graffiti_tints: root.graffiti_tints || {},
+      keychain_defs: root.keychain_definitions || {},
       translations,
     };
     await fs.writeFile(cacheFile, JSON.stringify(schema));
     return schema;
-  })();
+  } catch (err) {
+    try {
+      const stale = await readCachedSchema(cacheFile);
+      console.warn('[gc-storage] schema refresh failed, using stale cache:', fetchErrorDetail(err));
+      return stale;
+    } catch {
+      throw new Error(`schema fetch failed (${fetchErrorDetail(err)})`);
+    }
+  }
+}
+
+async function loadSchema(cacheDir) {
+  if (schemaPromise) return schemaPromise;
+  schemaPromise = loadSchemaUncached(cacheDir).catch((err) => {
+    schemaPromise = null;
+    throw err;
+  });
   return schemaPromise;
 }
 
@@ -108,6 +139,37 @@ function isStatTrak(item) {
   return attributes.some((a) => a.def_index === 80 || a.defIndex === 80);
 }
 
+function readUint32Attr(item, attribDefIndex) {
+  const bytes = getAttributeBytes(item, attribDefIndex);
+  if (!bytes || bytes.length < 4) return null;
+  return bytes.readUInt32LE(0);
+}
+
+function getKit(schema, kitId) {
+  if (kitId == null || kitId === '') return null;
+  return schema.sticker_kits?.[kitId]
+    || schema.sticker_kits?.[String(kitId)]
+    || schema.keychain_defs?.[kitId]
+    || schema.keychain_defs?.[String(kitId)]
+    || null;
+}
+
+function resolveKitName(schema, kitId, prefix) {
+  const kit = getKit(schema, kitId);
+  if (!kit) return null;
+  const translated = getTranslation(schema, kit.item_name || kit.loc_name);
+  if (!translated) return null;
+  return `${prefix} | ${translated}`;
+}
+
+function resolveKitId(gcItem) {
+  return gcItem.stickers?.[0]?.sticker_id
+    ?? gcItem.keychains?.[0]?.sticker_id
+    ?? readUint32Attr(gcItem, 113)
+    ?? readUint32Attr(gcItem, 299)
+    ?? readUint32Attr(gcItem, 321);
+}
+
 function resolveItemName(schema, gcItem) {
   const defIndex = getGcValue(gcItem, 'def_index', 'defIndex', 'defindex');
   const paintIndex = getGcValue(gcItem, 'paint_index', 'paintIndex', 'paintindex');
@@ -122,6 +184,21 @@ function resolveItemName(schema, gcItem) {
     if (kit?.loc_name) {
       return `Music Kit | ${getTranslation(schema, kit.loc_name)}`;
     }
+  }
+
+  const kitId = resolveKitId(gcItem);
+  const defIndexNum = Number(defIndex);
+  if (defIndexNum === 1209) {
+    const named = resolveKitName(schema, kitId, 'Sticker');
+    if (named) return named;
+  }
+  if (defIndexNum === 1355) {
+    const named = resolveKitName(schema, kitId, 'Charm');
+    if (named) return named;
+  }
+  if (defIndexNum === 1348) {
+    const named = resolveKitName(schema, kitId, 'Sealed Graffiti');
+    if (named) return named;
   }
 
   const baseOne = getTranslation(schema, def.item_name);
@@ -142,40 +219,37 @@ function resolveItemName(schema, gcItem) {
   return name.trim();
 }
 
-function resolveIconUrl(schema, gcItem) {
-  const defIndex = getGcValue(gcItem, 'def_index', 'defIndex', 'defindex');
-  const paintIndex = getGcValue(gcItem, 'paint_index', 'paintIndex', 'paintindex');
-  const def = getItemDef(schema, defIndex);
-  if (!def) return null;
-  let imagePath = def.image_inventory;
-  if (paintIndex != null && def.name) {
-    const paint = schema.paint_kits[paintIndex];
-    if (paint?.name) {
-      imagePath = `econ/default_generated/${def.name}_${paint.name}_light_large`;
-    }
-  }
-  if (!imagePath) return null;
-  return `https://community.cloudflare.steamstatic.com/economy/image/${imagePath}`;
+function resolveIconUrl() {
+  // Schema paths like econ/weapon_cases/... 404 on Steam's CDN. Real icons are
+  // hashed economy URLs from the market catalog, filled in on the server after sync.
+  return null;
 }
 
 async function buildItemFields(gcItem, cacheDir) {
-  const schema = await loadSchema(cacheDir);
+  let schema = null;
+  try {
+    schema = await loadSchema(cacheDir);
+  } catch (err) {
+    console.warn('[gc-storage] schema unavailable, using fallback names:', fetchErrorDetail(err));
+  }
   const defIndex = getGcValue(gcItem, 'def_index', 'defIndex', 'defindex');
+  const defIndexNum = Number(defIndex);
   const paintWear = getGcValue(gcItem, 'paint_wear', 'paintWear', 'paintwear');
-  const marketHashName = resolveItemName(schema, gcItem) || `CS2 Item #${defIndex}`;
-  const iconUrl = resolveIconUrl(schema, gcItem);
+  const marketHashName = (schema && resolveItemName(schema, gcItem)) || `CS2 Item #${defIndex}`;
   const tradableAfterRaw = getGcValue(gcItem, 'tradable_after', 'tradableAfter', 'tradableafter');
   const tradableAfter = tradableAfterRaw ? new Date(tradableAfterRaw) : null;
   const tradable = !tradableAfter || tradableAfter <= new Date();
+  const isSticker = defIndexNum === 1209;
+  const isCharm = defIndexNum === 1355;
 
   return {
     marketHashName,
     name: gcItem.custom_name || marketHashName,
-    iconUrl,
+    iconUrl: null,
     tradable,
     marketable: tradable,
-    type: 'Storage contents',
-    category: 'Storage',
+    type: isSticker ? 'Sticker' : (isCharm ? 'Charm' : 'Storage contents'),
+    category: isSticker ? 'Sticker' : (isCharm ? 'Charm' : 'Storage'),
     rarity: 'Unknown',
     wear: paintWear != null ? getSkinWearName(paintWear) : 'N/A',
   };

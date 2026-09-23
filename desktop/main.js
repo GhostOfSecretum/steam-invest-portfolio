@@ -6,8 +6,45 @@ const QRCode = require('qrcode');
 const Store = require('electron-store');
 const { fetchStorageContents, startQrLogin, revokeRefreshToken } = require('./gc-storage-sync');
 const { mergeInventoryItems } = require('./inventory-merge');
+const { t, LANGS, LANG_LABELS, DEFAULT_LANG, STRINGS, normalizeLang } = require('./i18n');
 
 const store = new Store({ encryptionKey: 'steam-invest-local-only' });
+
+function getLang() {
+  return normalizeLang(store.get('lang', DEFAULT_LANG));
+}
+
+function tx(key, vars) {
+  return t(getLang(), key, vars);
+}
+
+function setAppLang(lang) {
+  store.set('lang', normalizeLang(lang));
+  const current = getLang();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setTitle(tx('windowTitle'));
+    mainWindow.webContents.send('lang-changed', current);
+  }
+  if (qrLoginWindow && !qrLoginWindow.isDestroyed()) {
+    qrLoginWindow.setTitle(tx('qrWindowTitle'));
+    qrLoginWindow.webContents.send('lang-changed', current);
+  }
+  setImmediate(() => buildAppMenu());
+}
+
+function i18nBundle() {
+  return {
+    lang: getLang(),
+    langs: LANGS,
+    labels: LANG_LABELS,
+    defaultLang: DEFAULT_LANG,
+    strings: STRINGS,
+  };
+}
+
+ipcMain.on('get-i18n-sync', (event) => {
+  event.returnValue = i18nBundle();
+});
 
 const DEFAULT_SERVER_URL = 'https://skinshead.pro';
 const ALLOWED_SERVER_HOSTS = new Set(['skinshead.pro', 'www.skinshead.pro']);
@@ -22,24 +59,24 @@ const PAIRING_CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/i;
 
 function normalizeServerUrl(raw) {
   let input = String(raw || '').trim().replace(/\/+$/, '');
-  if (!input) throw new Error('Укажите адрес сервера (например https://skinshead.pro)');
+  if (!input) throw new Error(tx('errServerUrlRequired'));
   if (!/^https?:\/\//i.test(input)) input = `https://${input}`;
 
   let parsed;
   try {
     parsed = new URL(input);
   } catch {
-    throw new Error(`Некорректный адрес сервера: ${input}`);
+    throw new Error(tx('errServerUrlInvalid', { input }));
   }
 
   const host = parsed.hostname.toLowerCase();
   const isLocalDev = !app.isPackaged && (host === 'localhost' || host === '127.0.0.1');
 
   if (!ALLOWED_SERVER_HOSTS.has(host) && !isLocalDev) {
-    throw new Error(`Адрес ${host} не разрешён. Используйте ${DEFAULT_SERVER_URL}.`);
+    throw new Error(tx('errServerHostNotAllowed', { host, url: DEFAULT_SERVER_URL }));
   }
   if (parsed.protocol !== 'https:' && !isLocalDev) {
-    throw new Error('Адрес сервера должен использовать https.');
+    throw new Error(tx('errServerHttpsRequired'));
   }
 
   return `${parsed.protocol}//${parsed.host}`;
@@ -120,7 +157,7 @@ function restrictToSteam(webContents) {
 
 function ensureSecretStorageAvailable() {
   if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error('Защищённое хранилище ОС недоступно. Подключение складов отключено для безопасности.');
+    throw new Error(tx('errSecretStorage'));
   }
 }
 
@@ -185,17 +222,12 @@ async function reportRevokeFailure(result) {
 
   const { response: choice } = await dialog.showMessageBox({
     type: 'warning',
-    buttons: ['Открыть устройства Steam', 'Закрыть'],
+    buttons: [tx('openSteamDevices'), tx('close')],
     defaultId: 0,
     cancelId: 1,
-    title: 'Хранилища отключены',
-    message: 'Токен удалён с этого компьютера, но отозвать его в Steam не удалось.',
-    detail: [
-      result.error,
-      '',
-      'Пока токен не отозван, он остаётся действительным на стороне Steam.',
-      'Отзовите его вручную: Steam → Настройки → Безопасность → Управление устройствами.',
-    ].join('\n'),
+    title: tx('storageDisconnectedTitle'),
+    message: tx('storageRevokeFailedMessage'),
+    detail: tx('storageRevokeFailedDetail', { error: result.error || '' }),
   });
   if (choice === 0) await shell.openExternal(STEAM_DEVICES_URL);
 }
@@ -205,8 +237,8 @@ async function disconnectStorageWithReport() {
   if (result.revoked) {
     await dialog.showMessageBox({
       type: 'info',
-      title: 'Хранилища отключены',
-      message: 'Токен удалён с этого компьютера и отозван в Steam.',
+      title: tx('storageDisconnectedTitle'),
+      message: tx('storageRevokedMessage'),
     });
     return;
   }
@@ -283,7 +315,7 @@ async function openSteamLoginWindow() {
     const loginWin = new BrowserWindow({
       width: 900,
       height: 720,
-      title: 'Вход в Steam',
+      title: tx('steamLoginTitle'),
       modal: false,
       show: false,
       backgroundColor: '#1b2838',
@@ -312,7 +344,7 @@ async function openSteamLoginWindow() {
       if (await hasSteamWebSession()) {
         finish(resolve, { ok: true });
       } else {
-        finish(reject, new Error('Вход не завершён. Войдите в Steam в открывшемся окне и дождитесь автоматического закрытия.'));
+        finish(reject, new Error(tx('steamLoginIncomplete')));
       }
     });
   });
@@ -328,7 +360,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
-    title: 'Steam Invest · Desktop',
+    title: tx('windowTitle'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -416,7 +448,10 @@ async function readJsonResponse(response, context) {
     return JSON.parse(text || '{}');
   } catch (error) {
     const preview = text.replace(/\s+/g, ' ').slice(0, 80);
-    throw new Error(`${context} вернул не JSON. ${preview ? `Ответ: ${preview}` : ''}`.trim());
+    throw new Error(tx('notJson', {
+      context,
+      preview: preview ? tx('responsePreview', { preview }) : '',
+    }).trim());
   }
 }
 
@@ -431,12 +466,15 @@ async function isOutdatedResponse(response) {
     outdatedDialogShown = true;
     const { response: choice } = await dialog.showMessageBox({
       type: 'warning',
-      buttons: ['Скачать новую версию', 'Позже'],
+      buttons: [tx('downloadNewVersion'), tx('later')],
       defaultId: 0,
       cancelId: 1,
-      title: 'Нужно обновление',
-      message: 'Эта версия приложения больше не поддерживается сервером.',
-      detail: `Установлена версия ${app.getVersion()}, минимальная поддерживаемая — ${body.minVersion || 'более новая'}. Синхронизация остановлена до обновления.`,
+      title: tx('outdatedTitle'),
+      message: tx('outdatedMessage'),
+      detail: tx('outdatedDetail', {
+        version: app.getVersion(),
+        minVersion: body.minVersion || tx('newerVersion'),
+      }),
     });
     if (choice === 0) await shell.openExternal(`${getServerUrl()}/#desktop`);
   }
@@ -463,8 +501,8 @@ function initAutoUpdater() {
     updateCheckIsManual = false;
     dialog.showMessageBox({
       type: 'error',
-      title: 'Обновление',
-      message: 'Не удалось проверить обновления.',
+      title: tx('updateTitle'),
+      message: tx('updateCheckFailed'),
       detail: message,
     });
   });
@@ -474,8 +512,8 @@ function initAutoUpdater() {
     updateCheckIsManual = false;
     dialog.showMessageBox({
       type: 'info',
-      title: 'Обновление',
-      message: `У вас последняя версия (${app.getVersion()}).`,
+      title: tx('updateTitle'),
+      message: tx('updateLatest', { version: app.getVersion() }),
     });
   });
 
@@ -483,12 +521,12 @@ function initAutoUpdater() {
     updateCheckIsManual = false;
     const { response: choice } = await dialog.showMessageBox({
       type: 'info',
-      buttons: ['Перезапустить и обновить', 'Позже'],
+      buttons: [tx('restartAndUpdate'), tx('later')],
       defaultId: 0,
       cancelId: 1,
-      title: 'Обновление готово',
-      message: `Версия ${version} загружена.`,
-      detail: 'Приложение перезапустится, чтобы установить обновление.',
+      title: tx('updateReadyTitle'),
+      message: tx('updateReadyMessage', { version }),
+      detail: tx('updateReadyDetail'),
     });
     if (choice === 0) autoUpdater.quitAndInstall();
   });
@@ -500,8 +538,8 @@ function checkForUpdatesManually() {
   if (!app.isPackaged) {
     dialog.showMessageBox({
       type: 'info',
-      title: 'Обновление',
-      message: 'Проверка обновлений работает только в установленной версии.',
+      title: tx('updateTitle'),
+      message: tx('updateDevOnly'),
     });
     return;
   }
@@ -518,12 +556,12 @@ async function isPlanRefusal(response) {
 
   const { response: choice } = await dialog.showMessageBox({
     type: 'info',
-    buttons: ['Открыть тарифы', 'Закрыть'],
+    buttons: [tx('openPricing'), tx('close')],
     defaultId: 0,
     cancelId: 1,
-    title: 'Нужен платный тариф',
-    message: 'Синхронизация десктопа доступна на тарифах Plus и Investor.',
-    detail: 'Оформите или продлите подписку на сайте, после этого синхронизация заработает без повторной привязки.',
+    title: tx('planRequiredTitle'),
+    message: tx('planRequiredMessage'),
+    detail: tx('planRequiredDetail'),
   });
   if (choice === 0) await shell.openExternal(`${getServerUrl()}/#pricing`);
   return true;
@@ -634,10 +672,10 @@ async function runInventorySync(steamId, steamSession, deviceToken, { includeSto
     body: JSON.stringify({ items, storageItemCount, includeStorage }),
   });
   if (await isOutdatedResponse(response)) {
-    throw new Error('Версия приложения устарела — синхронизация остановлена. Установите свежую сборку.');
+    throw new Error(tx('errAppOutdatedSync'));
   }
   if (await isPlanRefusal(response)) {
-    throw new Error('Синхронизация доступна на тарифах Plus и Investor.');
+    throw new Error(tx('errPlanRequired'));
   }
   const data = await readJsonResponse(response, 'SkinsHead server');
   if (!response.ok) throw new Error(data.error || 'Sync failed');
@@ -676,51 +714,60 @@ function buildAppMenu() {
     { role: 'fileMenu' },
     { role: 'editMenu' },
     {
-      label: 'Inventory',
+      label: tx('language'),
+      submenu: LANGS.map((value) => ({
+        label: LANG_LABELS[value],
+        type: 'radio',
+        checked: getLang() === value,
+        click: () => setAppLang(value),
+      })),
+    },
+    {
+      label: tx('menuInventory'),
       submenu: [
         {
-          label: 'Desktop Settings',
+          label: tx('menuDesktopSettings'),
           accelerator: 'CmdOrCtrl+,',
           click: () => showDesktopSettings(),
         },
         {
-          label: 'Open Portfolio Dashboard',
+          label: tx('menuOpenDashboard'),
           accelerator: 'CmdOrCtrl+D',
           click: () => openDesktopApp().catch((e) => console.error('[menu] dashboard:', e.message)),
         },
         { type: 'separator' },
         {
-          label: 'Steam Login',
+          label: tx('menuSteamLogin'),
           click: async () => {
             try { await handleSteamLogin(); } catch (e) { console.error('[menu] steam login error:', e.message); }
           },
         },
         {
-          label: 'Sync Now',
+          label: tx('menuSyncNow'),
           accelerator: 'CmdOrCtrl+R',
           click: async () => {
             try { await handleManualSync(); } catch (e) { console.error('[menu] sync error:', e.message); }
           },
         },
         {
-          label: 'Connect Storage',
+          label: tx('menuConnectStorage'),
           click: async () => {
             try { await openGcQrLoginWindow({ skipConsent: false }); } catch (e) { console.error('[menu] gc login error:', e.message); }
           },
         },
         {
-          label: 'Disconnect Storage',
+          label: tx('menuDisconnectStorage'),
           click: async () => {
             try { await disconnectStorageWithReport(); } catch (e) { console.error('[menu] gc disconnect:', e.message); }
           },
         },
         { type: 'separator' },
         {
-          label: 'Check for Updates',
+          label: tx('menuCheckUpdates'),
           click: () => checkForUpdatesManually(),
         },
         {
-          label: 'Disconnect Desktop',
+          label: tx('menuDisconnectDesktop'),
           click: async () => {
             await resetDesktopState();
             session.fromPartition('persist:steam').clearStorageData();
@@ -770,13 +817,21 @@ ipcMain.handle('get-state', async () => ({
   gcAccountName: store.get('gcAccountName', null),
   lastStorageSync: store.get('lastStorageSync', null),
   steamLoggedIn: await hasSteamWebSession(),
+  lang: getLang(),
 }));
+
+ipcMain.handle('get-lang', () => getLang());
+ipcMain.handle('set-lang', (_event, lang) => {
+  setAppLang(lang);
+  return getLang();
+});
+ipcMain.handle('get-i18n', () => i18nBundle());
 
 ipcMain.handle('pair-device', async (_event, { serverUrl, code }) => {
   const normalizedUrl = normalizeServerUrl(serverUrl);
   const pairingCode = String(code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!PAIRING_CODE_RE.test(pairingCode)) {
-    throw new Error('Введите 8-символьный код с сайта (буквы и цифры)');
+    throw new Error(tx('errPairCode'));
   }
 
   let response;
@@ -788,21 +843,21 @@ ipcMain.handle('pair-device', async (_event, { serverUrl, code }) => {
     });
   } catch (error) {
     throw new Error(
-      `Не удалось подключиться к ${normalizedUrl}. Проверьте Server URL (для skinshead.pro оставьте https://skinshead.pro). ${formatRequestError(error)}`,
+      tx('errPairConnect', { url: normalizedUrl, error: formatRequestError(error) }),
     );
   }
 
   if (await isOutdatedResponse(response)) {
-    throw new Error('Эта версия приложения больше не поддерживается. Установите свежую сборку и повторите привязку.');
+    throw new Error(tx('errPairOutdated'));
   }
 
   const data = await readJsonResponse(response, 'SkinsHead server').catch(() => ({}));
   if (!response.ok) {
     if (data.code === 'invalid_code') {
-      throw new Error('Неверный или просроченный код. Сгенерируйте новый на сайте (кнопка «Код для desktop»).');
+      throw new Error(tx('errInvalidCode'));
     }
     if (data.code === 'rate_limited') {
-      throw new Error('Слишком много попыток. Подождите несколько минут и попробуйте снова.');
+      throw new Error(tx('errRateLimited'));
     }
     throw new Error(data.error || `Pairing failed (HTTP ${response.status})`);
   }
@@ -818,19 +873,19 @@ ipcMain.handle('pair-device', async (_event, { serverUrl, code }) => {
 
 ipcMain.handle('open-steam-login', async () => {
   const steamId = store.get('steamId');
-  if (!steamId) throw new Error('Not paired yet');
+  if (!steamId) throw new Error(tx('notPairedYet'));
   return openSteamLoginWindow();
 });
 
 ipcMain.handle('sync-inventory', async () => {
   const steamId = store.get('steamId');
   const deviceToken = getDeviceToken();
-  if (!steamId || !deviceToken) throw new Error('Not paired');
+  if (!steamId || !deviceToken) throw new Error(tx('notPaired'));
 
   const steamSession = session.fromPartition('persist:steam');
   const cookies = await steamSession.cookies.get({ url: STEAM_COMMUNITY });
   if (!cookies.some((c) => c.name === 'steamLoginSecure')) {
-    throw new Error('Сначала нажмите «1. Войти в Steam (инвентарь)» и дождитесь сохранения Steam-сессии.');
+    throw new Error(tx('errSteamLoginFirst'));
   }
   const result = await runInventorySync(steamId, steamSession, deviceToken, { includeStorage: true });
 
@@ -865,24 +920,12 @@ async function confirmStorageSyncConsent() {
   ensureSecretStorageAvailable();
   const result = await dialog.showMessageBox(mainWindow, {
     type: 'warning',
-    buttons: ['Подключить Хранилища', 'Отмена'],
+    buttons: [tx('connectStorage'), tx('cancel')],
     cancelId: 1,
     defaultId: 1,
-    title: 'Подключение Хранилищ',
-    message: 'Чтобы прочитать Хранилища, нужен вход в Steam по QR-коду.',
-    detail: [
-      'Пароль Steam мы не запрашиваем и не получаем.',
-      '',
-      'Важно понимать: Steam не выдаёт токены с урезанными правами. После сканирования QR приложение получает такой же токен, как у обычного клиента Steam — технически он даёт полный доступ к аккаунту.',
-      '',
-      'Что делаем мы:',
-      '• читаем только содержимое Хранилищ;',
-      '• в приложении нет кода для перемещения, продажи, трейда, удаления или переименования предметов;',
-      '• токен хранится только на этом компьютере в защищённом хранилище ОС и никогда не отправляется на наш сервер;',
-      '• на сервер уходит только список предметов.',
-      '',
-      'Отозвать доступ можно в любой момент: Steam → Настройки → Безопасность → Управление устройствами.',
-    ].join('\n'),
+    title: tx('storageConsentTitle'),
+    message: tx('storageConsentMessage'),
+    detail: tx('storageConsentDetail'),
   });
 
   return result.response === 0;
@@ -907,7 +950,7 @@ async function openGcQrLoginWindow({ skipConsent = false } = {}) {
     qrLoginWindow = new BrowserWindow({
       width: 440,
       height: 560,
-      title: 'Хранилища · вход по QR',
+      title: tx('qrWindowTitle'),
       modal: false,
       show: false,
       backgroundColor: '#0a0c11',
@@ -962,7 +1005,7 @@ async function openGcQrLoginWindow({ skipConsent = false } = {}) {
 
     qrLoginWindow.on('closed', () => {
       qrLoginWindow = null;
-      finish(reject, new Error('Окно закрыто до завершения входа. Отсканируйте QR в Steam Mobile.'));
+      finish(reject, new Error(tx('qrWindowClosed')));
     });
   });
 }
@@ -1200,7 +1243,9 @@ async function fetchJsonInSteamWindow({ steamSession, loadUrl, requestUrl, refer
     return JSON.parse(text);
   } catch {
     const preview = String(text).replace(/\s+/g, ' ').slice(0, 80);
-    throw new Error(`Steam вернул не JSON. Нажмите «1. Войти в Steam (инвентарь)» и повторите синхронизацию. ${preview ? `Ответ: ${preview}` : ''}`.trim());
+    throw new Error(tx('steamNotJson', {
+      preview: preview ? tx('responsePreview', { preview }) : '',
+    }).trim());
   }
 }
 

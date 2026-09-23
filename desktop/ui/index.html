@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
   <title>Steam Invest · Desktop</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,11 +18,41 @@
     body {
       background: var(--bg); color: var(--fg-0); font-family: var(--f-body);
       min-height: 100vh; display: flex; flex-direction: column; align-items: center;
-      justify-content: center; padding: 32px; -webkit-app-region: drag;
+      justify-content: center; padding: 32px;
     }
     .card {
       background: var(--bg-card); border: 1px solid var(--line); border-radius: 16px;
-      padding: 32px; max-width: 460px; width: 100%; -webkit-app-region: no-drag;
+      padding: 32px; max-width: 460px; width: 100%;
+    }
+    .lang-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-top: 16px; padding: 8px 10px;
+      border: 1px solid var(--line); border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+    }
+    .lang-label {
+      font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--fg-1);
+    }
+    .lang-switch {
+      display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr));
+      gap: 4px; flex: 1; max-width: 260px;
+    }
+    .lang-btn {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 32px; border-radius: 7px; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03); color: var(--fg-1);
+      font-family: var(--f-mono); font-size: 12px; font-weight: 600;
+      overflow: hidden;
+    }
+    .lang-btn input {
+      position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+      opacity: 0; cursor: pointer;
+    }
+    .lang-btn span { pointer-events: none; }
+    .lang-btn:has(input:checked) {
+      color: #fff; background: var(--accent); border-color: transparent;
     }
     .eyebrow {
       font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em;
@@ -28,12 +60,12 @@
     }
     h1 { font-size: 28px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 8px; }
     p { color: var(--fg-1); font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
-    input {
+    input[type="text"] {
       width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line);
       background: rgba(255,255,255,0.03); color: var(--fg-0); font-family: var(--f-mono);
       font-size: 14px; outline: none; margin-bottom: 12px;
     }
-    input:focus { border-color: var(--accent); }
+    input[type="text"]:focus { border-color: var(--accent); }
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 500;
@@ -52,6 +84,7 @@
       background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.18);
       color: var(--fg-1); font-size: 12px; line-height: 1.5;
     }
+    .notice strong { display: block; margin-bottom: 6px; color: var(--fg-0); }
     .check {
       display: flex; align-items: flex-start; gap: 8px; margin-top: 8px;
       color: var(--fg-0); font-size: 12px; line-height: 1.4;
@@ -59,7 +92,6 @@
     .check input { width: auto; margin: 2px 0 0; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
     .dot.green { background: var(--green); }
-    .dot.amber { background: var(--amber); }
     .hidden { display: none; }
   </style>
 </head>
@@ -67,47 +99,115 @@
   <div class="card">
     <!-- Step 1: Pairing -->
     <div id="step-pair">
-      <div class="eyebrow">// STEAM INVEST · DESKTOP</div>
-      <h1>Connect to server</h1>
-      <p>На сайте skinshead.pro откройте дашборд, нажмите «Код для desktop» и введите 8-символьный код ниже.</p>
-      <input id="server-url" type="text" value="https://skinshead.pro" placeholder="Server URL" />
-      <input id="pairing-code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Код: ABCD2345" maxlength="8" />
-      <button class="btn btn-primary" id="btn-pair">Connect</button>
+      <div class="eyebrow" data-i18n="pairEyebrow">// STEAM INVEST · DESKTOP</div>
+      <h1 data-i18n="pairTitle">Connect to server</h1>
+      <p data-i18n="pairHint">On skinshead.pro open the dashboard, click “Desktop code”, and enter the 8-character code below.</p>
+      <input id="server-url" type="text" value="https://skinshead.pro" placeholder="Server URL" data-i18n-placeholder="serverUrlPlaceholder" />
+      <input id="pairing-code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Code: ABCD2345" maxlength="8" data-i18n-placeholder="codePlaceholder" />
+      <button class="btn btn-primary" id="btn-pair" data-i18n="connect">Connect</button>
       <div id="pair-status" class="status"></div>
     </div>
 
     <!-- Step 2: Connected -->
     <div id="step-connected" class="hidden">
-      <div class="eyebrow">// CONNECTED</div>
-      <h1><span class="dot green"></span>Desktop linked</h1>
+      <div class="eyebrow" data-i18n="connectedEyebrow">// CONNECTED</div>
+      <h1><span class="dot green"></span><span data-i18n="connectedTitle">Desktop linked</span></h1>
       <p id="connected-info">Ready to sync your full CS2 inventory.</p>
 
-      <button class="btn btn-ghost" id="btn-steam-login">1. Войти в Steam (инвентарь)</button>
+      <button class="btn btn-ghost" id="btn-steam-login" data-i18n="steamLogin">1. Sign in to Steam (inventory)</button>
       <div id="gc-consent" class="notice">
-        <strong>Хранилища — опционально и только просмотр.</strong><br>
-        Для содержимого хранилищ Steam нужен локальный вход в CS2 Game Coordinator.
-        Токен хранится только на этом компьютере через защищённое хранилище ОС; на сервер отправляется только список предметов.
-        Перемещение, трейды, продажа, удаление и переименование не поддерживаются.
+        <strong data-i18n="gcConsentTitle">Storage is optional.</strong>
+        <span data-i18n="gcConsentBody">Reading Storage Units requires Steam QR login. Steam does not issue limited-scope tokens: the app receives the same token as a regular Steam client. We only read Storage contents — there is no code here to move, sell, trade, delete, or rename items. The token stays on this computer in OS-protected storage and is never sent to the server; only the item list is uploaded. Revoke access: Steam → Settings → Security → Authorized devices.</span>
         <label class="check">
           <input type="checkbox" id="gc-consent-check">
-          <span>Я понимаю, что это read-only подключение к GC, и хочу включить отображение содержимого хранилищ.</span>
+          <span data-i18n="gcConsentCheck">I understand Steam issues a full-access token, and I allow this app to read Storage contents.</span>
         </label>
       </div>
-      <button class="btn btn-ghost" id="btn-gc-connect">2. Подключить хранилища (только просмотр, QR)</button>
-      <button class="btn btn-ghost hidden" id="btn-gc-disconnect">Отключить хранилища</button>
-      <button class="btn btn-primary" id="btn-sync">3. Синхронизировать инвентарь</button>
-      <button class="btn btn-ghost" id="btn-dashboard">Открыть дашборд в браузере</button>
-      <button class="btn btn-danger" id="btn-disconnect">Отключить desktop</button>
+      <button class="btn btn-ghost" id="btn-gc-connect" data-i18n="gcConnect">2. Connect Storage (QR login)</button>
+      <button class="btn btn-ghost hidden" id="btn-gc-disconnect" data-i18n="gcDisconnect">Disconnect Storage</button>
+      <button class="btn btn-primary" id="btn-sync" data-i18n="sync">3. Sync inventory</button>
+      <button class="btn btn-ghost" id="btn-dashboard" data-i18n="openDashboard">Open dashboard in browser</button>
+      <button class="btn btn-danger" id="btn-disconnect" data-i18n="disconnectDesktop">Disconnect desktop</button>
       <div id="gc-status" class="status"></div>
       <div id="sync-status" class="status"></div>
+    </div>
+
+    <div class="lang-row">
+      <span class="lang-label" data-i18n="language">Language</span>
+      <div class="lang-switch" id="lang-switch" role="radiogroup" aria-label="Language">
+        <label class="lang-btn"><input type="radio" name="ui-lang" value="en" checked><span>EN</span></label>
+        <label class="lang-btn"><input type="radio" name="ui-lang" value="ru"><span>RU</span></label>
+        <label class="lang-btn"><input type="radio" name="ui-lang" value="zh"><span>简</span></label>
+        <label class="lang-btn"><input type="radio" name="ui-lang" value="zh-TW"><span>繁</span></label>
+      </div>
     </div>
   </div>
 
   <script>
     const $ = (id) => document.getElementById(id);
+    const LANGS = ['en', 'ru', 'zh', 'zh-TW'];
+    let strings = (window.i18n && window.i18n.strings) || {};
+    let lang = 'en';
+    let currentState = null;
+
+    function normalizeLang(value) {
+      return LANGS.includes(value) ? value : 'en';
+    }
+
+    function t(key, vars) {
+      const dict = strings[lang] || {};
+      const fallback = strings.en || {};
+      let value = dict[key];
+      if (value == null) value = fallback[key];
+      if (value == null) return key;
+      if (!vars) return value;
+      return String(value).replace(/\{(\w+)\}/g, (_, name) => (
+        Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : `{${name}}`
+      ));
+    }
+
+    function applyStaticI18n() {
+      document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
+      document.title = t('windowTitle');
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        el.textContent = t(el.getAttribute('data-i18n'));
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+        el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+      });
+      document.querySelectorAll('input[name="ui-lang"]').forEach((input) => {
+        input.checked = input.value === lang;
+      });
+      $('lang-switch').setAttribute('aria-label', t('language'));
+    }
+
+    async function setUiLang(next) {
+      if (!strings.ru) await ensureStrings();
+      lang = normalizeLang(next);
+      applyStaticI18n();
+      if (currentState) showConnected(currentState);
+      try {
+        if (window.desktop && window.desktop.setLang) await window.desktop.setLang(lang);
+      } catch (_) { /* UI already switched */ }
+    }
+
+    document.querySelectorAll('input[name="ui-lang"]').forEach((input) => {
+      input.addEventListener('change', () => setUiLang(input.value));
+    });
+
+    async function ensureStrings() {
+      if (strings && strings.ru && strings.en) return;
+      if (!window.desktop || !window.desktop.getI18n) return;
+      const bundle = await window.desktop.getI18n();
+      if (bundle && bundle.strings) strings = bundle.strings;
+      if (bundle && bundle.lang) lang = normalizeLang(bundle.lang);
+    }
 
     async function init() {
+      await ensureStrings();
       const state = await window.desktop.getState();
+      if (state.lang) lang = normalizeLang(state.lang);
+      applyStaticI18n();
       if (state.serverUrl) {
         $('server-url').value = state.serverUrl;
       }
@@ -119,15 +219,19 @@
     }
 
     function showPairing() {
+      currentState = null;
       $('step-pair').classList.remove('hidden');
       $('step-connected').classList.add('hidden');
     }
 
     function showConnected(state) {
+      currentState = state;
       $('step-pair').classList.add('hidden');
       $('step-connected').classList.remove('hidden');
-      const last = state.lastSync ? `Last sync: ${new Date(state.lastSync).toLocaleString()}` : 'Not synced yet';
-      $('connected-info').textContent = `Steam ID: ${state.steamId} · ${last}`;
+      const last = state.lastSync
+        ? t('lastSync', { date: new Date(state.lastSync).toLocaleString() })
+        : t('notSynced');
+      $('connected-info').textContent = t('steamIdLine', { steamId: state.steamId, last });
       updateGcUi(state);
     }
 
@@ -138,17 +242,17 @@
       $('gc-consent').classList.toggle('hidden', gcOn);
       if (state.steamLoggedIn) {
         $('sync-status').className = 'status ok';
-        $('sync-status').textContent = 'Steam-сессия активна на этом компьютере.';
+        $('sync-status').textContent = t('steamSessionActive');
       }
       if (gcOn) {
         const storageLast = state.lastStorageSync
-          ? `Склады синхронизированы: ${new Date(state.lastStorageSync).toLocaleString()}`
-          : 'Склады подключены — нажмите «3. Синхронизировать»';
+          ? t('storageSynced', { date: new Date(state.lastStorageSync).toLocaleString() })
+          : t('storageConnectedHint');
         $('gc-status').className = 'status ok';
         $('gc-status').textContent = `${state.gcAccountName || 'Steam'} · ${storageLast}`;
       } else {
         $('gc-status').className = 'status';
-        $('gc-status').textContent = 'Хранилища не подключены — нажмите кнопку 2 (QR в Steam Mobile).';
+        $('gc-status').textContent = t('storageOff');
       }
     }
 
@@ -156,11 +260,11 @@
       const serverUrl = $('server-url').value.trim();
       const code = $('pairing-code').value.trim();
       $('pair-status').className = 'status';
-      $('pair-status').textContent = 'Connecting...';
+      $('pair-status').textContent = t('connecting');
       try {
         const result = await window.desktop.pairDevice({ serverUrl, code });
         $('pair-status').className = 'status ok';
-        $('pair-status').textContent = `Paired to ${result.steamId}`;
+        $('pair-status').textContent = t('pairedTo', { steamId: result.steamId });
         const state = await window.desktop.getState();
         showConnected(state);
       } catch (err) {
@@ -171,13 +275,13 @@
 
     $('btn-steam-login').addEventListener('click', async () => {
       $('sync-status').className = 'status';
-      $('sync-status').textContent = 'Открываем вход Steam…';
+      $('sync-status').textContent = t('openingSteamLogin');
       try {
         const result = await window.desktop.openSteamLogin();
         $('sync-status').className = 'status ok';
         $('sync-status').textContent = result.alreadyLoggedIn
-          ? 'Steam уже подключён — можно сразу синхронизировать.'
-          : 'Steam-сессия сохранена. Нажмите «Синхронизировать инвентарь».';
+          ? t('steamAlreadyConnected')
+          : t('steamSessionSaved');
         const state = await window.desktop.getState();
         showConnected(state);
       } catch (err) {
@@ -189,11 +293,11 @@
     $('btn-gc-connect').addEventListener('click', async () => {
       if (!$('gc-consent-check').checked) {
         $('gc-status').className = 'status err';
-        $('gc-status').textContent = 'Подтвердите read-only подключение Хранилищ галочкой выше.';
+        $('gc-status').textContent = t('consentRequired');
         return;
       }
       $('gc-status').className = 'status';
-      $('gc-status').textContent = 'Opening Steam QR login…';
+      $('gc-status').textContent = t('openingQr');
       try {
         await window.desktop.gcStartQrLogin();
         const state = await window.desktop.getState();
@@ -212,7 +316,7 @@
 
     $('btn-sync').addEventListener('click', async () => {
       $('sync-status').className = 'status';
-      $('sync-status').textContent = 'Синхронизация… (склады могут занять 1–2 мин)';
+      $('sync-status').textContent = t('syncing');
       $('btn-sync').disabled = true;
       try {
         const result = await window.desktop.syncInventory();
@@ -221,14 +325,21 @@
 
         if (result.gcConnected && result.gcStorageError) {
           $('gc-status').className = 'status err';
-          $('gc-status').textContent = `Ошибка складов: ${result.gcStorageError}. Закройте клиент Steam на ПК и повторите.`;
+          const steamBusy = /LogonSessionReplaced|already logged/i.test(result.gcStorageError);
+          $('gc-status').textContent = steamBusy
+            ? t('storageBusy', { error: result.gcStorageError })
+            : t('storageError', { error: result.gcStorageError });
         }
 
         $('sync-status').className = 'status ok';
         const storageNote = result.storageItemCount
-          ? `, из складов: ${result.storageItemCount}`
-          : (result.gcConnected ? ', склады: 0 (пусто или ошибка GC)' : '');
-        $('sync-status').textContent = `Готово: ${result.itemCount} строк, ${result.totalPieces} предметов${storageNote}. Открываем дашборд…`;
+          ? t('storageNoteCount', { count: result.storageItemCount })
+          : (result.gcConnected ? t('storageNoteEmpty') : '');
+        $('sync-status').textContent = t('syncDone', {
+          itemCount: result.itemCount,
+          totalPieces: result.totalPieces,
+          storageNote,
+        });
 
         await window.desktop.openDashboard();
       } catch (err) {
@@ -241,7 +352,7 @@
 
     $('btn-dashboard').addEventListener('click', async () => {
       $('sync-status').className = 'status';
-      $('sync-status').textContent = 'Открываем дашборд…';
+      $('sync-status').textContent = t('openingDashboard');
       try {
         await window.desktop.openDashboard();
       } catch (err) {

@@ -1,0 +1,49 @@
+name: Security Scan
+
+# The weekly schedule matters as much as the push trigger: most advisories appear
+# against code that has not changed, so a scan that only runs on commits would
+# miss them until the next unrelated push.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  dependencies:
+    name: Dependency advisories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # npm audit reads the lockfile, so a full install is not needed.
+      - name: Audit server and desktop
+        run: node scripts/audit-check.js . desktop
+
+  electron:
+    name: Electron misconfiguration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Electronegativity looks for the mistakes that matter in a desktop app:
+      # nodeIntegration, disabled contextIsolation, permissive navigation
+      # handlers. It reports findings rather than failing, so the summary is
+      # uploaded for review instead of gating the build on its severity model.
+      - name: Run Electronegativity
+        working-directory: desktop
+        run: npx --yes @doyensec/electronegativity -i . -o ../electronegativity.csv || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electronegativity-report
+          path: electronegativity.csv
+          if-no-files-found: warn

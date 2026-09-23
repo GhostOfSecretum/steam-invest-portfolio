@@ -324,7 +324,7 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
     const color = up ? 'var(--green)' : 'var(--red)';
 
     return (
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <TrendArrowIcon up={up} />
           <div style={{ fontFamily: 'var(--f-display)', fontSize: 14, fontWeight: 500, color: 'var(--fg-0)' }}>{title}</div>
@@ -385,7 +385,7 @@ function PortfolioLeaders({ leaders, lang, onItemClick }) {
   };
 
   return (
-    <div className="glass dash-panel dash-leaders-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16, minHeight: 0 }}>
+    <div className="glass dash-panel dash-leaders-panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <div className="eyebrow">{t.dash.leaders}</div>
         <div className="dash-range-switch" style={{ flexShrink: 0 }}>

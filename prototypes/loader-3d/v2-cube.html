@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loader 3D · V2 Inventory Index</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="bg"></div>
+<div class="grid"></div>
+
+<div class="topbar">
+  <a href="index.html">← все варианты</a>
+  <span class="tag">V2 / INVENTORY INDEX</span>
+</div>
+
+<div class="hud">
+  <div class="eyebrow">// LIVE PORTFOLIO SYNC</div>
+  <h1>Портфель</h1>
+  <p>Загружаем портфель и цены...</p>
+  <div class="progress" role="progressbar">
+    <div class="meta">
+      <span class="step" data-step-label>Читаем инвентарь</span>
+      <span class="pct" data-pct>3%</span>
+    </div>
+    <div class="track"><span class="fill" data-fill></span></div>
+    <div class="steps">
+      <span data-step class="is-active">Читаем инвентарь</span>
+      <span data-step>Сверяем цены</span>
+      <span data-step>Строим аналитику</span>
+    </div>
+  </div>
+</div>
+<div class="note">three.js r160 · procedural · no textures</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.1/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.1/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { createApp, C, TAU, ease, smooth, hash } from './shared.js';
+
+createApp({
+  camera: { position: [0, 2.4, 7.6], target: [0, 0.9, 0] },
+  build({ stage }) {
+    const tilt = new THREE.Group();
+    tilt.position.y = 1.05;
+    tilt.rotation.x = 0.3;
+    tilt.scale.setScalar(0.86);
+    stage.add(tilt);
+    const spin = new THREE.Group();
+    tilt.add(spin);
+
+    const SP = 0.72, S = 0.56;
+    const geo = new RoundedBoxGeometry(S, S, S, 3, 0.06);
+    const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(S + 0.01, S + 0.01, S + 0.01));
+
+    const cubes = [];
+    let idx = 0;
+    for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++) {
+      const col = C.rarity[Math.floor(hash(idx) * 5)];
+      const mat = new THREE.MeshStandardMaterial({ color: 0x11141c, metalness: 0.55, roughness: 0.35, emissive: col, emissiveIntensity: 0 });
+      const m = new THREE.Mesh(geo, mat);
+      const lineMat = new THREE.LineBasicMaterial({ color: C.cyan, transparent: true, opacity: 0.25 });
+      m.add(new THREE.LineSegments(edgeGeo, lineMat));
+      const target = new THREE.Vector3(x * SP, y * SP, z * SP);
+      const dir = new THREE.Vector3(hash(idx + 7) - 0.5, hash(idx + 13) - 0.5, hash(idx + 19) - 0.5).normalize();
+      const start = target.clone().add(dir.multiplyScalar(2.2 + hash(idx + 23) * 1.8));
+      const spinV = new THREE.Vector3(hash(idx + 37) - 0.5, hash(idx + 41) - 0.5, hash(idx + 43) - 0.5).multiplyScalar(5);
+      cubes.push({ m, mat, lineMat, target, start, order: hash(idx + 31), spinV, col });
+      spin.add(m);
+      idx++;
+    }
+
+    const cageSize = SP * 3 + 0.12;
+    const cage = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(cageSize, cageSize, cageSize)),
+      new THREE.LineBasicMaterial({ color: C.cyan, transparent: true, opacity: 0.22 }),
+    );
+    spin.add(cage);
+
+    // Corner brackets on the cage — HUD-style targeting marks.
+    const bracketMat = new THREE.MeshBasicMaterial({ color: C.accent });
+    const half = cageSize / 2 + 0.08;
+    const L = 0.28, T = 0.03;
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      const corner = new THREE.Group();
+      corner.position.set(sx * half, sy * half, sz * half);
+      const bx = new THREE.Mesh(new THREE.BoxGeometry(L, T, T), bracketMat); bx.position.x = -sx * L / 2;
+      const by = new THREE.Mesh(new THREE.BoxGeometry(T, L, T), bracketMat); by.position.y = -sy * L / 2;
+      const bz = new THREE.Mesh(new THREE.BoxGeometry(T, T, L), bracketMat); bz.position.z = -sz * L / 2;
+      corner.add(bx, by, bz);
+      spin.add(corner);
+    }
+
+    const scan = new THREE.Mesh(
+      new THREE.PlaneGeometry(cageSize + 0.5, cageSize + 0.5),
+      new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    scan.rotation.x = -Math.PI / 2;
+    scan.add(new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.PlaneGeometry(cageSize + 0.5, cageSize + 0.5)),
+      new THREE.LineBasicMaterial({ color: C.accent, transparent: true, opacity: 0.8 }),
+    ));
+    spin.add(scan);
+
+    const N = 160;
+    const dust = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const a = hash(i) * TAU, r = 2.2 + hash(i + 9) * 2.4;
+      dust[i * 3] = Math.cos(a) * r;
+      dust[i * 3 + 1] = (hash(i + 17) - 0.5) * 4;
+      dust[i * 3 + 2] = Math.sin(a) * r;
+    }
+    const dustGeo = new THREE.BufferGeometry();
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(dust, 3));
+    const dustPts = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+      color: C.cyan, size: 0.035, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    tilt.add(dustPts);
+
+    const grid = new THREE.GridHelper(16, 32, 0x252b3a, 0x151925);
+    grid.material.transparent = true;
+    grid.material.opacity = 0.55;
+    grid.position.y = -0.7;
+    stage.add(grid);
+    const floorGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(2.0, 64),
+      new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
+    floorGlow.rotation.x = -Math.PI / 2;
+    floorGlow.position.y = -0.69;
+    stage.add(floorGlow);
+
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(2.1, 2.16, 128, 1, 0, 0.001),
+      new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.9, side: THREE.DoubleSide }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = -0.68;
+    stage.add(ring);
+    const ringBase = ring.clone();
+    ringBase.geometry = new THREE.RingGeometry(2.1, 2.16, 128);
+    ringBase.material = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, side: THREE.DoubleSide });
+    stage.add(ringBase);
+    let ringPct = -1;
+
+    return {
+      update({ t, progress }) {
+        spin.rotation.y = t * 0.35;
+        tilt.rotation.x = 0.3 + Math.sin(t * 0.5) * 0.05;
+        dustPts.rotation.y = -t * 0.05;
+
+        const scanY = Math.sin(t * 1.1) * (SP * 1.5 + 0.25);
+        scan.position.y = scanY;
+        scan.visible = progress > 0.04;
+        const done = ease(smooth(0.86, 0.98, progress));
+
+        for (const c of cubes) {
+          const thr = 0.06 + c.order * 0.78;
+          const k = ease(smooth(thr - 0.07, thr + 0.07, progress));
+          c.m.position.lerpVectors(c.start, c.target, k);
+          c.m.rotation.set(c.spinV.x * (1 - k) + t * 0.2 * (1 - k), c.spinV.y * (1 - k), c.spinV.z * (1 - k));
+          const d = Math.abs(c.m.position.y - scanY);
+          const hit = Math.max(0, 1 - d / 0.45) * k;
+          c.mat.emissiveIntensity = 0.1 * k + hit * 1.5 + done * 0.5;
+          c.lineMat.opacity = 0.18 + 0.45 * k + hit * 0.4;
+        }
+        cage.material.opacity = 0.12 + 0.25 * ease(smooth(0.2, 0.9, progress));
+        bracketMat.color.setHex(done > 0.5 ? C.cyan : C.accent);
+
+        const rp = Math.round(progress * 200);
+        if (rp !== ringPct) {
+          ringPct = rp;
+          const len = Math.max(0.001, progress * TAU);
+          ring.geometry.dispose();
+          ring.geometry = new THREE.RingGeometry(2.1, 2.16, 128, 1, Math.PI / 2 - len, len);
+        }
+      },
+    };
+  },
+});
+</script>
+</body>
+</html>

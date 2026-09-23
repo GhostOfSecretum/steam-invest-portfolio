@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loader 3D · V3 Market Orbit</title>
+<link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="bg"></div>
+<div class="grid"></div>
+
+<div class="topbar">
+  <a href="index.html">← все варианты</a>
+  <span class="tag">V3 / MARKET ORBIT</span>
+</div>
+
+<div class="hud">
+  <div class="eyebrow">// LIVE PORTFOLIO SYNC</div>
+  <h1>Портфель</h1>
+  <p>Загружаем портфель и цены...</p>
+  <div class="progress" role="progressbar">
+    <div class="meta">
+      <span class="step" data-step-label>Читаем инвентарь</span>
+      <span class="pct" data-pct>3%</span>
+    </div>
+    <div class="track"><span class="fill" data-fill></span></div>
+    <div class="steps">
+      <span data-step class="is-active">Читаем инвентарь</span>
+      <span data-step>Сверяем цены</span>
+      <span data-step>Строим аналитику</span>
+    </div>
+  </div>
+</div>
+<div class="note">three.js r160 · procedural · no textures</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.1/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.1/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { createApp, C, TAU, ease, smooth, hash } from './shared.js';
+
+createApp({
+  camera: { position: [0, 3.1, 7.8], target: [0, 0.75, 0] },
+  build({ stage }) {
+    const root = new THREE.Group();
+    stage.add(root);
+
+    // Central token: dark coin with the brand "candles" emblem on both faces.
+    const coin = new THREE.Group();
+    coin.position.y = 1.65;
+    root.add(coin);
+    const metal = new THREE.MeshStandardMaterial({ color: 0x1c2130, metalness: 0.92, roughness: 0.22 });
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.14, 72), metal);
+    disc.rotation.x = Math.PI / 2;
+    coin.add(disc);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.035, 16, 96), new THREE.MeshBasicMaterial({ color: C.accent }));
+    coin.add(rim);
+    const innerRim = new THREE.Mesh(
+      new THREE.TorusGeometry(0.66, 0.012, 8, 96),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 }),
+    );
+    coin.add(innerRim);
+    const emblem = [
+      { x: -0.24, h: 0.34, y: -0.06, col: C.accent },
+      { x: 0, h: 0.52, y: 0.06, col: C.cyan },
+      { x: 0.24, h: 0.42, y: 0.12, col: C.accent },
+    ];
+    for (const side of [1, -1]) for (const e of emblem) {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, e.h, 0.04), new THREE.MeshBasicMaterial({ color: e.col }));
+      body.position.set(e.x, e.y, side * 0.09);
+      const wick = new THREE.Mesh(new THREE.BoxGeometry(0.02, e.h + 0.26, 0.03), new THREE.MeshBasicMaterial({ color: e.col, transparent: true, opacity: 0.7 }));
+      wick.position.set(e.x, e.y, side * 0.085);
+      coin.add(body, wick);
+    }
+    const coinLight = new THREE.PointLight(C.accent, 18, 6, 2);
+    coin.add(coinLight);
+
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.5, 1.65, 32, 1, true),
+      new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.08, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    beam.position.y = 0.82;
+    root.add(beam);
+
+    // Candle ring
+    const N = 28, R = 2.05;
+    const candles = [];
+    const heights = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * TAU;
+      const up = hash(i) > 0.4;
+      const col = up ? C.green : C.red;
+      const g = new THREE.Group();
+      g.position.set(Math.cos(a) * R, 0, Math.sin(a) * R);
+      g.rotation.y = -a;
+      root.add(g);
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(0.15, 1, 0.15),
+        new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.45, metalness: 0.2, roughness: 0.5 }),
+      );
+      const wick = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1, 0.03), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.7 }));
+      g.add(body, wick);
+      candles.push({ g, body, wick, base: 0.3 + hash(i + 9) * 0.7, low: 0.1 + hash(i + 21) * 0.4, phase: hash(i + 33) * TAU, order: i / N });
+    }
+
+    // Price ribbon: closed strip through candle tops, revealed with progress.
+    const SEG = 168;
+    const ribPos = new Float32Array(SEG * 2 * 3);
+    const ribIdx = [];
+    for (let s = 0; s < SEG; s++) {
+      const a = s * 2, b = s * 2 + 1, c = ((s + 1) % SEG) * 2, d = ((s + 1) % SEG) * 2 + 1;
+      ribIdx.push(a, b, c, b, d, c);
+    }
+    const ribGeo = new THREE.BufferGeometry();
+    ribGeo.setAttribute('position', new THREE.BufferAttribute(ribPos, 3));
+    ribGeo.setIndex(ribIdx);
+    ribGeo.setDrawRange(0, 0);
+    const ribbon = new THREE.Mesh(ribGeo, new THREE.MeshBasicMaterial({ color: C.cyan, side: THREE.DoubleSide, transparent: true, opacity: 0.95 }));
+    root.add(ribbon);
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    );
+    root.add(head);
+    const headGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 16, 16),
+      new THREE.MeshBasicMaterial({ color: C.cyan, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
+    head.add(headGlow);
+
+    const polar = new THREE.PolarGridHelper(2.8, 16, 6, 96, 0x2a3040, 0x171b26);
+    polar.material.transparent = true;
+    polar.material.opacity = 0.7;
+    stage.add(polar);
+    const floorGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(1.4, 64),
+      new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
+    floorGlow.rotation.x = -Math.PI / 2;
+    floorGlow.position.y = 0.005;
+    stage.add(floorGlow);
+
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(2.85, 2.91, 160, 1, 0, 0.001),
+      new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.9, side: THREE.DoubleSide }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.012;
+    stage.add(ring);
+    let ringPct = -1;
+
+    return {
+      update({ t, progress }) {
+        root.rotation.y = t * 0.22;
+
+        coin.rotation.y = t * 0.9;
+        coin.rotation.z = Math.sin(t * 0.7) * 0.12;
+        coin.position.y = 1.65 + Math.sin(t * 1.3) * 0.06;
+        coinLight.intensity = 14 + Math.sin(t * 3) * 4;
+        beam.material.opacity = 0.05 + progress * 0.08;
+
+        for (let i = 0; i < N; i++) {
+          const c = candles[i];
+          const k = ease(smooth(c.order * 0.72, c.order * 0.72 + 0.2, progress));
+          const h = Math.max(0.001, (c.base + Math.sin(t * 1.3 + c.phase) * 0.12) * k);
+          c.body.scale.y = h;
+          c.body.position.y = c.low + h / 2;
+          const wh = h + 0.3 * k;
+          c.wick.scale.y = Math.max(0.001, wh);
+          c.wick.position.y = c.low + wh / 2 - 0.05;
+          c.g.visible = k > 0.001;
+          heights[i] = c.low + h + 0.14;
+        }
+
+        for (let s = 0; s < SEG; s++) {
+          const a = (s / SEG) * TAU;
+          const f = (s / SEG) * N;
+          const i0 = Math.floor(f) % N, i1 = (i0 + 1) % N;
+          let u = f - Math.floor(f);
+          u = u * u * (3 - 2 * u);
+          const y = heights[i0] * (1 - u) + heights[i1] * u;
+          const x = Math.cos(a) * R, z = Math.sin(a) * R;
+          ribPos[s * 6] = x; ribPos[s * 6 + 1] = y; ribPos[s * 6 + 2] = z;
+          ribPos[s * 6 + 3] = x; ribPos[s * 6 + 4] = y - 0.05; ribPos[s * 6 + 5] = z;
+        }
+        ribGeo.attributes.position.needsUpdate = true;
+        const reveal = ease(smooth(0.06, 0.96, progress));
+        const segs = Math.floor(reveal * SEG);
+        ribGeo.setDrawRange(0, segs * 6);
+        const hs = Math.min(SEG - 1, segs);
+        head.position.set(ribPos[hs * 6], ribPos[hs * 6 + 1] + 0.02, ribPos[hs * 6 + 2]);
+        head.visible = reveal > 0.01 && reveal < 0.999;
+
+        const rp = Math.round(progress * 200);
+        if (rp !== ringPct) {
+          ringPct = rp;
+          const len = Math.max(0.001, progress * TAU);
+          ring.geometry.dispose();
+          ring.geometry = new THREE.RingGeometry(2.85, 2.91, 160, 1, Math.PI / 2 - len, len);
+        }
+      },
+    };
+  },
+});
+</script>
+</body>
+</html>
