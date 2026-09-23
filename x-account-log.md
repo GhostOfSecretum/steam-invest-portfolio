@@ -607,7 +607,7 @@ There is no bid.
 A bomb sticker ends when the round does.
 An egg is a case you haven’t opened.
 
-If you put a number on either, whose number was it?
+If you already know what it’s worth, you made that number up.
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
