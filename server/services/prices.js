@@ -934,7 +934,9 @@ function historyLooksStale(history, maxLagDays = 3) {
 async function getSkinportSalesHistory(marketHashName, currency = 'usd') {
   const key = `skinport:history:${marketHashName}:${currency}`;
   const cached = await getCached(key, SKINPORT_MAX_AGE_MS);
-  if (cached) return { ...cached, cached: true };
+  // saleMedians is what portfolio leaders compare against the card price.
+  // Older cache rows only have the dated series, so they miss once and refresh.
+  if (cached?.saleMedians) return { ...cached, cached: true };
 
   const params = new URLSearchParams({
     app_id: '730',
@@ -953,20 +955,31 @@ async function getSkinportSalesHistory(marketHashName, currency = 'usd') {
 
   const now = Date.now();
   const buckets = [
-    { days: 90, key: 'last_90_days' },
-    { days: 30, key: 'last_30_days' },
-    { days: 7, key: 'last_7_days' },
-    { days: 1, key: 'last_24_hours' },
+    { days: 90, range: '90d', key: 'last_90_days' },
+    { days: 30, range: '30d', key: 'last_30_days' },
+    { days: 7, range: '7d', key: 'last_7_days' },
+    { days: 1, range: '1d', key: 'last_24_hours' },
   ];
+  const saleMedians = {};
   const data = buckets
-    .map(({ days, key }) => {
+    .map(({ days, range, key }) => {
       const bucket = exact[key];
-      const price = parseMoney(bucket?.median ?? bucket?.avg ?? bucket?.min ?? bucket?.max);
+      const median = parseMoney(bucket?.median);
+      const volume = Number(bucket?.volume);
+      if (Number.isFinite(median) && median > 0) {
+        saleMedians[range] = {
+          median,
+          volume: Number.isFinite(volume) && volume > 0 ? volume : 0,
+        };
+      }
+      const price = Number.isFinite(median) && median > 0
+        ? median
+        : parseMoney(bucket?.avg ?? bucket?.min ?? bucket?.max);
       if (!Number.isFinite(price)) return null;
       return {
         date: new Date(now - days * 86400000).toISOString().slice(0, 10),
         price,
-        volume: Number.isFinite(bucket?.volume) ? bucket.volume : null,
+        volume: Number.isFinite(volume) ? volume : null,
       };
     })
     .filter(Boolean);
@@ -984,6 +997,7 @@ async function getSkinportSalesHistory(marketHashName, currency = 'usd') {
     marketHashName,
     currency: exact.currency || (SKINPORT_CURRENCY_CODES[normalizeCurrency(currency)] || 'USD'),
     data,
+    saleMedians,
     provider: data.length ? 'skinport' : 'none',
     updatedAt: new Date().toISOString(),
   };
@@ -3389,6 +3403,7 @@ module.exports = {
   getPrices,
   getPortfolioPrices,
   getPriceHistory,
+  getSkinportSalesHistory,
   getTickerItems,
   getTopMovers,
   getMarketOverview,
