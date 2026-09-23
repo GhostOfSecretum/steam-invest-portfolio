@@ -595,6 +595,7 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   margin-bottom: 0;
   padding: 12px 14px;
+  overflow: hidden;
 }
 .item-detail-chart-head {
   align-items: center;
@@ -674,8 +675,15 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 280px;
+  min-height: 0;
   height: auto;
+  overflow: hidden;
+}
+.item-detail-chart svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 .item-detail-holdings {
   grid-area: holdings;
