@@ -763,6 +763,7 @@ app.get('/api/market/history', asyncRoute(async (req, res) => {
   const history = await getPriceHistory(marketHashName, req.query.days || 30, {
     anchorPrice: Number.isFinite(anchorPrice) && anchorPrice > 0 ? anchorPrice : null,
     currency: String(req.query.currency || 'usd'),
+    preferSteam: true,
   });
   res.json(history);
 }));
@@ -800,6 +801,7 @@ app.get('/api/market/history-multi', asyncRoute(async (req, res) => {
   const history = await getMultiWearHistory(names, req.query.days || 30, {
     anchorPrice: Number.isFinite(anchorPrice) && anchorPrice > 0 ? anchorPrice : null,
     currency: String(req.query.currency || 'usd'),
+    preferSteam: true,
   });
   res.json(history);
 }));

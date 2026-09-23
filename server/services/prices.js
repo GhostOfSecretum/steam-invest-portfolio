@@ -10,6 +10,7 @@ const PRICE_MAX_AGE_MS = 30 * 60 * 1000;
 const STEAM_PRICE_STALE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const CATALOG_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const HISTORY_MAX_AGE_MS = 60 * 60 * 1000;
+const STEAM_CHART_MAX_AGE_MS = 3 * 60 * 60 * 1000;
 const ICON_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const TOP_MOVERS_MAX_AGE_MS = 30 * 60 * 1000;
 const MARKET_OVERVIEW_MAX_AGE_MS = 15 * 60 * 1000;
@@ -1059,6 +1060,168 @@ async function resolveSteamChartAnchor(marketHashName, currency, override) {
   return Number.isFinite(price) && price > 0 ? price : null;
 }
 
+// Steam's item page embeds the same series the market chart draws:
+// { ecurrency, prices: [{ time, price_median, purchases }, ...] } per wear.
+function decodeSteamListingHtml(html) {
+  const raw = String(html || '');
+  if (raw.includes('"price_median"') && raw.includes('"queryKey"')) return raw;
+  const decoded = raw.split('\\\\\\"').join('"');
+  if (decoded.includes('"price_median"')) return decoded;
+  return raw.split('\\"').join('"');
+}
+
+function parseSteamListingPriceHistories(html) {
+  const text = decodeSteamListingHtml(html);
+  const re = /"queryKey":\["market","pricehistory",730,"([^"]+)"\]/g;
+  const matches = [...text.matchAll(re)];
+  const histories = new Map();
+  for (let i = 0; i < matches.length; i += 1) {
+    const name = matches[i][1];
+    const prev = i ? matches[i - 1].index : 0;
+    const chunk = text.slice(prev, matches[i].index);
+    const pricesKey = chunk.lastIndexOf('"prices":[');
+    if (pricesKey < 0) continue;
+    const endRel = chunk.indexOf(']},"dataUpdateCount"', pricesKey);
+    if (endRel < 0) continue;
+    let prices;
+    try {
+      prices = JSON.parse(chunk.slice(pricesKey + '"prices":'.length, endRel + 1));
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(prices) || prices.length < 2) continue;
+    const currencyKey = chunk.lastIndexOf('"ecurrency":');
+    const ecurrency = currencyKey >= 0
+      ? Number(chunk.slice(currencyKey + '"ecurrency":'.length).match(/^\d+/)?.[0])
+      : null;
+    histories.set(name, {
+      ecurrency: Number.isFinite(ecurrency) ? ecurrency : null,
+      prices,
+    });
+  }
+  return histories;
+}
+
+function steamHistoryFamilyKey(marketHashName, currency) {
+  const parsed = splitMarketHashName(marketHashName);
+  return `${parsed.core}:${normalizeCurrency(currency)}`;
+}
+
+function steamChartCacheKey(marketHashName, currency) {
+  return `steam:chart:v1:${marketHashName}:${normalizeCurrency(currency)}`;
+}
+
+async function steamCurrencyMultiplier(fromId, toId) {
+  if (!fromId || fromId === toId) return 1;
+  const perUsd = { 1: 1 };
+  if (fromId === 5 || toId === 5) {
+    const rub = await getSteamRubRate().catch(() => null);
+    if (Number.isFinite(rub) && rub > 0) perUsd[5] = rub;
+  }
+  if (fromId === 23 || toId === 23) {
+    const cny = await getSteamCnyRate().catch(() => null);
+    if (Number.isFinite(cny) && cny > 0) perUsd[23] = cny;
+  }
+  const from = perUsd[fromId];
+  const to = perUsd[toId];
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from <= 0) return null;
+  return to / from;
+}
+
+function steamPricesToPoints(prices, multiplier) {
+  const scale = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1;
+  return prices
+    .map((row) => {
+      const time = Number(row?.time);
+      const price = Number(row?.price_median);
+      const volume = Number(row?.purchases);
+      if (!Number.isFinite(time) || !Number.isFinite(price) || price <= 0) return null;
+      return {
+        date: new Date(time * 1000).toISOString(),
+        price: roundChartPrice(price * scale),
+        volume: Number.isFinite(volume) && volume >= 0 ? volume : null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+const steamFamilyInflight = new Map();
+
+async function fetchSteamFamilyCharts(marketHashName, currency) {
+  if (isSteamCommunityCoolingDown()) return null;
+  const normalized = normalizeCurrency(currency);
+  const targetId = resolveSteamCurrency(normalized);
+  const url = `https://steamcommunity.com/market/listings/730/${encodeURIComponent(marketHashName)}`;
+  const html = await fetchText(url, {
+    timeoutMs: 20000,
+    headers: { Cookie: `steamCurrencyId=${targetId}` },
+  }).catch((error) => {
+    console.warn('[prices] steam listing history failed:', error?.message || error);
+    return null;
+  });
+  if (!html) return null;
+
+  const parsed = parseSteamListingPriceHistories(html);
+  if (!parsed.size) return null;
+
+  const sample = parsed.values().next().value;
+  const sourceId = sample?.ecurrency;
+  const multiplier = sourceId && sourceId !== targetId
+    ? await steamCurrencyMultiplier(sourceId, targetId)
+    : 1;
+  const currencyCode = multiplier
+    ? (STEAM_CURRENCY_LABELS[targetId] || 'USD')
+    : (STEAM_CURRENCY_LABELS[sourceId] || 'USD');
+  const scale = multiplier || 1;
+
+  for (const [name, entry] of parsed) {
+    const data = steamPricesToPoints(entry.prices, scale);
+    if (data.length < 2) continue;
+    const result = {
+      marketHashName: name,
+      currency: currencyCode,
+      data,
+      provider: 'steam-market',
+      updatedAt: new Date().toISOString(),
+    };
+    await setCached(steamChartCacheKey(name, normalized), result);
+  }
+  await setCached(`steam:chart-family:v1:${steamHistoryFamilyKey(marketHashName, normalized)}`, {
+    names: [...parsed.keys()],
+    updatedAt: new Date().toISOString(),
+  });
+  return true;
+}
+
+function ensureSteamFamilyCharts(marketHashName, currency) {
+  const family = steamHistoryFamilyKey(marketHashName, currency);
+  if (!steamFamilyInflight.has(family)) {
+    const job = fetchSteamFamilyCharts(marketHashName, currency)
+      .finally(() => steamFamilyInflight.delete(family));
+    steamFamilyInflight.set(family, job);
+  }
+  return steamFamilyInflight.get(family);
+}
+
+async function getSteamChartHistory(marketHashName, currency) {
+  const normalized = normalizeCurrency(currency);
+  const cacheKey = steamChartCacheKey(marketHashName, normalized);
+  const cached = await getCached(cacheKey, STEAM_CHART_MAX_AGE_MS);
+  if (cached?.data?.length >= 2 && cached.provider === 'steam-market') {
+    return { ...cached, cached: true };
+  }
+
+  const familyKey = `steam:chart-family:v1:${steamHistoryFamilyKey(marketHashName, normalized)}`;
+  const manifest = await getCached(familyKey, STEAM_CHART_MAX_AGE_MS);
+  if (manifest?.names && !manifest.names.includes(marketHashName)) return null;
+
+  await ensureSteamFamilyCharts(marketHashName, normalized);
+  const fresh = await getCached(cacheKey, STEAM_CHART_MAX_AGE_MS);
+  if (fresh?.data?.length >= 2) return { ...fresh, cached: false };
+  return null;
+}
+
 async function getPriceHistory(marketHashName, days = 30, options = {}) {
   const allTime = days === 'all' || days === 'max' || Number(days) > 365;
   const requestedDays = allTime ? 'all' : Math.max(1, Math.min(365, Number(days) || 30));
@@ -1083,6 +1246,18 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
   );
   let history = cachedIsUsable ? cached : null;
   let usedCached = Boolean(history);
+  let fromSteam = false;
+  if (options.preferSteam) {
+    const steamHistory = await getSteamChartHistory(marketHashName, requestedCurrency).catch((error) => {
+      console.warn('[prices] steam chart history failed:', error?.message || error);
+      return null;
+    });
+    if (steamHistory?.data?.length >= 2) {
+      history = steamHistory;
+      fromSteam = true;
+      usedCached = Boolean(steamHistory.cached);
+    }
+  }
 
   // Prefer a slightly stale real series over inventing synthetic data when providers
   // are rate-limited / unavailable.
@@ -1214,7 +1389,8 @@ async function getPriceHistory(marketHashName, days = 30, options = {}) {
   // Align after cache so the last point tracks live Steam, not a stale CSFloat avg.
   // Do not write the aligned series back — that would bake an old ask into the cache.
   // Leaders pass skipAlign: scaling to the card keeps the noisy shape and hides the real move.
-  if (!options.skipAlign && history?.data?.length) {
+  // Steam's own median series is already the market chart — scaling it would bend the line.
+  if (!fromSteam && !options.skipAlign && history?.data?.length) {
     const steamAnchor = await resolveSteamChartAnchor(marketHashName, requestedCurrency, anchorOverride);
     if (steamAnchor) history = alignHistoryToAnchor(history, steamAnchor);
   }

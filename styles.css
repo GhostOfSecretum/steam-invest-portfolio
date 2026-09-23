@@ -674,7 +674,7 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 160px;
+  min-height: 280px;
   height: auto;
 }
 .item-detail-holdings {
@@ -737,7 +737,7 @@ a { color: inherit; text-decoration: none; }
     min-height: 220px;
   }
   .item-detail-chart {
-    height: 240px;
+    height: 300px;
     flex: 0 0 auto;
   }
   .item-detail-section-head p {

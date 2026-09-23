@@ -1,14 +1,18 @@
 /* global React */
 const { useState: detailUseState, useRef: detailUseRef, useCallback: detailUseCallback, useEffect: detailUseEffect, useMemo: detailUseMemo } = React;
 
-// Wear colors shared between the quality selector and the multi-line chart.
-const WEAR_COLORS = {
-  FN: '#4ade80',
-  MW: '#22d3ee',
-  FT: '#facc15',
-  WW: '#fb923c',
-  BS: '#f87171',
-};
+// Steam Market graph colors, in exterior order. The first wear that actually
+// exists on the chart gets the first color, same as the market page.
+const STEAM_GRAPH_COLORS = ['#82B461', '#DCB259', '#BB6454', '#84453B', '#6E5346'];
+const WEAR_ORDER = ['FN', 'MW', 'FT', 'WW', 'BS'];
+const STEAM_VOLUME_COLOR = '#3b9eff';
+
+function steamGraphColor(wear, presentWears) {
+  const present = WEAR_ORDER.filter((code) => presentWears.includes(code));
+  const idx = present.indexOf(wear);
+  if (idx < 0) return 'rgba(255,255,255,0.28)';
+  return STEAM_GRAPH_COLORS[idx] || STEAM_GRAPH_COLORS[STEAM_GRAPH_COLORS.length - 1];
+}
 
 const MARKETPLACE_META = {
   steam:      { label: 'Steam Market', color: '#66c0f4' },
@@ -34,11 +38,10 @@ function buildVariantHashName(base, wearLabel, { stattrak = false, souvenir = fa
 function ItemDetail({ lang, item, loading = false, error = null, onBack, onCollectionClick }) {
   const t = useT(lang);
   const PERIOD_OPTIONS = [
-    { key: '1d',  days: 1,   label: lang === 'ru' ? 'День' : '1D' },
-    { key: '7d',  days: 7,   label: lang === 'ru' ? 'Неделя' : '7D' },
-    { key: '30d', days: 30,  label: '30D' },
-    { key: '1y',  days: 365, label: lang === 'ru' ? 'Год' : '1Y' },
-    { key: 'all', days: 'all', label: lang === 'ru' ? 'Всё время' : 'All' },
+    { key: '7d',  days: 7,   label: lang === 'ru' ? 'Неделя' : 'Week' },
+    { key: '30d', days: 30,  label: lang === 'ru' ? 'Месяц' : 'Month' },
+    { key: '1y',  days: 365, label: lang === 'ru' ? 'Год' : 'Year' },
+    { key: 'all', days: 'all', label: lang === 'ru' ? 'Всё время' : 'Lifetime' },
   ];
   const activeCurrency = getActiveCurrency();
   const baseName = item?.marketHashName || null;
@@ -51,7 +54,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
   const [stattrak, setStattrak] = detailUseState(parsedBase.isStatTrak);
   const [selectedWears, setSelectedWears] = detailUseState(null);
 
-  const activePeriod = PERIOD_OPTIONS.find(p => p.key === period) || PERIOD_OPTIONS[2];
+  const activePeriod = PERIOD_OPTIONS.find(p => p.key === period) || PERIOD_OPTIONS[1];
   const fetchDays = period === 'all' ? 'all' : 365;
 
   // Variants are fetched per (skin, StatTrak flavor) — not per active wear — so clicking a
@@ -73,18 +76,19 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
     setChartHover(null);
   }, [baseName]);
 
-  // Keep the chart focused on the active quality. Other qualities can be added explicitly
-  // from the comparison controls below the chart heading.
+  // Steam's chart shows every exterior of the skin at once. Switching the active
+  // quality changes the header price and the volume bars, not which lines exist.
   detailUseEffect(() => {
     if (!variantsState.data) return;
     if (variantsState.data.hasWear) {
-      const available = variantsState.data.variants.filter(v => v.exists);
-      const selected = available.find(v => v.marketHashName === activeName) || available[0];
-      setSelectedWears(selected ? [selected.marketHashName] : []);
+      const available = variantsState.data.variants
+        .map(v => v.marketHashName)
+        .filter(Boolean);
+      setSelectedWears(available.length ? available : [activeName].filter(Boolean));
     } else {
       setSelectedWears([activeName].filter(Boolean));
     }
-  }, [variantsState.data, activeName]);
+  }, [variantsState.data]);
 
   const chartNames = (selectedWears && selectedWears.length) ? selectedWears : [activeName].filter(Boolean);
   const multiState = useMultiWearHistory(chartNames, fetchDays, activeCurrency);
@@ -139,7 +143,9 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
   const periodDays = typeof activePeriod.days === 'number' ? activePeriod.days : null;
   const cutoffTs = periodDays == null ? 0 : Date.now() - periodDays * 86400000;
 
-  // Each visible quality becomes a colored line on a shared time/price axis (Steam-style).
+  const presentWears = WEAR_ORDER.filter((code) =>
+    rawSeries.some((s) => s.wear === code && Array.isArray(s.data) && s.data.length >= 2)
+  );
   const chartSeries = rawSeries
     .map(s => {
       let pts = (s.data || [])
@@ -152,14 +158,19 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
         marketHashName: s.marketHashName,
         wear: s.wear,
         wearLabel: s.wearLabel,
-        color: WEAR_COLORS[s.wear] || 'var(--accent)',
+        color: s.wear ? steamGraphColor(s.wear, presentWears) : STEAM_GRAPH_COLORS[0],
         points: view,
       };
     })
     .filter(s => s.points.length >= 2);
 
+  const volumePoints = (chartSeries.find(s => s.marketHashName === activeName) || chartSeries[0])?.points || [];
   const formatChartMoney = (value) => formatMoney(value, { digits: 2, currency: historyCurrency });
-  const chart = chartSeries.length ? buildMultiChart(chartSeries, historyCurrency) : null;
+  const chart = chartSeries.length ? buildMultiChart(chartSeries, historyCurrency, {
+    volumePoints,
+    priceLabel: lang === 'ru' ? 'Цена' : 'Price',
+    volumeLabel: lang === 'ru' ? 'Объём' : 'Volume',
+  }) : null;
   const hasHistory = Boolean(chart);
 
   const activeVariant = variants.find(v => v.marketHashName === activeName) || null;
@@ -335,7 +346,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                         title={v.wearLabel}
                         className="item-detail-variant"
                         data-active={isActive}
-                        style={{ '--wear-color': WEAR_COLORS[v.wear] || 'var(--accent)' }}
+                        style={{ '--wear-color': steamGraphColor(v.wear, presentWears) }}
                       >
                         <strong>{v.wear}</strong>
                         <span>{priceText}</span>
@@ -385,11 +396,11 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
           <section className="glass item-detail-chart-card">
             <div className="item-detail-chart-head">
               <div>
-                <div className="eyebrow">{lang === 'ru' ? 'ИСТОРИЯ ЦЕН' : 'PRICE HISTORY'}</div>
+                <div className="eyebrow">{lang === 'ru' ? 'МЕДИАННЫЕ ЦЕНЫ' : 'MEDIAN SALE PRICES'}</div>
                 <div className="item-detail-chart-sub">
                   {lang === 'ru'
-                    ? 'форма сделок · край = текущий Steam ask'
-                    : 'sale shape · last point = live Steam ask'}
+                    ? 'серия Steam Market · столбцы — число продаж'
+                    : 'Steam Market series · bars are sales'}
                 </div>
               </div>
               <div className="item-detail-periods">
@@ -411,9 +422,9 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
             {hasWear && (
               <div className="item-detail-compare">
                 <span>{lang === 'ru' ? 'Сравнить:' : 'Compare:'}</span>
-                {variants.filter(v => v.exists).map((v) => {
+                {variants.map((v) => {
                   const shown = chartNames.includes(v.marketHashName);
-                  const color = WEAR_COLORS[v.wear] || 'var(--accent)';
+                  const color = steamGraphColor(v.wear, presentWears);
                   return (
                     <button
                       key={v.wear}
@@ -432,19 +443,33 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                  onMouseMove={onMove} onMouseLeave={() => setChartHover(null)}>
               {hasHistory ? (
                 <svg viewBox={`0 0 ${chart.w} ${chart.h}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }}>
-                  {/* horizontal grid + Y axis labels */}
-                  {chart.yTicks.map((tick, i) => (
-                    <g key={`y-${i}`}>
-                      <line x1={chart.padX} x2={chart.w - chart.padXRight} y1={tick.y} y2={tick.y}
-                            stroke="rgba(255,255,255,0.05)" strokeDasharray="2 4" />
-                      <text x={chart.w - chart.padXRight + 8} y={tick.y + 3}
-                            fill="var(--fg-3)" fontFamily="var(--f-mono)" fontSize="10">
-                        {tick.label}
-                      </text>
-                    </g>
+                  <rect x={chart.padX} y={chart.padY} width={chart.plotW} height={chart.plotH} fill="#23262e" />
+                  {chart.bars.map((bar, i) => (
+                    <rect key={`v-${i}`} x={bar.x} y={bar.y} width={bar.w} height={bar.h}
+                          fill={STEAM_VOLUME_COLOR} opacity="0.25" />
                   ))}
-
-                  {/* X axis labels */}
+                  {chart.yTicks.map((tick, i) => (
+                    <text key={`y-${i}`} x={chart.padX - 8} y={tick.y + 3}
+                          textAnchor="end"
+                          fill="var(--fg-3)" fontFamily="var(--f-mono)" fontSize="10">
+                      {tick.label}
+                    </text>
+                  ))}
+                  {chart.volumeTicks.map((tick, i) => (
+                    <text key={`vol-${i}`} x={chart.w - chart.padXRight + 8} y={tick.y + 3}
+                          textAnchor="start"
+                          fill="rgba(59,158,255,0.85)" fontFamily="var(--f-mono)" fontSize="10">
+                      {tick.label}
+                    </text>
+                  ))}
+                  <text x={chart.padX - 8} y={chart.padY - 4} textAnchor="end"
+                        fill="var(--fg-3)" fontFamily="var(--f-mono)" fontSize="9">
+                    {chart.priceLabel}
+                  </text>
+                  <text x={chart.w - chart.padXRight + 8} y={chart.padY - 4} textAnchor="start"
+                        fill="rgba(59,158,255,0.85)" fontFamily="var(--f-mono)" fontSize="9">
+                    {chart.volumeLabel}
+                  </text>
                   {chart.xTicks.map((tick, i) => (
                     <text key={`x-${i}`} x={tick.x} y={chart.h - 6}
                           textAnchor="middle"
@@ -452,8 +477,6 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                       {tick.label}
                     </text>
                   ))}
-
-                  {/* one line per visible quality */}
                   {chart.series.map((s) => (
                     <path key={s.wear || s.marketHashName} d={s.d}
                           stroke={s.color}
@@ -462,15 +485,14 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                           strokeLinejoin="round"
                           strokeLinecap="round" />
                   ))}
-
                   {chartHover && (
                     <g>
                       <line x1={chartHover.x} x2={chartHover.x}
                             y1={chart.padY} y2={chart.h - chart.padYBottom}
-                            stroke="rgba(255,255,255,0.2)" strokeDasharray="2 3" />
+                            stroke="rgba(255,255,255,0.35)" />
                       {chartHover.rows.map((row, i) => (
-                        <circle key={i} cx={row.x} cy={row.y} r="4"
-                                fill={row.color} stroke="#fff" strokeWidth="1.5" />
+                        <circle key={i} cx={row.x} cy={row.y} r="3.5"
+                                fill={row.color} stroke="#1b1e24" strokeWidth="1.5" />
                       ))}
                     </g>
                   )}
@@ -510,12 +532,15 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                   border: '1px solid var(--line-strong)', fontFamily: 'var(--f-mono)', fontSize: 12, whiteSpace: 'nowrap',
                   pointerEvents: 'none',
                 }}>
-                  <div style={{ color: 'var(--fg-3)', fontSize: 10 }}>{formatHistoryDate(chartHover.date, lang)}</div>
+                  <div style={{ color: 'var(--fg-3)', fontSize: 10 }}>{formatHistoryDate(chartHover.date, lang, period === '7d' || period === '30d')}</div>
                   {chartHover.rows.map((row, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                       <span style={{ width: 8, height: 3, borderRadius: 2, background: row.color }} />
                       {row.wear && <span style={{ color: row.color, fontSize: 11 }}>{row.wear}</span>}
                       <span style={{ color: 'var(--fg-0)' }}>{formatChartMoney(row.point.price)}</span>
+                      {Number.isFinite(row.point.volume) && (
+                        <span style={{ color: 'var(--fg-3)' }}>· {row.point.volume}</span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -599,20 +624,18 @@ function parseClientName(marketHashName) {
 }
 
 // Overlay several quality series on a shared time/price axis (Steam-style multi-line chart).
-function buildMultiChart(seriesList, currency = 'usd') {
-  const w = 1000, h = 300;
-  const padX = 16, padXRight = 56, padY = 18, padYBottom = 26;
+function buildMultiChart(seriesList, currency = 'usd', options = {}) {
+  const w = 1000, h = 320;
+  const padX = 78, padXRight = 46, padY = 22, padYBottom = 28;
   const plotW = w - padX - padXRight;
   const plotH = h - padY - padYBottom;
 
   const allPoints = seriesList.flatMap(s => s.points);
   const prices = allPoints.map(p => p.price);
   const times = allPoints.map(p => p.t);
-  const rawMin = Math.min(...prices);
   const rawMax = Math.max(...prices);
-  const span = rawMax - rawMin || Math.max(0.01, rawMax * 0.05);
-  const min = Math.max(0, rawMin - span * 0.1);
-  const max = rawMax + span * 0.1;
+  const min = 0;
+  const max = niceCeil(rawMax * 1.001);
   const range = max - min || 1;
   const tMin = Math.min(...times);
   const tMax = Math.max(...times);
@@ -628,42 +651,92 @@ function buildMultiChart(seriesList, currency = 'usd') {
     return { wear: s.wear, wearLabel: s.wearLabel, marketHashName: s.marketHashName, color: s.color, pts, d };
   });
 
+  const volumePoints = (options.volumePoints || []).filter((p) => Number.isFinite(p.volume) && p.volume >= 0 && Number.isFinite(p.t));
+  const rawVol = volumePoints.reduce((max, point) => Math.max(max, point.volume), 0);
+  const volMax = rawVol > 0 ? niceCeil(rawVol) : 0;
+  const volToY = (volume) => padY + (1 - volume / (volMax || 1)) * plotH;
+  const barW = Math.max(0.6, (plotW / Math.max(1, volumePoints.length)) * 0.72);
+  const bars = volumePoints.map((p) => {
+    const y = volToY(p.volume);
+    const bottom = padY + plotH;
+    return {
+      x: timeToX(p.t) - barW / 2,
+      y,
+      w: barW,
+      h: Math.max(0, bottom - y),
+    };
+  });
+
   const yTickCount = 4;
   const yTicks = Array.from({ length: yTickCount + 1 }, (_, i) => {
     const value = min + (range * i) / yTickCount;
     return { y: priceToY(value), label: formatTickPrice(value, currency) };
   });
+  const volumeTicks = volMax > 0
+    ? Array.from({ length: yTickCount + 1 }, (_, i) => {
+      const value = (volMax * i) / yTickCount;
+      return { y: volToY(value), label: formatTickVolume(value) };
+    })
+    : [];
 
   const spanDays = Math.max(1, tRange / 86400000);
   const xTickCount = 5;
   const xTicks = Array.from({ length: xTickCount }, (_, i) => {
     const t = tMin + (i / (xTickCount - 1)) * tRange;
-    return { x: timeToX(t), label: formatTickDate(new Date(t).toISOString().slice(0, 10), spanDays) };
+    return { x: timeToX(t), label: formatTickDate(new Date(t).toISOString(), spanDays) };
   });
 
   return {
     w, h, padX, padXRight, padY, padYBottom, plotW, plotH,
-    min, max, range, series, yTicks, xTicks,
+    min, max, range, series, yTicks, volumeTicks, xTicks, bars,
+    priceLabel: options.priceLabel || 'Price',
+    volumeLabel: options.volumeLabel || 'Volume',
     priceToY, timeToX, xToTime,
   };
+}
+
+function niceCeil(value) {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  const exp = 10 ** Math.floor(Math.log10(value));
+  const fraction = value / exp;
+  const nice = fraction <= 1 ? 1
+    : fraction <= 1.5 ? 1.5
+    : fraction <= 2 ? 2
+    : fraction <= 2.5 ? 2.5
+    : fraction <= 3 ? 3
+    : fraction <= 4 ? 4
+    : fraction <= 5 ? 5
+    : fraction <= 6 ? 6
+    : fraction <= 8 ? 8
+    : 10;
+  return nice * exp;
+}
+
+function formatTickVolume(value) {
+  if (!Number.isFinite(value)) return '';
+  if (value >= 1000) return `${Math.round(value / 100) / 10}k`;
+  return String(Math.round(value));
 }
 
 function formatTickPrice(value, currency = 'usd') {
   if (!Number.isFinite(value)) return '';
   const cur = String(currency).toLowerCase();
-  if (cur === 'rub') {
-    if (value >= 1000) return `${(value / 1000).toFixed(1)}k ₽`;
-    if (value >= 10) return `${value.toFixed(0)} ₽`;
-    return `${value.toFixed(2)} ₽`;
-  }
-  if (value >= 1000) return `$${(value / 1000).toFixed(1)}k`;
-  if (value >= 10) return `$${value.toFixed(0)}`;
-  return `$${value.toFixed(2)}`;
+  const digits = value >= 100 || value === 0 ? 0 : 2;
+  const formatted = new Intl.NumberFormat(cur === 'rub' ? 'ru-RU' : 'en-US', {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: 0,
+  }).format(value);
+  if (cur === 'rub') return `${formatted} ₽`;
+  if (cur === 'cny') return `¥${formatted}`;
+  return `$${formatted}`;
 }
 
 function formatTickDate(value, spanDays = 30) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
+  if (spanDays <= 40) {
+    return new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', hour: 'numeric' }).format(date);
+  }
   if (spanDays > 365) {
     return new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' }).format(date);
   }
@@ -673,13 +746,14 @@ function formatTickDate(value, spanDays = 30) {
   return new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short' }).format(date);
 }
 
-function formatHistoryDate(value, lang) {
+function formatHistoryDate(value, lang, withTime = false) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value || '');
   return new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : 'en-US', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    ...(withTime ? { hour: 'numeric', minute: '2-digit' } : {}),
   }).format(date);
 }
 
