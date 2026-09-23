@@ -292,7 +292,11 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
                   <img src={withSteamImageSize(item.iconUrl, 960, 540)} alt={item.name} />
                 </div>
               : <ItemArt label={item.name} tier={item.tier} style={{ aspectRatio: parsedBase.hasWear ? '16/10' : '1/1' }} />}
-            <WearBar wear={item.wear} floatValue={item.floatValue} />
+            <WearBar
+              wear={parsedActive.wearLabel || item.wear}
+              itemWear={item.wear}
+              floatValue={item.floatValue}
+            />
           </section>
 
           <aside className="item-detail-decision">
@@ -762,24 +766,37 @@ const WEAR_ALIAS = {
   'battle-scarred': 4, 'bs': 4,
 };
 
-function WearBar({ wear, floatValue }) {
-  const wearNorm = (wear || '').toLowerCase().replace(/[^a-z-]/g, '').trim();
-  const rangeIdx = WEAR_ALIAS[wearNorm];
-  if (rangeIdx == null && floatValue == null) return null;
+function wearRangeIndex(value) {
+  const wearNorm = String(value || '').toLowerCase().replace(/[^a-z\s-]/g, '').replace(/\s+/g, ' ').trim();
+  return WEAR_ALIAS[wearNorm];
+}
 
-  let fv = floatValue;
-  if (fv == null && rangeIdx != null) {
-    const r = WEAR_RANGES[rangeIdx];
-    fv = (r.min + r.max) / 2;
-  }
+function WearBar({ wear, itemWear, floatValue }) {
+  const rangeIdx = wearRangeIndex(wear);
+  const itemIdx = wearRangeIndex(itemWear);
+  const exactFloat = Number.isFinite(floatValue) && (rangeIdx == null || itemIdx == null || rangeIdx === itemIdx)
+    ? floatValue
+    : null;
+  if (rangeIdx == null && exactFloat == null) return null;
+
+  const range = rangeIdx != null ? WEAR_RANGES[rangeIdx] : null;
+  const fv = exactFloat != null
+    ? exactFloat
+    : range
+      ? (range.min + range.max) / 2
+      : null;
+  if (fv == null) return null;
   const pct = Math.min(1, Math.max(0, fv)) * 100;
-  const activeRange = WEAR_RANGES.find(r => fv >= r.min && fv < r.max) || WEAR_RANGES[4];
+  const activeRange = range || WEAR_RANGES.find(r => fv >= r.min && fv < r.max) || WEAR_RANGES[4];
+  const floatLabel = exactFloat != null
+    ? exactFloat.toFixed(9)
+    : `${activeRange.min.toFixed(2)}–${activeRange.max >= 1 ? '1.00' : activeRange.max.toFixed(2)}`;
 
   return (
     <div className="item-detail-wear">
       <div className="item-detail-wear-head">
         <span style={{ color: activeRange.color }}>{activeRange.label}</span>
-        <b>{fv.toFixed(9)}</b>
+        <b>{floatLabel}</b>
       </div>
       <div className="item-detail-wear-track">
         {WEAR_RANGES.map((r, i) => (
