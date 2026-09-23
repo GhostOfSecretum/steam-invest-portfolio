@@ -76,8 +76,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
     setChartHover(null);
   }, [baseName]);
 
-  // Steam's chart shows every exterior of the skin at once. Switching the active
-  // quality changes the header price and the volume bars, not which lines exist.
+  // Opening an item shows every exterior. A chip click focuses the chart on that one.
   detailUseEffect(() => {
     if (!variantsState.data) return;
     if (variantsState.data.hasWear) {
@@ -90,8 +89,11 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
     }
   }, [variantsState.data]);
 
-  const chartNames = (selectedWears && selectedWears.length) ? selectedWears : [activeName].filter(Boolean);
-  const multiState = useMultiWearHistory(chartNames, fetchDays, activeCurrency);
+  const historyNames = variants.length
+    ? variants.map(v => v.marketHashName).filter(Boolean)
+    : [activeName].filter(Boolean);
+  const chartNames = (selectedWears && selectedWears.length) ? selectedWears : historyNames;
+  const multiState = useMultiWearHistory(historyNames.length ? historyNames : chartNames, fetchDays, activeCurrency);
 
   if (loading) {
     return (
@@ -162,7 +164,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
         points: view,
       };
     })
-    .filter(s => s.points.length >= 2);
+    .filter(s => chartNames.includes(s.marketHashName) && s.points.length >= 2);
 
   const volumePoints = (chartSeries.find(s => s.marketHashName === activeName) || chartSeries[0])?.points || [];
   const formatChartMoney = (value) => formatMoney(value, { digits: 2, currency: historyCurrency });
@@ -193,17 +195,9 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
     setChartHover(null);
   };
 
-  const toggleWearLine = (mhn) => {
-    setSelectedWears((prev) => {
-      const current = prev && prev.length ? prev : chartNames;
-      if (current.includes(mhn)) {
-        const next = current.filter(n => n !== mhn);
-        return next.length ? next : current; // never hide the last line
-      }
-      // Preserve wear order (FN→BS) when re-adding.
-      const order = variants.map(v => v.marketHashName);
-      return [...current, mhn].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-    });
+  const showOnlyWear = (mhn) => {
+    setSelectedWears([mhn]);
+    setActiveName(mhn);
     setChartHover(null);
   };
 
@@ -421,14 +415,14 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
 
             {hasWear && (
               <div className="item-detail-compare">
-                <span>{lang === 'ru' ? 'Сравнить:' : 'Compare:'}</span>
+                <span>{lang === 'ru' ? 'Показать:' : 'Show:'}</span>
                 {variants.map((v) => {
                   const shown = chartNames.includes(v.marketHashName);
                   const color = steamGraphColor(v.wear, presentWears);
                   return (
                     <button
                       key={v.wear}
-                      onClick={() => toggleWearLine(v.marketHashName)}
+                      onClick={() => showOnlyWear(v.marketHashName)}
                       data-active={shown}
                       style={{ '--wear-color': color }}
                     >
