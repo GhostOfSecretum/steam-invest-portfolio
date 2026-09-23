@@ -1825,7 +1825,24 @@ function HowItWorks({ lang }) {
             <article className="landing-step glass" key={step.n}>
               <div className="landing-step-num">{step.n}</div>
               <div className="landing-step-icon">
-                {index === 0 ? '↗' : index === 1 ? '◇' : '⌁'}
+                {index === 0 ? (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M10 16.5 15.5 12 10 7.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M15 12H4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                  </svg>
+                ) : index === 1 ? (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12.2 3.8 20.2 11.8a1.6 1.6 0 0 1 0 2.2l-6.2 6.2a1.6 1.6 0 0 1-2.2 0L3.8 12.2V5.8a2 2 0 0 1 2-2h6.4z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+                    <circle cx="8.2" cy="8.2" r="1.15" fill="currentColor" />
+                  </svg>
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4 19h16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                    <path d="M4 19V5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                    <path d="M7.5 14.5 11 10.5l3.2 2.4L18.5 7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
               </div>
               <h3>{step.title}</h3>
               <p>{step.text}</p>
