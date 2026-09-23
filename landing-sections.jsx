@@ -1884,25 +1884,47 @@ function FinalCta({ lang, auth, onPrimary }) {
   );
 }
 
-/* Stats band — product pillars, not vanity metrics */
+/* Same catalog as server/services/plans.js, shown before /api/plans returns. */
+const STATS_BAND_FALLBACK = {
+  ru: [
+    { id: 'free', name: 'Бесплатный', note: '0 ₽ · весь сайт' },
+    { id: 'short', name: '3 дня', note: '100 ₽ / 3 дня · без автопродления' },
+    { id: 'plus', name: 'Plus', note: '299 ₽ / 30 дней' },
+    { id: 'investor', name: 'Investor', note: '499 ₽ / 30 дней · 7 дней за Telegram' },
+  ],
+  en: [
+    { id: 'free', name: 'Free', note: '$0 · full website' },
+    { id: 'short', name: '3 days', note: '$2.99 / 3 days · no renewal' },
+    { id: 'plus', name: 'Plus', note: '$7.99 / 30 days · 7 days free' },
+  ],
+};
+
+function statsBandFromPlans(plans, isRu) {
+  return plans.map((plan) => {
+    const name = (isRu ? plan.name?.ru : plan.name?.en) || plan.name?.en || plan.id;
+    const price = (isRu ? plan.price?.ru : plan.price?.en) || plan.price?.en || '';
+    let note = price;
+    if (plan.id === 'free') note = isRu ? '0 ₽ · весь сайт' : '$0 · full website';
+    else if (plan.id === 'short') note = isRu ? `${price} · без автопродления` : `${price} · no renewal`;
+    else if (plan.id === 'plus' && !isRu) note = `${price} · 7 days free`;
+    else if (plan.id === 'investor') note = isRu ? `${price} · 7 дней за Telegram` : `${price} · 7 days via Telegram`;
+    return { id: plan.id, name, note };
+  });
+}
+
+/* Stats band — the live plan catalog, not a separate slogan. */
 function StatsBand() {
   const lang = window.__lang || 'en';
   const t = useT(lang);
-  const stats = lang === 'ru'
-    ? [
-      { v: 'Free', l: 'весь сайт без лимитов' },
-      { v: 'Plus', l: 'desktop и Хранилища скоро' },
-      { v: 'Investor', l: 'то же + 7 дней за Telegram' },
-    ]
-    : [
-      { v: 'Free', l: 'full website, no item cap' },
-      { v: 'Plus', l: 'desktop + Storage soon' },
-      { v: 'Investor', l: 'same + 7 days via Telegram' },
-    ];
+  const isRu = lang === 'ru';
+  const plansState = usePlans(lang);
+  const stats = plansState.plans.length
+    ? statsBandFromPlans(plansState.plans, isRu)
+    : (STATS_BAND_FALLBACK[isRu ? 'ru' : 'en']);
   return (
     <section className="section-tight">
       <div className="container">
-        <div className="glass-strong landing-stats-band" style={{
+        <div className="glass-strong landing-stats-band" data-count={stats.length} style={{
           padding: '48px 56px',
           position: 'relative', overflow: 'hidden',
         }}>
@@ -1912,10 +1934,10 @@ function StatsBand() {
           <div style={{ gridColumn: '1 / -1', marginBottom: 4 }}>
             <div className="eyebrow" style={{ color: 'var(--accent)' }}>// {t.sections.stats}</div>
           </div>
-          {stats.map((s, i) => (
-            <div key={i} style={{ position: 'relative' }}>
-              <div className="display" style={{ fontSize: 36, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em' }}>{s.v}</div>
-              <div className="eyebrow" style={{ marginTop: 10 }}>{s.l}</div>
+          {stats.map((s) => (
+            <div key={s.id} style={{ position: 'relative' }}>
+              <div className="display" style={{ fontSize: stats.length > 3 ? 30 : 36, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em' }}>{s.name}</div>
+              <div className="eyebrow" style={{ marginTop: 10 }}>{s.note}</div>
             </div>
           ))}
         </div>
