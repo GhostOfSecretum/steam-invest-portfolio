@@ -390,7 +390,7 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
           <section className="glass item-detail-chart-card">
             <div className="item-detail-chart-head">
               <div>
-                <div className="eyebrow">{lang === 'ru' ? 'МЕДИАННЫЕ ЦЕНЫ' : 'MEDIAN SALE PRICES'}</div>
+                <div className="eyebrow">{lang === 'ru' ? 'История цены' : 'Price history'}</div>
               </div>
               <div className="item-detail-periods">
                 {PERIOD_OPTIONS.map(p => (
