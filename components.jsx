@@ -721,18 +721,6 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
         )}
       </div>
       <div className="nav-controls">
-        <div className="nav-lang" role="group" aria-label={tt(lang, { en: 'Language', ru: 'Язык', zh: '语言', 'zh-TW': '語言' })}>
-          {LANGS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              data-active={lang === value}
-              onClick={() => onLang(value)}
-            >
-              {LANG_LABELS[value] || value.toUpperCase()}
-            </button>
-          ))}
-        </div>
         <div
           className="nav-menu"
           ref={menuRef}
