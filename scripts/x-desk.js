@@ -145,6 +145,10 @@ function mergePlan(live, seed) {
       if (!liveDay.post.visual) liveDay.post.visual = seedDay.post.visual;
       if (!liveDay.post.shot && seedDay.post.shot) liveDay.post.shot = seedDay.post.shot;
     }
+    if (seedDay.post && seedDay.post.textRu) {
+      liveDay.post = liveDay.post || {};
+      if (!liveDay.post.textRu) liveDay.post.textRu = seedDay.post.textRu;
+    }
     if (seedDay.dayNum != null && liveDay.dayNum == null) liveDay.dayNum = seedDay.dayNum;
     if (seedDay.notes && !liveDay.notes) liveDay.notes = seedDay.notes;
     if (seedDay.label && (!liveDay.label || /^\d{2}-\d{2}$/.test(liveDay.label))) {

@@ -198,9 +198,26 @@ h2 { font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: u
 .kind-setup .day-date { color: var(--magenta); }
 
 .today { border-color: var(--cyan); }
+.post-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+  margin: 10px 0 14px;
+}
+.post-kicker {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+.post-col.ru { border-left: 1px solid var(--line); padding-left: 14px; }
+.post-col.ru .post-text { color: var(--muted); }
 .next .post-text {
   white-space: pre-wrap; font-size: 13px; line-height: 1.45; font-weight: 300;
-  color: #e6e8ef; margin: 10px 0 14px;
+  color: #e6e8ef; margin: 0;
 }
 .copy {
   cursor: pointer; background: transparent; color: var(--cyan);
@@ -255,7 +272,8 @@ h2 { font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: u
 
 @media (max-width: 980px) {
   body { padding: 18px; }
-  .kpis, .charts, .split, .videos, .focus-row, .follows-row, .pillars-row { grid-template-columns: 1fr; }
+  .kpis, .charts, .split, .videos, .focus-row, .follows-row, .pillars-row, .post-pair { grid-template-columns: 1fr; }
+  .post-col.ru { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 12px; }
   .kpis { grid-template-columns: repeat(2, 1fr); }
   .pillars-row { grid-template-columns: 1fr 1fr; }
   .hero { grid-template-columns: 72px 1fr; }

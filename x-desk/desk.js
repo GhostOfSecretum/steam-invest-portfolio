@@ -236,10 +236,13 @@ function buildPostCard(day, data, idSuffix) {
   const copyId = `copy-post-${idSuffix}`;
   const liveUrl = day.post.url || (idSuffix === 'today' && last && last.post && last.post.url);
   const shot = shotLabel(day.post);
+  const ru = day.post.textRu
+    ? `<div class="post-col ru"><div class="post-kicker">смысл</div><pre class="post-text">${esc(day.post.textRu)}</pre></div>`
+    : '';
   const html = `
     ${src ? `<video class="desk-video" controls preload="metadata" src="${src}"></video>` : ''}
     ${day.post.visual ? `<p class="shot">${esc(shot)}. ${esc(day.post.visual)}</p>` : ''}
-    ${day.post.text ? `<pre class="post-text">${day.post.text}</pre><button type="button" class="copy" id="${copyId}">Скопировать</button>` : '<p class="empty">Текст поста ещё не лочили</p>'}
+    ${day.post.text ? `<div class="post-pair"><div class="post-col"><div class="post-kicker">пост</div><pre class="post-text">${esc(day.post.text)}</pre></div>${ru}</div><button type="button" class="copy" id="${copyId}">Скопировать</button>` : '<p class="empty">Текст поста ещё не лочили</p>'}
     ${liveUrl ? `<p class="hint" style="margin-top:12px"><a href="${liveUrl}" target="_blank" rel="noreferrer">${published && idSuffix === 'today' ? 'пост на X ↗' : 'последний пост на X ↗'}</a></p>` : ''}`;
   return { html, copyId, text: day.post.text, pinHint, date: day.date, label: day.label, n: day.post.n, time: day.post.time };
 }

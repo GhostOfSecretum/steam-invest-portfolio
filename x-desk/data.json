@@ -942,6 +942,7 @@
         "time": "19:30",
         "pinned": false,
         "text": "You sold.\n\nThe cash is still sitting in the portfolio as cash.\nZero skins. Zero thesis. A number.\n\nThat’s not an exit until it leaves.\nIt’s an undeployed position.\n\nWhat’s the cash doing in the bag right now?",
+        "textRu": "Ты продал.\n\nКэш так и лежит в портфеле как кэш.\nНоль скинов. Ноль тезиса. Цифра.\n\nЭто не выход, пока деньги не ушли.\nЭто незадействованная позиция.\n\nЧто кэш делает в портфеле прямо сейчас?",
         "shot": "still",
         "visual": "Свой ручной портфель, не Steam-инвентарь: на Steam вместо кэша стоит SELLABLE NOW. Обзор → карточка CASH. Кроп только её: сумма и строка From sales and deposits."
       },
@@ -956,7 +957,8 @@
         "n": 35,
         "time": "19:30",
         "pinned": false,
-        "text": "Storage is not a vault.\n\nFor most people it’s a junk drawer with a Steam label.\n\nNames you forgot. Cases you meant to open. A knife you “put away”.\n\nIf you can’t list what’s in there, it isn’t allocated. It’s lost.\n\nWhat’s in Storage that you wouldn’t buy again?"
+        "text": "Storage is not a vault.\n\nFor most people it’s a junk drawer with a Steam label.\n\nNames you forgot. Cases you meant to open. A knife you “put away”.\n\nIf you can’t list what’s in there, it isn’t allocated. It’s lost.\n\nWhat’s in Storage that you wouldn’t buy again?",
+        "textRu": "Storage — не сейф.\n\nУ большинства это ящик хлама с биркой Steam.\n\nИмена, которые забыл. Кейсы, которые собирался открыть. Нож, который «убрал».\n\nЕсли не можешь перечислить, что там лежит, это не аллокация. Это потеряно.\n\nЧто в Storage ты бы не купил снова?"
       },
       "notes": "Не закреплять, только текст. Storage как ящик, не «публичный профиль не показывает» (10, 28). Десктоп не светить."
     },
@@ -970,6 +972,7 @@
         "time": "19:30",
         "pinned": false,
         "text": "Paper P&L is not a result.\n\nYou are not up until you sold, paid the cut, and the money is actually yours.\n\nUnrealized is a mark.\nRealized is a score.\n\nWhich one are you quoting — the one that still has to find a buyer?",
+        "textRu": "Бумажный P&L — не результат.\n\nТы не в плюсе, пока не продал, не заплатил комиссию и деньги не стали твоими.\n\nНереализованный — это оценка.\nРеализованный — это счёт.\n\nКакой ты называешь — тот, которому ещё нужен покупатель?",
         "shot": "still",
         "visual": "Тот же ручной портфель. Обзор → карточка All-time P&L. В кропе должны читаться обе строки: Unrealized P&L и Realized P&L. Не карточка шаринга и не весь дашборд."
       },
@@ -985,6 +988,7 @@
         "time": "19:30",
         "pinned": false,
         "text": "“I’m diversified. Knives, rifles, gloves.”\n\nThat’s a wardrobe, not a book.\n\nIf 60% is still one type, a dump in that type is the bag.\n\nAllocation is weights. Categories are labels.\n\nWhat’s your largest type as a % — not your favorite skin?",
+        "textRu": "«Я диверсифицирован. Ножи, винтовки, перчатки.»\n\nЭто гардероб, не книга.\n\nЕсли 60% всё ещё один тип, просадка этого типа — и есть портфель.\n\nАллокация — это веса. Категории — это ярлыки.\n\nКакой у тебя самый большой тип в процентах — не любимый скин?",
         "shot": "still",
         "visual": "Портфель → обзор, карточка Allocation by type. Кроп полоски и подписей типов. Должно быть видно, что один тип занимает большую долю."
       },
@@ -999,7 +1003,8 @@
         "n": 38,
         "time": "19:30",
         "pinned": false,
-        "text": "“Read-only Steam login” is a marketing sentence.\n\nSteam does not issue a scoped token.\nA QR login is a full session. Always.\n\nThe only limit is what the app does after.\n\nIf they told you it was read-only, what did you actually hand them?"
+        "text": "“Read-only Steam login” is a marketing sentence.\n\nSteam does not issue a scoped token.\nA QR login is a full session. Always.\n\nThe only limit is what the app does after.\n\nIf they told you it was read-only, what did you actually hand them?",
+        "textRu": "«Read-only вход в Steam» — маркетинговая фраза.\n\nSteam не выдаёт токен с ограниченными правами.\nВход по QR — это полная сессия. Всегда.\n\nЕдинственный предел — что приложение делает после.\n\nЕсли тебе сказали, что это только чтение, что ты им на самом деле отдал?"
       },
       "notes": "Не закреплять, только текст. Без имени продукта, без десктопа, без скачать. Отраслевой тезис из SECURITY.md."
     },
@@ -1013,6 +1018,7 @@
         "time": "19:30",
         "pinned": false,
         "text": "End of the month.\n\nForget the Steam high you screenshotted on a Tuesday.\n\nAfter fees, after names that wouldn’t sell, after the stickers nobody paid for — are you actually up?\n\nThat’s the only monthly number.\n\nWhat’s yours?",
+        "textRu": "Конец месяца.\n\nЗабудь стимовский хай, который снял во вторник.\n\nПосле комиссий, после имён, которые не продались бы, после стикеров, за которые никто не заплатил — ты реально в плюсе?\n\nЭто единственная цифра месяца.\n\nКакая у тебя?",
         "shot": "reel",
         "visual": "Запись экрана 9:16, 8–12 сек, не закреплять, без ссылки. Портфель → обзор, график VALUE OVER TIME, диапазон 30d. В ролике переключи Steam → Real, чтобы сменились и график, и подпись под Market value. Старый рил 31 авг не использовать."
       },
@@ -1028,6 +1034,7 @@
         "time": "19:30",
         "pinned": false,
         "text": "You marked it as FN.\n\nThe listing you copied was 0.01.\nYours is 0.06 with the same wear label.\n\nThe market does not pay for the label.\nIt pays for the float.\n\nAre you marking your item, or a prettier one with the same name?",
+        "textRu": "Ты пометил его как FN.\n\nЛот, с которого скопировал цену, был 0.01.\nТвой — 0.06, с той же биркой износа.\n\nРынок платит не за бирку.\nОн платит за float.\n\nТы оцениваешь свой предмет или более красивый с тем же именем?",
         "shot": "still",
         "visual": "Портфель → открой скин с биркой FN, у которого float не на нижнем крае диапазона. Карточка предмета: в одном кропе Wear и Float."
       },
@@ -1043,6 +1050,7 @@
         "time": "19:30",
         "pinned": false,
         "text": "Souvenir and trade are not the same skin.\n\nSame screenshot. Different book. Different buyer.\n\nIf you mark them off one Steam name, you’ve blended two markets and called it a price.\n\nWhich bid are you actually using?",
+        "textRu": "Сувенир и обычный — не один и тот же скин.\n\nОдин скриншот. Разные книги. Разный покупатель.\n\nЕсли метишь их по одному имени Steam, ты смешал два рынка и назвал это ценой.\n\nКакой бид ты на самом деле берёшь?",
         "shot": "still",
         "visual": "Портфель → предметы, поиск одного имени. Две строки в одном кропе: Souvenir и обычная версия, обе с ценой. Если пары нет в инвентаре — Маркет, поиск того же имени, те же две строки."
       },
@@ -1057,7 +1065,8 @@
         "n": 42,
         "time": "19:30",
         "pinned": false,
-        "text": "You’ve held it for three years.\n\nThat is not a thesis.\nThat’s inertia with a purchase date.\n\nA position has a reason to still be there.\nTime in the bag is not that reason.\n\nWhy is it still here — besides “I already own it”?"
+        "text": "You’ve held it for three years.\n\nThat is not a thesis.\nThat’s inertia with a purchase date.\n\nA position has a reason to still be there.\nTime in the bag is not that reason.\n\nWhy is it still here — besides “I already own it”?",
+        "textRu": "Ты держишь это три года.\n\nЭто не тезис.\nЭто инерция с датой покупки.\n\nУ позиции есть причина всё ещё быть здесь.\nВремя в портфеле — не эта причина.\n\nПочему оно всё ещё здесь — кроме «я уже владею»?"
       },
       "notes": "Не закреплять, только текст. Held age ≠ тезис. Перенесено с 24 сен: патч уже закрыт постом 32."
     },
@@ -1071,6 +1080,7 @@
         "time": "19:30",
         "pinned": false,
         "text": "Part of the bag has no bid.\n\nNo listings. No last sale you trust. A name that only exists in your inventory.\n\nYou still added it to the total.\n\nThat’s not a mark. That’s a blank you filled in.\n\nHow much of the bag is unpriced and still in the number?",
+        "textRu": "Часть портфеля без бида.\n\nНет лотов. Нет последней продажи, которой веришь. Имя, которое живёт только в инвентаре.\n\nТы всё равно прибавил его к сумме.\n\nЭто не оценка. Это пустая клетка, которую ты заполнил.\n\nСколько портфеля без цены и всё ещё внутри цифры?",
         "shot": "still",
         "visual": "Портфель → предметы. Строка, у которой цена N/A. Если влезает в тот же кадр — карточка Market value со строкой «N of M priced». Storage не снимать."
       },
@@ -1085,7 +1095,8 @@
         "n": 44,
         "time": "19:30",
         "pinned": false,
-        "text": "You paid for the pattern.\n\nThe bid is for the finish.\n\n#661 looks like a story until the buyer wants any blue gem and yours isn’t it.\n\nHow much of the last fill was a pattern you can’t transfer?"
+        "text": "You paid for the pattern.\n\nThe bid is for the finish.\n\n#661 looks like a story until the buyer wants any blue gem and yours isn’t it.\n\nHow much of the last fill was a pattern you can’t transfer?",
+        "textRu": "Ты заплатил за паттерн.\n\nБид — за финиш.\n\n#661 выглядит как история, пока покупатель хочет любой blue gem, а твой — не он.\n\nСколько последнего входа было паттерном, который не переносится?"
       },
       "notes": "Не закреплять, только текст. Pattern overpay. Рядом со стикерами (16, 31), не повторять формулировку."
     },
@@ -1099,6 +1110,7 @@
         "time": "19:30",
         "pinned": false,
         "text": "The market prints in dollars.\n\nYou feel the bag in another currency.\n\nA quiet FX move can look like a win you didn’t trade.\n\nIf you don’t pick a book, the P&L is two numbers arguing.\n\nWhat currency is the real score in?",
+        "textRu": "Рынок печатает в долларах.\n\nПортфель ты чувствуешь в другой валюте.\n\nТихий ход курса может выглядеть как победа, которую ты не торговал.\n\nЕсли не выбрать одну книгу, P&L — это два числа, которые спорят.\n\nВ какой валюте настоящий счёт?",
         "shot": "still",
         "visual": "Одна картинка из двух кропов карточки Market value на обзоре. Слева валюта USD, справа RUB. Переключатель: меню сайта → Currency. В кадре цифра и валюта, не всё меню."
       },
@@ -1113,7 +1125,8 @@
         "n": 46,
         "time": "19:30",
         "pinned": false,
-        "text": "The bag got bigger.\n\nWas that a new deposit, or did you just rotate cash that was already there?\n\nGrowth and reshuffling look the same on a screenshot.\n\nDid you add money — or just move it?"
+        "text": "The bag got bigger.\n\nWas that a new deposit, or did you just rotate cash that was already there?\n\nGrowth and reshuffling look the same on a screenshot.\n\nDid you add money — or just move it?",
+        "textRu": "Портфель стал больше.\n\nЭто был новый депозит или ты просто прокрутил кэш, который уже лежал там?\n\nРост и перекладывание на скриншоте выглядят одинаково.\n\nТы добавил деньги — или только передвинул их?"
       },
       "notes": "Не закреплять, только текст. Депозит vs ротация кэша. Не «кэш как позиция» (пост 34)."
     },
@@ -1126,7 +1139,8 @@
         "n": 47,
         "time": "19:30",
         "pinned": false,
-        "text": "Friday’s Steam number is not Monday’s bid.\n\nThin book. Weekend listings. A mark that only exists because nobody is selling into it.\n\nIf you need the money on Monday, that Friday total is fiction.\n\nWhat’s the Monday number, not the Friday one?"
+        "text": "Friday’s Steam number is not Monday’s bid.\n\nThin book. Weekend listings. A mark that only exists because nobody is selling into it.\n\nIf you need the money on Monday, that Friday total is fiction.\n\nWhat’s the Monday number, not the Friday one?",
+        "textRu": "Пятничная цифра Steam — не понедельничный бид.\n\nТонкая книга. Выходные лоты. Оценка, которая существует, потому что в неё никто не продаёт.\n\nЕсли деньги нужны в понедельник, пятничный тотал — выдумка.\n\nКакая цифра понедельника, не пятницы?"
       },
       "notes": "Не закреплять, только текст. Пятничный стикер vs понедельник. Не 72 часа (пост 21)."
     },
@@ -1140,6 +1154,7 @@
         "time": "19:30",
         "pinned": false,
         "text": "You remember the skin that printed.\n\nYou forget the three that quietly bled 8% and still sit in the bag.\n\nWinners are a highlight reel.\nThe book is the whole list.\n\nWhat’s your worst name this month — still held?",
+        "textRu": "Ты помнишь скин, который напечатал.\n\nЗабываешь три, которые тихо слили 8% и всё ещё лежат в портфеле.\n\nПобедители — это нарезка лучших.\nКнига — это весь список.\n\nКакое худшее имя этого месяца — и ты его всё ещё держишь?",
         "shot": "still",
         "visual": "Портфель → обзор, блок Worst movers. Кроп списка имён в минусе. Best movers в этот кадр не бери."
       },
@@ -1154,7 +1169,8 @@
         "n": 49,
         "time": "19:30",
         "pinned": false,
-        "text": "A whale’s public inventory still isn’t a fill.\n\nYou can watch the diff every day and still not have a cost, a size, or an exit.\n\nResearch is watching.\nA position is a number you own.\n\nDid you trade, or did you just refresh the watchlist?"
+        "text": "A whale’s public inventory still isn’t a fill.\n\nYou can watch the diff every day and still not have a cost, a size, or an exit.\n\nResearch is watching.\nA position is a number you own.\n\nDid you trade, or did you just refresh the watchlist?",
+        "textRu": "Публичный инвентарь кита — всё ещё не твой филл.\n\nМожно смотреть дифф каждый день и так и не иметь себестоимости, размера и выхода.\n\nРесёрч — это смотреть.\nПозиция — это цифра, которой владеешь ты.\n\nТы торговал или просто обновлял вотчлист?"
       },
       "notes": "Не закреплять, только текст, без URL. Киты: refresh ≠ сделка. Не копипаст недели 4."
     }
