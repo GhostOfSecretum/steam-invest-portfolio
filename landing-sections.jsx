@@ -1211,24 +1211,10 @@ function DesktopDownload({ lang, auth, onPricing }) {
   return (
     <section className="section-tight" id="desktop">
       <div className="container">
-        <div className="glass-strong" style={{
-          padding: '34px 40px',
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 0.8fr)',
-          gap: 28,
-          alignItems: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            position: 'absolute',
-            inset: 'auto -10% -80% 45%',
-            height: 260,
-            background: 'radial-gradient(circle, oklch(0.68 0.22 5 / 0.24), transparent 65%)',
-            pointerEvents: 'none',
-          }} />
-          <div style={{ position: 'relative' }}>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+        <div className="glass-strong desktop-panel">
+          <div className="desktop-panel-glow" aria-hidden="true" />
+          <div className="desktop-panel-copy">
+            <div className="desktop-panel-kicker">
               <div className="eyebrow" style={{ color: 'var(--accent)' }}>// DESKTOP CLIENT</div>
               <span className="chip chip-accent">{copy.badge}</span>
             </div>
@@ -1242,17 +1228,16 @@ function DesktopDownload({ lang, auth, onPricing }) {
               {copy.note}
             </p>
           </div>
-          <div style={{ position: 'relative', display: 'grid', gap: 10 }}>
+          <div className="desktop-panel-actions">
             {downloads.map((item) => (
               <button
                 key={item.key}
                 type="button"
-                className="btn btn-ghost"
+                className="btn btn-ghost desktop-panel-dl"
                 disabled
-                style={{ justifyContent: 'space-between', opacity: 0.72, cursor: 'not-allowed' }}
               >
                 <span>{item.label}</span>
-                <span className="mono" style={{ fontSize: 11 }}>{copy.soon}</span>
+                <span className="mono desktop-panel-soon">{copy.soon}</span>
               </button>
             ))}
             <button type="button" className="btn btn-primary" onClick={() => onPricing && onPricing()}>
