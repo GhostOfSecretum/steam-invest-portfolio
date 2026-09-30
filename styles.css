@@ -6192,7 +6192,7 @@ button:disabled,
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 72% center;
+  object-position: 72% top;
   pointer-events: none;
 }
 .dashboard-state__card--loading .dashboard-state__copy {
@@ -6663,7 +6663,7 @@ button:disabled,
     background: linear-gradient(180deg, rgba(6, 8, 12, 0.88) 0%, rgba(6, 8, 12, 0.62) 48%, rgba(6, 8, 12, 0.28) 100%);
   }
   .dashboard-state__video {
-    object-position: 70% 18%;
+    object-position: 70% top;
   }
   .dashboard-state__card--loading .dashboard-state__copy {
     text-align: center;
