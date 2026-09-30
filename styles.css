@@ -6089,13 +6089,19 @@ button:disabled,
   content: "";
   position: absolute;
   inset: 0;
-  z-index: -1;
-  opacity: 0.42;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-  background-size: 30px 30px;
-  mask-image: linear-gradient(90deg, transparent, #000 45%);
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(6, 8, 12, 0.9) 0%, rgba(6, 8, 12, 0.72) 36%, rgba(6, 8, 12, 0.22) 62%, rgba(6, 8, 12, 0.08) 100%);
+}
+.dashboard-state__video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 72% center;
+  pointer-events: none;
 }
 .dashboard-state__card--loading .dashboard-state__copy {
   position: relative;
@@ -6560,6 +6566,12 @@ button:disabled,
     grid-template-columns: 1fr;
     gap: 6px;
     padding: 32px 26px 24px;
+  }
+  .dashboard-state__card--loading::before {
+    background: linear-gradient(180deg, rgba(6, 8, 12, 0.88) 0%, rgba(6, 8, 12, 0.62) 48%, rgba(6, 8, 12, 0.28) 100%);
+  }
+  .dashboard-state__video {
+    object-position: 70% 18%;
   }
   .dashboard-state__card--loading .dashboard-state__copy {
     text-align: center;

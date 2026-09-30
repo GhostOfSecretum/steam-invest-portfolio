@@ -2663,70 +2663,33 @@ function useSimulatedLoadProgress(active) {
   return pct;
 }
 
-function PortfolioLoadingVisual({ lang, progress = 0 }) {
-  const labels = portfolioLoadLabels(lang);
-  const step = portfolioLoadStep(progress);
-  const candles = [
-    { bottom: 20, body: 22, wick: 38, up: true },
-    { bottom: 27, body: 16, wick: 31, up: false },
-    { bottom: 24, body: 28, wick: 46, up: true },
-    { bottom: 38, body: 19, wick: 35, up: true },
-    { bottom: 34, body: 14, wick: 30, up: false },
-    { bottom: 41, body: 26, wick: 44, up: true },
-    { bottom: 53, body: 18, wick: 34, up: false },
-    { bottom: 49, body: 31, wick: 49, up: true },
-    { bottom: 61, body: 15, wick: 29, up: true },
-    { bottom: 56, body: 20, wick: 38, up: false },
-    { bottom: 66, body: 27, wick: 45, up: true },
-    { bottom: 76, body: 18, wick: 34, up: true },
-  ];
+function PortfolioLoadingVisual() {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      video.pause();
+      return undefined;
+    }
+    const play = video.play();
+    if (play && typeof play.catch === 'function') play.catch(() => {});
+    return undefined;
+  }, []);
 
   return (
-    <div className="portfolio-loader" aria-hidden="true">
-      <div className="portfolio-loader__glow"></div>
-      <div className="portfolio-loader__scene">
-        <div className="portfolio-loader__core">
-          <div className="portfolio-loader__core-face">
-            <img src="assets/hero-glove-case-steam.png" alt="" />
-          </div>
-        </div>
-        <div className="portfolio-loader__asset portfolio-loader__asset--one">
-          <span>AK-47</span>
-          <img src="assets/hero-ak47-gpt-transparent.png" alt="" />
-        </div>
-        <div className="portfolio-loader__asset portfolio-loader__asset--two">
-          <span>M4A4</span>
-          <img src="assets/hero-m4-red-gpt-transparent.png" alt="" />
-        </div>
-        <div className="portfolio-loader__asset portfolio-loader__asset--three">
-          <span>AWP</span>
-          <img src="assets/hero-awp-dragon-gpt-transparent.png" alt="" />
-        </div>
-        <div className="portfolio-loader__candles">
-          <div className="portfolio-loader__candle-grid"></div>
-          <div className="portfolio-loader__price-line"><i></i><b>LIVE</b></div>
-          {candles.map((candle, index) => (
-            <span
-              key={index}
-              className={`portfolio-loader__candle ${candle.up ? 'is-up' : 'is-down'}`}
-              style={{
-                '--candle-index': index,
-                '--candle-bottom': `${candle.bottom}%`,
-                '--candle-body': `${candle.body}%`,
-                '--candle-wick': `${candle.wick}%`,
-              }}
-            >
-              <i></i>
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="portfolio-loader__status">
-        {labels.map((label, index) => (
-          <span key={label} className={index === step ? 'is-active' : undefined}>{label}</span>
-        ))}
-      </div>
-    </div>
+    <video
+      ref={videoRef}
+      className="dashboard-state__video"
+      src="/assets/portfolio-loader.mp4"
+      poster="/assets/portfolio-loader-poster.jpg"
+      autoPlay
+      muted
+      loop
+      playsInline
+      aria-hidden="true"
+    />
   );
 }
 
@@ -2787,7 +2750,7 @@ function DashboardState({ lang, title, auth, message, error, onRetry, loading = 
               </div>
             )}
           </div>
-          {loading && <PortfolioLoadingVisual lang={lang} progress={progress} />}
+          {loading && <PortfolioLoadingVisual />}
         </div>
       </div>
     </div>
