@@ -823,9 +823,6 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
               {t.hero.profileToggle}
             </button>
           </div>
-          <div className="hero-trust-line">
-            <span>✓</span> {t.hero.trust}
-          </div>
           {profileOpen && (
             <form className="hero-profile-form" onSubmit={submitProfileUrl}>
               <input

@@ -1878,20 +1878,6 @@ a { color: inherit; text-decoration: none; }
   font-size: 11px;
 }
 
-.hero-trust-line {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 13px;
-  color: var(--fg-3);
-  font-family: var(--f-mono);
-  font-size: 10.5px;
-  line-height: 1.45;
-}
-.hero-trust-line span {
-  color: var(--green);
-}
-
 .hero-stage-wrap {
   position: relative;
   min-width: 0;
@@ -1939,8 +1925,7 @@ a { color: inherit; text-decoration: none; }
   .hero-title { grid-row: 2; }
   .hero-sub { grid-row: 3; }
   .hero-actions { grid-row: 4; }
-  .hero-trust-line { grid-row: 5; }
-  .hero-profile-form { grid-row: 6; }
+  .hero-profile-form { grid-row: 5; }
 
   .hero-stage-wrap {
     grid-column: 2;
@@ -2099,17 +2084,12 @@ a { color: inherit; text-decoration: none; }
   border-color: var(--line-strong);
   background: rgba(24, 29, 40, 0.7);
 }
-.landing-step-num {
-  color: var(--fg-4);
-  font-family: var(--f-mono);
-  font-size: 11px;
-}
 .landing-step-icon {
   display: grid;
   place-items: center;
   width: 48px;
   height: 48px;
-  margin-top: 34px;
+  margin-top: 0;
   border: 1px solid oklch(0.68 0.22 5 / 0.35);
   border-radius: 14px;
   color: var(--accent);
@@ -5141,7 +5121,7 @@ button:disabled,
   }
 
   .landing-step-icon {
-    margin-top: 24px;
+    margin-top: 0;
   }
 
   .landing-final-card {

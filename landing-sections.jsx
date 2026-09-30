@@ -1781,9 +1781,9 @@ function HowItWorks({ lang }) {
       title: 'От инвентаря до понятного портфеля',
       sub: 'Подключение занимает пару минут. После этого стоимость и структура портфеля обновляются в одном месте.',
       steps: [
-        { n: '01', title: 'Подключите Steam', text: 'Войдите через безопасный Steam OpenID или откройте любой публичный профиль по ссылке.' },
-        { n: '02', title: 'Получите оценку', text: 'SkinsHead сопоставит предметы с рынком и посчитает актуальную стоимость инвентаря.' },
-        { n: '03', title: 'Следите за результатом', text: 'Добавьте цены покупки, чтобы видеть прибыль, концентрацию и историю изменений.' },
+        { title: 'Подключите Steam', text: 'Войдите через безопасный Steam OpenID или откройте любой публичный профиль по ссылке.' },
+        { title: 'Получите оценку', text: 'SkinsHead сопоставит предметы с рынком и посчитает актуальную стоимость инвентаря.' },
+        { title: 'Следите за результатом', text: 'Добавьте цены покупки, чтобы видеть прибыль, концентрацию и историю изменений.' },
       ],
     }
     : {
@@ -1791,9 +1791,9 @@ function HowItWorks({ lang }) {
       title: 'From inventory to a clear portfolio',
       sub: 'Setup takes a couple of minutes. Your value and portfolio structure then stay together in one place.',
       steps: [
-        { n: '01', title: 'Connect Steam', text: 'Sign in through secure Steam OpenID or open any public profile by URL.' },
-        { n: '02', title: 'Get a valuation', text: 'SkinsHead matches your items to the market and calculates their current value.' },
-        { n: '03', title: 'Track the result', text: 'Add purchase prices to see profit, concentration, and portfolio history.' },
+        { title: 'Connect Steam', text: 'Sign in through secure Steam OpenID or open any public profile by URL.' },
+        { title: 'Get a valuation', text: 'SkinsHead matches your items to the market and calculates their current value.' },
+        { title: 'Track the result', text: 'Add purchase prices to see profit, concentration, and portfolio history.' },
       ],
     };
 
@@ -1807,8 +1807,7 @@ function HowItWorks({ lang }) {
         </div>
         <div className="landing-steps">
           {copy.steps.map((step, index) => (
-            <article className="landing-step glass" key={step.n}>
-              <div className="landing-step-num">{step.n}</div>
+            <article className="landing-step glass" key={step.title}>
               <div className="landing-step-icon">
                 {index === 0 ? (
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
