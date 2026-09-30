@@ -48,6 +48,7 @@ https://x.com/SkinsheadPro
 - Магазины (lis-skins, tradeit, cs.money, skinsmonkey): только цена / объём / просадка. Текст про fill, не 🤩. GreenFire — не buy-посты
 - Киты: вотчлист на сайте живой. В реплаях уже (activity ≠ your basis). В свои посты — наблюдение с фида, не changelog /investors, не чаще раза в неделю
 - **С 1 окт:** реплаи можно снизить до 10–15. Пост тот же, 19:30. Десктоп / QR / скачать — не писать до релиза. Storage только тезисом.
+- Float предмета не пишем и не снимаем. На сайте его нет, и отдельный разбор флоата не делаем: для этого есть CSFloat. Бирка износа (FN/MW) — это имя скина, не пост про float.
 - Не ядро: чистые баеры «always buying 94%» и кейс-сайты. Список на столе в блоке «Реплаи»
 - Добрать ядро (подписать и отвечать): CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs, fengyuanshi1, theSinedinCS, V1rdus, de_copium. Смотреть: CS2Status, SteamDB, skinledger, skinpock, SkinSpecter — не реплаить как коллеге.
 
@@ -743,18 +744,17 @@ What’s yours?
 ### 1 окт 2026 (чт) — день 40
 - 10–15 реплаев (можно снизить)
 - 19:30 пост 40 (не закреплять, текст + кадр):
-- Кадр. Портфель → открой скин с биркой FN, у которого float не на нижнем крае диапазона. Карточка предмета: в одном кропе Wear и Float.
+- Кадр. Портфель → предметы, сайт на EN. Сортировка по Qty, чтобы стеки были сверху. Кроп шапки и 4–5 строк, не одной. Колонки Item, Qty, Now, Value. 1d, 7d, 30d, P&L и Source обрежь. Хотя бы одна строка с Qty больше 1, рядом строки по 1. Карточку предмета не открывать. Float не снимать.
 
 ```
-You marked it as FN.
+You priced one copy.
 
-The listing you copied was 0.01.
-Yours is 0.06 with the same wear label.
+Then you multiplied it by how many you hold.
 
-The market does not pay for the label.
-It pays for the float.
+Qty 6 is not one bid times six.
+The next sale is a thinner book.
 
-Are you marking your item, or a prettier one with the same name?
+Are you marking a position, or a screenshot times a count?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
