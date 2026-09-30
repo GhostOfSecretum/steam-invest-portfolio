@@ -1753,9 +1753,9 @@ a { color: inherit; text-decoration: none; }
 
 .hero-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 48px;
-  align-items: stretch;
+  grid-template-columns: minmax(320px, 0.86fr) minmax(0, 1.14fr);
+  gap: 40px;
+  align-items: center;
   align-content: center;
   min-height: 720px;
 }
@@ -1847,7 +1847,38 @@ a { color: inherit; text-decoration: none; }
   min-width: 0;
   min-height: 0;
   display: grid;
-  place-items: stretch;
+  place-items: center;
+}
+
+.hero-reel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #050608;
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.hero-reel video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #050608 url('/assets/hero-reel-poster.jpg') center / cover no-repeat;
+}
+
+.hero-reel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(5, 6, 8, 0.42), transparent 16%),
+    linear-gradient(180deg, transparent 72%, rgba(5, 6, 8, 0.35));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .hero-portfolio-preview {
@@ -4774,7 +4805,7 @@ button:disabled,
 
   .hero-stage-wrap {
     height: auto;
-    min-height: 520px;
+    min-height: 0;
     place-items: center;
   }
 
@@ -4889,11 +4920,9 @@ button:disabled,
   }
 
   .hero-copy {
-    min-height: calc(100vh - 96px);
-    min-height: calc(100svh - 96px);
-    min-height: calc(100dvh - 96px);
+    min-height: 0;
     box-sizing: border-box;
-    padding-bottom: 24px;
+    padding-bottom: 8px;
   }
 
   .hero-title {
@@ -4946,10 +4975,13 @@ button:disabled,
   }
 
   .hero-stage-wrap {
-    min-height: 100vh;
-    min-height: 100dvh;
-    height: 100vh;
-    height: 100dvh;
+    min-height: 0;
+    height: auto;
+    margin-top: 28px;
+  }
+
+  .hero-reel {
+    border-radius: 14px;
   }
 
   .hero-portfolio-preview {

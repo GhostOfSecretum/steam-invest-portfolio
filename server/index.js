@@ -134,6 +134,7 @@ app.use(helmet({
       // subdomains chosen by Steam at runtime, so the whole vendor domain is
       // allowed rather than a list that silently breaks avatars in production.
       imgSrc: ["'self'", 'data:', 'blob:', 'https://*.steamstatic.com', 'https://mc.yandex.ru'],
+      mediaSrc: ["'self'"],
       // Yandex Metrika opens a websocket and a hidden match.html iframe; without
       // these two it logs a CSP error on every page load.
       connectSrc: ["'self'", 'https://steamcommunity.com', 'https://mc.yandex.ru', 'wss://mc.yandex.ru'],
@@ -1246,7 +1247,7 @@ const PUBLIC_ROOT_EXTENSIONS = new Set([
 ]);
 const PUBLIC_ASSET_EXTENSIONS = new Set([
   ...PUBLIC_ROOT_EXTENSIONS,
-  '.json', '.woff', '.woff2', '.ttf', '.map',
+  '.json', '.woff', '.woff2', '.ttf', '.map', '.mp4',
 ]);
 const PUBLIC_ROOT_FILES = new Set([
   'robots.txt',

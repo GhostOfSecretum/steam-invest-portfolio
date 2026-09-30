@@ -1,5 +1,5 @@
 /* global React, useT, usePortfolio, useMarketSnapshot, useMarketCatalog, compactUsd, tt */
-const { useState, useEffect, useRef, useMemo } = React;
+const { useState, useEffect, useRef } = React;
 
 /* ───────────────────────────────────────────────────
    HERO — 4 swappable 3D concepts + dense content
@@ -739,17 +739,45 @@ function HeroPortfolioPreview({ lang, data }) {
   );
 }
 
+function HeroReel() {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      video.pause();
+      return undefined;
+    }
+    const play = video.play();
+    if (play && typeof play.catch === 'function') play.catch(() => {});
+    return undefined;
+  }, []);
+
+  return (
+    <div className="hero-reel">
+      <video
+        ref={videoRef}
+        src="/assets/hero-reel.mp4"
+        poster="/assets/hero-reel-poster.jpg"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        aria-label="SkinsHead portfolio on a laptop"
+      />
+    </div>
+  );
+}
+
 /* Hero stage: portfolio app slides */
 function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
   const t = useT(lang);
   const [profileUrl, setProfileUrl] = useState('');
   const [profileUrlError, setProfileUrlError] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
-
-  const stage = useMemo(
-    () => <HeroConcept_PortfolioSlides lang={lang} />,
-    [lang]
-  );
   const submitProfileUrl = (event) => {
     event.preventDefault();
     const nextProfileUrl = profileUrl.trim();
@@ -816,9 +844,9 @@ function Hero({ lang, onLink, onPublicProfile, onItemClick, auth }) {
 
         </div>
 
-        {/* Right: portfolio screens */}
+        {/* Right: product reel */}
         <div className="hero-stage-wrap">
-          {stage}
+          <HeroReel />
         </div>
       </div>
 
