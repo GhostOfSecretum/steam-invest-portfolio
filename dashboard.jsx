@@ -1093,7 +1093,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
         </div>
 
         {activeSection === 'overview' && (
-          <div className="dash-section-panel" role="tabpanel">
+          <div className="dash-section-panel dash-overview" role="tabpanel">
             <div className="dash-stats">
               <StatCard
                 accent

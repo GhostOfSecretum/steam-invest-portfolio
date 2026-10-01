@@ -1512,6 +1512,26 @@ a { color: inherit; text-decoration: none; }
   gap: 12px;
   margin-bottom: 24px;
 }
+@media (min-width: 1101px) {
+  .dash-overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(200px, 1.35fr);
+    column-gap: 12px;
+    row-gap: 16px;
+    margin-bottom: 24px;
+  }
+  .dash-overview > .dash-stats,
+  .dash-overview > .dash-chart-row {
+    display: contents;
+    margin: 0;
+  }
+  .dash-overview > .dash-chart-row > .dash-panel:not(.dash-leaders-panel) {
+    grid-column: 1 / span 3;
+  }
+  .dash-overview > .dash-chart-row > .dash-leaders-panel {
+    grid-column: 4;
+  }
+}
 .dash-panel {
   padding: 24px;
   min-width: 0;
