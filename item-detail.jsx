@@ -35,6 +35,87 @@ function buildVariantHashName(base, wearLabel, { stattrak = false, souvenir = fa
    ITEM DETAIL — API backed
    ─────────────────────────────────────────────────── */
 
+// Steam's /960fx540f (and similar) sizes pad small icons into a wide canvas
+// instead of scaling them up. Stickers, cases and capsules then render tiny,
+// and some sit off-center inside that padding. Weapons already fill the frame,
+// so this only runs for items without wear.
+function cropSteamIconToContent(img) {
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  if (!w || !h) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0);
+  let pixels;
+  try {
+    pixels = ctx.getImageData(0, 0, w, h).data;
+  } catch {
+    return null;
+  }
+  let minX = w;
+  let minY = h;
+  let maxX = 0;
+  let maxY = 0;
+  for (let y = 0; y < h; y += 1) {
+    const row = y * w * 4;
+    for (let x = 0; x < w; x += 1) {
+      if (pixels[row + x * 4 + 3] <= 18) continue;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < minX) return null;
+  const boxW = maxX - minX + 1;
+  const boxH = maxY - minY + 1;
+  const centerX = (minX + maxX) / 2 / w;
+  const centerY = (minY + maxY) / 2 / h;
+  const fillsFrame = boxW / w > 0.86 && boxH / h > 0.86;
+  const centered = Math.abs(centerX - 0.5) < 0.06 && Math.abs(centerY - 0.5) < 0.06;
+  if (fillsFrame && centered) return null;
+  const pad = Math.round(Math.max(boxW, boxH) * 0.05);
+  const cropX = Math.max(0, minX - pad);
+  const cropY = Math.max(0, minY - pad);
+  const cropW = Math.min(w - cropX, boxW + pad * 2);
+  const cropH = Math.min(h - cropY, boxH + pad * 2);
+  const out = document.createElement('canvas');
+  out.width = cropW;
+  out.height = cropH;
+  out.getContext('2d').drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+  return out.toDataURL('image/png');
+}
+
+function steamIconOriginal(url) {
+  if (!url) return url;
+  return String(url).replace(/\/\d+fx\d+f(?=$|[?#])/, '');
+}
+
+function TightItemImage({ src, alt }) {
+  const [displaySrc, setDisplaySrc] = detailUseState(null);
+  detailUseEffect(() => {
+    let cancelled = false;
+    setDisplaySrc(null);
+    if (!src) return undefined;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (cancelled) return;
+      setDisplaySrc(cropSteamIconToContent(img) || src);
+    };
+    img.onerror = () => {
+      if (!cancelled) setDisplaySrc(src);
+    };
+    img.src = src;
+    return () => { cancelled = true; };
+  }, [src]);
+  if (!displaySrc) return null;
+  return <img src={displaySrc} alt={alt} />;
+}
+
 function ItemDetail({ lang, item, loading = false, error = null, onBack, onCollectionClick }) {
   const t = useT(lang);
   const PERIOD_OPTIONS = [
@@ -291,7 +372,9 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
           <section className={`glass item-detail-visual${!parsedBase.hasWear ? ' item-detail-visual--compact' : ''}`}>
             {item.iconUrl
               ? <div className="item-art item-detail-art">
-                  <img src={withSteamImageSize(item.iconUrl, 960, 540)} alt={item.name} />
+                  {parsedBase.hasWear
+                    ? <img src={withSteamImageSize(item.iconUrl, 960, 540)} alt={item.name} />
+                    : <TightItemImage src={steamIconOriginal(item.iconUrl)} alt={item.name} />}
                 </div>
               : <ItemArt label={item.name} tier={item.tier} style={{ aspectRatio: parsedBase.hasWear ? '16/10' : '1/1' }} />}
             <WearBar
