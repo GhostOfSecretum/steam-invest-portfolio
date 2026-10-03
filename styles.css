@@ -5014,8 +5014,8 @@ button:disabled,
     height: calc(100svh - var(--nav-h));
     max-height: calc(100svh - var(--nav-h));
     min-height: 0;
-    padding-top: 16px;
-    padding-bottom: 12px;
+    padding-top: 8px;
+    padding-bottom: 16px;
     overflow: hidden;
   }
 
@@ -5027,6 +5027,7 @@ button:disabled,
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     min-height: 0;
     gap: 0;
   }
@@ -5039,7 +5040,7 @@ button:disabled,
   }
 
   .hero-eyebrow {
-    margin-bottom: 10px;
+    margin-bottom: 14px;
   }
 
   .hero-title {
@@ -5051,8 +5052,8 @@ button:disabled,
   }
 
   .hero-actions {
-    margin-top: 16px;
-    gap: 8px;
+    margin-top: 20px;
+    gap: 10px;
     flex-direction: column;
   }
 
@@ -5092,20 +5093,20 @@ button:disabled,
   }
 
   .hero-stage-wrap {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     width: 100%;
     min-height: 0;
     height: auto;
-    margin-top: 14px;
-    display: grid;
-    place-items: center;
-    container-type: size;
+    margin-top: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .hero-reel {
-    width: min(100cqw, calc(100cqh * 16 / 9));
-    height: min(100cqh, calc(100cqw * 9 / 16));
-    max-width: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 100%;
     aspect-ratio: 16 / 9;
     border-radius: 14px;
   }
