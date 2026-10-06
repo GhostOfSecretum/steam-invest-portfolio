@@ -133,7 +133,9 @@ app.use(helmet({
       // Item icons and Steam avatars are served from several *.steamstatic.com
       // subdomains chosen by Steam at runtime, so the whole vendor domain is
       // allowed rather than a list that silently breaks avatars in production.
-      imgSrc: ["'self'", 'data:', 'blob:', 'https://*.steamstatic.com', 'https://mc.yandex.ru'],
+      // Collection logos that Steam has not published with a CDN hash come from
+      // the CSGO-API image tracker on GitHub.
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://*.steamstatic.com', 'https://raw.githubusercontent.com', 'https://mc.yandex.ru'],
       mediaSrc: ["'self'"],
       // Yandex Metrika opens a websocket and a hidden match.html iframe; without
       // these two it logs a CSP error on every page load.
