@@ -1546,7 +1546,7 @@ async function getCSMarketAPIIcon(marketHashName) {
     const map = new Map();
     for (const item of items) {
       const itemName = item.market_hash_name || item.hash_name;
-      const icon = item.cloudflare_icon_url || item.akamai_icon_url;
+      const icon = steamIconFromRaw(item);
       if (itemName && icon) map.set(itemName, icon);
     }
     csMarketIconIndex = { source: items, map };
@@ -2623,6 +2623,153 @@ function resolveMarketCatalogProvider() {
   return 'steam';
 }
 
+const CATALOG_ICON_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const CATALOG_ICON_SOURCES = [
+  'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json',
+  'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/stickers.json',
+  'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/agents.json',
+  'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/keychains.json',
+  'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/music_kits.json',
+  'https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/patches.json',
+];
+
+function absoluteSteamIcon(url) {
+  if (!url || typeof url !== 'string') return null;
+  const value = url.trim();
+  if (!value) return null;
+  if (value.startsWith('https://') || value.startsWith('http://')) return value;
+  if (value.startsWith('//')) return `https:${value}`;
+  return `https://community.steamstatic.com/economy/image/${value.replace(/^\//, '')}`;
+}
+
+function steamIconFromRaw(raw) {
+  return absoluteSteamIcon(raw?.akamai_icon_url)
+    || absoluteSteamIcon(raw?.cloudflare_icon_url)
+    || absoluteSteamIcon(raw?.icon_url);
+}
+
+function catalogIconKeys(marketHashName) {
+  const name = String(marketHashName || '').trim();
+  if (!name) return [];
+  const keys = [];
+  const add = (value) => {
+    const key = String(value || '').replace(/\s{2,}/g, ' ').trim().toLowerCase();
+    if (key && !keys.includes(key)) keys.push(key);
+  };
+  add(name);
+  const noSpecial = name
+    .replace(/StatTrak™\s+/gi, '')
+    .replace(/^Souvenir\s+/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  add(noSpecial);
+  const noWear = noSpecial
+    .replace(/\s+\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)$/i, '')
+    .trim();
+  add(noWear);
+  add(noWear
+    .replace(/\s+Phase\s+\d+\b/i, '')
+    .replace(/\s+(Ruby|Sapphire|Black Pearl|Emerald)\b/i, '')
+    .trim());
+  return keys;
+}
+
+function catalogRarityName(rarity) {
+  const grade = rarity && typeof rarity === 'object' ? rarity.name : rarity;
+  const value = String(grade || '').trim();
+  if (!value || /^default$/i.test(value)) return null;
+  if (!/contraband|extraordinary|covert|classified|restricted|mil-spec|remarkable|high grade|industrial|consumer|base grade|exotic/i.test(value)) {
+    return null;
+  }
+  return value;
+}
+
+function rememberCatalogIcon(map, name, image, rarity) {
+  const icon = absoluteSteamIcon(image);
+  const grade = catalogRarityName(rarity);
+  if (!icon && !grade) return;
+  for (const key of catalogIconKeys(name)) {
+    if (icon && !map.icons[key]) map.icons[key] = icon;
+    if (grade && !map.rarities[key]) map.rarities[key] = grade;
+  }
+}
+
+function indexCatalogIconRows(rows, map) {
+  for (const row of Array.isArray(rows) ? rows : []) {
+    rememberCatalogIcon(map, row?.market_hash_name, row?.image, row?.rarity);
+    rememberCatalogIcon(map, row?.name, row?.image, row?.rarity);
+  }
+}
+
+async function loadCatalogIconMap() {
+  const map = { icons: {}, rarities: {} };
+  const pages = await Promise.all(CATALOG_ICON_SOURCES.map(async (url) => {
+    try {
+      return await fetchJson(url, { timeoutMs: 120000 });
+    } catch (error) {
+      console.warn('[catalog] icon source failed:', error.message);
+      return null;
+    }
+  }));
+  for (const page of pages) indexCatalogIconRows(page, map);
+  if (Object.keys(map.icons).length < 1000) {
+    throw new Error('Catalog icon map is too small.');
+  }
+  return map;
+}
+
+async function getCatalogIconMap() {
+  try {
+    const cached = await remember('catalog:icon-map:v1', CATALOG_ICON_MAX_AGE_MS, loadCatalogIconMap);
+    return cached.value;
+  } catch (error) {
+    const stale = await getCached('catalog:icon-map:v1', 30 * 24 * 60 * 60 * 1000);
+    if (stale?.icons) return stale;
+    console.warn('[catalog] icon map unavailable:', error.message);
+    return null;
+  }
+}
+
+function lookupCatalogMeta(map, marketHashName) {
+  if (!map) return null;
+  let rarity = null;
+  for (const key of catalogIconKeys(marketHashName)) {
+    if (!rarity && map.rarities?.[key]) rarity = map.rarities[key];
+    if (map.icons?.[key]) return { icon: map.icons[key], rarity: rarity || map.rarities[key] || null };
+  }
+  return rarity ? { icon: null, rarity } : null;
+}
+
+let catalogIconsApplied = null;
+
+async function fillMissingCatalogIcons(items) {
+  if (!Array.isArray(items) || !items.length) return items;
+  if (catalogIconsApplied?.source === items) return catalogIconsApplied.value;
+  const needsFill = items.some((item) => !steamIconFromRaw(item));
+  if (!needsFill) {
+    catalogIconsApplied = { source: items, value: items };
+    return items;
+  }
+
+  const map = await getCatalogIconMap();
+  if (!map) return items;
+
+  const value = items.map((item) => {
+    if (steamIconFromRaw(item) && item.quality) return item;
+    const meta = lookupCatalogMeta(map, item?.market_hash_name || item?.hash_name);
+    if (!meta) return item;
+    const icon = steamIconFromRaw(item);
+    if (icon && item.quality) return item;
+    return {
+      ...item,
+      cloudflare_icon_url: icon || meta.icon || item.cloudflare_icon_url || null,
+      quality: item.quality || meta.rarity || null,
+    };
+  });
+  catalogIconsApplied = { source: items, value };
+  return value;
+}
+
 async function getCSMarketAPIItems() {
   if (!process.env.CSMARKET_API_KEY) return [];
 
@@ -2632,13 +2779,13 @@ async function getCSMarketAPIItems() {
       const json = await fetchJson(`https://api.csmarketapi.com/v1/items/?${params}`, { timeoutMs: 120000 });
       return Array.isArray(json) ? json : [];
     });
-    return cached.value;
+    return fillMissingCatalogIcons(cached.value);
   } catch (error) {
     // Dump refresh often 500s; keep serving the last good snapshot instead of blocking search for ~2 minutes.
     const stale = await getCached('csmarketapi:items', 30 * 24 * 60 * 60 * 1000);
     if (Array.isArray(stale) && stale.length) {
       console.warn('[catalog] CSMarketAPI items refresh failed, using stale dump:', error.message);
-      return stale;
+      return fillMissingCatalogIcons(stale);
     }
     throw error;
   }
@@ -2733,7 +2880,7 @@ function normalizeCSMarketCatalogItem(raw, seed = 0) {
     tradable: true,
     priceProvider: 'csmarketapi',
     marketUrl: `https://steamcommunity.com/market/listings/730/${encodeURIComponent(marketHashName)}`,
-    iconUrl: raw.cloudflare_icon_url || raw.akamai_icon_url || null,
+    iconUrl: steamIconFromRaw(raw),
     spark: makeSpark(null, seed),
   };
 }
