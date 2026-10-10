@@ -1,4 +1,5 @@
 import { PROTOCOL_VERSION } from './cm.js';
+import { t } from './i18n.js';
 import { ProtoWriter, concatBytes } from './proto.js';
 
 const PLATFORM_STEAM_CLIENT = 1;
@@ -36,7 +37,7 @@ export async function qrLogin(cm, { osType, onChallenge, signal }) {
   let clientId = begin.big(1);
   const requestId = begin.bytes(3);
   const intervalMs = Math.min(10, Math.max(1, begin.float(4, 5))) * 1000;
-  if (clientId === undefined || !requestId) throw new Error('Steam did not start a QR session');
+  if (clientId === undefined || !requestId) throw new Error(t('qrStart'));
   onChallenge(begin.str(2));
 
   const deadline = Date.now() + LOGIN_TIMEOUT_MS;
@@ -51,7 +52,7 @@ export async function qrLogin(cm, { osType, onChallenge, signal }) {
       return { refreshToken, accessToken: poll.str(4), accountName: poll.str(6) };
     }
   }
-  throw new Error('QR code expired');
+  throw new Error(t('qrExpired'));
 }
 
 // Same checks steam-user applies before handing a token to the CM.

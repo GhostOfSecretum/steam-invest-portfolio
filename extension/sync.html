@@ -1,47 +1,47 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>SkinsHead — хранилища CS2</title>
+  <title>SkinsHead — CS2 Storage</title>
   <link rel="stylesheet" href="sync.css">
   <script type="module" src="sync.js"></script>
 </head>
 <body>
   <main>
-    <h1><img src="icons/48.png" width="28" height="28" alt="">Хранилища CS2</h1>
+    <div class="top">
+      <h1><img src="icons/48.png" width="28" height="28" alt=""><span data-i18n="heading">CS2 Storage</span></h1>
+      <div id="lang-switch" class="lang-switch" role="group"></div>
+    </div>
 
     <section id="pair-block" hidden>
-      <h2>Привязка к SkinsHead</h2>
-      <p class="note">
-        На сайте откройте портфель и нажмите «Код для расширения». Код действует 5 минут.
+      <h2 data-i18n="pairTitle">Link to SkinsHead</h2>
+      <p class="note" data-i18n="pairNote">
+        On the site, open your portfolio and click “Extension code”. The code is valid for 5 minutes.
       </p>
       <form id="pair-form" class="actions">
-        <input id="pair-code" autocomplete="off" spellcheck="false" maxlength="9" placeholder="Код с сайта" required>
+        <input id="pair-code" autocomplete="off" spellcheck="false" maxlength="9" data-i18n-placeholder="codePlaceholder" placeholder="Code from the site" required>
         <input id="server-url" autocomplete="off" spellcheck="false" hidden>
-        <button type="submit">Привязать</button>
+        <button type="submit" data-i18n="pairSubmit">Link</button>
       </form>
     </section>
 
     <section id="sync-block" hidden>
       <p class="note">
-        Привязан аккаунт Steam <span id="paired-steam-id"></span>.
-        <button id="unpair" type="button" class="link">Отвязать</button>
+        <span id="paired-text"></span>
+        <button id="unpair" type="button" class="link" data-i18n="unpair">Disconnect</button>
       </p>
-      <p class="note">
-        Вход по QR даёт этой вкладке токен Steam. Он живёт только в памяти, пока идёт чтение,
-        никуда не сохраняется и не уходит на сервер SkinsHead — туда отправляется только список предметов.
-        После чтения токен отзывается в Steam. Если закрыть вкладку посреди чтения, отзыв не произойдёт:
-        удалите устройство «SkinsHead Browser Extension» в Steam → Настройки → Безопасность → Авторизованные устройства.
+      <p class="note" data-i18n="security">
+        Signing in with a QR code gives this tab a Steam token. It stays only in memory while the reading runs, is never saved, and is never sent to SkinsHead — only the item list is. The token is revoked at Steam after reading. If you close the tab mid-reading, it is not revoked: remove the device “SkinsHead Browser Extension” in Steam → Settings → Security → Authorized devices.
       </p>
       <div class="actions">
-        <button id="start" type="button">Войти через QR и синхронизировать</button>
-        <button id="cancel" type="button" class="secondary" hidden>Отмена</button>
+        <button id="start" type="button" data-i18n="start">Sign in with QR and sync</button>
+        <button id="cancel" type="button" class="secondary" data-i18n="cancel" hidden>Cancel</button>
       </div>
     </section>
 
     <section id="qr-block" hidden>
       <canvas id="qr" width="264" height="264"></canvas>
-      <p>Отсканируйте код в мобильном приложении Steam и подтвердите вход.</p>
+      <p data-i18n="qrHint">Scan the code in the Steam mobile app and confirm the sign-in.</p>
     </section>
 
     <p id="status" role="status"></p>
@@ -50,10 +50,14 @@
       <h2 id="result-title"></h2>
       <p id="result-detail" class="note"></p>
       <table>
-        <thead><tr><th>Хранилище</th><th>Ожидалось</th><th>Прочитано</th></tr></thead>
+        <thead><tr>
+          <th data-i18n="thUnit">Storage unit</th>
+          <th data-i18n="thExpected">Expected</th>
+          <th data-i18n="thRead">Read</th>
+        </tr></thead>
         <tbody id="units"></tbody>
       </table>
-      <p><a id="open-portfolio" target="_blank" rel="noopener noreferrer">Открыть портфель</a></p>
+      <p><a id="open-portfolio" data-i18n="openPortfolio" target="_blank" rel="noopener noreferrer">Open portfolio</a></p>
     </section>
   </main>
 </body>

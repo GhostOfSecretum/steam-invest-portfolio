@@ -11,12 +11,43 @@ main {
   padding: 0 24px;
 }
 
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
 h1 {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 24px;
-  margin: 0 0 12px;
+  margin: 0;
+}
+
+.lang-switch {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.lang-switch button {
+  min-width: 36px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  border: 1px solid #2b3038;
+  background: transparent;
+  color: #9aa1ab;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lang-switch button[aria-pressed="true"] {
+  background: #ff2d78;
+  border-color: transparent;
+  color: #fff;
 }
 
 h1 img {

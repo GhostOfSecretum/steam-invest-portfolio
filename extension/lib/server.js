@@ -1,6 +1,8 @@
 // Pairing and upload against the SkinsHead desktop API, same contract as
 // desktop/main.js. Only the item list and the SkinsHead device token cross this
 // boundary; Steam tokens never do.
+import { t } from './i18n.js';
+
 export const DEFAULT_SERVER_URL = 'https://skinshead.pro';
 const ALLOWED_HOSTS = new Set(['skinshead.pro', 'www.skinshead.pro']);
 // Must stay within host_permissions and connect-src of the manifest.
@@ -19,13 +21,13 @@ export function normalizeServerUrl(raw) {
   try {
     parsed = new URL(/^https?:\/\//i.test(input) ? input : `https://${input}`);
   } catch {
-    throw new Error('Некорректный адрес сервера');
+    throw new Error(t('badUrl'));
   }
   if (parsed.protocol === 'https:' && ALLOWED_HOSTS.has(parsed.hostname.toLowerCase()) && !parsed.port) {
     return `https://${parsed.hostname.toLowerCase()}`;
   }
   if (allowsDevServer() && parsed.origin === LOCAL_DEV_ORIGIN) return LOCAL_DEV_ORIGIN;
-  throw new Error(`Разрешён только сервер ${DEFAULT_SERVER_URL}`);
+  throw new Error(t('hostOnly', { url: DEFAULT_SERVER_URL }));
 }
 
 export async function getPairing() {
@@ -68,19 +70,19 @@ function headers(extra = {}) {
 async function readError(res) {
   const body = await res.json().catch(() => ({}));
   switch (body.code) {
-    case 'invalid_code': return 'Код неверный или устарел. Получите новый на сайте.';
-    case 'rate_limited': return 'Слишком много попыток. Подождите несколько минут.';
-    case 'plan_required': return 'Синхронизация хранилищ доступна на тарифах Plus и Investor.';
-    case 'client_too_old': return 'Эта версия расширения больше не поддерживается. Обновите её.';
-    case 'invalid_device_token': return 'Привязка устарела. Привяжите расширение заново.';
-    default: return body.error || `Сервер ответил HTTP ${res.status}`;
+    case 'invalid_code': return t('invalidCode');
+    case 'rate_limited': return t('rateLimited');
+    case 'plan_required': return t('planRequired');
+    case 'client_too_old': return t('tooOld');
+    case 'invalid_device_token': return t('deviceToken');
+    default: return body.error || t('httpError', { status: res.status });
   }
 }
 
 export async function pair(serverUrlInput, codeInput) {
   const serverUrl = normalizeServerUrl(serverUrlInput);
   const code = String(codeInput || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (!PAIRING_CODE_RE.test(code)) throw new Error('Код — 8 символов с сайта, раздел портфеля');
+  if (!PAIRING_CODE_RE.test(code)) throw new Error(t('badCode'));
 
   const res = await fetch(`${serverUrl}/api/desktop/pair`, {
     method: 'POST',
@@ -91,7 +93,7 @@ export async function pair(serverUrlInput, codeInput) {
   if (!res.ok) throw new Error(await readError(res));
   const data = await res.json();
   if (!DEVICE_TOKEN_RE.test(data.deviceToken || '') || !/^\d{17}$/.test(data.steamId || '')) {
-    throw new Error('Сервер вернул некорректный ответ');
+    throw new Error(t('badResponse'));
   }
   const pairing = { serverUrl, deviceToken: data.deviceToken, steamId: data.steamId };
   await chrome.storage.local.set({ pairing });

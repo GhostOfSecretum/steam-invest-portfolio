@@ -5,16 +5,38 @@ import { buildGcItem, loadSchema } from './lib/item-names.js';
 import { fetchBackpack } from './lib/steam-inventory.js';
 import { mergeInventoryItems } from './lib/inventory-merge.js';
 import { DEFAULT_SERVER_URL, allowsDevServer, clearPairing, getPairing, pair, unpair, uploadInventory } from './lib/server.js';
+import { LANGS, currentLang, initI18n, setLang, t } from './lib/i18n.js';
 import qrcode from './vendor/qrcode-generator-2.0.4.mjs';
 
 const CASKET_DELAY_MS = 400;
 
 const $ = (id) => document.getElementById(id);
 let abortController = null;
+let lastStatus = null;
+let lastResult = null;
+let linkedSteamId = '';
 
-function setStatus(text, isError = false) {
-  $('status').textContent = text;
-  $('status').classList.toggle('error', isError);
+function applyStatic() {
+  document.title = t('pageTitle');
+  $('lang-switch').setAttribute('aria-label', t('language'));
+  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-placeholder]')) el.placeholder = t(el.dataset.i18nPlaceholder);
+  for (const button of $('lang-switch').querySelectorAll('button')) {
+    button.setAttribute('aria-pressed', String(button.dataset.lang === currentLang()));
+  }
+  if (linkedSteamId) $('paired-text').textContent = t('paired', { id: linkedSteamId });
+  if (lastStatus) paintStatus();
+  if (lastResult) renderResult(lastResult);
+}
+
+function setStatus(key, vars = {}, isError = false) {
+  lastStatus = { key, vars, isError };
+  paintStatus();
+}
+
+function paintStatus() {
+  $('status').textContent = t(lastStatus.key, lastStatus.vars);
+  $('status').classList.toggle('error', lastStatus.isError);
 }
 
 function drawQr(url) {
@@ -36,14 +58,15 @@ function drawQr(url) {
     }
   }
   $('qr-block').hidden = false;
-  setStatus('Ждём подтверждения в приложении Steam…');
+  setStatus('waitingQr');
 }
 
 async function renderPairing() {
   const pairing = await getPairing();
   $('pair-block').hidden = Boolean(pairing);
   $('sync-block').hidden = !pairing;
-  if (pairing) $('paired-steam-id').textContent = pairing.steamId;
+  linkedSteamId = pairing?.steamId || '';
+  if (linkedSteamId) $('paired-text').textContent = t('paired', { id: linkedSteamId });
   if (allowsDevServer()) {
     $('server-url').hidden = false;
     $('server-url').placeholder = DEFAULT_SERVER_URL;
@@ -51,7 +74,9 @@ async function renderPairing() {
   return pairing;
 }
 
-function renderResult({ units, backpackCount, gcOnlyCount, webError, totalItems, pairing }) {
+function renderResult(result) {
+  lastResult = result;
+  const { units, backpackCount, gcOnlyCount, webError, totalItems, pairing } = result;
   const tbody = $('units');
   tbody.replaceChildren();
   let storageTotal = 0;
@@ -66,11 +91,11 @@ function renderResult({ units, backpackCount, gcOnlyCount, webError, totalItems,
     }
     tbody.append(row);
   }
-  $('result-title').textContent = `Отправлено в портфель: ${totalItems} позиций`;
+  $('result-title').textContent = t('resultTitle', { count: totalItems });
   const backpackNote = webError
-    ? `Описания Steam недоступны (${webError}), рюкзак собран по данным CS2: ${gcOnlyCount}.`
-    : `Рюкзак: ${backpackCount} из Steam${gcOnlyCount ? `, ещё ${gcOnlyCount} только в CS2 (например, с трейд-баном)` : ''}.`;
-  $('result-detail').textContent = `${backpackNote} Хранилищ: ${units.length}, предметов в них: ${storageTotal}.`;
+    ? t('backpackFail', { error: webError, count: gcOnlyCount })
+    : t('backpack', { count: backpackCount }) + (gcOnlyCount ? t('gcOnly', { count: gcOnlyCount }) : '');
+  $('result-detail').textContent = `${backpackNote} ${t('storageSummary', { units: units.length, items: storageTotal })}`;
   $('open-portfolio').href = `${pairing.serverUrl}/dashboard`;
   $('result').hidden = false;
 }
@@ -80,9 +105,9 @@ function renderResult({ units, backpackCount, gcOnlyCount, webError, totalItems,
 async function readFromSteam(session, osType, signal) {
   const steamId = steamIdFromRefreshToken(session.refreshToken);
   const pairing = await getPairing();
-  if (!pairing) throw new Error('Расширение отвязано от SkinsHead');
+  if (!pairing) throw new Error(t('unpaired'));
   if (String(steamId) !== pairing.steamId) {
-    throw new Error(`Вход выполнен в другой аккаунт Steam (${steamId}), а привязан ${pairing.steamId}`);
+    throw new Error(t('wrongAccount', { got: steamId, expected: pairing.steamId }));
   }
 
   const cm = await CmConnection.open();
@@ -92,16 +117,16 @@ async function readFromSteam(session, osType, signal) {
   let gcBackpack;
   const contents = new Map();
   try {
-    setStatus('Вход в Steam…');
+    setStatus('logon');
     await cm.logOn(steamId, await buildLogonBody(session.refreshToken, osType));
-    setStatus('Подключение к CS2 Game Coordinator…');
+    setStatus('gc');
     const gc = new Cs2GameCoordinator(cm);
     await gc.connect();
 
     caskets = gc.storageUnits();
     for (const [index, casket] of caskets.entries()) {
       signal.throwIfAborted();
-      setStatus(`Чтение хранилища ${index + 1} из ${caskets.length}: ${casket.customName || 'Хранилище'}`);
+      setStatus('readingUnit', { n: index + 1, total: caskets.length, name: casket.customName || t('defaultUnit') });
       contents.set(casket.id, await gc.loadCasketContents(casket));
       if (index < caskets.length - 1) await new Promise((r) => setTimeout(r, CASKET_DELAY_MS));
     }
@@ -111,7 +136,7 @@ async function readFromSteam(session, osType, signal) {
     cm.close();
   }
 
-  setStatus('Чтение описаний рюкзака из Steam…');
+  setStatus('web');
   let web = { items: [] };
   let webError = null;
   try {
@@ -128,6 +153,7 @@ async function run() {
   $('start').disabled = true;
   $('cancel').hidden = false;
   $('result').hidden = true;
+  lastResult = null;
   const osType = detectOsType();
   const schemaPromise = loadSchema().catch((err) => {
     console.warn('[schema]', err.message);
@@ -136,7 +162,7 @@ async function run() {
   let session = null;
 
   try {
-    setStatus('Подключение к Steam…');
+    setStatus('connecting');
     const authCm = await CmConnection.open();
     try {
       session = await qrLogin(authCm, { osType, onChallenge: drawQr, signal });
@@ -146,19 +172,19 @@ async function run() {
     $('qr-block').hidden = true;
 
     const steamData = await readFromSteam(session, osType, signal);
-    setStatus('Отзыв токена Steam…');
+    setStatus('revoke');
     await revokeRefreshToken(session.accessToken, session.refreshToken);
     session = null;
 
-    setStatus('Определение названий предметов…');
+    setStatus('names');
     const schema = await schemaPromise;
-    const units = steamData.caskets.map((casket) => ({ id: casket.id, name: casket.customName || 'Хранилище' }));
+    const units = steamData.caskets.map((casket) => ({ id: casket.id, name: casket.customName || t('defaultUnit') }));
     const storageItems = units.flatMap((unit) => steamData.contents.get(unit.id).map((item) => buildGcItem(schema, item, unit)));
     const gcBackpackItems = steamData.gcBackpack.map((item) => buildGcItem(schema, item, null));
     const { items, gcOnlyCount } = mergeInventoryItems(steamData.web.items, gcBackpackItems, storageItems);
     const storageItemCount = storageItems.reduce((sum, item) => sum + item.amount, 0);
 
-    setStatus('Отправка в портфель SkinsHead…');
+    setStatus('upload');
     await uploadInventory(steamData.pairing, items, storageItemCount);
 
     renderResult({
@@ -173,18 +199,16 @@ async function run() {
       totalItems: items.length,
       pairing: steamData.pairing,
     });
-    setStatus(schema
-      ? 'Готово. Токен Steam отозван, портфель обновлён.'
-      : 'Готово, но схема CS2 не загрузилась: часть предметов из хранилищ без названий. Токен Steam отозван.');
+    setStatus(schema ? 'done' : 'doneNoSchema');
   } catch (err) {
     $('qr-block').hidden = true;
-    setStatus(signal.aborted ? 'Отменено.' : `Ошибка: ${err.message}`, !signal.aborted);
+    setStatus(signal.aborted ? 'cancelled' : 'error', signal.aborted ? {} : { message: err.message }, !signal.aborted);
   } finally {
     if (session) {
       try {
         await revokeRefreshToken(session.accessToken, session.refreshToken);
       } catch (err) {
-        setStatus(`Токен не удалось отозвать (${err.message}). Удалите устройство «SkinsHead Browser Extension» в настройках безопасности Steam.`, true);
+        setStatus('revokeFailed', { message: err.message }, true);
       }
       session = null;
     }
@@ -198,12 +222,12 @@ async function run() {
 $('pair-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   try {
-    setStatus('Привязка…');
+    setStatus('pairing');
     await pair($('server-url').value, $('pair-code').value);
     $('pair-code').value = '';
-    setStatus('Расширение привязано.');
+    setStatus('pairedOk');
   } catch (err) {
-    setStatus(`Ошибка: ${err.message}`, true);
+    setStatus('error', { message: err.message }, true);
   }
   await renderPairing();
 });
@@ -212,13 +236,25 @@ $('unpair').addEventListener('click', async () => {
   const pairing = await getPairing();
   const revoked = pairing ? await unpair(pairing).catch(() => false) : false;
   if (!pairing) await clearPairing();
-  setStatus(revoked
-    ? 'Привязка отозвана на сервере и удалена из расширения.'
-    : 'Привязка удалена из расширения, но сервер не ответил. Отзовите её на сайте: «Отвязать все».', !revoked);
+  setStatus(revoked ? 'unpairOk' : 'unpairLocal', {}, !revoked);
   await renderPairing();
 });
 
 $('start').addEventListener('click', run);
 $('cancel').addEventListener('click', () => abortController?.abort(new Error('cancelled')));
 
+for (const [code, label] of LANGS) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.dataset.lang = code;
+  button.textContent = label;
+  button.addEventListener('click', async () => {
+    await setLang(code);
+    applyStatic();
+  });
+  $('lang-switch').append(button);
+}
+
+await initI18n();
+applyStatic();
 renderPairing();
