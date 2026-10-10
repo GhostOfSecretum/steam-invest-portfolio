@@ -1230,11 +1230,11 @@ app.get('/armory', asyncRoute(async (req, res) => {
 
 // Permanent legal / billing pages for payment provider review (no JS required).
 app.get('/privacy', (req, res) => {
-  res.type('html').send(renderPrivacyPage(req.query.lang === 'en' ? 'en' : 'ru'));
+  res.type('html').send(renderPrivacyPage(req.query.lang));
 });
 
 app.get('/terms', (req, res) => {
-  res.type('html').send(renderTermsPage());
+  res.type('html').send(renderTermsPage(req.query.lang));
 });
 
 app.get('/support', (req, res) => {
