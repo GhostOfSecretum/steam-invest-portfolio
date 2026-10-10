@@ -40,6 +40,9 @@ module.exports = {
       provider: 'github',
       owner: 'GhostOfSecretum',
       repo: 'steam-invest-portfolio',
+      // electron-publish defaults to a draft release unless this is set, so a
+      // tagged build would upload the installer and leave it invisible.
+      releaseType: 'release',
     },
   ],
   files: [
