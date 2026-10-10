@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "SkinsHead — CS2 Storage"
+  },
+  "extDesc": {
+    "message": "Reads your CS2 Storage Units after a one-time QR sign-in. The Steam token is never saved and is revoked right after."
+  },
+  "actionTitle": {
+    "message": "SkinsHead — sync Storage Units"
+  }
+}

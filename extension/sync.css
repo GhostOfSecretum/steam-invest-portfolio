@@ -1,7 +1,7 @@
 :root {
   color-scheme: dark;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  background: #0d0f12;
+  background: #050608;
   color: #e7e9ec;
 }
 
@@ -12,8 +12,15 @@ main {
 }
 
 h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 24px;
   margin: 0 0 12px;
+}
+
+h1 img {
+  border-radius: 7px;
 }
 
 .note {
@@ -32,7 +39,7 @@ button {
   padding: 10px 16px;
   border-radius: 8px;
   border: 1px solid #2b3038;
-  background: #1f6feb;
+  background: #ff2d78;
   color: #fff;
   cursor: pointer;
 }
@@ -51,7 +58,7 @@ button.link {
   padding: 0;
   border: 0;
   background: none;
-  color: #58a6ff;
+  color: #ff7aaa;
   text-decoration: underline;
 }
 
@@ -65,7 +72,7 @@ input {
 }
 
 #pair-code {
-  width: 10ch;
+  width: 16ch;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -75,7 +82,7 @@ h2 {
 }
 
 a {
-  color: #58a6ff;
+  color: #ff7aaa;
 }
 
 #qr-block canvas {

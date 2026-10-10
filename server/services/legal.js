@@ -15,16 +15,19 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
-function renderShell({ title, description, active, bodyHtml }) {
+function renderShell({ title, description, active, bodyHtml, lang = 'ru' }) {
+  const labels = lang === 'en'
+    ? { pricing: 'Pricing', privacy: 'Privacy policy', terms: 'Terms of use', support: 'Support' }
+    : { pricing: 'Тарифы и цены', privacy: 'Политика конфиденциальности', terms: 'Пользовательское соглашение', support: 'Поддержка' };
   const nav = [
-    { href: '/pricing', id: 'pricing', label: 'Тарифы и цены' },
-    { href: '/privacy', id: 'privacy', label: 'Политика конфиденциальности' },
-    { href: '/terms', id: 'terms', label: 'Пользовательское соглашение' },
-    { href: '/support', id: 'support', label: 'Поддержка' },
+    { href: '/pricing', id: 'pricing', label: labels.pricing },
+    { href: lang === 'en' ? '/privacy?lang=en' : '/privacy', id: 'privacy', label: labels.privacy },
+    { href: '/terms', id: 'terms', label: labels.terms },
+    { href: '/support', id: 'support', label: labels.support },
   ];
 
   return `<!doctype html>
-<html lang="ru">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -109,17 +112,18 @@ function renderShell({ title, description, active, bodyHtml }) {
     ${bodyHtml}
     <div class="footer">
       <div>${escapeHtml(OPERATOR)} · <a href="${SITE_URL}">${SITE_URL.replace('https://', '')}</a></div>
-      <div style="margin-top:6px">Поддержка: <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a> · Документы обновлены: ${escapeHtml(DOCS_UPDATED_AT)}</div>
+      <div style="margin-top:6px">${lang === 'en' ? 'Support' : 'Поддержка'}: <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a> · ${lang === 'en' ? 'Updated: October 10, 2026' : `Документы обновлены: ${escapeHtml(DOCS_UPDATED_AT)}`}</div>
     </div>
   </div>
 </body>
 </html>`;
 }
 
-function renderPrivacyPage() {
+function renderPrivacyPage(lang = 'ru') {
+  if (lang === 'en') return renderPrivacyPageEn();
   const bodyHtml = `
     <h1>Политика конфиденциальности</h1>
-    <div class="meta">Сервис SkinsHead · ${SITE_URL}<br>Дата актуальной редакции: ${DOCS_UPDATED_AT}</div>
+    <div class="meta">Сервис SkinsHead · ${SITE_URL}<br>Дата актуальной редакции: ${DOCS_UPDATED_AT}<br><a href="/privacy?lang=en">English</a></div>
     <div class="card">
       Настоящая Политика конфиденциальности определяет порядок сбора, использования, хранения и защиты информации Пользователей онлайн-сервиса SkinsHead (далее — «Сервис»).
       Используя Сервис, Пользователь подтверждает согласие с условиями настоящей Политики.
@@ -141,7 +145,8 @@ function renderPrivacyPage() {
       <li>сведения о статусе оплаты и выбранном тарифе, которые передаёт платёжный провайдер (без полных данных банковской карты).</li>
     </ul>
     <p>2.2. Сервис не запрашивает и не хранит пароль Steam, seed SDA и коды Steam Guard.</p>
-    <p>2.3. Данные банковских карт вводятся Пользователем на стороне платёжного провайдера и не обрабатываются напрямую Администрацией.</p>
+    <p>2.3. Расширение для браузера входит в Steam по QR-коду при каждой синхронизации. Полученный токен Steam хранится только в памяти вкладки на время чтения, не записывается на диск, не передаётся на сервер Сервиса и отзывается в Steam сразу после чтения. На сервер передаётся список предметов и токен привязки, который позволяет только загрузить этот список.</p>
+    <p>2.4. Данные банковских карт вводятся Пользователем на стороне платёжного провайдера и не обрабатываются напрямую Администрацией.</p>
 
     <h2>3. Цели обработки</h2>
     <ul>
@@ -191,6 +196,87 @@ function renderPrivacyPage() {
     title: 'Политика конфиденциальности',
     description: 'Политика конфиденциальности сервиса SkinsHead: какие данные обрабатываются, зачем и как связаться с поддержкой.',
     active: 'privacy',
+    bodyHtml,
+  });
+}
+
+function renderPrivacyPageEn() {
+  const bodyHtml = `
+    <h1>Privacy policy</h1>
+    <div class="meta">SkinsHead · ${SITE_URL}<br>Last updated: October 10, 2026<br><a href="/privacy">Русский</a></div>
+    <div class="card">
+      This privacy policy explains how the SkinsHead online service (the “Service”) collects, uses, stores and protects information about its users.
+      By using the Service, you agree to this policy.
+    </div>
+
+    <h2>1. General</h2>
+    <p>1.1. The Service is operated by the SkinsHead administration (website ${SITE_URL}).</p>
+    <p>1.2. This policy applies to everyone who visits the site, signs in through Steam OpenID, creates a portfolio, pays for a plan, installs the browser extension, or contacts support.</p>
+    <p>1.3. The Service is for tracking and analysing a Counter-Strike 2 skin portfolio and a Steam inventory, including related digital features.</p>
+
+    <h2>2. Data we process</h2>
+    <p>2.1. Depending on how you use the Service, we may process:</p>
+    <ul>
+      <li>your SteamID64, public name, avatar and profile URL, when you sign in through Steam OpenID;</li>
+      <li>portfolio data: the item list, quantities, cost basis, activity and settings you save in the Service;</li>
+      <li>data synced by the browser extension: the list of inventory and Storage Unit items, without your Steam password, Steam token or authenticator codes;</li>
+      <li>technical data: the session cookie, IP address, browser type and request logs needed for security and operation;</li>
+      <li>support messages: the contents of the Telegram conversation;</li>
+      <li>payment status and the selected plan, as reported by the payment provider, without your full card details.</li>
+    </ul>
+    <p>2.2. The Service never asks for or stores your Steam password, SDA seed or Steam Guard codes.</p>
+    <p>2.3. The browser extension signs in to Steam with a QR code on every sync. The Steam token it receives stays only in the tab’s memory while the reading is in progress. It is not written to disk, it is not sent to the Service, and it is revoked at Steam immediately afterwards. The Service receives the item list and a pairing token, and that token can only upload the list.</p>
+    <p>2.4. Card details are entered on the payment provider’s side and are not processed by the administration directly.</p>
+
+    <h2>3. Why we process it</h2>
+    <ul>
+      <li>to provide the portfolio, plans and Storage Unit sync;</li>
+      <li>to identify you and protect the session;</li>
+      <li>to confirm payment and activate paid access;</li>
+      <li>to answer support requests;</li>
+      <li>to keep the Service secure, prevent abuse and diagnose failures;</li>
+      <li>to improve the Service using aggregated statistics.</li>
+    </ul>
+
+    <h2>4. Legal bases</h2>
+    <p>4.1. We process data based on your consent, on performing the contract for digital services (the terms of use), and on the administration’s legitimate interest in keeping the Service secure.</p>
+
+    <h2>5. Sharing with third parties</h2>
+    <p>5.1. We do not sell personal data.</p>
+    <p>5.2. Data may be shared with:</p>
+    <ul>
+      <li>Valve / Steam, to the extent needed for OpenID sign-in and for public profile and inventory data;</li>
+      <li>the payment provider, to take and confirm payment for a plan;</li>
+      <li>hosting and infrastructure providers that run the Service;</li>
+      <li>competent public authorities, where the law requires it.</li>
+    </ul>
+
+    <h2>6. Storage and protection</h2>
+    <p>6.1. Data is kept for as long as needed to provide the Service and meet our obligations, or until you ask us to delete it, unless the law requires longer.</p>
+    <p>6.2. We use reasonable organisational and technical safeguards. No transmission over the internet can be guaranteed completely secure.</p>
+
+    <h2>7. Your rights</h2>
+    <p>7.1. You can ask what data we process, ask us to correct inaccurate data, ask us to delete your portfolio or account data, and withdraw consent, by contacting support.</p>
+    <p>7.2. Withdrawing consent may limit some features of the Service.</p>
+
+    <h2>8. Payments</h2>
+    <p>8.1. Plans are paid through a third-party payment provider’s form.</p>
+    <p>8.2. The Service receives from that provider what it needs to confirm the payment, its status and the plan to activate.</p>
+
+    <h2>9. Changes</h2>
+    <p>9.1. We may update this policy. The current version is always at <a href="/privacy?lang=en">${SITE_URL}/privacy?lang=en</a>.</p>
+    <p>9.2. Continuing to use the Service after a new version is published means you accept the updated terms.</p>
+
+    <h2>10. Contact</h2>
+    <p>For privacy and support questions: Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>.</p>
+    <p>Website: <a href="${SITE_URL}">${SITE_URL}</a>.</p>
+  `;
+
+  return renderShell({
+    title: 'Privacy policy',
+    description: 'SkinsHead privacy policy: what data is processed, why, and how to contact support. Includes the browser extension.',
+    active: 'privacy',
+    lang: 'en',
     bodyHtml,
   });
 }
