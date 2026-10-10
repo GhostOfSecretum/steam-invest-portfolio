@@ -234,7 +234,7 @@ function applyItemDisplayLimit(portfolio, planId) {
   };
 }
 
-// Must stay in sync with `artifactName` in desktop/electron-builder.js.
+// Must stay in sync with `artifactName` in desktop/electron-builder.cjs.
 const DOWNLOAD_ARTIFACTS = {
   'mac-arm64': {
     file: 'SkinsHead-mac-arm64.dmg',

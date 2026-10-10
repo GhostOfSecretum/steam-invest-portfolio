@@ -482,7 +482,7 @@ async function isOutdatedResponse(response) {
 }
 
 // Updates come from the public GitHub releases of this repo, configured in
-// electron-builder.js. A silent startup check keeps installs current; the manual
+// electron-builder.cjs. A silent startup check keeps installs current; the manual
 // menu item reports its outcome either way. Failures are only shown when the user
 // asked, because an offline or not-yet-signed build would otherwise pop a dialog
 // on every launch about something they cannot fix.

@@ -90,7 +90,7 @@ GitHub Secrets:
 | `AZURE_CODE_SIGNING_PROFILE` | имя профиля сертификата |
 | `AZURE_CODE_SIGNING_PUBLISHER` | publisher **точно как в сертификате**, иначе NSIS не подпишется |
 
-Конфиг: `desktop/electron-builder.js` включает `azureSignOptions` только если задан `AZURE_CODE_SIGNING_ACCOUNT`.
+Конфиг: `desktop/electron-builder.cjs` включает `azureSignOptions` только если задан `AZURE_CODE_SIGNING_ACCOUNT`. На Windows файл нельзя называть `electron-builder.js`: cmd находит его в текущей папке раньше CLI и «сборка» молча завершается без установщика.
 
 ### 4. Деплой сайта
 

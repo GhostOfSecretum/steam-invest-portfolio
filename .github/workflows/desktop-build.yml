@@ -104,7 +104,7 @@ jobs:
   windows:
     name: Windows Installer
     runs-on: windows-latest
-    # electron-builder.js switches Azure Trusted Signing on only when
+    # electron-builder.cjs switches Azure Trusted Signing on only when
     # AZURE_CODE_SIGNING_ACCOUNT is non-empty, so unset secrets simply mean an
     # unsigned installer. The AZURE_TENANT_ID/CLIENT_ID/CLIENT_SECRET trio is
     # read by Azure Identity inside the TrustedSigning PowerShell module.
