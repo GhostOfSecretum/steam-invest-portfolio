@@ -77,11 +77,14 @@ jobs:
             echo "::warning::No App Store Connect key — the build will not be notarized."
           fi
 
+      # Unsigned macOS builds stay as Actions artifacts. Publishing one would
+      # put a Gatekeeper-blocked DMG on the public release; Windows can still
+      # ship from the same tag.
       - name: Build
         working-directory: desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist:mac -- --publish ${{ startsWith(github.ref, 'refs/tags/v') && 'always' || 'never' }}
+        run: npm run dist:mac -- --publish ${{ startsWith(github.ref, 'refs/tags/v') && secrets.MAC_CSC_LINK != '' && 'always' || 'never' }}
 
       # Lets users verify a download matches what CI produced. The ZIPs are what
       # Squirrel.Mac installs from, so they are worth checksumming too.
