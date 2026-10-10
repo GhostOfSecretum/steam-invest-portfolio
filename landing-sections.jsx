@@ -1175,47 +1175,52 @@ function ArmoryROI() {
   );
 }
 
-function DesktopDownload({ lang, auth, onPricing }) {
+// Set once the extension is live in the Chrome Web Store; the zip stays as a fallback.
+const EXTENSION_STORE_URL = null;
+
+function ExtensionInstall({ lang }) {
   const copy = lang === 'ru'
     ? {
-      title: 'Desktop — полный инвентарь и Хранилища',
-      sub: 'Публичный Steam показывает только основной инвентарь. Desktop-клиент SkinsHead зайдёт в Steam локально и подтянет полный портфель, включая Хранилища.',
-      note: 'Приложение ещё в разработке. Скоро появится для macOS и Windows — скачивание и синхронизация будут доступны на тарифах Plus и Investor.',
-      security: 'Пароль Steam не запрашивается. Вход по QR, токен остаётся на вашем компьютере в защищённом хранилище ОС и на сервер не уходит — туда отправляется только список предметов. Приложение не перемещает, не продаёт и не трейдит предметы.',
-      soon: 'Скоро',
-      macApple: 'macOS · Apple Silicon',
-      macIntel: 'macOS · Intel',
-      windows: 'Windows · x64',
-      unlock: 'Смотреть тарифы',
-      badge: 'Скоро · Plus / Investor',
+      title: 'Хранилища CS2 — через расширение для браузера',
+      sub: 'Публичный Steam показывает только основной инвентарь. Расширение SkinsHead читает содержимое Хранилищ и добавляет их в портфель: какие предметы и в каком Хранилище лежат. Бесплатно.',
+      browsers: 'Chrome, Edge, Brave, Opera, Яндекс Браузер и другие браузеры на Chromium.',
+      steps: [
+        'Скачайте архив и распакуйте его.',
+        'Откройте chrome://extensions (в Edge — edge://extensions) и включите «Режим разработчика».',
+        'Нажмите «Загрузить распакованное» и выберите папку skinshead-extension.',
+        'Нажмите на значок расширения, введите код из портфеля («Код для расширения») и войдите в Steam по QR.',
+      ],
+      store: 'Скоро — в Chrome Web Store, установка в один клик.',
+      security: 'Пароль Steam не запрашивается. Вход по QR при каждой синхронизации: токен Steam живёт только в памяти вкладки, никуда не сохраняется и сразу после чтения отзывается. На сервер уходит только список предметов. Расширение не перемещает, не продаёт и не трейдит предметы.',
+      download: 'Скачать расширение (zip)',
+      install: 'Установить из Chrome Web Store',
+      badge: 'Бесплатно',
     }
     : {
-      title: 'Desktop — full inventory and Storage',
-      sub: 'A public Steam inventory only shows the main backpack. The SkinsHead desktop client will sign into Steam locally and sync the full portfolio, including Storage.',
-      note: 'The app is still in development. macOS and Windows builds are coming soon — download and sync will be included with Plus. Pay with card or crypto.',
-      security: 'Your Steam password is never requested. You sign in with a QR code, the token stays on your computer in the OS secure store and is never sent to our server — only item lists are. The app never moves, sells or trades items.',
-      soon: 'Coming soon',
-      macApple: 'macOS · Apple Silicon',
-      macIntel: 'macOS · Intel',
-      windows: 'Windows · x64',
-      unlock: 'View plans',
-      badge: 'Coming soon · Plus',
+      title: 'CS2 Storage Units — via a browser extension',
+      sub: 'A public Steam inventory only shows the main backpack. The SkinsHead extension reads what is inside your Storage Units and adds it to the portfolio, unit by unit. Free.',
+      browsers: 'Chrome, Edge, Brave, Opera and other Chromium browsers.',
+      steps: [
+        'Download the archive and unzip it.',
+        'Open chrome://extensions (edge://extensions in Edge) and turn on Developer mode.',
+        'Click “Load unpacked” and pick the skinshead-extension folder.',
+        'Click the extension icon, enter the code from your portfolio (“Extension code”) and sign in to Steam with a QR code.',
+      ],
+      store: 'Coming soon to the Chrome Web Store with one-click install.',
+      security: 'Your Steam password is never requested. You sign in with a QR code on every sync: the Steam token lives only in the tab’s memory, is never saved and is revoked right after reading. Only the item list reaches our server. The extension never moves, sells or trades items.',
+      download: 'Download extension (zip)',
+      install: 'Install from Chrome Web Store',
+      badge: 'Free',
     };
 
-  const downloads = [
-    { label: copy.macApple, key: 'mac-arm64' },
-    { label: copy.macIntel, key: 'mac-x64' },
-    { label: copy.windows, key: 'win-x64' },
-  ];
-
   return (
-    <section className="section-tight" id="desktop">
+    <section className="section-tight" id="extension">
       <div className="container">
         <div className="glass-strong desktop-panel">
           <div className="desktop-panel-glow" aria-hidden="true" />
           <div className="desktop-panel-copy">
             <div className="desktop-panel-kicker">
-              <div className="eyebrow" style={{ color: 'var(--accent)' }}>// DESKTOP CLIENT</div>
+              <div className="eyebrow" style={{ color: 'var(--accent)' }}>// BROWSER EXTENSION</div>
               <span className="chip chip-accent">{copy.badge}</span>
             </div>
             <h2 className="display" style={{ fontSize: 'clamp(28px, 3.2vw, 44px)', fontWeight: 500, lineHeight: 1.08 }}>
@@ -1225,24 +1230,30 @@ function DesktopDownload({ lang, auth, onPricing }) {
               {copy.sub}
             </p>
             <p style={{ marginTop: 12, color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.6, maxWidth: 760 }}>
-              {copy.note}
+              {copy.browsers}
             </p>
+            {!EXTENSION_STORE_URL && (
+              <ol style={{ marginTop: 14, paddingLeft: 20, color: 'var(--fg-1)', fontSize: 14, lineHeight: 1.7, maxWidth: 760 }}>
+                {copy.steps.map((step) => <li key={step}>{step}</li>)}
+              </ol>
+            )}
           </div>
           <div className="desktop-panel-actions">
-            {downloads.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className="btn btn-ghost desktop-panel-dl"
-                disabled
-              >
-                <span>{item.label}</span>
-                <span className="mono desktop-panel-soon">{copy.soon}</span>
-              </button>
-            ))}
-            <button type="button" className="btn btn-primary" onClick={() => onPricing && onPricing()}>
-              {copy.unlock}
-            </button>
+            {EXTENSION_STORE_URL && (
+              <a className="btn btn-primary" href={EXTENSION_STORE_URL} target="_blank" rel="noopener noreferrer">
+                {copy.install}
+              </a>
+            )}
+            <a
+              className={EXTENSION_STORE_URL ? 'btn btn-ghost' : 'btn btn-primary'}
+              href="/api/downloads/extension"
+              download
+            >
+              {copy.download}
+            </a>
+            {!EXTENSION_STORE_URL && (
+              <div style={{ color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.55 }}>{copy.store}</div>
+            )}
             <div className="glass" style={{ padding: 14, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.55 }}>
               {copy.security}
             </div>
@@ -1939,7 +1950,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead помогает считать скины CS2 как портфель: live-оценка инвентаря, себестоимость, P&L, распределение по типам и история цен по предметам. Цены собираются со Steam Community Market и сторонних площадок.',
           'Кроме портфеля на сайте есть маркет-эксплорер, лидеры позиций, лента новостей из Telegram и калькулятор ROI Armory Pass. Подключите Steam через OpenID, откройте чужой публичный профиль по ссылке или создайте ручной портфель.',
-          'Весь сайт бесплатный: полный инвентарь, маркет, Armory, новости и топ-аккаунты инвесторов. Платные тарифы открывают desktop для Хранилищ. Plus в бете — бесплатно за канал; Investor — 7 дней тоже за Telegram.',
+          'Весь сайт бесплатный: полный инвентарь, маркет, Armory, новости и топ-аккаунты инвесторов. Хранилища подтягиваются бесплатным расширением для браузера. Plus в бете — бесплатно за канал; Investor — 7 дней тоже за Telegram.',
         ],
       }
     : {
@@ -1948,7 +1959,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead treats CS2 skins as a portfolio: live inventory valuation, cost basis, P&L, allocation by type, and per-item price history. Prices come from the Steam Community Market and major third-party marketplaces.',
           'Beyond the portfolio you get a market explorer, portfolio leaders, Telegram news, and an Armory Pass ROI board. Link Steam via OpenID, open any public profile URL, or keep a manual portfolio.',
-          'The website is free: full inventory, market explorer, Armory, news, and top investor accounts. Plus is $7.99/month after a 7-day trial on first Steam login. Pay with card or crypto via Platega from any country.',
+          'The website is free: full inventory, Storage Units via the browser extension, market explorer, Armory, news, and top investor accounts. Plus is $7.99/month after a 7-day trial on first Steam login. Pay with card or crypto via Platega from any country.',
         ],
       };
 
@@ -1971,23 +1982,23 @@ const FAQ_ITEMS = {
   en: [
     { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin portfolio tracker. It values a Steam inventory with live market prices and shows P&L, cost basis, allocation, market explorer, Armory Pass ROI, and Telegram news in one place.' },
     { q: 'How do I track a portfolio?', a: 'Link Steam with OpenID, paste a public profile URL, or create a manual portfolio and add purchases. SkinsHead prices items and surfaces leaders, 24h change, and inventory breakdown.' },
-    { q: 'Why do I need the desktop app?', a: 'Public Steam inventories usually exclude Storage. The desktop client will sign into Steam on your computer and sync the full inventory to your SkinsHead portfolio. It is coming soon and is included with Plus.' },
+    { q: 'How do I add my Storage Units?', a: 'Public Steam inventories exclude Storage Units. Install the free SkinsHead browser extension for Chrome, Edge, Brave or Opera, enter the code from your portfolio and sign in to Steam with a QR code. The extension reads the Storage Units and adds every item to your portfolio.' },
     { q: 'Where do prices come from?', a: 'Portfolio value is a cash-market mark: the median of lowest asks on Skinport, Market.CSGO, and LIS-Skins. Steam Community Market stays as a list price and a fallback when those quotes are missing. Each item page shows offers and history from the providers we could reach.' },
-    { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. When the desktop client launches, tokens will stay locally and only item lists will be sent to the server. We never request SDA seeds or authenticator codes.' },
+    { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. The browser extension signs in with a QR code on every sync, never saves the Steam token and revokes it right after reading; only the item list reaches our server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
-    { q: 'Is SkinsHead free?', a: 'Yes. The website is free: unlimited inventory, market explorer, Armory ROI, news, and top investor accounts. Sign in with Steam and Plus starts free for 7 days. Then Plus is $7.99 / 30 days or $72 / year for the desktop app (Storage; coming soon). A 3-day pass is $2.99. Pay with card or crypto via Platega from any country. See /pricing.' },
-    { q: 'What do paid plans include?', a: 'Paid plans unlock the desktop app and Storage sync (coming soon). Plus is $7.99 / 30 days or $72 / year. The 3-day pass is $2.99. Checkout is card or crypto on Platega, so it works internationally. Support: Telegram @GhostOfSecretum.' },
+    { q: 'Is SkinsHead free?', a: 'Yes. The website is free: unlimited inventory, market explorer, Armory ROI, news, and top investor accounts. Sign in with Steam and Plus starts free for 7 days. Then Plus is $7.99 / 30 days or $72 / year. A 3-day pass is $2.99. Pay with card or crypto via Platega from any country. See /pricing.' },
+    { q: 'What do paid plans include?', a: 'Storage Units and the rest of the site are free. Plus is $7.99 / 30 days or $72 / year. The 3-day pass is $2.99. Checkout is card or crypto on Platega, so it works internationally. Support: Telegram @GhostOfSecretum.' },
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
     { q: 'Что такое SkinsHead?', a: 'SkinsHead — трекер портфеля скинов CS2. Сервис оценивает инвентарь Steam по live-ценам и показывает P&L, себестоимость, распределение, маркет, ROI Armory Pass и новости из Telegram в одном месте.' },
     { q: 'Как отслеживать портфель?', a: 'Привяжите Steam через OpenID, вставьте ссылку на публичный профиль или создайте ручной портфель и добавьте покупки. SkinsHead оценит предметы и покажет лидеров, изменение за 24ч и разбивку инвентаря.' },
-    { q: 'Зачем нужен desktop?', a: 'Публичный инвентарь Steam обычно не включает Хранилища. Desktop-клиент войдёт в Steam на вашем компьютере и синхронизирует полный инвентарь в портфель SkinsHead. Приложение скоро — будет доступно на Plus и Investor.' },
+    { q: 'Как добавить Хранилища?', a: 'Публичный инвентарь Steam не включает Хранилища. Установите бесплатное расширение SkinsHead для Chrome, Edge, Brave, Opera или Яндекс Браузера, введите код из портфеля и войдите в Steam по QR. Расширение прочитает Хранилища и добавит все предметы в портфель.' },
     { q: 'Откуда берутся цены?', a: 'Стоимость портфеля — оценка по сторонним маркетам: медиана нижних ask на Skinport, Market.CSGO и LIS-Skins. Steam Community Market остаётся ценником и запасным источником, если котировок нет. На карточке предмета видны предложения и история цен из источников, до которых удалось достучаться.' },
-    { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. Когда выйдет desktop, токены останутся локально, на сервер уйдёт только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
+    { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. Расширение входит в Steam по QR при каждой синхронизации, не сохраняет токен и отзывает его сразу после чтения; на сервер уходит только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
     { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
-    { q: 'SkinsHead бесплатный?', a: 'Да. Сайт бесплатный: безлимит инвентаря, маркет, Armory ROI, новости и топ-аккаунты инвесторов. Plus — 299 ₽ / 30 дней за desktop (Хранилища; скоро; в бете бесплатно за канал). Investor — 499 ₽ / 30 дней с однократными 7 днями за Telegram. 3 дня desktop — 100 ₽. Оплата картой или криптой через Platega. Прайс: /pricing.' },
-    { q: 'Что дают платные тарифы?', a: 'Платные тарифы открывают desktop-приложение и синхронизацию Хранилищ (скоро). Plus — 299 ₽ / 30 дней. Investor — 499 ₽ / 30 дней с однократными 7 днями за Telegram-канал. Тариф на 3 дня — 100 ₽. Оплата картой или криптой через Platega — из любой страны. Поддержка: Telegram @GhostOfSecretum.' },
+    { q: 'SkinsHead бесплатный?', a: 'Да. Сайт бесплатный: безлимит инвентаря, маркет, Armory ROI, новости и топ-аккаунты инвесторов. Хранилища — тоже бесплатно, через расширение для браузера. Plus — 299 ₽ / 30 дней (в бете бесплатно за канал). Investor — 499 ₽ / 30 дней с однократными 7 днями за Telegram. Тариф на 3 дня — 100 ₽. Оплата картой или криптой через Platega. Прайс: /pricing.' },
+    { q: 'Что дают платные тарифы?', a: 'Хранилища и весь сайт доступны бесплатно. Plus — 299 ₽ / 30 дней. Investor — 499 ₽ / 30 дней с однократными 7 днями за Telegram-канал. Тариф на 3 дня — 100 ₽. Оплата картой или криптой через Platega — из любой страны. Поддержка: Telegram @GhostOfSecretum.' },
     { q: 'Вы связаны с Valve?', a: 'Нет. SkinsHead — независимый проект и не аффилирован со Steam, Valve или Counter-Strike.' },
   ],
 };
@@ -2093,7 +2104,7 @@ function Footer({ lang }) {
         items: [
           { label: 'Портфель', href: '/dashboard' },
           { label: 'Тарифы и цены', href: '/pricing' },
-          { label: 'Desktop · скоро', href: '/#desktop' },
+          { label: 'Расширение для браузера', href: '/#extension' },
         ],
       },
       {
@@ -2111,7 +2122,7 @@ function Footer({ lang }) {
         items: [
           { label: 'Portfolio', href: '/dashboard' },
           { label: 'Pricing', href: '/pricing' },
-          { label: 'Desktop · soon', href: '/#desktop' },
+          { label: 'Browser extension', href: '/#extension' },
         ],
       },
       {
@@ -2131,8 +2142,8 @@ function Footer({ lang }) {
           <Logo />
           <p style={{ marginTop: 16, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.6, maxWidth: 320 }}>
             {lang === 'ru'
-              ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI; desktop для Хранилищ — скоро. Не аффилирован со Steam, Valve или Counter-Strike.'
-              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI; desktop sync for Storage coming soon. Not affiliated with Steam, Valve, or Counter-Strike.'}
+              ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI и Хранилища через расширение для браузера. Не аффилирован со Steam, Valve или Counter-Strike.'
+              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI and Storage Units via a browser extension. Not affiliated with Steam, Valve, or Counter-Strike.'}
           </p>
           <a
             href="/support"
@@ -2177,4 +2188,4 @@ function Footer({ lang }) {
   );
 }
 
-Object.assign(window, { Ticker, MarketCapBoard, TopMovers, MarketCatalog, CaseROI, ArmoryROI, DesktopDownload, Pricing, HowItWorks, FinalCta, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });
+Object.assign(window, { Ticker, MarketCapBoard, TopMovers, MarketCatalog, CaseROI, ArmoryROI, ExtensionInstall, Pricing, HowItWorks, FinalCta, StatsBand, SeoIntro, FAQ, Footer, SectionHeader });

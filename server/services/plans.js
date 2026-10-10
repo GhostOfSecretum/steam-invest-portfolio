@@ -11,7 +11,7 @@ const PLANS = [
     order: 1,
     features: {
       itemDisplayLimit: null,
-      desktopDownload: false,
+      desktopDownload: true,
       topInvestors: true,
     },
     bullets: {
@@ -20,6 +20,7 @@ const PLANS = [
         'Manual portfolio tracking',
         'Live prices, P&L, allocation',
         'Unlimited items displayed',
+        'Storage Units via the browser extension',
         'Top investor accounts',
         'Market explorer, Armory ROI, news',
       ],
@@ -28,19 +29,14 @@ const PLANS = [
         'Ручной портфель',
         'Live-цены, P&L, распределение',
         'Безлимит предметов в списке',
+        'Хранилища через расширение для браузера',
         'Топ-аккаунты инвесторов',
         'Маркет, Armory ROI, новости',
       ],
     },
     missing: {
-      en: [
-        'Desktop app (coming soon)',
-        'Storage sync (coming soon)',
-      ],
-      ru: [
-        'Desktop-приложение (скоро)',
-        'Синхронизация Хранилищ (скоро)',
-      ],
+      en: [],
+      ru: [],
     },
   },
   {
@@ -50,7 +46,7 @@ const PLANS = [
     amountUsd: 2.99,
     periodDays: 3,
     price: { en: '$2.99 / 3 days', ru: '100 ₽ / 3 дня' },
-    priceNote: { en: 'Card or crypto · desktop for 3 days · no auto-renewal', ru: 'desktop и Хранилища на 3 дня · без автопродления' },
+    priceNote: { en: 'Card or crypto · no auto-renewal', ru: 'Без автопродления' },
     highlight: true,
     order: 2,
     features: {
@@ -61,15 +57,11 @@ const PLANS = [
     bullets: {
       en: [
         'Everything on the website',
-        'Desktop app for full inventory — coming soon',
-        'Storage sync — coming soon',
         '3 days of access',
         'No auto-renewal',
       ],
       ru: [
         'Весь сайт без ограничений',
-        'Desktop-приложение для полного инвентаря — скоро',
-        'Синхронизация Хранилищ — скоро',
         'Доступ на 3 дня',
         'Без автопродления',
       ],
@@ -88,7 +80,7 @@ const PLANS = [
     annualAmountUsd: 72,
     periodDays: 30,
     price: { en: '$7.99 / 30 days', ru: '299 ₽ / 30 дней' },
-    priceNote: { en: 'Card or crypto · desktop + Storage soon', ru: 'desktop и Хранилища скоро' },
+    priceNote: { en: 'Card or crypto', ru: 'Карта или криптовалюта' },
     highlight: false,
     order: 3,
     features: {
@@ -100,13 +92,9 @@ const PLANS = [
       en: [
         '7 days free on first Steam login',
         'Everything on the website',
-        'Desktop app for full inventory — coming soon',
-        'Storage sync — coming soon',
       ],
       ru: [
         'Весь сайт без ограничений',
-        'Desktop-приложение для полного инвентаря — скоро',
-        'Синхронизация Хранилищ — скоро',
       ],
     },
     missing: {
@@ -124,8 +112,8 @@ const PLANS = [
     periodDays: 30,
     price: { en: '$5 / 30 days', ru: '499 ₽ / 30 дней' },
     priceNote: {
-      en: 'RU-only · 7 days via Telegram · desktop + Storage',
-      ru: '7 дней бесплатно за Telegram · desktop и Хранилища',
+      en: 'RU-only · 7 days via Telegram',
+      ru: '7 дней бесплатно за Telegram',
     },
     trialDays: 7,
     highlight: false,
@@ -140,14 +128,10 @@ const PLANS = [
       en: [
         '7-day free trial via Telegram channel',
         'Everything on the website',
-        'Desktop app for full inventory — coming soon',
-        'Storage sync — coming soon',
       ],
       ru: [
         '7 дней бесплатно за подписку на Telegram-канал',
         'Весь сайт без ограничений',
-        'Desktop-приложение для полного инвентаря — скоро',
-        'Синхронизация Хранилищ — скоро',
       ],
     },
     missing: {

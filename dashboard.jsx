@@ -604,7 +604,7 @@ function CashStatCard({ lang, cashUsd, portfolioId, editable, onChanged }) {
 }
 
 function inventorySourceLabel(source, lang) {
-  if (source === 'desktop') return tt(lang, { en: 'desktop · full inventory', ru: 'desktop · полный инвентарь', zh: 'desktop · 完整库存', 'zh-TW': 'desktop · 完整庫存' });
+  if (source === 'desktop') return tt(lang, { en: 'full inventory · Storage', ru: 'полный инвентарь · Хранилища', zh: '完整库存 · 仓库', 'zh-TW': '完整庫存 · 倉庫' });
   if (source === 'manual') return tt(lang, { en: 'manual input', ru: 'ручной ввод', zh: '手动输入', 'zh-TW': '手動輸入' });
   return tt(lang, { en: 'public Steam', ru: 'публичный Steam', zh: '公开 Steam', 'zh-TW': '公開 Steam' });
 }
@@ -613,6 +613,7 @@ function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
   const [code, setCode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   if (!canUseDesktop) {
     return (
@@ -620,13 +621,13 @@ function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
         className="btn btn-sm btn-ghost"
         onClick={() => onPricing && onPricing()}
         title={tt(lang, {
-          en: 'Desktop requires Plus / Investor',
-          ru: 'Desktop доступен на Plus / Investor',
-          zh: 'Desktop 需要 Plus / Investor',
-          'zh-TW': 'Desktop 需要 Plus / Investor',
+          en: 'Storage sync requires Plus / Investor',
+          ru: 'Хранилища доступны на Plus / Investor',
+          zh: '仓库同步需要 Plus / Investor',
+          'zh-TW': '倉庫同步需要 Plus / Investor',
         })}
       >
-        {tt(lang, { en: 'Desktop · Plus', ru: 'Desktop · Plus', zh: 'Desktop · Plus', 'zh-TW': 'Desktop · Plus' })}
+        {tt(lang, { en: 'Extension · Plus', ru: 'Расширение · Plus', zh: '扩展 · Plus', 'zh-TW': '擴充 · Plus' })}
       </button>
     );
   }
@@ -634,6 +635,7 @@ function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
   const generate = async () => {
     setLoading(true);
     setError(null);
+    setNotice(null);
     try {
       const data = await apiFetch('/api/desktop/pairing-code', { method: 'POST' });
       setCode(data.code);
@@ -649,10 +651,34 @@ function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
     setLoading(false);
   };
 
+  const revokeAll = async () => {
+    const confirmed = window.confirm(tt(lang, {
+      en: 'Disconnect every paired browser extension? They will need a new code.',
+      ru: 'Отвязать все привязанные расширения? Для них понадобится новый код.',
+      zh: '解除所有已配对的浏览器扩展？需要重新输入代码。',
+      'zh-TW': '解除所有已配對的瀏覽器擴充？需要重新輸入代碼。',
+    }));
+    if (!confirmed) return;
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    setCode(null);
+    try {
+      await apiFetch('/api/desktop/revoke-all', { method: 'POST' });
+      setNotice(tt(lang, { en: 'All devices disconnected', ru: 'Все устройства отвязаны', zh: '已解除所有设备', 'zh-TW': '已解除所有裝置' }));
+    } catch (err) {
+      setError(err?.message || tt(lang, { en: 'Failed to disconnect', ru: 'Не удалось отвязать', zh: '解除失败', 'zh-TW': '解除失敗' }));
+    }
+    setLoading(false);
+  };
+
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <button className="btn btn-sm btn-ghost" onClick={generate} disabled={loading}>
-        {loading ? '...' : tt(lang, { en: 'Desktop code', ru: 'Код для desktop', zh: 'Desktop 代码', 'zh-TW': 'Desktop 代碼' })}
+        {loading ? '...' : tt(lang, { en: 'Extension code', ru: 'Код для расширения', zh: '扩展代码', 'zh-TW': '擴充代碼' })}
+      </button>
+      <button className="btn btn-sm btn-ghost" onClick={revokeAll} disabled={loading}>
+        {tt(lang, { en: 'Disconnect all', ru: 'Отвязать все', zh: '全部解除', 'zh-TW': '全部解除' })}
       </button>
       {code && (
         <>
@@ -662,6 +688,7 @@ function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
           </span>
         </>
       )}
+      {notice && <span style={{ fontSize: 12, opacity: 0.65 }}>{notice}</span>}
       {error && <span style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #ef4444)' }}>{error}</span>}
     </div>
   );
@@ -1032,11 +1059,14 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   <span className="dash-control-index">01</span>
                   <div>
                     <h3>{tt(lang, { en: 'Steam sync', ru: 'Синхронизация Steam', zh: 'Steam 同步', 'zh-TW': 'Steam 同步' })}</h3>
-                    <p>{tt(lang, { en: 'Import your full inventory through Desktop.', ru: 'Загрузите полный инвентарь через Desktop.', zh: '通过 Desktop 导入完整库存。', 'zh-TW': '透過 Desktop 匯入完整庫存。' })}</p>
+                    <p>{tt(lang, { en: 'Add your Storage Units with the browser extension.', ru: 'Добавьте Хранилища через расширение для браузера.', zh: '通过浏览器扩展添加仓库。', 'zh-TW': '透過瀏覽器擴充新增倉庫。' })}</p>
                   </div>
                 </div>
                 <div className="dash-control-section-actions">
-                  {data.desktopConnected && <span className="dash-connected-label">● desktop</span>}
+                  {data.desktopConnected && <span className="dash-connected-label">● {tt(lang, { en: 'Storage', ru: 'Хранилища', zh: '仓库', 'zh-TW': '倉庫' })}</span>}
+                  <a className="btn btn-sm btn-ghost" href="/#extension">
+                    {tt(lang, { en: 'Install extension', ru: 'Установить расширение', zh: '安装扩展', 'zh-TW': '安裝擴充' })}
+                  </a>
                   <DesktopPairingButton
                     lang={lang}
                     canUseDesktop={Boolean(auth?.entitlements?.desktopDownload)}
@@ -1237,7 +1267,9 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                         ru: `хранилище ${data.storageItemCount}`,
                         zh: `仓库 ${data.storageItemCount}`,
                         'zh-TW': `倉庫 ${data.storageItemCount}`,
-                      })}</span>
+                      })}{!data.desktopConnected && data.storageSyncedAt && (
+                        ` (${tt(lang, { en: 'as of', ru: 'на', zh: '截至', 'zh-TW': '截至' })} ${new Date(data.storageSyncedAt).toLocaleDateString()})`
+                      )}</span>
                     )}
                   </div>
                 </div>
