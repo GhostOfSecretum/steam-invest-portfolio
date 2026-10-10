@@ -49,6 +49,35 @@ revocation fails, the app says so and links to Steam's device management page
 instead of pretending it succeeded. You can always revoke manually:
 Steam → Settings → Security → Manage Devices.
 
+## What the browser extension can and cannot do
+
+The extension (`extension/`) reads the same data as the desktop app without a
+per-OS installer. It stores no Steam token at all: every sync starts with a
+Steam QR login, and the refresh token lives only in the memory of the sync tab.
+After the Game Coordinator and inventory reads, the extension logs off and
+revokes the token through `IAuthenticationService/RevokeToken`. If the tab is
+closed mid-sync, revocation cannot run; the page tells the user to remove the
+"SkinsHead Browser Extension" device in Steam.
+
+The token is never sent to our server. The extension checks that the QR login
+belongs to the paired SteamID before uploading anything.
+
+Steam's connection servers refuse WebSocket handshakes whose `Origin` is not a
+Valve site. A session `declarativeNetRequest` rule removes `Origin` only from
+this extension's own WebSocket requests to `steamserver.net`.
+
+The SkinsHead device token is stored unencrypted in the browser profile, because
+an extension has no OS keychain. To limit what a stolen copy is worth, the server
+tags extension tokens at pairing and refuses to exchange them for a web session;
+they can only upload an inventory. «Отвязать» in the extension revokes the token
+on the server before deleting the local copy, and «Отвязать все» on the site
+invalidates every desktop and extension token paired with your account.
+
+Permissions: `api.steampowered.com`, `*.steamserver.net`, `skinshead.pro`, plus
+`localhost:3000`, which only unpacked developer builds use. The page CSP
+additionally allows the SteamDatabase CS2 schema on `raw.githubusercontent.com`.
+No remote code; the only third-party file is a vendored QR generator.
+
 ## Data at rest
 
 Inventories and device tokens on the server are encrypted with AES-256-GCM when

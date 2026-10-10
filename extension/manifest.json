@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "SkinsHead — хранилища CS2",
+  "version": "0.1.0",
+  "description": "Читает содержимое хранилищ CS2 через одноразовый вход по QR. Токен Steam не сохраняется и отзывается после чтения.",
+  "minimum_chrome_version": "116",
+  "action": {
+    "default_title": "SkinsHead — синхронизация хранилищ"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "declarativeNetRequestWithHostAccess",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://api.steampowered.com/*",
+    "wss://*.steamserver.net/*",
+    "https://skinshead.pro/*",
+    "https://www.skinshead.pro/*",
+    "http://localhost:3000/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://api.steampowered.com wss://*.steamserver.net:* https://skinshead.pro https://www.skinshead.pro http://localhost:3000 https://raw.githubusercontent.com/SteamDatabase/GameTracking-CS2/; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+  }
+}

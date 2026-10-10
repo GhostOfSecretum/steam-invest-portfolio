@@ -1,0 +1,107 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #0d0f12;
+  color: #e7e9ec;
+}
+
+main {
+  max-width: 640px;
+  margin: 48px auto;
+  padding: 0 24px;
+}
+
+h1 {
+  font-size: 24px;
+  margin: 0 0 12px;
+}
+
+.note {
+  color: #9aa1ab;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+button {
+  font: inherit;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #2b3038;
+  background: #1f6feb;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.secondary {
+  background: transparent;
+  color: #e7e9ec;
+}
+
+button.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #58a6ff;
+  text-decoration: underline;
+}
+
+input {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #2b3038;
+  background: #161a20;
+  color: #e7e9ec;
+}
+
+#pair-code {
+  width: 10ch;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+h2 {
+  font-size: 18px;
+}
+
+a {
+  color: #58a6ff;
+}
+
+#qr-block canvas {
+  background: #fff;
+  border-radius: 8px;
+}
+
+#status {
+  min-height: 1.5em;
+}
+
+#status.error {
+  color: #ff7b72;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #2b3038;
+}
+
+td.mismatch {
+  color: #ff7b72;
+}

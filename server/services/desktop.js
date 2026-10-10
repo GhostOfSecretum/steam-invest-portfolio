@@ -4,6 +4,9 @@ const { getCached, setCached } = require('./cache');
 const PAIRING_CODE_TTL_MS = 5 * 60 * 1000;
 const DEVICE_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const DESKTOP_INVENTORY_TTL_MS = 24 * 60 * 60 * 1000;
+// Storage Units change rarely and the extension needs a QR scan per sync, so the
+// storage part outlives the full snapshot and is merged into the fresh backpack.
+const STORAGE_SNAPSHOT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const LOGIN_CODE_TTL_MS = 60 * 1000;
 // 32 chars × 8 = 40 bits. Avoids ambiguous 0/O/1/I/L.
 const PAIRING_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -64,7 +67,7 @@ async function createPairingCode(steamId) {
   return code;
 }
 
-async function redeemPairingCode(rawCode) {
+async function redeemPairingCode(rawCode, client = 'desktop') {
   const code = normalizePairingCode(rawCode);
   if (!PAIRING_CODE_RE.test(code)) return null;
 
@@ -76,10 +79,20 @@ async function redeemPairingCode(rawCode) {
   await setCached(deviceTokenKey(deviceToken), {
     steamId: data.steamId,
     pairedAt: Date.now(),
+    client,
   });
 
   await setCached(key, null);
   return { steamId: data.steamId, deviceToken };
+}
+
+function revokedBeforeKey(steamId) {
+  return `desktop:revoked-before:${steamId}`;
+}
+
+async function isRevokedByOwner(data) {
+  const revokedBefore = await getCached(revokedBeforeKey(data.steamId), DEVICE_TOKEN_TTL_MS);
+  return Number.isFinite(revokedBefore) && !(Number(data.pairedAt) > revokedBefore);
 }
 
 async function validateDeviceToken(deviceToken) {
@@ -87,23 +100,37 @@ async function validateDeviceToken(deviceToken) {
 
   const hashedKey = deviceTokenKey(deviceToken);
   let data = await getCached(hashedKey, DEVICE_TOKEN_TTL_MS);
-  if (data) return data;
+  if (!data) {
+    // Legacy: tokens were stored under the raw value. Migrate once on use.
+    const legacyKey = `desktop:token:${deviceToken}`;
+    data = await getCached(legacyKey, DEVICE_TOKEN_TTL_MS);
+    if (!data) return null;
+    await setCached(hashedKey, data);
+    await setCached(legacyKey, null);
+  }
 
-  // Legacy: tokens were stored under the raw value. Migrate once on use.
-  const legacyKey = `desktop:token:${deviceToken}`;
-  data = await getCached(legacyKey, DEVICE_TOKEN_TTL_MS);
-  if (!data) return null;
+  return (await isRevokedByOwner(data)) ? null : data;
+}
 
-  await setCached(hashedKey, data);
-  await setCached(legacyKey, null);
-  return data;
+async function revokeDeviceToken(deviceToken) {
+  if (!deviceToken || !/^[a-f0-9]{64}$/i.test(deviceToken)) return;
+  await setCached(deviceTokenKey(deviceToken), null);
+  await setCached(`desktop:token:${deviceToken}`, null);
+}
+
+// Invalidates every token paired so far without needing a per-account index,
+// which also covers tokens issued before this existed.
+async function revokeAllDeviceTokens(steamId) {
+  await setCached(revokedBeforeKey(steamId), Date.now());
 }
 
 // Short-lived, single-use code exchanged for a web session, so the long-lived
 // device token never travels in a URL / browser history / access logs.
+// Extension tokens sit unencrypted in the browser profile, so they may upload an
+// inventory but never become a web session.
 async function createDesktopLoginCode(deviceToken) {
   const device = await validateDeviceToken(deviceToken);
-  if (!device) return null;
+  if (!device || device.client === 'extension') return null;
   const code = crypto.randomBytes(32).toString('hex');
   await setCached(`desktop:login-code:${code}`, { steamId: device.steamId, createdAt: Date.now() });
   return code;
@@ -127,11 +154,22 @@ async function saveDesktopInventory(steamId, inventory) {
     storageItemCount: inventory.storageItemCount || 0,
     items: inventory.items,
   });
+  if (inventory.storageSyncedAt !== undefined) {
+    await setCached(`desktop:storage:${steamId}`, {
+      syncedAt: inventory.storageSyncedAt || new Date().toISOString(),
+      storageItemCount: inventory.storageItemCount || 0,
+      items: inventory.items.filter((item) => item.inStorage),
+    });
+  }
 }
 
 async function getDesktopInventory(steamId) {
   const key = `desktop:inventory:${steamId}`;
   return getCached(key, DESKTOP_INVENTORY_TTL_MS);
+}
+
+async function getStorageSnapshot(steamId) {
+  return getCached(`desktop:storage:${steamId}`, STORAGE_SNAPSHOT_TTL_MS);
 }
 
 module.exports = {
@@ -142,8 +180,11 @@ module.exports = {
   createPairingCode,
   redeemPairingCode,
   validateDeviceToken,
+  revokeDeviceToken,
+  revokeAllDeviceTokens,
   createDesktopLoginCode,
   redeemDesktopLoginCode,
   saveDesktopInventory,
   getDesktopInventory,
+  getStorageSnapshot,
 };

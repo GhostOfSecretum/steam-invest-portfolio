@@ -3,7 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { getSteamInventory, getSteamProfile } = require('./steam');
 const { getPortfolioPrices, getPriceHistory, getSkinportSalesHistory, getSteamCurrencyRatio, getSteamRubRate, getSteamCnyRate, getSteamMarketIcon, getMarketIconsByName, rarityToTier } = require('./prices');
-const { getDesktopInventory } = require('./desktop');
+const { getDesktopInventory, getStorageSnapshot } = require('./desktop');
 const { attachCollections } = require('./collections');
 const {
   makeActivityEvent,
@@ -116,7 +116,20 @@ async function getPortfolio(steamId, options = {}) {
       };
     }
   }
-  const storageItemCount = useDesktop ? Number(desktopInventory.storageItemCount || 0) : 0;
+  // Once the full desktop snapshot expires, the last synced Storage Units are kept
+  // on top of the fresh backpack. Backpack rows win on assetid collisions.
+  const storageSnapshot = !useDesktop && includeDesktop
+    ? await getStorageSnapshot(steamId).catch(() => null)
+    : null;
+  const snapshotItems = storageSnapshot
+    ? (() => {
+      const backpackIds = new Set(steamInventory.items.map((item) => String(item.assetid)));
+      return (storageSnapshot.items || []).filter((item) => item.inStorage && !backpackIds.has(String(item.assetid)));
+    })()
+    : [];
+  const storageItemCount = useDesktop
+    ? Number(desktopInventory.storageItemCount || 0)
+    : snapshotItems.reduce((sum, item) => sum + Number(item.amount || 1), 0);
   const inventory = useDesktop
     ? {
       syncedAt: desktopInventory.syncedAt,
@@ -127,7 +140,15 @@ async function getPortfolio(steamId, options = {}) {
       storageItemCount,
       items: desktopInventory.items,
     }
-    : steamInventory;
+    : snapshotItems.length
+      ? {
+        ...steamInventory,
+        totalInventoryCount: Number(steamInventory.totalInventoryCount || 0) + storageItemCount,
+        assetEntriesCount: Number(steamInventory.assetEntriesCount || 0) + snapshotItems.length,
+        storageItemCount,
+        items: [...steamInventory.items, ...snapshotItems],
+      }
+      : steamInventory;
 
   const marketHashNames = [...new Set(inventory.items.map((item) => item.marketHashName).filter(Boolean))];
   // Resolve FX once, then price the book. Skip per-item Steam RUB asks and only pace
@@ -192,7 +213,8 @@ async function getPortfolio(steamId, options = {}) {
     cached: inventory.cached,
     inventoryProvider: providerLabel,
     desktopConnected: useDesktop,
-    storageItemCount: useDesktop ? storageItemCount : 0,
+    storageItemCount,
+    storageSyncedAt: useDesktop ? desktopInventory.syncedAt : (snapshotItems.length ? storageSnapshot.syncedAt : null),
     totalInventoryCount: inventory.totalInventoryCount,
     assetEntriesCount: inventory.assetEntriesCount,
     uniqueInventoryCount: items.length,

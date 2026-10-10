@@ -85,14 +85,18 @@ const {
   createPairingCode,
   redeemPairingCode,
   validateDeviceToken,
+  revokeDeviceToken,
+  revokeAllDeviceTokens,
   createDesktopLoginCode,
   redeemDesktopLoginCode,
   saveDesktopInventory,
   getDesktopInventory,
+  getStorageSnapshot,
   MIN_DESKTOP_VERSION,
   isDesktopVersionSupported,
 } = require('./services/desktop');
 const { recordSteamLogin, getSteamLoginStats } = require('./services/users');
+const { getExtensionZip } = require('./services/extension-zip');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -855,6 +859,16 @@ app.post('/api/desktop/pairing-code', authLimiter, requireAuth, asyncRoute(async
   res.json({ code, expiresIn: 300 });
 }));
 
+app.get('/api/downloads/extension', asyncRoute(async (req, res) => {
+  const { fileName, buffer } = await getExtensionZip();
+  res.set({
+    'Content-Type': 'application/zip',
+    'Content-Disposition': `attachment; filename="${fileName}"`,
+    'Cache-Control': 'no-cache',
+  });
+  res.send(buffer);
+}));
+
 app.get('/api/downloads/:artifact', asyncRoute(async (req, res) => {
   const artifact = getDownloadArtifact(req.params.artifact);
   if (!artifact) {
@@ -927,7 +941,8 @@ app.post('/api/desktop/pair', pairingLimiter, requireSupportedDesktop, asyncRout
     res.status(400).json({ error: 'Pairing code is required.', code: 'missing_code' });
     return;
   }
-  const result = await redeemPairingCode(code);
+  const client = req.body?.client === 'extension' ? 'extension' : 'desktop';
+  const result = await redeemPairingCode(code, client);
   if (!result) {
     res.status(401).json({ error: 'Invalid or expired pairing code.', code: 'invalid_code' });
     return;
@@ -967,7 +982,8 @@ app.post('/api/desktop/inventory-sync', deviceTokenLimiter, requireSupportedDesk
       ? Number(req.body.storageItemCount)
       : sumPieces(items.filter((item) => item.inStorage));
   } else {
-    const previous = await getDesktopInventory(device.steamId).catch(() => null);
+    const previous = await getDesktopInventory(device.steamId).catch(() => null)
+      || await getStorageSnapshot(device.steamId).catch(() => null);
     const previousStorage = (previous?.items || []).filter((item) => item.inStorage);
     const freshNonStorage = items.filter((item) => !item.inStorage);
     mergedItems = [...freshNonStorage, ...previousStorage];
@@ -980,10 +996,22 @@ app.post('/api/desktop/inventory-sync', deviceTokenLimiter, requireSupportedDesk
     totalItemCount: sumPieces(mergedItems),
     storageItemCount,
     items: mergedItems,
+    storageSyncedAt: includeStorage ? new Date().toISOString() : undefined,
   });
   clearPortfolioViewCache();
 
   res.json({ ok: true, steamId: device.steamId, itemCount: mergedItems.length, storageItemCount });
+}));
+
+// No version gate: an outdated client must still be able to give up its token.
+app.post('/api/desktop/unpair', deviceTokenLimiter, asyncRoute(async (req, res) => {
+  await revokeDeviceToken(String(req.headers['x-device-token'] || '').trim());
+  res.json({ ok: true });
+}));
+
+app.post('/api/desktop/revoke-all', authLimiter, requireAuth, asyncRoute(async (req, res) => {
+  await revokeAllDeviceTokens(req.session.steamId);
+  res.json({ ok: true });
 }));
 
 app.post('/api/desktop/login-code', deviceTokenLimiter, requireSupportedDesktop, asyncRoute(async (req, res) => {
@@ -996,6 +1024,10 @@ app.post('/api/desktop/login-code', deviceTokenLimiter, requireSupportedDesktop,
   if (await refuseIfPlanDisallowsDesktop(res, device)) return;
 
   const code = await createDesktopLoginCode(deviceToken);
+  if (!code) {
+    res.status(403).json({ error: 'This device cannot open a web session.', code: 'login_not_allowed' });
+    return;
+  }
   res.json({ code, expiresIn: 60 });
 }));
 

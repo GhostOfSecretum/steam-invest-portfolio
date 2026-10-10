@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>SkinsHead — хранилища CS2</title>
+  <link rel="stylesheet" href="sync.css">
+  <script type="module" src="sync.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Хранилища CS2</h1>
+
+    <section id="pair-block" hidden>
+      <h2>Привязка к SkinsHead</h2>
+      <p class="note">
+        На сайте откройте портфель и нажмите «Код для расширения». Код действует 5 минут.
+      </p>
+      <form id="pair-form" class="actions">
+        <input id="pair-code" autocomplete="off" spellcheck="false" maxlength="9" placeholder="Код с сайта" required>
+        <input id="server-url" autocomplete="off" spellcheck="false" hidden>
+        <button type="submit">Привязать</button>
+      </form>
+    </section>
+
+    <section id="sync-block" hidden>
+      <p class="note">
+        Привязан аккаунт Steam <span id="paired-steam-id"></span>.
+        <button id="unpair" type="button" class="link">Отвязать</button>
+      </p>
+      <p class="note">
+        Вход по QR даёт этой вкладке токен Steam. Он живёт только в памяти, пока идёт чтение,
+        никуда не сохраняется и не уходит на сервер SkinsHead — туда отправляется только список предметов.
+        После чтения токен отзывается в Steam. Если закрыть вкладку посреди чтения, отзыв не произойдёт:
+        удалите устройство «SkinsHead Browser Extension» в Steam → Настройки → Безопасность → Авторизованные устройства.
+      </p>
+      <div class="actions">
+        <button id="start" type="button">Войти через QR и синхронизировать</button>
+        <button id="cancel" type="button" class="secondary" hidden>Отмена</button>
+      </div>
+    </section>
+
+    <section id="qr-block" hidden>
+      <canvas id="qr" width="264" height="264"></canvas>
+      <p>Отсканируйте код в мобильном приложении Steam и подтвердите вход.</p>
+    </section>
+
+    <p id="status" role="status"></p>
+
+    <section id="result" hidden>
+      <h2 id="result-title"></h2>
+      <p id="result-detail" class="note"></p>
+      <table>
+        <thead><tr><th>Хранилище</th><th>Ожидалось</th><th>Прочитано</th></tr></thead>
+        <tbody id="units"></tbody>
+      </table>
+      <p><a id="open-portfolio" target="_blank" rel="noopener noreferrer">Открыть портфель</a></p>
+    </section>
+  </main>
+</body>
+</html>
