@@ -66,12 +66,17 @@ Steam's connection servers refuse WebSocket handshakes whose `Origin` is not a
 Valve site. A session `declarativeNetRequest` rule removes `Origin` only from
 this extension's own WebSocket requests to `steamserver.net`.
 
-The SkinsHead device token is stored unencrypted in the browser profile, because
-an extension has no OS keychain. To limit what a stolen copy is worth, the server
-tags extension tokens at pairing and refuses to exchange them for a web session;
-they can only upload an inventory. «Отвязать» in the extension revokes the token
-on the server before deleting the local copy, and «Отвязать все» on the site
-invalidates every desktop and extension token paired with your account.
+The SkinsHead device token is encrypted in the browser profile with AES-256-GCM.
+The key is derived from the password the user chooses, with PBKDF2-HMAC-SHA-256
+at 600,000 iterations, and the password itself is never stored. The derived key
+stays in the tab’s memory until the tab is closed. An extension has no OS keychain,
+so a short PIN would not hold up if the profile were copied; the password must be
+at least 8 characters. Forgetting it destroys the local copy. The server token
+then stays valid until «Отвязать все» on the site. The server also tags extension
+tokens at pairing and refuses to exchange them for a web session; they can only
+upload an inventory. «Отвязать» in the extension revokes the token on the server
+before deleting the local copy, and «Отвязать все» on the site invalidates every
+desktop and extension token paired with the account.
 
 Permissions: `api.steampowered.com`, `*.steamserver.net`, `skinshead.pro`, plus
 `localhost:3000`, which only unpacked developer builds use. The page CSP

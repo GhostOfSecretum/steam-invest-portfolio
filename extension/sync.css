@@ -102,6 +102,16 @@ input {
   color: #e7e9ec;
 }
 
+#pin-form {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+#pin,
+#pin-confirm {
+  width: min(100%, 320px);
+}
+
 #pair-code {
   width: 16ch;
   text-transform: uppercase;

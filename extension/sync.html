@@ -13,6 +13,18 @@
       <div id="lang-switch" class="lang-switch" role="group"></div>
     </div>
 
+    <section id="pin-block" hidden>
+      <h2 id="pin-title"></h2>
+      <p class="note" id="pin-setup-note" data-i18n="pinSetupNote" hidden></p>
+      <p class="note" id="pin-unlock-note" data-i18n="pinUnlockNote" hidden></p>
+      <form id="pin-form" class="actions">
+        <input id="pin" type="password" autocomplete="current-password" spellcheck="false" maxlength="128" data-i18n-placeholder="pinPlaceholder" placeholder="Password" required>
+        <input id="pin-confirm" type="password" autocomplete="new-password" spellcheck="false" maxlength="128" data-i18n-placeholder="pinConfirmPlaceholder" placeholder="Repeat the password" hidden>
+        <button type="submit" id="pin-submit"></button>
+        <button id="pin-forgot" type="button" class="link" data-i18n="pinForgot" hidden>Forgot the password</button>
+      </form>
+    </section>
+
     <section id="pair-block" hidden>
       <h2 data-i18n="pairTitle">Link to SkinsHead</h2>
       <p class="note" data-i18n="pairNote">

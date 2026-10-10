@@ -95,9 +95,7 @@ export async function pair(serverUrlInput, codeInput) {
   if (!DEVICE_TOKEN_RE.test(data.deviceToken || '') || !/^\d{17}$/.test(data.steamId || '')) {
     throw new Error(t('badResponse'));
   }
-  const pairing = { serverUrl, deviceToken: data.deviceToken, steamId: data.steamId };
-  await chrome.storage.local.set({ pairing });
-  return pairing;
+  return { serverUrl, deviceToken: data.deviceToken, steamId: data.steamId };
 }
 
 export async function uploadInventory(pairing, items, storageItemCount) {
@@ -107,7 +105,10 @@ export async function uploadInventory(pairing, items, storageItemCount) {
     headers: headers({ 'Content-Type': 'application/json', 'X-Device-Token': pairing.deviceToken }),
     body: JSON.stringify({ items, storageItemCount, includeStorage: true }),
   });
-  if (res.status === 401) await clearPairing();
-  if (!res.ok) throw new Error(await readError(res));
+  if (!res.ok) {
+    const error = new Error(await readError(res));
+    error.code = res.status === 401 ? 'invalid_device_token' : '';
+    throw error;
+  }
   return res.json();
 }

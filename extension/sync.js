@@ -4,7 +4,8 @@ import { Cs2GameCoordinator } from './lib/gc.js';
 import { buildGcItem, loadSchema } from './lib/item-names.js';
 import { fetchBackpack } from './lib/steam-inventory.js';
 import { mergeInventoryItems } from './lib/inventory-merge.js';
-import { DEFAULT_SERVER_URL, allowsDevServer, clearPairing, getPairing, pair, unpair, uploadInventory } from './lib/server.js';
+import { DEFAULT_SERVER_URL, allowsDevServer, pair, unpair, uploadInventory } from './lib/server.js';
+import { MIN_PASSWORD_LENGTH, createVault, saveVault, unlockVault, vaultExists, wipeVault } from './lib/pin.js';
 import { LANGS, currentLang, initI18n, setLang, t } from './lib/i18n.js';
 import qrcode from './vendor/qrcode-generator-2.0.4.mjs';
 
@@ -15,6 +16,9 @@ let abortController = null;
 let lastStatus = null;
 let lastResult = null;
 let linkedSteamId = '';
+let vault = null;
+let pinMode = 'setup';
+let legacyPairing = null;
 
 function applyStatic() {
   document.title = t('pageTitle');
@@ -25,8 +29,37 @@ function applyStatic() {
     button.setAttribute('aria-pressed', String(button.dataset.lang === currentLang()));
   }
   if (linkedSteamId) $('paired-text').textContent = t('paired', { id: linkedSteamId });
+  if (!$('pin-block').hidden) setPinMode(pinMode);
   if (lastStatus) paintStatus();
   if (lastResult) renderResult(lastResult);
+}
+
+function setPinMode(mode) {
+  pinMode = mode;
+  const setup = mode === 'setup';
+  $('pin-block').hidden = false;
+  $('pair-block').hidden = true;
+  $('sync-block').hidden = true;
+  $('pin-title').textContent = t(setup ? 'pinSetupTitle' : 'pinUnlockTitle');
+  $('pin-setup-note').hidden = !setup;
+  $('pin-unlock-note').hidden = setup;
+  $('pin-confirm').hidden = !setup;
+  $('pin-confirm').required = setup;
+  $('pin-submit').textContent = t(setup ? 'pinSetupSubmit' : 'pinUnlockSubmit');
+  $('pin-forgot').hidden = setup;
+  $('pin').autocomplete = setup ? 'new-password' : 'current-password';
+}
+
+function clearPinFields() {
+  $('pin').value = '';
+  $('pin-confirm').value = '';
+}
+
+async function showLock() {
+  vault = null;
+  const state = await vaultExists();
+  legacyPairing = state.hasVault ? null : state.legacyPairing;
+  setPinMode(state.hasVault ? 'unlock' : 'setup');
 }
 
 function setStatus(key, vars = {}, isError = false) {
@@ -62,7 +95,9 @@ function drawQr(url) {
 }
 
 async function renderPairing() {
-  const pairing = await getPairing();
+  if (!vault) return null;
+  $('pin-block').hidden = true;
+  const pairing = vault.pairing;
   $('pair-block').hidden = Boolean(pairing);
   $('sync-block').hidden = !pairing;
   linkedSteamId = pairing?.steamId || '';
@@ -104,7 +139,7 @@ function renderResult(result) {
 // token as soon as this returns.
 async function readFromSteam(session, osType, signal) {
   const steamId = steamIdFromRefreshToken(session.refreshToken);
-  const pairing = await getPairing();
+  const pairing = vault?.pairing;
   if (!pairing) throw new Error(t('unpaired'));
   if (String(steamId) !== pairing.steamId) {
     throw new Error(t('wrongAccount', { got: steamId, expected: pairing.steamId }));
@@ -185,7 +220,12 @@ async function run() {
     const storageItemCount = storageItems.reduce((sum, item) => sum + item.amount, 0);
 
     setStatus('upload');
-    await uploadInventory(steamData.pairing, items, storageItemCount);
+    try {
+      await uploadInventory(steamData.pairing, items, storageItemCount);
+    } catch (err) {
+      if (err.code === 'invalid_device_token' && vault) await saveVault(vault, null);
+      throw err;
+    }
 
     renderResult({
       units: units.map((unit, i) => ({
@@ -223,7 +263,7 @@ $('pair-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   try {
     setStatus('pairing');
-    await pair($('server-url').value, $('pair-code').value);
+    await saveVault(vault, await pair($('server-url').value, $('pair-code').value));
     $('pair-code').value = '';
     setStatus('pairedOk');
   } catch (err) {
@@ -233,11 +273,58 @@ $('pair-form').addEventListener('submit', async (event) => {
 });
 
 $('unpair').addEventListener('click', async () => {
-  const pairing = await getPairing();
+  const pairing = vault?.pairing || null;
   const revoked = pairing ? await unpair(pairing).catch(() => false) : false;
-  if (!pairing) await clearPairing();
+  if (vault) await saveVault(vault, null);
   setStatus(revoked ? 'unpairOk' : 'unpairLocal', {}, !revoked);
   await renderPairing();
+});
+
+$('pin-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const password = $('pin').value;
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    setStatus('pinShort', {}, true);
+    return;
+  }
+  if (pinMode === 'setup' && password !== $('pin-confirm').value) {
+    setStatus('pinMismatch', {}, true);
+    return;
+  }
+  $('pin-submit').disabled = true;
+  setStatus('pinChecking');
+  try {
+    vault = pinMode === 'setup'
+      ? await createVault(password, legacyPairing)
+      : await unlockVault(password);
+    legacyPairing = null;
+    clearPinFields();
+    lastStatus = null;
+    $('status').textContent = '';
+    $('status').classList.remove('error');
+    await renderPairing();
+  } catch (err) {
+    clearPinFields();
+    if (err.code === 'wait' || (err.code === 'bad' && err.waitMs > 0)) {
+      setStatus('pinWait', { seconds: Math.max(1, Math.ceil(err.waitMs / 1000)) }, true);
+    } else if (err.code === 'bad') {
+      setStatus('pinWrong', {}, true);
+    } else {
+      setStatus('error', { message: err.message }, true);
+    }
+  } finally {
+    $('pin-submit').disabled = false;
+  }
+});
+
+$('pin-forgot').addEventListener('click', async () => {
+  if (!window.confirm(t('pinForgotConfirm'))) return;
+  await wipeVault();
+  vault = null;
+  legacyPairing = null;
+  clearPinFields();
+  setPinMode('setup');
+  setStatus('pinWiped', {}, true);
 });
 
 $('start').addEventListener('click', run);
@@ -257,4 +344,4 @@ for (const [code, label] of LANGS) {
 
 await initI18n();
 applyStatic();
-renderPairing();
+await showLock();
