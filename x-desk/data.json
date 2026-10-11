@@ -28,6 +28,7 @@
     "С 1 окт реплаи можно 10–15. Пост тот же, 19:30. Десктоп не анонсировать до релиза",
     "Float предмета не пишем и не снимаем. На сайте его нет. Для флоата есть CSFloat. Бирка износа — имя скина, не пост про float",
     "Кадр: сайт на EN, кроп блока, без шапки браузера и без URL. Десктоп, QR и скачивание не снимать. 30 сен — ролик 9:16, 8–12 сек, не закреплять, старый рил 31 авг не использовать",
+    "С 11 окт Storage можно кадром результата на сайте: строка storage, счётчик, SELLABLE NOW, подпись full inventory · Storage. Попап расширения, код, QR, скачивание и десктоп не снимать и не анонсировать. Ссылку не ставить",
     "Не ядро: чистые баеры «always buying 94%» и кейс-сайты — список в блоке Реплаи",
     "Добрать ядро: CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs — список в блоке Подписки"
   ],
@@ -134,7 +135,7 @@
         "key": "later",
         "tone": "warn",
         "label": "Позже",
-        "note": "Десктоп ещё не релиз — не анонсировать, не QR, не скачать. Storage только тезисом. «Read-only Steam» — отраслевой тезис, без имени продукта. 3D Glock не пишем."
+        "note": "Десктоп не анонсировать, не QR, не скачать. С 11 окт Storage — результат на сайте, не попап. «Read-only Steam» — тезис, без имени продукта. 3D Glock не пишем."
       }
     ]
   },
@@ -1174,6 +1175,214 @@
         "textRu": "Публичный инвентарь кита — всё ещё не твой филл.\n\nМожно смотреть дифф каждый день и так и не иметь себестоимости, размера и выхода.\n\nРесёрч — это смотреть.\nПозиция — это цифра, которой владеешь ты.\n\nТы торговал или просто обновлял вотчлист?"
       },
       "notes": "Не закреплять, только текст, без URL. Киты: refresh ≠ сделка. Не копипаст недели 4."
+    },
+    {
+      "date": "2026-10-11",
+      "kind": "planned",
+      "dayNum": 50,
+      "label": "неделя 8 · юнит",
+      "post": {
+        "n": 50,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The row was never on your public profile.\n\nIt was in a unit, under a name you typed, outside the screenshot everyone else can open.\n\nA backpack total is the part Steam agrees to show.\n\nWhat’s still sitting in a unit that isn’t in the number you quote?",
+        "textRu": "Этой строки не было в публичном профиле.\n\nОна лежала в юните, под именем, которое ты сам набрал, вне скриншота, который могут открыть другие.\n\nТотал рюкзака — это часть, которую Steam согласен показать.\n\nЧто всё ещё лежит в юните и не входит в цифру, которую ты называешь?",
+        "shot": "still",
+        "visual": "Портфель → предметы, сайт на EN, свой Steam-портфель после синка хранилищ. Кроп одной строки, где под именем читается бирюзовая подпись storage · имя юнита. Рядом можно оставить Qty и Value. Manage portfolio, код, QR, кнопку установки и шапку браузера не снимать. Float не снимать."
+      },
+      "notes": "Не закреплять. Кадр — результат синка на сайте, не попап. Реплаи 10–15."
+    },
+    {
+      "date": "2026-10-12",
+      "kind": "planned",
+      "dayNum": 51,
+      "label": "день 51",
+      "post": {
+        "n": 51,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The backpack updates when Steam does.\n\nThe unit updates when you last opened it.\n\n“As of Tuesday” next to a live total is two clocks on one bag.\n\nIf you moved something after that date, the portfolio is describing a drawer you already changed.\n\nWhen did you last read the unit — not the backpack?",
+        "textRu": "Рюкзак обновляется, когда обновляется Steam.\n\nЮнит обновляется, когда ты его последний раз открыл.\n\n«На вторник» рядом с живым тоталом — это двое часов на одном портфеле.\n\nЕсли ты что-то переложил после этой даты, портфель описывает ящик, который ты уже изменил.\n\nКогда ты последний раз читал юнит — не рюкзак?"
+      },
+      "notes": "Не закреплять, только текст. Дата синка хранилищ ≠ живой рюкзак. Не повторять пятницу/понедельник (пост 47)."
+    },
+    {
+      "date": "2026-10-13",
+      "kind": "planned",
+      "dayNum": 52,
+      "label": "день 52",
+      "post": {
+        "n": 52,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The sticker got bigger when the unit came in.\n\nThe amount you can actually list did not.\n\nLocked, or sitting in storage, still cannot leave this week.\n\nA higher total with the same sellable number is not a better position.\n\nHow much of the new total is still stuck?",
+        "textRu": "Стикер стал больше, когда юнит попал в книгу.\n\nСумма, которую реально можно выставить, — нет.\n\nЗаблокированное или лежащее в хранилище на этой неделе всё ещё не уходит.\n\nБолее высокий тотал при той же доступной сумме — не лучшая позиция.\n\nСколько нового тотала всё ещё застряло?",
+        "shot": "still",
+        "visual": "Портфель → обзор, сайт на EN, Steam-портфель с хранилищами. Кроп только карточки SELLABLE NOW: сумма, строка «N of M marketable» и подпись «N locked or in storage». Соседние карточки, CASH и весь ряд не брать."
+      },
+      "notes": "Не закреплять. Sellable vs storage. Не повтор поста 30 (тезис без кадра) и не CASH (пост 34)."
+    },
+    {
+      "date": "2026-10-14",
+      "kind": "planned",
+      "dayNum": 53,
+      "label": "день 53",
+      "post": {
+        "n": 53,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You named the unit “investments”.\n\nThat’s a folder.\n\nCases you meant to open, a knife you hid, duplicates you didn’t want to see — one label, three reasons, zero weights.\n\nThe name on the unit is not an allocation.\n\nWhat’s the biggest unit worth, in money, not in the word you typed?",
+        "textRu": "Ты назвал юнит «investments».\n\nЭто папка.\n\nКейсы, которые собирался открыть, нож, который спрятал, дубли, на которые не хотел смотреть — одна подпись, три причины, ноль весов.\n\nИмя юнита — не аллокация.\n\nСколько стоит самый большой юнит деньгами, не словом, которое ты набрал?"
+      },
+      "notes": "Не закреплять, только текст. Имя юнита ≠ вес. Не повтор allocation by type (пост 37)."
+    },
+    {
+      "date": "2026-10-15",
+      "kind": "planned",
+      "dayNum": 54,
+      "label": "день 54",
+      "post": {
+        "n": 54,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Same skin. Two rooms.\n\nOne copy is in the backpack. One has been in a unit since you got tired of looking at it.\n\nThe position is both. The exit is only the copy you can list today.\n\nAre you marking the name, or only the copy Steam shows?",
+        "textRu": "Один скин. Две комнаты.\n\nОдна копия в рюкзаке. Другая в юните с тех пор, как тебе надоело на неё смотреть.\n\nПозиция — это обе. Выход — только копия, которую можно выставить сегодня.\n\nТы метишь имя или только копию, которую показывает Steam?",
+        "shot": "still",
+        "visual": "Портфель → предметы, сайт на EN. Одна строка, где под именем сразу две подписи: «N stacks merged» и «storage · имя юнита». Кроп имени, этих подписей и Qty. Если такой строки нет — две соседние строки одного имени: одна без storage, одна с ним. Float не снимать."
+      },
+      "notes": "Не закреплять. Один market name, рюкзак + юнит. Не стек Qty (пост 40) и не souvenir (пост 41)."
+    },
+    {
+      "date": "2026-10-16",
+      "kind": "planned",
+      "dayNum": 55,
+      "label": "день 55",
+      "post": {
+        "n": 55,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A QR sign-in is a full Steam session. Still.\n\nWhat should remain after the read is a list of items.\n\nNot a token left on the computer. Not a device that stays authorized because the tab closed early.\n\nIf the list landed and the session didn’t die, you didn’t update a portfolio. You left a login behind.\n\nIs the device gone — or still sitting in authorized devices?",
+        "textRu": "Вход по QR — это полная сессия Steam. Всё ещё.\n\nПосле чтения должен остаться список предметов.\n\nНе токен на компьютере. Не устройство, которое осталось авторизованным, потому что вкладку закрыли раньше.\n\nЕсли список дошёл, а сессия не умерла, ты не обновил портфель. Ты оставил вход.\n\nУстройство исчезло — или всё ещё лежит в авторизованных?"
+      },
+      "notes": "Не закреплять, только текст. Сессия умирает после чтения. Без имени продукта, без QR в кадре, без инструкции. Не копипаст поста 38."
+    },
+    {
+      "date": "2026-10-17",
+      "kind": "planned",
+      "dayNum": 56,
+      "label": "день 56",
+      "post": {
+        "n": 56,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Public Steam is current.\n\nThe unit is a date.\n\n“Storage 96, as of Tuesday” added to a backpack that updated this morning is not one live number.\n\nHalf the bag is today. Half is whenever you last bothered to look.\n\nWhich half are you calling the portfolio?",
+        "textRu": "Публичный Steam — это сейчас.\n\nЮнит — это дата.\n\n«Storage 96, на вторник» плюс рюкзак, который обновился сегодня утром, — не одна живая цифра.\n\nПоловина портфеля — сегодня. Половина — когда ты в последний раз удосужился посмотреть.\n\nКакую половину ты называешь портфелем?",
+        "shot": "still",
+        "visual": "Портфель → предметы, сайт на EN. Кроп строки под PORTFOLIO ITEMS, где читаются и общее число items, и «storage N (as of …)». Поиск, Export CSV и таблицу обрежь. Если счётчика storage нет — синхронизируй хранилища до кадра, не подставляй чужой профиль."
+      },
+      "notes": "Не закреплять. Дата на счётчике storage. Не шапка «updated» — она в посте 60."
+    },
+    {
+      "date": "2026-10-18",
+      "kind": "planned",
+      "dayNum": 57,
+      "label": "неделя 9 · база",
+      "post": {
+        "n": 57,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You can finally see the names that were in the unit.\n\nYou still don’t know what you paid for them.\n\nA longer list without a cost is a more complete screenshot.\n\nIt is not a P&L.\n\nWhat’s the basis on the most expensive name that was hiding?",
+        "textRu": "Ты наконец видишь имена, которые лежали в юните.\n\nТы всё ещё не знаешь, сколько за них заплатил.\n\nБолее длинный список без себестоимости — это более полный скриншот.\n\nЭто не P&L.\n\nКакая база у самого дорогого имени, которое пряталось?"
+      },
+      "notes": "Не закреплять, только текст. Видимость юнита ≠ себестоимость. Не карточка All-time P&L (пост 36)."
+    },
+    {
+      "date": "2026-10-19",
+      "kind": "planned",
+      "dayNum": 58,
+      "label": "день 58",
+      "post": {
+        "n": 58,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The total moved and you didn’t buy a thing.\n\nThe unit was already yours. It just wasn’t in the mark.\n\nThat jump is not a gain. It’s the book admitting it was short a drawer.\n\nIf the number rose when storage came in, how much of “up this month” was just the missing part?",
+        "textRu": "Тотал сдвинулся, а ты ничего не купил.\n\nЮнит и так был твоим. Его просто не было в оценке.\n\nЭтот скачок — не прибыль. Это книга, которая признала, что ей не хватало ящика.\n\nЕсли цифра выросла, когда хранилище вошло, сколько из «плюса этого месяца» было просто недостающей частью?",
+        "shot": "still",
+        "visual": "Портфель → обзор, сайт на EN, тот же Steam-портфель уже с хранилищами. Кроп только карточки Market value: цифра и строка «N of M priced». Переключатель валют не трогать — это был пост 45. График 30d не снимать — это был рил 39."
+      },
+      "notes": "Не закреплять. Скачок тотала после синка — не прибыль. Не N/A (пост 43)."
+    },
+    {
+      "date": "2026-10-20",
+      "kind": "planned",
+      "dayNum": 59,
+      "label": "день 59",
+      "post": {
+        "n": 59,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Seeing the unit does not waive the cut.\n\nThose names were always yours. The 15% still is, the day you sell them.\n\nA fuller inventory is a bigger sticker. A bigger sticker is a bigger fee when you leave.\n\nDid the missing drawer change what you could withdraw — or only what you could screenshot?",
+        "textRu": "Увидеть юнит не отменяет комиссию.\n\nЭти имена и так были твоими. 15% всё ещё твои — в день, когда ты их продашь.\n\nБолее полный инвентарь — это больший стикер. Больший стикер — это большая комиссия на выходе.\n\nНедостающий ящик изменил то, что ты мог бы вывести, — или только то, что ты мог снять на скрин?"
+      },
+      "notes": "Не закреплять, только текст. 15% на содержимом юнита. Не повтор поста 3."
+    },
+    {
+      "date": "2026-10-21",
+      "kind": "planned",
+      "dayNum": 60,
+      "label": "день 60",
+      "post": {
+        "n": 60,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Two people can open the same account and see two books.\n\nOne is the public backpack.\nThe other includes the unit.\n\nIf you still quote the first number, the second screen is a private correction you haven’t admitted.\n\nWhich total are you actually using — the one anyone can open, or the one with the unit in it?",
+        "textRu": "Два человека могут открыть один аккаунт и увидеть две книги.\n\nОдна — публичный рюкзак.\nДругая включает юнит.\n\nЕсли ты всё ещё называешь первую цифру, второй экран — это частная поправка, которую ты не признал.\n\nКакой тотал ты на самом деле используешь — тот, что может открыть кто угодно, или тот, где юнит внутри?",
+        "shot": "still",
+        "visual": "Портфель → обзор, сайт на EN, свой портфель после синка. Кроп одной строки под заголовком: «full inventory · Storage» и «updated» с датой. Шапка сайта, меню, Manage portfolio, код и QR не брать. Если этой подписи нет — кадр не подменять чужим публичным профилем."
+      },
+      "notes": "Не закреплять. Своя полная книга vs публичный рюкзак. Чужой профиль не снимать."
+    },
+    {
+      "date": "2026-10-22",
+      "kind": "planned",
+      "dayNum": 61,
+      "label": "день 61",
+      "post": {
+        "n": 61,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You synced the unit so the portfolio would be honest.\n\nThen you kept telling the old number, because the old number was the one people already believed.\n\nA private book and a public quote that don’t match is the same cope, with extra steps.\n\nWhen did you last say the total out loud — and which screen was it from?",
+        "textRu": "Ты синхронизировал юнит, чтобы портфель был честным.\n\nПотом продолжил называть старую цифру, потому что в старую уже верили.\n\nЧастная книга и публичная цитата, которые не сходятся, — тот же коуп, только с лишними шагами.\n\nКогда ты последний раз сказал тотал вслух — и с какого экрана он был?"
+      },
+      "notes": "Не закреплять, только текст. Для тех, кто уже синкнул и всё ещё цитирует публичный инвентарь."
+    },
+    {
+      "date": "2026-10-23",
+      "kind": "planned",
+      "dayNum": 62,
+      "label": "день 62",
+      "post": {
+        "n": 62,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The row says 4.\n\nTwo are in the backpack. Two are in a unit. The table added them and called it one position.\n\nQty is not a location.\nA buyer can only take the copies that aren’t in the unit.\n\nIf you sized the position off that 4, you sized a number that cannot all leave.\n\nHow many of the 4 can you list before the weekend?",
+        "textRu": "В строке 4.\n\nДве в рюкзаке. Две в юните. Таблица сложила их и назвала одной позицией.\n\nКоличество — это не место.\nПокупатель может взять только копии, которых нет в юните.\n\nЕсли ты оценил размер позиции по этой четвёрке, ты оценил цифру, которая не может уйти целиком.\n\nСколько из четырёх ты можешь выставить до выходных?"
+      },
+      "notes": "Не закреплять, только текст. Qty смешивает рюкзак и юнит. Не кадр поста 54 и не стек поста 40."
+    },
+    {
+      "date": "2026-10-24",
+      "kind": "planned",
+      "dayNum": 63,
+      "label": "день 63",
+      "post": {
+        "n": 63,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You built the book so you would stop guessing.\n\nThe unit is in it now.\nThe basis on those names might still be a blank.\nThe sellable line might still be half the sticker.\n\nA fuller screenshot is not the same as knowing the position.\n\nWhat’s the one number on that screen you still don’t trust?",
+        "textRu": "Ты собрал книгу, чтобы перестать гадать.\n\nЮнит теперь в ней.\nБаза по этим именам всё ещё может быть пустой.\nСтрока доступного к продаже всё ещё может быть половиной стикера.\n\nБолее полный скриншот — не то же самое, что знать позицию.\n\nКакой одной цифре на этом экране ты всё ещё не веришь?"
+      },
+      "notes": "Не закреплять, только текст. Закрытие двух недель: синк не заменяет базу и sellable."
     }
   ],
   "weekTopReplies": [

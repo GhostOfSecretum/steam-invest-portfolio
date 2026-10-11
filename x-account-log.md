@@ -47,14 +47,15 @@ https://x.com/SkinsheadPro
 - Реплаи: 8–10 в инвест-блок, 2–3 магазины на всех вместе, 2–4 тем кто отвечает / киты; витрины и 94% — ноль. xMercy_CS с 21 авг не CS — не отвечать, снять.
 - Магазины (lis-skins, tradeit, cs.money, skinsmonkey): только цена / объём / просадка. Текст про fill, не 🤩. GreenFire — не buy-посты
 - Киты: вотчлист на сайте живой. В реплаях уже (activity ≠ your basis). В свои посты — наблюдение с фида, не changelog /investors, не чаще раза в неделю
-- **С 1 окт:** реплаи можно снизить до 10–15. Пост тот же, 19:30. Десктоп / QR / скачать — не писать до релиза. Storage только тезисом.
+- **С 1 окт:** реплаи можно снизить до 10–15. Пост тот же, 19:30. Десктоп / QR / скачать — не писать до релиза.
+- **С 11 окт:** Storage можно кадром с сайта — строка `storage`, счётчик «storage N (as of …)», карточка SELLABLE NOW, подпись `full inventory · Storage`. Попап расширения, код, QR, скачивание и десктоп не снимать и не анонсировать. Ссылку в пост не ставить.
 - Float предмета не пишем и не снимаем. На сайте его нет, и отдельный разбор флоата не делаем: для этого есть CSFloat. Бирка износа (FN/MW) — это имя скина, не пост про float.
 - Не ядро: чистые баеры «always buying 94%» и кейс-сайты. Список на столе в блоке «Реплаи»
 - Добрать ядро (подписать и отвечать): CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs, fengyuanshi1, theSinedinCS, V1rdus, de_copium. Смотреть: CS2Status, SteamDB, skinledger, skinpock, SkinSpecter — не реплаить как коллеге.
 
-X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. Киты уже в ленте. С 20 сен — второй слой клина: два марка (Steam vs market), sellable now, капитал в стикерах, кэш как позиция. Storage / десктоп — после релиза, в постах только тезис. Коллекции — фон. 3D Glock не пишем.
+X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. Киты уже в ленте. С 20 сен — второй слой клина: два марка (Steam vs market), sellable now, капитал в стикерах, кэш как позиция. С 11 окт Storage — результат синка на сайте, не анонс расширения. Десктоп не пишем. Коллекции — фон. 3D Glock не пишем.
 
-Этот ритм — пост каждый день до 10 окт. С 1 окт реплаи можно снизить до 10–15.
+Этот ритм — пост каждый день. План продлён до 24 окт. С 1 окт реплаи 10–15.
 
 ---
 
@@ -911,6 +912,254 @@ Research is watching.
 A position is a number you own.
 
 Did you trade, or did you just refresh the watchlist?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 11 окт 2026 (вс) — неделя 8 · юнит
+- 10–15 реплаев
+- 19:30 пост 50 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN, свой Steam-портфель после синка хранилищ. Кроп одной строки, где под именем читается бирюзовая подпись storage · имя юнита. Рядом можно оставить Qty и Value. Manage portfolio, код, QR, кнопку установки и шапку браузера не снимать. Float не снимать.
+
+```
+The row was never on your public profile.
+
+It was in a unit, under a name you typed, outside the screenshot everyone else can open.
+
+A backpack total is the part Steam agrees to show.
+
+What’s still sitting in a unit that isn’t in the number you quote?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 12 окт 2026 (пн) — день 51
+- 10–15 реплаев
+- 19:30 пост 51 (не закреплять, только текст, без картинки):
+
+```
+The backpack updates when Steam does.
+
+The unit updates when you last opened it.
+
+“As of Tuesday” next to a live total is two clocks on one bag.
+
+If you moved something after that date, the portfolio is describing a drawer you already changed.
+
+When did you last read the unit — not the backpack?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 13 окт 2026 (вт) — день 52
+- 10–15 реплаев
+- 19:30 пост 52 (не закреплять, текст + кадр):
+- Кадр. Портфель → обзор, сайт на EN, Steam-портфель с хранилищами. Кроп только карточки SELLABLE NOW: сумма, строка «N of M marketable» и подпись «N locked or in storage». Соседние карточки, CASH и весь ряд не брать.
+
+```
+The sticker got bigger when the unit came in.
+
+The amount you can actually list did not.
+
+Locked, or sitting in storage, still cannot leave this week.
+
+A higher total with the same sellable number is not a better position.
+
+How much of the new total is still stuck?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 14 окт 2026 (ср) — день 53
+- 10–15 реплаев
+- 19:30 пост 53 (не закреплять, только текст, без картинки):
+
+```
+You named the unit “investments”.
+
+That’s a folder.
+
+Cases you meant to open, a knife you hid, duplicates you didn’t want to see — one label, three reasons, zero weights.
+
+The name on the unit is not an allocation.
+
+What’s the biggest unit worth, in money, not in the word you typed?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 15 окт 2026 (чт) — день 54
+- 10–15 реплаев
+- 19:30 пост 54 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN. Одна строка, где под именем сразу две подписи: «N stacks merged» и «storage · имя юнита». Кроп имени, этих подписей и Qty. Если такой строки нет — две соседние строки одного имени: одна без storage, одна с ним. Float не снимать.
+
+```
+Same skin. Two rooms.
+
+One copy is in the backpack. One has been in a unit since you got tired of looking at it.
+
+The position is both. The exit is only the copy you can list today.
+
+Are you marking the name, or only the copy Steam shows?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 16 окт 2026 (пт) — день 55
+- 10–15 реплаев
+- 19:30 пост 55 (не закреплять, только текст, без картинки):
+
+```
+A QR sign-in is a full Steam session. Still.
+
+What should remain after the read is a list of items.
+
+Not a token left on the computer. Not a device that stays authorized because the tab closed early.
+
+If the list landed and the session didn’t die, you didn’t update a portfolio. You left a login behind.
+
+Is the device gone — or still sitting in authorized devices?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 17 окт 2026 (сб) — день 56
+- 10–15 реплаев
+- 19:30 пост 56 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN. Кроп строки под PORTFOLIO ITEMS, где читаются и общее число items, и «storage N (as of …)». Поиск, Export CSV и таблицу обрежь. Если счётчика storage нет — синхронизируй хранилища до кадра, не подставляй чужой профиль.
+
+```
+Public Steam is current.
+
+The unit is a date.
+
+“Storage 96, as of Tuesday” added to a backpack that updated this morning is not one live number.
+
+Half the bag is today. Half is whenever you last bothered to look.
+
+Which half are you calling the portfolio?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 18 окт 2026 (вс) — неделя 9 · база
+- 10–15 реплаев
+- 19:30 пост 57 (не закреплять, только текст, без картинки):
+
+```
+You can finally see the names that were in the unit.
+
+You still don’t know what you paid for them.
+
+A longer list without a cost is a more complete screenshot.
+
+It is not a P&L.
+
+What’s the basis on the most expensive name that was hiding?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 19 окт 2026 (пн) — день 58
+- 10–15 реплаев
+- 19:30 пост 58 (не закреплять, текст + кадр):
+- Кадр. Портфель → обзор, сайт на EN, тот же Steam-портфель уже с хранилищами. Кроп только карточки Market value: цифра и строка «N of M priced». Переключатель валют не трогать — это был пост 45. График 30d не снимать — это был рил 39.
+
+```
+The total moved and you didn’t buy a thing.
+
+The unit was already yours. It just wasn’t in the mark.
+
+That jump is not a gain. It’s the book admitting it was short a drawer.
+
+If the number rose when storage came in, how much of “up this month” was just the missing part?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 20 окт 2026 (вт) — день 59
+- 10–15 реплаев
+- 19:30 пост 59 (не закреплять, только текст, без картинки):
+
+```
+Seeing the unit does not waive the cut.
+
+Those names were always yours. The 15% still is, the day you sell them.
+
+A fuller inventory is a bigger sticker. A bigger sticker is a bigger fee when you leave.
+
+Did the missing drawer change what you could withdraw — or only what you could screenshot?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 21 окт 2026 (ср) — день 60
+- 10–15 реплаев
+- 19:30 пост 60 (не закреплять, текст + кадр):
+- Кадр. Портфель → обзор, сайт на EN, свой портфель после синка. Кроп одной строки под заголовком: «full inventory · Storage» и «updated» с датой. Шапка сайта, меню, Manage portfolio, код и QR не брать. Если этой подписи нет — кадр не подменять чужим публичным профилем.
+
+```
+Two people can open the same account and see two books.
+
+One is the public backpack.
+The other includes the unit.
+
+If you still quote the first number, the second screen is a private correction you haven’t admitted.
+
+Which total are you actually using — the one anyone can open, or the one with the unit in it?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 22 окт 2026 (чт) — день 61
+- 10–15 реплаев
+- 19:30 пост 61 (не закреплять, только текст, без картинки):
+
+```
+You synced the unit so the portfolio would be honest.
+
+Then you kept telling the old number, because the old number was the one people already believed.
+
+A private book and a public quote that don’t match is the same cope, with extra steps.
+
+When did you last say the total out loud — and which screen was it from?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 23 окт 2026 (пт) — день 62
+- 10–15 реплаев
+- 19:30 пост 62 (не закреплять, только текст, без картинки):
+
+```
+The row says 4.
+
+Two are in the backpack. Two are in a unit. The table added them and called it one position.
+
+Qty is not a location.
+A buyer can only take the copies that aren’t in the unit.
+
+If you sized the position off that 4, you sized a number that cannot all leave.
+
+How many of the 4 can you list before the weekend?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 24 окт 2026 (сб) — день 63
+- 10–15 реплаев
+- 19:30 пост 63 (не закреплять, только текст, без картинки):
+
+```
+You built the book so you would stop guessing.
+
+The unit is in it now.
+The basis on those names might still be a blank.
+The sellable line might still be half the sticker.
+
+A fuller screenshot is not the same as knowing the position.
+
+What’s the one number on that screen you still don’t trust?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
