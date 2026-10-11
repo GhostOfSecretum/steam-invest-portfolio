@@ -508,7 +508,7 @@
         window.scrollTo({ top: 0, behavior: 'instant' });
       };
       const onNav = (s) => {
-        if (s === 'pricing' || s === 'news' || s === 'extension') {
+        if (s === 'news' || s === 'extension') {
           setPublicProfileUrl('');
           setPendingSection(s);
           setScreen('home');
@@ -588,7 +588,6 @@
               <HowItWorks lang={t.lang} />
               <StatsBand />
               <Ticker onItemClick={goItem} />
-              <Pricing lang={t.lang} auth={auth} onInvestors={() => onNav('investors')} />
               <ExtensionInstall lang={t.lang} />
               {/* Portfolio leaders temporarily hidden — keep TopMovers in code to restore later */}
               {false && <TopMovers onItemClick={goItem} auth={auth} />}
@@ -601,7 +600,7 @@
             </>
           )}
           {screen === 'dashboard' && (
-            <Dashboard lang={t.lang} onItemClick={goItem} onCollectionClick={goCollection} auth={auth} publicProfileUrl={publicProfileUrl} onPublicProfile={openPublicProfile} onPricing={() => onNav('pricing')} />
+            <Dashboard lang={t.lang} onItemClick={goItem} onCollectionClick={goCollection} auth={auth} publicProfileUrl={publicProfileUrl} onPublicProfile={openPublicProfile} />
           )}
           {screen === 'market' && (
             <>

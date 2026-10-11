@@ -102,7 +102,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
   const copy = lang === 'ru'
     ? {
       title: 'Топ-аккаунты инвесторов',
-      sub: 'Подборка Steam-портфелей, которые можно смотреть без оплаты — вместе с лентой изменений.',
+      sub: 'Подборка Steam-портфелей и лента их изменений.',
       empty: 'Список пока пуст — аккаунты появятся здесь, когда мы добавим подборку.',
       open: 'Открыть портфель',
       coming: 'Скоро',
@@ -119,7 +119,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
     }
     : {
       title: 'Top investor accounts',
-      sub: 'A curated set of Steam portfolios you can follow for free — including the activity feed.',
+      sub: 'A curated set of Steam portfolios, including the activity feed.',
       empty: 'The list is empty for now — accounts will appear here once the curated set is added.',
       open: 'Open portfolio',
       coming: 'Coming soon',

@@ -64,7 +64,7 @@ function useAuth() {
     planId: state.subscription?.planId || 'free',
     entitlements: state.subscription?.entitlements || {
       itemDisplayLimit: null,
-      desktopDownload: false,
+      desktopDownload: true,
       topInvestors: true,
     },
     login: () => {

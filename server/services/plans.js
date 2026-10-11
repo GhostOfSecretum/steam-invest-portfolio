@@ -41,6 +41,7 @@ const PLANS = [
   },
   {
     id: 'short',
+    hidden: true,
     name: { en: '3 days', ru: '3 дня' },
     amountRub: 100,
     amountUsd: 2.99,
@@ -73,6 +74,7 @@ const PLANS = [
   },
   {
     id: 'plus',
+    hidden: true,
     name: { en: 'Plus', ru: 'Plus' },
     amountRub: 299,
     amountUsd: 7.99,
@@ -104,6 +106,7 @@ const PLANS = [
   },
   {
     id: 'investor',
+    hidden: true,
     name: { en: 'Investor', ru: 'Investor' },
     amountRub: 499,
     amountUsd: 5,

@@ -4,7 +4,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 /* ─────────── i18n ─────────── */
 const I18N = {
   en: {
-    nav: { home: 'Home', dashboard: 'Portfolio', market: 'Market', collections: 'Collections', favorites: 'Favorite profiles', investors: 'Top investors', pricing: 'Pricing', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item', currency: 'Currency' },
+    nav: { home: 'Home', dashboard: 'Portfolio', market: 'Market', collections: 'Collections', favorites: 'Favorite profiles', investors: 'Top investors', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item', currency: 'Currency' },
     hero: {
       eyebrow: 'SkinsHead · CS2 skin portfolio tracker',
       title1: 'Know the value of',
@@ -36,8 +36,8 @@ const I18N = {
       armory: 'Armory Pass ROI',
       armorySub: 'Rank Armory rewards by star ROI on live Steam prices. See expected value, profit, and days left on the pass.',
       stats: 'What you get',
-      pricing: 'Plans & prices',
-      pricingSub: 'Website is free. Plus is $7.99/mo or $72/year — 7 days on first Steam login. Pay with card or crypto.',
+      pricing: 'What you get',
+      pricingSub: 'The whole site is open: portfolio, market, Storage Units, Armory and top investor accounts.',
       faq: 'FAQ',
     },
     marketBoard: {
@@ -124,7 +124,7 @@ const I18N = {
     }
   },
   ru: {
-    nav: { home: 'Главная', dashboard: 'Портфель', market: 'Маркет', collections: 'Коллекции', favorites: 'Избранные профили', investors: 'Топ инвесторы', pricing: 'Тарифы', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
+    nav: { home: 'Главная', dashboard: 'Портфель', market: 'Маркет', collections: 'Коллекции', favorites: 'Избранные профили', investors: 'Топ инвесторы', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
     hero: {
       eyebrow: 'SkinsHead · портфель скинов CS2',
       title1: 'Узнай стоимость',
@@ -156,8 +156,8 @@ const I18N = {
       armory: 'ROI Armory Pass',
       armorySub: 'Рейтинг наград Armory по ROI звёзд на live-ценах Steam. Смотри ожидаемую стоимость, профит и сколько дней осталось у пасса.',
       stats: 'Что внутри',
-      pricing: 'Тарифы и цены',
-      pricingSub: 'Сайт бесплатный, Хранилища — тоже, через расширение для браузера. Во время беты Plus — бесплатно за Telegram; Investor — 7 дней тоже за канал. Оплата картой или криптой.',
+      pricing: 'Что внутри',
+      pricingSub: 'Весь сайт открыт: портфель, маркет, хранилища, Armory и топ-аккаунты инвесторов.',
       faq: 'Частые вопросы',
     },
     marketBoard: {
@@ -241,7 +241,7 @@ const I18N = {
     }
   },
   zh: {
-    nav: { home: '首页', dashboard: '库存', market: '市场', collections: '收藏', favorites: '收藏的个人资料', investors: '顶尖投资者', pricing: '套餐', news: '新闻', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '货币' },
+    nav: { home: '首页', dashboard: '库存', market: '市场', collections: '收藏', favorites: '收藏的个人资料', investors: '顶尖投资者', news: '新闻', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '货币' },
     hero: {
       eyebrow: 'SkinsHead · CS2 皮肤库存追踪',
       title1: '了解你的',
@@ -273,8 +273,8 @@ const I18N = {
       armory: 'Armory Pass ROI',
       armorySub: '按 Steam 实时价格对 Armory 奖励做星级 ROI 排名。查看期望价值、利润和通行证剩余天数。',
       stats: '你将获得',
-      pricing: '套餐与价格',
-      pricingSub: '网站免费。Plus 为 $7.99/月或 $72/年，首次 Steam 登录赠送 7 天。支持卡片或加密货币支付。',
+      pricing: '包含内容',
+      pricingSub: '网站全部功能开放：库存、市场、仓库、Armory 和顶尖投资者账户。',
       faq: '常见问题',
     },
     marketBoard: {
@@ -361,7 +361,7 @@ const I18N = {
     }
   },
   'zh-TW': {
-    nav: { home: '首頁', dashboard: '庫存', market: '市場', collections: '收藏', favorites: '收藏的個人資料', investors: '頂尖投資者', pricing: '方案', news: '新聞', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '貨幣' },
+    nav: { home: '首頁', dashboard: '庫存', market: '市場', collections: '收藏', favorites: '收藏的個人資料', investors: '頂尖投資者', news: '新聞', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '貨幣' },
     hero: {
       eyebrow: 'SkinsHead · CS2 皮膚庫存追蹤',
       title1: '了解你的',
@@ -393,8 +393,8 @@ const I18N = {
       armory: 'Armory Pass ROI',
       armorySub: '依 Steam 即時價格對 Armory 獎勵做星級 ROI 排名。查看期望價值、利潤和通行證剩餘天數。',
       stats: '你將獲得',
-      pricing: '方案與價格',
-      pricingSub: '網站免費。Plus 為 $7.99/月或 $72/年，首次 Steam 登入贈送 7 天。支援卡片或加密貨幣付款。',
+      pricing: '包含內容',
+      pricingSub: '網站全部功能開放：庫存、市場、倉庫、Armory 和頂尖投資者帳戶。',
       faq: '常見問題',
     },
     marketBoard: {
@@ -672,12 +672,6 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
       items: [
         { k: 'favorites', label: t.nav.favorites, icon: '♡', desc: tt(lang, { en: 'Saved profiles', ru: 'Сохранённые профили', zh: '已保存的资料', 'zh-TW': '已儲存的資料' }) },
         { k: 'investors', label: t.nav.investors, icon: '↗', desc: tt(lang, { en: 'Investor portfolios', ru: 'Портфели инвесторов', zh: '投资者库存', 'zh-TW': '投資者庫存' }) },
-      ],
-    },
-    {
-      label: tt(lang, { en: 'Service', ru: 'Сервис', zh: '服务', 'zh-TW': '服務' }),
-      items: [
-        { k: 'pricing', label: t.nav.pricing, icon: '◎', desc: tt(lang, { en: 'Compare plan features', ru: 'Возможности тарифов', zh: '对比套餐功能', 'zh-TW': '比較方案功能' }) },
       ],
     },
   ];

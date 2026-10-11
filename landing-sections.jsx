@@ -1,4 +1,4 @@
-/* global React, useT, usePlans, apiFetch, unlockBetaViaTelegram, startInvestorTrial, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo, Sparkline, withSteamImageSize, CURRENCIES, getCnyPerUsdRate, getActiveCurrency */
+/* global React, useT, apiFetch, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo, Sparkline, withSteamImageSize, CURRENCIES, getCnyPerUsdRate, getActiveCurrency */
 const { useState, useEffect, useRef, useMemo } = React;
 
 /* ───────────────────────────────────────────────────
@@ -1264,525 +1264,8 @@ function ExtensionInstall({ lang }) {
   );
 }
 
-function Pricing({ lang, auth, onInvestors }) {
-  const t = useT(lang);
-  const plansState = usePlans(lang);
-  const isRu = lang === 'ru';
-  const currentPlanId = auth?.planId || plansState.current?.planId || 'free';
-  const subscription = auth?.subscription || plansState.current || null;
-  const beta = plansState.beta || auth?.beta || null;
-  const betaMode = Boolean(beta?.beta);
-  const billingReady = Boolean(plansState.billingReady);
-  const [billingCycle, setBillingCycle] = useState('monthly');
-  const [checkoutBusy, setCheckoutBusy] = useState(null);
-  const [checkoutError, setCheckoutError] = useState(null);
-  const [unlockBusy, setUnlockBusy] = useState(false);
-  const [trialBusy, setTrialBusy] = useState(false);
-  const telegramWidgetRef = useRef(null);
-  const trialTelegramWidgetRef = useRef(null);
-  const channelUrl = beta?.channelUrl || 'https://t.me/cs2skinshead';
-  const channelUsername = beta?.channelUsername || 'cs2skinshead';
-  const botUsername = beta?.botUsername || null;
-  const unlockReady = Boolean(beta?.unlockReady && botUsername);
-  const channelUnlockReady = Boolean((beta?.channelUnlockReady || unlockReady) && botUsername);
-  const hasPlusAccess = currentPlanId === 'investor' || currentPlanId === 'plus';
-  const trialEligible = Boolean(
-    subscription?.investorTrialEligible
-    || (!auth?.connected && !subscription?.investorTrialUsed),
-  );
-  const onTrial = currentPlanId === 'investor' && String(subscription?.source || '').startsWith('investor_trial');
-  const onWelcomeTrial = Boolean(subscription?.welcomePlusTrialActive);
-  const copy = lang === 'ru'
-    ? {
-      ctaSoon: 'Оплата подключается',
-      ctaPay: 'Оплатить',
-      ctaLogin: 'Войти через Steam',
-      ctaBusy: 'Переход к оплате…',
-      current: 'Текущий план',
-      included: 'Входит',
-      notIncluded: 'Не входит',
-      investors: 'Открыть топ-инвесторов',
-      fullPrice: 'Открыть страницу тарифов',
-      monthly: '30 дней',
-      annual: 'Год',
-      annualBadge: '-17%',
-      perYear: '₽ / год',
-      perMonth: '₽ / мес',
-      annualNote: (monthly, saved) => `≈ ${monthly} · экономия ${saved}`,
-      trialBadge: '7 дней за подписку',
-      trialCta: 'Попробовать 7 дней бесплатно',
-      trialBusy: 'Проверяю подписку…',
-      trialLogin: 'Войти и попробовать бесплатно',
-      trialActive: 'Пробный период активен',
-      trialUsed: 'Пробный период уже использован',
-      trialJoin: 'Подписаться на канал',
-      trialUnlockHint: `Подпишитесь на @${channelUsername} и подтвердите через Telegram`,
-      betaEyebrow: 'Beta · Plus за подписку',
-      betaText: `Во время беты Plus открывается бесплатно за подписку на канал @${channelUsername}. Investor — тоже 7 дней бесплатно за подписку на канал, далее оплачивается отдельно.`,
-      betaJoin: 'Открыть канал',
-      betaLoginSteam: 'Войти через Steam',
-      betaUnlockHint: 'Затем подтвердите вход через Telegram ниже',
-      betaUnlockBusy: 'Проверяю подписку…',
-      betaActive: 'Plus открыт',
-      betaRenew: 'Продлить через Telegram',
-      betaNotReady: 'Telegram-бот ещё настраивается',
-      betaCta: 'Получить Plus',
-      cryptoNote: 'Оплата картой или криптой через Platega — из любой страны.',
-      welcomeBadge: '7 дней после входа в Steam',
-      welcomeActive: 'Пробный Plus активен',
-    }
-    : {
-      ctaSoon: 'Checkout coming soon',
-      ctaPay: 'Pay with card or crypto',
-      ctaLogin: 'Sign in with Steam',
-      ctaBusy: 'Redirecting…',
-      current: 'Current plan',
-      included: 'Included',
-      notIncluded: 'Not included',
-      investors: 'Open top investors',
-      fullPrice: 'Open full pricing page',
-      monthly: '30 days',
-      annual: 'Annual',
-      annualBadge: '-25%',
-      perYear: '/ year',
-      perMonth: '/ mo',
-      annualNote: (monthly, saved) => `${monthly} billed annually · save ${saved}`,
-      trialBadge: '7 days via channel',
-      trialCta: 'Try 7 days free',
-      trialBusy: 'Checking subscription…',
-      trialLogin: 'Sign in to try free',
-      trialActive: 'Free trial active',
-      trialUsed: 'Free trial already used',
-      trialJoin: 'Join the channel',
-      trialUnlockHint: `Subscribe to @${channelUsername} and confirm with Telegram`,
-      betaEyebrow: 'Plus trial · no Telegram',
-      betaText: 'Sign in with Steam and Plus starts free for 7 days. Then pay with card or crypto via Platega — works from any country.',
-      betaJoin: 'Open channel',
-      betaLoginSteam: 'Sign in with Steam',
-      betaUnlockHint: 'Then confirm with Telegram login below',
-      betaUnlockBusy: 'Checking subscription…',
-      betaActive: 'Plus unlocked',
-      betaRenew: 'Renew via Telegram',
-      betaNotReady: 'Telegram bot is still being configured',
-      betaCta: 'Unlock Plus',
-      cryptoNote: 'Pay with card or crypto on Platega — works from any country. International checkout is converted to RUB at the live rate.',
-      welcomeBadge: '7 days on first Steam login',
-      welcomeActive: '7-day Plus trial active',
-    };
-
-  const finishBetaUnlock = async (telegramUser) => {
-    setCheckoutError(null);
-    setUnlockBusy(true);
-    try {
-      await unlockBetaViaTelegram(telegramUser);
-      if (auth?.refresh) await auth.refresh();
-      if (plansState.reload) await plansState.reload();
-    } catch (error) {
-      const fallback = lang === 'ru'
-        ? 'Не удалось проверить подписку. Подпишитесь на канал и попробуйте снова.'
-        : 'Could not verify the subscription. Join the channel and try again.';
-      setCheckoutError(error.message || fallback);
-    } finally {
-      setUnlockBusy(false);
-    }
-  };
-
-  const claimInvestorTrial = async (telegramUser) => {
-    setCheckoutError(null);
-    if (!auth?.connected) {
-      auth.login();
-      return;
-    }
-    if (channelUnlockReady && !telegramUser) {
-      // Telegram widget handles confirmation when channel unlock is configured.
-      return;
-    }
-    setTrialBusy(true);
-    try {
-      await startInvestorTrial(telegramUser || {});
-      if (auth?.refresh) await auth.refresh();
-      if (plansState.reload) await plansState.reload();
-    } catch (error) {
-      const fallback = lang === 'ru'
-        ? 'Не удалось активировать пробный период. Подпишитесь на канал и попробуйте снова.'
-        : 'Could not start the free trial. Join the channel and try again.';
-      setCheckoutError(error.message || fallback);
-    } finally {
-      setTrialBusy(false);
-    }
-  };
-
-  const mountTelegramWidget = (host, callbackName, onAuth) => {
-    if (!host || !botUsername) return () => {};
-    host.innerHTML = '';
-    window[callbackName] = (user) => { onAuth(user); };
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.setAttribute('data-telegram-login', botUsername);
-    script.setAttribute('data-size', 'medium');
-    script.setAttribute('data-radius', '8');
-    script.setAttribute('data-request-access', 'write');
-    script.setAttribute('data-onauth', `${callbackName}(user)`);
-    host.appendChild(script);
-    return () => {
-      if (window[callbackName]) delete window[callbackName];
-      host.innerHTML = '';
-    };
-  };
-
-  useEffect(() => {
-    if (!isRu || !betaMode || !auth?.connected || !unlockReady || !telegramWidgetRef.current) return undefined;
-    return mountTelegramWidget(telegramWidgetRef.current, 'onSkinsHeadTelegramAuth', finishBetaUnlock);
-  }, [isRu, betaMode, auth?.connected, unlockReady, botUsername, lang]);
-
-  useEffect(() => {
-    if (!isRu || !channelUnlockReady || !auth?.connected || !trialEligible || onTrial || !trialTelegramWidgetRef.current) {
-      return undefined;
-    }
-    return mountTelegramWidget(trialTelegramWidgetRef.current, 'onSkinsHeadTelegramTrialAuth', claimInvestorTrial);
-  }, [isRu, channelUnlockReady, auth?.connected, trialEligible, onTrial, botUsername, lang]);
-
-  const startCheckout = async (planId) => {
-    setCheckoutError(null);
-    if (!billingReady || planId === 'free') return;
-    if (betaMode && planId === 'plus' && isRu) return;
-    if (!auth?.connected) {
-      auth.login();
-      return;
-    }
-    const plan = plansState.plans.find((item) => item.id === planId);
-    const cycle = hasAnnualCycle(plan) ? billingCycle : 'monthly';
-    setCheckoutBusy(planId);
-    try {
-      const data = await apiFetch('/api/billing/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, cycle, locale: lang }),
-      });
-      if (!data?.redirectUrl) throw new Error(lang === 'ru' ? 'Платёжная ссылка не получена.' : 'Payment link missing.');
-      window.location.href = data.redirectUrl;
-    } catch (error) {
-      setCheckoutError(error.message || (lang === 'ru' ? 'Не удалось начать оплату.' : 'Checkout failed.'));
-      setCheckoutBusy(null);
-    }
-  };
-
-  const formatRub = (value) => Math.round(value).toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US');
-  const formatUsdPrice = (value) => {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return '$0';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
-  };
-  const getAnnualRub = (plan) => (
-    Number.isFinite(plan.annualAmountRub) ? plan.annualAmountRub : (Number(plan.amountRub) || 0) * 10
-  );
-  const getAnnualUsd = (plan) => (
-    Number.isFinite(plan.annualAmountUsd) ? plan.annualAmountUsd : (Number(plan.amountUsd) || 0) * 10
-  );
-  const hasAnnualCycle = (plan) => (
-    isRu ? Number(plan?.annualAmountRub) > 0 : Number(plan?.annualAmountUsd) > 0
-  );
-  const getDisplayPrice = (plan) => {
-    if (isRu) {
-      if (plan.id === 'free' || !hasAnnualCycle(plan) || billingCycle === 'monthly') {
-        return plan.price?.ru || plan.price?.en;
-      }
-      return `${formatRub(getAnnualRub(plan))} ${copy.perYear}`;
-    }
-    if (plan.id === 'free' || !hasAnnualCycle(plan) || billingCycle === 'monthly') {
-      return plan.price?.en || formatUsdPrice(plan.amountUsd);
-    }
-    return `${formatUsdPrice(getAnnualUsd(plan))} ${copy.perYear}`;
-  };
-  const getDisplayPriceNote = (plan) => {
-    if (plan.id === 'free' || !hasAnnualCycle(plan) || billingCycle !== 'annual') {
-      return plan.priceNote?.[isRu ? 'ru' : 'en'] || plan.priceNote?.en;
-    }
-    if (isRu) {
-      const monthlyRub = Number(plan.amountRub) || 0;
-      const annualRub = getAnnualRub(plan);
-      const monthlyEquivalent = annualRub / 12;
-      const savedRub = Math.max(0, monthlyRub * 12 - annualRub);
-      return copy.annualNote(
-        `${formatRub(monthlyEquivalent)} ${copy.perMonth}`,
-        `${formatRub(savedRub)} ₽`,
-      );
-    }
-    const monthlyUsd = Number(plan.amountUsd) || 0;
-    const annualUsd = getAnnualUsd(plan);
-    const monthlyEquivalent = annualUsd / 12;
-    const savedUsd = Math.max(0, monthlyUsd * 12 - annualUsd);
-    return copy.annualNote(
-      formatUsdPrice(monthlyEquivalent),
-      formatUsdPrice(savedUsd),
-    );
-  };
-
-  return (
-    <section className="section" id="pricing">
-      <div className="container">
-        <div className="pricing-heading">
-          <SectionHeader title={t.sections.pricing} sub={t.sections.pricingSub} num="01" />
-          <div className="pricing-billing" aria-label={lang === 'ru' ? 'Период оплаты' : 'Billing period'}>
-            {[
-              { key: 'monthly', label: copy.monthly },
-              { key: 'annual', label: copy.annual },
-            ].map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className="pricing-billing-option"
-                data-active={billingCycle === item.key}
-                onClick={() => setBillingCycle(item.key)}
-              >
-                {item.label}
-                {item.key === 'annual' && <span>{copy.annualBadge}</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-        {isRu && betaMode && (
-          <div className="glass pricing-beta-banner">
-            <div style={{ minWidth: 0 }}>
-              <div className="eyebrow" style={{ color: 'var(--accent)' }}>{copy.betaEyebrow}</div>
-              <p>{copy.betaText}</p>
-              {auth?.connected && unlockReady && (
-                <div style={{ marginTop: 8, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                  {unlockBusy ? copy.betaUnlockBusy : copy.betaUnlockHint}
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'grid', gap: 8, justifyItems: 'start' }}>
-              <a className="btn btn-ghost btn-sm" href={channelUrl} target="_blank" rel="noopener noreferrer">
-                {copy.betaJoin}
-              </a>
-              {!auth?.connected ? (
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => auth?.login && auth.login()}>
-                  {copy.betaLoginSteam}
-                </button>
-              ) : unlockReady ? (
-                <div className="pricing-telegram-widget" ref={telegramWidgetRef} />
-              ) : (
-                <button type="button" className="btn btn-ghost btn-sm" disabled>
-                  {copy.betaNotReady}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-        {!isRu && (
-          <div className="glass pricing-beta-banner">
-            <div style={{ minWidth: 0 }}>
-              <div className="eyebrow" style={{ color: 'var(--accent)' }}>{copy.betaEyebrow}</div>
-              <p>{copy.betaText}</p>
-            </div>
-            <div style={{ display: 'grid', gap: 8, justifyItems: 'start' }}>
-              {!auth?.connected ? (
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => auth?.login && auth.login()}>
-                  {copy.betaLoginSteam}
-                </button>
-              ) : onWelcomeTrial || hasPlusAccess ? (
-                <button type="button" className="btn btn-ghost btn-sm" disabled>
-                  {onWelcomeTrial ? copy.welcomeActive : copy.betaActive}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        )}
-        {plansState.loading && !plansState.plans.length ? (
-          <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>...</div>
-        ) : (
-          <div className="pricing-grid">
-            {plansState.plans.map((plan) => {
-              const isCurrent = plan.id === currentPlanId;
-              const highlighted = isRu ? plan.highlight : plan.id === 'plus';
-              const name = plan.name?.[lang] || plan.name?.en || plan.id;
-              const price = getDisplayPrice(plan);
-              const priceNote = getDisplayPriceNote(plan);
-              const bullets = plan.bullets?.[isRu ? 'ru' : 'en'] || plan.bullets?.en || [];
-              const missing = plan.missing?.[isRu ? 'ru' : 'en'] || plan.missing?.en || [];
-              return (
-                <article
-                  key={plan.id}
-                  className={`pricing-card pricing-card-${plan.id} ${highlighted ? 'glass-strong' : 'glass'}`}
-                  style={{
-                    padding: 28,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 16,
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {plan.id !== 'free' && (
-                    <div style={{
-                      position: 'absolute',
-                      inset: 'auto -20% -70% 30%',
-                      height: 180,
-                      background: 'radial-gradient(circle, var(--plan-glow), transparent 70%)',
-                      pointerEvents: 'none',
-                    }} />
-                  )}
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-                      <div className="eyebrow pricing-plan-name">{name}</div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {plan.id === 'plus' && !isRu && !isCurrent && (
-                          <span className="chip chip-accent">{copy.welcomeBadge}</span>
-                        )}
-                        {plan.id === 'investor' && !onTrial && (trialEligible || !auth?.connected) && (
-                          <span className="chip chip-accent">{copy.trialBadge}</span>
-                        )}
-                        {isCurrent && (
-                          <span className="chip chip-accent">
-                            {onWelcomeTrial ? copy.welcomeActive : (onTrial ? copy.trialActive : copy.current)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="display" style={{ marginTop: 10, fontSize: 34, fontWeight: 500 }}>{price}</div>
-                    <div style={{ marginTop: 6, fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>{priceNote}</div>
-                  </div>
-                  <ul style={{ listStyle: 'none', display: 'grid', gap: 8, margin: 0, padding: 0, position: 'relative' }}>
-                    {bullets.map((bullet) => (
-                      <li key={bullet} style={{ fontSize: 13.5, color: 'var(--fg-1)', lineHeight: 1.45 }}>
-                        <span style={{ color: 'var(--green)', marginRight: 8 }}>+</span>{bullet}
-                      </li>
-                    ))}
-                    {missing.map((bullet) => (
-                      <li key={bullet} style={{ fontSize: 13, color: 'var(--fg-3)', lineHeight: 1.45 }}>
-                        <span style={{ marginRight: 8 }}>–</span>{bullet}
-                      </li>
-                    ))}
-                  </ul>
-                  <div style={{ marginTop: 'auto', position: 'relative', display: 'grid', gap: 8 }}>
-                    {(() => {
-                      if (plan.id === 'free') {
-                        return (
-                          <button type="button" className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`} disabled>
-                            {lang === 'ru' ? 'Уже доступно' : 'Already available'}
-                          </button>
-                        );
-                      }
-                      if (isRu && betaMode && plan.id === 'plus') {
-                        if (hasPlusAccess) {
-                          return (
-                            <button type="button" className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`} disabled>
-                              {copy.betaActive}
-                            </button>
-                          );
-                        }
-                        if (!auth?.connected) {
-                          return (
-                            <button
-                              type="button"
-                              className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`}
-                              onClick={() => auth?.login && auth.login()}
-                            >
-                              {copy.betaLoginSteam}
-                            </button>
-                          );
-                        }
-                        return (
-                          <a
-                            className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`}
-                            href={channelUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {copy.betaCta}
-                          </a>
-                        );
-                      }
-                      if (!billingReady) {
-                        return (
-                          <button type="button" className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`} disabled>
-                            {copy.ctaSoon}
-                          </button>
-                        );
-                      }
-                      const busy = checkoutBusy === plan.id;
-                      let label = copy.ctaPay;
-                      if (!auth?.connected) label = copy.ctaLogin;
-                      else if (busy) label = copy.ctaBusy;
-                      else if (isCurrent) label = lang === 'ru' ? 'Продлить' : 'Renew';
-                      return (
-                        <button
-                          type="button"
-                          className={`btn ${highlighted ? 'btn-primary' : 'btn-ghost'}`}
-                          disabled={Boolean(checkoutBusy)}
-                          onClick={() => startCheckout(plan.id)}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })()}
-                    {plan.id === 'investor' && (
-                      <>
-                        {onTrial ? null : trialEligible || !auth?.connected ? (
-                          channelUnlockReady && auth?.connected ? (
-                            <div style={{ display: 'grid', gap: 8 }}>
-                              <a
-                                className="btn btn-ghost btn-sm"
-                                href={channelUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {copy.trialJoin}
-                              </a>
-                              <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                                {trialBusy ? copy.trialBusy : copy.trialUnlockHint}
-                              </div>
-                              <div className="pricing-telegram-widget" ref={trialTelegramWidgetRef} />
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn-primary btn-sm"
-                              disabled={Boolean(trialBusy || checkoutBusy)}
-                              onClick={() => claimInvestorTrial()}
-                            >
-                              {trialBusy
-                                ? copy.trialBusy
-                                : (!auth?.connected ? copy.trialLogin : copy.trialCta)}
-                            </button>
-                          )
-                        ) : subscription?.investorTrialUsed && currentPlanId !== 'investor' ? (
-                          <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-3)' }}>
-                            {copy.trialUsed}
-                          </div>
-                        ) : null}
-                      </>
-                    )}
-                    {(plan.id === 'free' || plan.id === 'short' || plan.id === 'investor') && (
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onInvestors && onInvestors()}>
-                        {copy.investors}
-                      </button>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-        <p style={{ marginTop: 16, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)', maxWidth: 760, lineHeight: 1.55 }}>
-          {copy.cryptoNote}
-        </p>
-        {checkoutError && (
-          <div style={{ marginTop: 14, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red, #c44)' }}>
-            {checkoutError}
-          </div>
-        )}
-        <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          <a className="btn btn-ghost btn-sm" href="/pricing">{copy.fullPrice}</a>
-          <a className="btn btn-ghost btn-sm" href="/terms">{lang === 'ru' ? 'Соглашение' : 'Terms'}</a>
-          <a className="btn btn-ghost btn-sm" href="/privacy">{lang === 'ru' ? 'Конфиденциальность' : 'Privacy'}</a>
-          <a className="btn btn-ghost btn-sm" href="/support">{lang === 'ru' ? 'Поддержка' : 'Support'}</a>
-        </div>
-      </div>
-    </section>
-  );
+function Pricing() {
+  return null;
 }
 
 function HowItWorks({ lang }) {
@@ -1879,43 +1362,23 @@ function FinalCta({ lang, auth, onPrimary }) {
   );
 }
 
-/* Same catalog as server/services/plans.js, shown before /api/plans returns. */
-const STATS_BAND_FALLBACK = {
-  ru: [
-    { id: 'free', name: 'Бесплатный', note: '0 ₽ · весь сайт' },
-    { id: 'short', name: '3 дня', note: '100 ₽ / 3 дня · без автопродления' },
-    { id: 'plus', name: 'Plus', note: '299 ₽ / 30 дней' },
-    { id: 'investor', name: 'Investor', note: '499 ₽ / 30 дней · 7 дней за Telegram' },
-  ],
-  en: [
-    { id: 'free', name: 'Free', note: '$0 · full website' },
-    { id: 'short', name: '3 days', note: '$2.99 / 3 days · no renewal' },
-    { id: 'plus', name: 'Plus', note: '$7.99 / 30 days · 7 days free' },
-  ],
-};
-
-function statsBandFromPlans(plans, isRu) {
-  return plans.map((plan) => {
-    const name = (isRu ? plan.name?.ru : plan.name?.en) || plan.name?.en || plan.id;
-    const price = (isRu ? plan.price?.ru : plan.price?.en) || plan.price?.en || '';
-    let note = price;
-    if (plan.id === 'free') note = isRu ? '0 ₽ · весь сайт' : '$0 · full website';
-    else if (plan.id === 'short') note = isRu ? `${price} · без автопродления` : `${price} · no renewal`;
-    else if (plan.id === 'plus' && !isRu) note = `${price} · 7 days free`;
-    else if (plan.id === 'investor') note = isRu ? `${price} · 7 дней за Telegram` : `${price} · 7 days via Telegram`;
-    return { id: plan.id, name, note };
-  });
-}
-
-/* Stats band — the live plan catalog, not a separate slogan. */
 function StatsBand() {
   const lang = window.__lang || 'en';
   const t = useT(lang);
   const isRu = lang === 'ru';
-  const plansState = usePlans(lang);
-  const stats = plansState.plans.length
-    ? statsBandFromPlans(plansState.plans, isRu)
-    : (STATS_BAND_FALLBACK[isRu ? 'ru' : 'en']);
+  const stats = isRu
+    ? [
+      { id: 'portfolio', name: 'Портфель', note: 'Оценка, P&L и история' },
+      { id: 'market', name: 'Маркет', note: 'Скины, ножи, стикеры' },
+      { id: 'storage', name: 'Хранилища', note: 'Через расширение' },
+      { id: 'tools', name: 'Инструменты', note: 'Armory, коллекции, топ' },
+    ]
+    : [
+      { id: 'portfolio', name: 'Portfolio', note: 'Value, P&L and history' },
+      { id: 'market', name: 'Market', note: 'Skins, knives, stickers' },
+      { id: 'storage', name: 'Storage', note: 'Via the extension' },
+      { id: 'tools', name: 'Tools', note: 'Armory, collections, top accounts' },
+    ];
   return (
     <section className="section-tight">
       <div className="container">
@@ -1950,7 +1413,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead помогает считать скины CS2 как портфель: live-оценка инвентаря, себестоимость, P&L, распределение по типам и история цен по предметам. Цены собираются со Steam Community Market и сторонних площадок.',
           'Кроме портфеля на сайте есть маркет-эксплорер, лидеры позиций, лента новостей из Telegram и калькулятор ROI Armory Pass. Подключите Steam через OpenID, откройте чужой публичный профиль по ссылке или создайте ручной портфель.',
-          'Весь сайт бесплатный: полный инвентарь, маркет, Armory, новости и топ-аккаунты инвесторов. Хранилища подтягиваются бесплатным расширением для браузера. Plus в бете — бесплатно за канал; Investor — 7 дней тоже за Telegram.',
+          'Весь сайт бесплатный: полный инвентарь, маркет, Armory, новости, топ-аккаунты инвесторов и хранилища через расширение для браузера.',
         ],
       }
     : {
@@ -1959,7 +1422,7 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead treats CS2 skins as a portfolio: live inventory valuation, cost basis, P&L, allocation by type, and per-item price history. Prices come from the Steam Community Market and major third-party marketplaces.',
           'Beyond the portfolio you get a market explorer, portfolio leaders, Telegram news, and an Armory Pass ROI board. Link Steam via OpenID, open any public profile URL, or keep a manual portfolio.',
-          'The website is free: full inventory, Storage Units via the browser extension, market explorer, Armory, news, and top investor accounts. Plus is $7.99/month after a 7-day trial on first Steam login. Pay with card or crypto via Platega from any country.',
+          'The website is free: full inventory, Storage Units via the browser extension, market explorer, Armory, news, and top investor accounts.',
         ],
       };
 
@@ -1986,8 +1449,7 @@ const FAQ_ITEMS = {
     { q: 'Where do prices come from?', a: 'Portfolio value is a cash-market mark: the median of lowest asks on Skinport, Market.CSGO, and LIS-Skins. Steam Community Market stays as a list price and a fallback when those quotes are missing. Each item page shows offers and history from the providers we could reach.' },
     { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. The browser extension signs in with a QR code on every sync, never saves the Steam token and revokes it right after reading; only the item list reaches our server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
-    { q: 'Is SkinsHead free?', a: 'Yes. The website is free: unlimited inventory, market explorer, Armory ROI, news, and top investor accounts. Sign in with Steam and Plus starts free for 7 days. Then Plus is $7.99 / 30 days or $72 / year. A 3-day pass is $2.99. Pay with card or crypto via Platega from any country. See /pricing.' },
-    { q: 'What do paid plans include?', a: 'Storage Units and the rest of the site are free. Plus is $7.99 / 30 days or $72 / year. The 3-day pass is $2.99. Checkout is card or crypto on Platega, so it works internationally. Support: Telegram @GhostOfSecretum.' },
+    { q: 'Is SkinsHead free?', a: 'Yes. The whole site is free: unlimited inventory, Storage Units via the browser extension, market explorer, Armory ROI, news, and top investor accounts.' },
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
@@ -1997,8 +1459,7 @@ const FAQ_ITEMS = {
     { q: 'Откуда берутся цены?', a: 'Стоимость портфеля — оценка по сторонним маркетам: медиана нижних ask на Skinport, Market.CSGO и LIS-Skins. Steam Community Market остаётся ценником и запасным источником, если котировок нет. На карточке предмета видны предложения и история цен из источников, до которых удалось достучаться.' },
     { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. Расширение входит в Steam по QR при каждой синхронизации, не сохраняет токен и отзывает его сразу после чтения; на сервер уходит только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
     { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
-    { q: 'SkinsHead бесплатный?', a: 'Да. Сайт бесплатный: безлимит инвентаря, маркет, Armory ROI, новости и топ-аккаунты инвесторов. Хранилища — тоже бесплатно, через расширение для браузера. Plus — 299 ₽ / 30 дней (в бете бесплатно за канал). Investor — 499 ₽ / 30 дней с однократными 7 днями за Telegram. Тариф на 3 дня — 100 ₽. Оплата картой или криптой через Platega. Прайс: /pricing.' },
-    { q: 'Что дают платные тарифы?', a: 'Хранилища и весь сайт доступны бесплатно. Plus — 299 ₽ / 30 дней. Investor — 499 ₽ / 30 дней с однократными 7 днями за Telegram-канал. Тариф на 3 дня — 100 ₽. Оплата картой или криптой через Platega — из любой страны. Поддержка: Telegram @GhostOfSecretum.' },
+    { q: 'SkinsHead бесплатный?', a: 'Да. Весь сайт бесплатный: безлимит инвентаря, хранилища через расширение для браузера, маркет, Armory ROI, новости и топ-аккаунты инвесторов.' },
     { q: 'Вы связаны с Valve?', a: 'Нет. SkinsHead — независимый проект и не аффилирован со Steam, Valve или Counter-Strike.' },
   ],
 };
@@ -2015,8 +1476,8 @@ function FAQ({ lang }) {
           <div>
             <p style={{ color: 'var(--fg-1)', lineHeight: 1.6, fontSize: 15 }}>
               {lang === 'ru'
-                ? 'Не нашли ответ? Напишите в Telegram — разберёмся с портфелем, тарифами или ценами.'
-                : 'Still stuck? Message us on Telegram — we can help with portfolio, pricing, or market data.'}
+                ? 'Не нашли ответ? Напишите в Telegram — разберёмся с портфелем или данными маркета.'
+                : 'Still stuck? Message us on Telegram — we can help with the portfolio or market data.'}
             </p>
             <a className="btn btn-primary btn-sm" href="https://t.me/GhostOfSecretum" target="_blank" rel="noopener noreferrer" style={{ marginTop: 16, display: 'inline-flex' }}>
               Telegram · @GhostOfSecretum →
@@ -2103,7 +1564,6 @@ function Footer({ lang }) {
         h: 'Продукт',
         items: [
           { label: 'Портфель', href: '/dashboard' },
-          { label: 'Тарифы и цены', href: '/pricing' },
           { label: 'Расширение для браузера', href: '/#extension' },
         ],
       },
@@ -2121,7 +1581,6 @@ function Footer({ lang }) {
         h: 'Product',
         items: [
           { label: 'Portfolio', href: '/dashboard' },
-          { label: 'Pricing', href: '/pricing' },
           { label: 'Browser extension', href: '/#extension' },
         ],
       },
@@ -2175,7 +1634,6 @@ function Footer({ lang }) {
         fontFamily: 'var(--f-mono)',
         fontSize: 11,
       }}>
-        <a href="/pricing" style={{ color: 'var(--fg-2)' }}>{lang === 'ru' ? 'Тарифы' : 'Pricing'}</a>
         <a href="/privacy" style={{ color: 'var(--fg-2)' }}>{lang === 'ru' ? 'Конфиденциальность' : 'Privacy'}</a>
         <a href="/terms" style={{ color: 'var(--fg-2)' }}>{lang === 'ru' ? 'Соглашение' : 'Terms'}</a>
         <a href="/support" style={{ color: 'var(--fg-2)' }}>{lang === 'ru' ? 'Поддержка' : 'Support'}</a>

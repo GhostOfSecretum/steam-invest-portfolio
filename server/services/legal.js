@@ -43,14 +43,14 @@ function escapeHtml(value) {
 
 function renderShell({ title, description, active, bodyHtml, lang = 'ru' }) {
   const labels = {
-    en: { pricing: 'Pricing', privacy: 'Privacy policy', terms: 'Terms of use', support: 'Support' },
-    ru: { pricing: 'Тарифы и цены', privacy: 'Политика конфиденциальности', terms: 'Пользовательское соглашение', support: 'Поддержка' },
-    zh: { pricing: '价格', privacy: '隐私政策', terms: '使用条款', support: '支持' },
-    'zh-TW': { pricing: '價格', privacy: '隱私權政策', terms: '使用條款', support: '支援' },
+    en: { privacy: 'Privacy policy', terms: 'Terms of use', support: 'Support' },
+    ru: { privacy: 'Политика конфиденциальности', terms: 'Пользовательское соглашение', support: 'Поддержка' },
+    zh: { privacy: '隐私政策', terms: '使用条款', support: '支持' },
+    'zh-TW': { privacy: '隱私權政策', terms: '使用條款', support: '支援' },
   }[lang] || {
-    pricing: 'Pricing', privacy: 'Privacy policy', terms: 'Terms of use', support: 'Support',
+    privacy: 'Privacy policy', terms: 'Terms of use', support: 'Support',
   };
-  const nav = ['pricing', 'privacy', 'terms', 'support'].map((id) => ({
+  const nav = ['privacy', 'terms', 'support'].map((id) => ({
     href: legalHref(id, lang),
     id,
     label: labels[id],
@@ -199,7 +199,7 @@ function renderPrivacyPage(rawLang) {
       body: `
         <h2>1. General</h2>
         <p>1.1. The Service is operated by the SkinsHead administration (website ${SITE_URL}).</p>
-        <p>1.2. This policy applies to everyone who visits the site, signs in through Steam OpenID, creates a portfolio, pays for a plan, installs the browser extension, or contacts support.</p>
+        <p>1.2. This policy applies to everyone who visits the site, signs in through Steam OpenID, creates a portfolio, installs the browser extension, or contacts support.</p>
         <p>1.3. The Service is for tracking and analysing a Counter-Strike 2 skin portfolio and a Steam inventory, including related digital features.</p>
         <h2>2. Data we process</h2>
         <p>2.1. Depending on how you use the Service, we may process:</p>
@@ -209,16 +209,13 @@ function renderPrivacyPage(rawLang) {
           <li>data synced by the browser extension: the list of inventory and Storage Unit items, without your Steam password, Steam token or authenticator codes;</li>
           <li>technical data: the session cookie, IP address, browser type and request logs needed for security and operation;</li>
           <li>support messages: the contents of the Telegram conversation;</li>
-          <li>payment status and the selected plan, as reported by the payment provider, without your full card details.</li>
         </ul>
         <p>2.2. The Service never asks for or stores your Steam password, SDA seed or Steam Guard codes.</p>
         <p>2.3. The browser extension signs in to Steam with a QR code on every sync. The Steam token it receives stays only in the tab’s memory while the reading is in progress. It is not written to disk, it is not sent to the Service, and it is revoked at Steam immediately afterwards. The Service receives the item list and a pairing token, and that token can only upload the list.</p>
-        <p>2.4. Card details are entered on the payment provider’s side and are not processed by the administration directly.</p>
         <h2>3. Why we process it</h2>
         <ul>
-          <li>to provide the portfolio, plans and Storage Unit sync;</li>
+          <li>to provide the portfolio and Storage Unit sync;</li>
           <li>to identify you and protect the session;</li>
-          <li>to confirm payment and activate paid access;</li>
           <li>to answer support requests;</li>
           <li>to keep the Service secure, prevent abuse and diagnose failures;</li>
           <li>to improve the Service using aggregated statistics.</li>
@@ -230,7 +227,6 @@ function renderPrivacyPage(rawLang) {
         <p>5.2. Data may be shared with:</p>
         <ul>
           <li>Valve / Steam, to the extent needed for OpenID sign-in and for public profile and inventory data;</li>
-          <li>the payment provider, to take and confirm payment for a plan;</li>
           <li>hosting and infrastructure providers that run the Service;</li>
           <li>competent public authorities, where the law requires it.</li>
         </ul>
@@ -240,13 +236,10 @@ function renderPrivacyPage(rawLang) {
         <h2>7. Your rights</h2>
         <p>7.1. You can ask what data we process, ask us to correct inaccurate data, ask us to delete your portfolio or account data, and withdraw consent, by contacting support.</p>
         <p>7.2. Withdrawing consent may limit some features of the Service.</p>
-        <h2>8. Payments</h2>
-        <p>8.1. Plans are paid through a third-party payment provider’s form.</p>
-        <p>8.2. The Service receives from that provider what it needs to confirm the payment, its status and the plan to activate.</p>
-        <h2>9. Changes</h2>
-        <p>9.1. We may update this policy. The current version is always at <a href="${here}">${SITE_URL}${here}</a>.</p>
-        <p>9.2. Continuing to use the Service after a new version is published means you accept the updated terms.</p>
-        <h2>10. Contact</h2>
+        <h2>8. Changes</h2>
+        <p>8.1. We may update this policy. The current version is always at <a href="${here}">${SITE_URL}${here}</a>.</p>
+        <p>8.2. Continuing to use the Service after a new version is published means you accept the updated terms.</p>
+        <h2>9. Contact</h2>
         <p>For privacy and support questions: Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>.</p>
         <p>Website: <a href="${SITE_URL}">${SITE_URL}</a>.</p>
       `,
@@ -260,7 +253,7 @@ function renderPrivacyPage(rawLang) {
       body: `
         <h2>1. Общие положения</h2>
         <p>1.1. Оператором Сервиса выступает ${OPERATOR} (сайт ${SITE_URL}).</p>
-        <p>1.2. Политика применяется ко всем Пользователям, которые посещают сайт, авторизуются через Steam OpenID, создают портфель, оплачивают тарифы или обращаются в поддержку.</p>
+        <p>1.2. Политика применяется ко всем Пользователям, которые посещают сайт, авторизуются через Steam OpenID, создают портфель, устанавливают расширение для браузера или обращаются в поддержку.</p>
         <p>1.3. Сервис предназначен для учёта и аналитики портфеля скинов Counter-Strike 2 / инвентаря Steam и связанных цифровых функций.</p>
         <h2>2. Какие данные мы обрабатываем</h2>
         <p>2.1. В зависимости от сценария использования Сервис может обрабатывать:</p>
@@ -270,16 +263,13 @@ function renderPrivacyPage(rawLang) {
           <li>данные синхронизации расширения для браузера: список предметов инвентаря и Хранилищ (без пароля Steam, токена Steam и кодов аутентификатора);</li>
           <li>технические данные: cookie сессии, IP-адрес, тип браузера, журналы запросов, необходимые для безопасности и работоспособности;</li>
           <li>данные обращений в поддержку: содержание переписки в Telegram;</li>
-          <li>сведения о статусе оплаты и выбранном тарифе, которые передаёт платёжный провайдер (без полных данных банковской карты).</li>
         </ul>
         <p>2.2. Сервис не запрашивает и не хранит пароль Steam, seed SDA и коды Steam Guard.</p>
         <p>2.3. Расширение для браузера входит в Steam по QR-коду при каждой синхронизации. Полученный токен Steam хранится только в памяти вкладки на время чтения, не записывается на диск, не передаётся на сервер Сервиса и отзывается в Steam сразу после чтения. На сервер передаётся список предметов и токен привязки, который позволяет только загрузить этот список.</p>
-        <p>2.4. Данные банковских карт вводятся Пользователем на стороне платёжного провайдера и не обрабатываются напрямую Администрацией.</p>
         <h2>3. Цели обработки</h2>
         <ul>
-          <li>предоставление функций портфеля и тарифов, включая синхронизацию Хранилищ;</li>
+          <li>предоставление функций портфеля, включая синхронизацию Хранилищ;</li>
           <li>идентификация Пользователя и защита сессии;</li>
-          <li>подтверждение оплаты и активация платного доступа;</li>
           <li>ответы на обращения в поддержку;</li>
           <li>обеспечение безопасности, предотвращение злоупотреблений и диагностика сбоев;</li>
           <li>улучшение качества Сервиса на основе обезличенной статистики.</li>
@@ -291,7 +281,6 @@ function renderPrivacyPage(rawLang) {
         <p>5.2. Данные могут передаваться:</p>
         <ul>
           <li>Valve / Steam — в объёме, необходимом для OpenID-авторизации и получения публичных данных профиля/инвентаря;</li>
-          <li>платёжному провайдеру — для проведения и подтверждения оплаты тарифа;</li>
           <li>хостинг- и инфраструктурным провайдерам — для размещения Сервиса;</li>
           <li>уполномоченным государственным органам — в случаях, предусмотренных законодательством.</li>
         </ul>
@@ -301,13 +290,10 @@ function renderPrivacyPage(rawLang) {
         <h2>7. Права Пользователя</h2>
         <p>7.1. Пользователь вправе запросить информацию об обрабатываемых данных, исправление неточных данных, удаление данных портфеля/аккаунта и отзыв согласия, направив обращение в поддержку.</p>
         <p>7.2. Отзыв согласия может ограничить возможность дальнейшего использования части функций Сервиса.</p>
-        <h2>8. Платежи</h2>
-        <p>8.1. Оплата тарифов осуществляется через платёжную форму стороннего платёжного провайдера.</p>
-        <p>8.2. Сервис получает от провайдера сведения, необходимые для подтверждения факта оплаты, статуса платежа и активации выбранного тарифа.</p>
-        <h2>9. Изменение Политики</h2>
-        <p>9.1. Администрация вправе обновлять Политику. Актуальная версия всегда доступна по адресу <a href="${here}">${SITE_URL}${here}</a>.</p>
-        <p>9.2. Продолжение использования Сервиса после публикации новой редакции означает согласие с обновлёнными условиями.</p>
-        <h2>10. Контакты</h2>
+        <h2>8. Изменение Политики</h2>
+        <p>8.1. Администрация вправе обновлять Политику. Актуальная версия всегда доступна по адресу <a href="${here}">${SITE_URL}${here}</a>.</p>
+        <p>8.2. Продолжение использования Сервиса после публикации новой редакции означает согласие с обновлёнными условиями.</p>
+        <h2>9. Контакты</h2>
         <p>По вопросам обработки данных и поддержки: Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>.</p>
         <p>Сайт Сервиса: <a href="${SITE_URL}">${SITE_URL}</a>.</p>
       `,
@@ -321,7 +307,7 @@ function renderPrivacyPage(rawLang) {
       body: `
         <h2>1. 总则</h2>
         <p>1.1. 服务由 SkinsHead 服务管理方运营（网站 ${SITE_URL}）。</p>
-        <p>1.2. 本政策适用于访问网站、通过 Steam OpenID 登录、创建资产组合、支付方案、安装浏览器扩展或联系支持的所有人。</p>
+        <p>1.2. 本政策适用于访问网站、通过 Steam OpenID 登录、创建资产组合、安装浏览器扩展或联系支持的所有人。</p>
         <p>1.3. 服务用于跟踪和分析 Counter-Strike 2 皮肤资产组合与 Steam 库存，以及相关数字功能。</p>
         <h2>2. 我们处理的数据</h2>
         <p>2.1. 根据您使用服务的方式，我们可能处理：</p>
@@ -331,16 +317,13 @@ function renderPrivacyPage(rawLang) {
           <li>浏览器扩展同步的数据：库存和仓库物品列表，不含 Steam 密码、Steam 令牌或验证器代码；</li>
           <li>技术数据：会话 cookie、IP 地址、浏览器类型，以及安全与运行所需的请求日志；</li>
           <li>支持消息：Telegram 对话内容；</li>
-          <li>支付状态和所选方案，由支付服务商提供，不含完整银行卡信息。</li>
         </ul>
         <p>2.2. 服务从不索取或存储您的 Steam 密码、SDA 种子或 Steam 令牌验证码。</p>
         <p>2.3. 浏览器扩展在每次同步时通过二维码登录 Steam。获得的 Steam 令牌只在读取期间留在标签页内存中，不写入磁盘，不发送给服务，并在读取后立即在 Steam 撤销。服务收到的是物品列表和绑定令牌，该令牌只能上传这份列表。</p>
-        <p>2.4. 银行卡信息在支付服务商一侧输入，管理方不直接处理。</p>
         <h2>3. 处理目的</h2>
         <ul>
-          <li>提供资产组合、方案和仓库同步；</li>
+          <li>提供资产组合和仓库同步；</li>
           <li>识别用户并保护会话；</li>
-          <li>确认付款并开通付费功能；</li>
           <li>回复支持请求；</li>
           <li>保障安全、防止滥用并诊断故障；</li>
           <li>根据汇总统计改进服务。</li>
@@ -352,7 +335,6 @@ function renderPrivacyPage(rawLang) {
         <p>5.2. 数据可能提供给：</p>
         <ul>
           <li>Valve / Steam，限于 OpenID 登录以及公开档案和库存数据所需的范围；</li>
-          <li>支付服务商，用于收取和确认方案付款；</li>
           <li>运行服务的托管和基础设施提供商；</li>
           <li>法律要求时的主管公共机关。</li>
         </ul>
@@ -362,13 +344,10 @@ function renderPrivacyPage(rawLang) {
         <h2>7. 您的权利</h2>
         <p>7.1. 您可以联系支持，询问我们处理哪些数据、要求更正不准确的数据、要求删除资产组合或账户数据，以及撤回同意。</p>
         <p>7.2. 撤回同意可能会限制服务的部分功能。</p>
-        <h2>8. 付款</h2>
-        <p>8.1. 方案通过第三方支付服务商的表单付款。</p>
-        <p>8.2. 服务从该服务商获得确认付款事实、付款状态和要开通的方案所需的信息。</p>
-        <h2>9. 变更</h2>
-        <p>9.1. 我们可能会更新本政策。当前版本始终位于 <a href="${here}">${SITE_URL}${here}</a>。</p>
-        <p>9.2. 新版本发布后继续使用服务，即表示您接受更新后的条款。</p>
-        <h2>10. 联系</h2>
+        <h2>8. 变更</h2>
+        <p>8.1. 我们可能会更新本政策。当前版本始终位于 <a href="${here}">${SITE_URL}${here}</a>。</p>
+        <p>8.2. 新版本发布后继续使用服务，即表示您接受更新后的条款。</p>
+        <h2>9. 联系</h2>
         <p>隐私和支持问题：Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>。</p>
         <p>网站：<a href="${SITE_URL}">${SITE_URL}</a>。</p>
       `,
@@ -382,7 +361,7 @@ function renderPrivacyPage(rawLang) {
       body: `
         <h2>1. 總則</h2>
         <p>1.1. 服務由 SkinsHead 服務管理方營運（網站 ${SITE_URL}）。</p>
-        <p>1.2. 本政策適用於造訪網站、透過 Steam OpenID 登入、建立資產組合、支付方案、安裝瀏覽器擴充或聯絡支援的所有人。</p>
+        <p>1.2. 本政策適用於造訪網站、透過 Steam OpenID 登入、建立資產組合、安裝瀏覽器擴充或聯絡支援的所有人。</p>
         <p>1.3. 服務用於追蹤和分析 Counter-Strike 2 皮膚資產組合與 Steam 庫存，以及相關數位功能。</p>
         <h2>2. 我們處理的資料</h2>
         <p>2.1. 根據您使用服務的方式，我們可能處理：</p>
@@ -392,16 +371,13 @@ function renderPrivacyPage(rawLang) {
           <li>瀏覽器擴充同步的資料：庫存和倉庫物品清單，不含 Steam 密碼、Steam 權杖或驗證器代碼；</li>
           <li>技術資料：工作階段 cookie、IP 位址、瀏覽器類型，以及安全與運作所需的請求紀錄；</li>
           <li>支援訊息：Telegram 對話內容；</li>
-          <li>付款狀態和所選方案，由付款服務商提供，不含完整銀行卡資訊。</li>
         </ul>
         <p>2.2. 服務從不索取或儲存您的 Steam 密碼、SDA 種子或 Steam 驗證碼。</p>
         <p>2.3. 瀏覽器擴充在每次同步時透過 QR 碼登入 Steam。取得的 Steam 權杖只在讀取期間留在分頁記憶體中，不寫入磁碟，不傳送給服務，並在讀取後立即在 Steam 撤銷。服務收到的是物品清單和綁定權杖，該權杖只能上傳這份清單。</p>
-        <p>2.4. 銀行卡資訊在付款服務商一側輸入，管理方不直接處理。</p>
         <h2>3. 處理目的</h2>
         <ul>
-          <li>提供資產組合、方案和倉庫同步；</li>
+          <li>提供資產組合和倉庫同步；</li>
           <li>識別使用者並保護工作階段；</li>
-          <li>確認付款並開通付費功能；</li>
           <li>回覆支援請求；</li>
           <li>保障安全、防止濫用並診斷故障；</li>
           <li>根據彙總統計改進服務。</li>
@@ -413,7 +389,6 @@ function renderPrivacyPage(rawLang) {
         <p>5.2. 資料可能提供給：</p>
         <ul>
           <li>Valve / Steam，限於 OpenID 登入以及公開檔案和庫存資料所需的範圍；</li>
-          <li>付款服務商，用於收取和確認方案付款；</li>
           <li>運行服務的託管和基礎設施提供者；</li>
           <li>法律要求時的主管公共機關。</li>
         </ul>
@@ -423,13 +398,10 @@ function renderPrivacyPage(rawLang) {
         <h2>7. 您的權利</h2>
         <p>7.1. 您可以聯絡支援，詢問我們處理哪些資料、要求更正不準確的資料、要求刪除資產組合或帳戶資料，以及撤回同意。</p>
         <p>7.2. 撤回同意可能會限制服務的部分功能。</p>
-        <h2>8. 付款</h2>
-        <p>8.1. 方案透過第三方付款服務商的表單付款。</p>
-        <p>8.2. 服務從該服務商取得確認付款事實、付款狀態和要開通的方案所需的資訊。</p>
-        <h2>9. 變更</h2>
-        <p>9.1. 我們可能會更新本政策。目前版本始終位於 <a href="${here}">${SITE_URL}${here}</a>。</p>
-        <p>9.2. 新版本發布後繼續使用服務，即表示您接受更新後的條款。</p>
-        <h2>10. 聯絡</h2>
+        <h2>8. 變更</h2>
+        <p>8.1. 我們可能會更新本政策。目前版本始終位於 <a href="${here}">${SITE_URL}${here}</a>。</p>
+        <p>8.2. 新版本發布後繼續使用服務，即表示您接受更新後的條款。</p>
+        <h2>9. 聯絡</h2>
         <p>隱私和支援問題：Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>。</p>
         <p>網站：<a href="${SITE_URL}">${SITE_URL}</a>。</p>
       `,
@@ -445,10 +417,10 @@ function renderTermsPage(rawLang) {
   const copy = {
     en: {
       title: 'Terms of use',
-      description: 'SkinsHead terms of use: how the service may be used, plans, payment and liability.',
+      description: 'SkinsHead terms of use: how the service may be used and the limits of liability.',
       kicker: `SkinsHead · ${SITE_URL}`,
       updated: 'Last updated: October 10, 2026',
-      intro: 'These terms of use (the “Terms”) govern use of the SkinsHead online service. By using the Service, including browsing the site, signing in through Steam or paying for a plan, you accept these Terms in full.',
+      intro: 'These terms of use (the “Terms”) govern use of the SkinsHead online service. By using the Service, including browsing the site or signing in through Steam, you accept these Terms in full.',
       body: `
         <h2>1. General</h2>
         <p>1.1. The Service is provided by the SkinsHead administration at ${SITE_URL}.</p>
@@ -464,46 +436,37 @@ function renderTermsPage(rawLang) {
         </ul>
         <p>2.2. The Service is not a financial adviser, a broker, a guarantor of returns, or an affiliate of Valve, Steam or Counter-Strike.</p>
         <p>2.3. Item prices on third-party markets and on Steam may differ from the Service’s data. You decide on any transaction yourself.</p>
-        <h2>3. Plans and payment</h2>
-        <p>3.1. Current plans, prices and what they include are published at <a href="/pricing">${SITE_URL}/pricing</a>.</p>
-        <p>3.2. Payment is on the terms shown in the Service before you pay.</p>
-        <p>3.3. After a successful payment you receive access to the features of the selected plan.</p>
-        <p>3.4. Because the services are intangible, payments are generally not refunded once access has been provided, except when:</p>
-        <ul>
-          <li>the service was not provided because of a technical fault of the Service;</li>
-          <li>access to the paid features was not actually granted.</li>
-        </ul>
-        <p>3.5. To request a refund, contact support within 24 hours of payment. The administration decides each request individually.</p>
-        <p>3.6. You agree not to start a chargeback before contacting the Service’s support.</p>
+        <h2>3. Access</h2>
+        <p>3.1. The Service is free. Every feature on the website is available without payment.</p>
         <h2>4. Disclaimer and limitation of liability</h2>
         <p>4.1. The Service is provided “as is”.</p>
         <p>4.2. The administration does not guarantee uninterrupted operation, financial profit, the accuracy of every third-party market quote, or that the Service will meet your personal expectations.</p>
         <p>4.3. The administration is not liable for losses, lost profits, actions of third parties, Steam account restrictions, changes to Valve’s API or rules, or temporary technical limits.</p>
         <h2>5. Lawful use</h2>
-        <p>5.1. You agree to use the Service in good faith, within applicable law, and within the rules of Steam and the payment providers.</p>
+        <p>5.1. You agree to use the Service in good faith, within applicable law, and within the rules of Steam.</p>
         <p>5.2. You may not use the Service for fraud, to bypass restrictions, to interfere with the infrastructure, or to distribute malware.</p>
         <h2>6. Intellectual property</h2>
         <p>6.1. The design, code, text, SkinsHead marks and other materials of the Service are protected by law.</p>
         <p>6.2. Rights in game items, names and images of Counter-Strike and Steam belong to their respective owners.</p>
         <h2>7. Restricting access</h2>
-        <p>7.1. The administration may suspend or limit access if these Terms are broken, in case of abuse, or when the law or a payment provider requires it.</p>
+        <p>7.1. The administration may suspend or limit access if these Terms are broken, in case of abuse, or when the law requires it.</p>
         <p>7.2. A restriction does not cancel obligations that arose before it was applied.</p>
         <h2>8. Privacy</h2>
         <p>8.1. How data is processed is described in the <a href="${privacy}">Privacy policy</a>.</p>
         <h2>9. Changes</h2>
         <p>9.1. The administration may update these Terms. Continuing to use the Service means you accept the new version.</p>
         <h2>10. Support</h2>
-        <p>10.1. For questions about payment, access and how the Service works: Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>.</p>
+        <p>10.1. For questions about access and how the Service works: Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>.</p>
         <p>10.2. Support page: <a href="/support">${SITE_URL}/support</a>.</p>
         <p>By using the Service, you confirm that you have read these Terms and accept them.</p>
       `,
     },
     ru: {
       title: 'Пользовательское соглашение',
-      description: 'Пользовательское соглашение SkinsHead: условия использования, тарифы, оплата и ответственность.',
+      description: 'Пользовательское соглашение SkinsHead: условия использования и ответственность.',
       kicker: `Сервис SkinsHead · ${SITE_URL}`,
       updated: `Дата актуальной редакции: ${DOCS_UPDATED_AT}`,
-      intro: 'Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует порядок использования онлайн-сервиса SkinsHead. Используя Сервис, включая просмотр сайта, авторизацию через Steam или оплату тарифов, Пользователь принимает условия Соглашения в полном объёме.',
+      intro: 'Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует порядок использования онлайн-сервиса SkinsHead. Используя Сервис, включая просмотр сайта или авторизацию через Steam, Пользователь принимает условия Соглашения в полном объёме.',
       body: `
         <h2>1. Общие положения</h2>
         <p>1.1. Сервис предоставляется ${OPERATOR} на сайте ${SITE_URL}.</p>
@@ -519,46 +482,37 @@ function renderTermsPage(rawLang) {
         </ul>
         <p>2.2. Сервис не является финансовым советником, брокером, гарантом доходности или аффилированным лицом Valve / Steam / Counter-Strike.</p>
         <p>2.3. Цены предметов на сторонних площадках и в Steam могут отличаться от данных Сервиса; Пользователь самостоятельно принимает решения о сделках.</p>
-        <h2>3. Тарифы и оплата</h2>
-        <p>3.1. Актуальные тарифы, цены и состав услуг опубликованы на странице <a href="/pricing">${SITE_URL}/pricing</a>.</p>
-        <p>3.2. Оплата производится на условиях, указанных в Сервисе до момента оплаты.</p>
-        <p>3.3. После успешной оплаты Пользователю предоставляется доступ к функциям выбранного тарифа.</p>
-        <p>3.4. В связи с нематериальным характером цифровых услуг возврат денежных средств после предоставления доступа, как правило, не осуществляется, за исключением случаев:</p>
-        <ul>
-          <li>услуга не была оказана по технической вине Сервиса;</li>
-          <li>доступ к оплаченным функциям фактически не был предоставлен.</li>
-        </ul>
-        <p>3.5. Для рассмотрения возврата Пользователь обращается в поддержку в течение 24 часов с момента оплаты. Решение принимается Администрацией индивидуально.</p>
-        <p>3.6. Пользователь обязуется не инициировать chargeback без предварительного обращения в поддержку Сервиса.</p>
+        <h2>3. Доступ</h2>
+        <p>3.1. Сервис предоставляется бесплатно. Все функции сайта доступны без оплаты.</p>
         <h2>4. Отказ от гарантий и ограничение ответственности</h2>
         <p>4.1. Сервис предоставляется на условиях «как есть» (AS IS).</p>
         <p>4.2. Администрация не гарантирует бесперебойную работу, достижение финансовой прибыли, точность всех рыночных котировок сторонних источников и соответствие Сервиса индивидуальным ожиданиям.</p>
         <p>4.3. Администрация не несёт ответственности за убытки, упущенную выгоду, действия третьих лиц, блокировки Steam-аккаунтов, изменения API/правил Valve и временные технические ограничения.</p>
         <h2>5. Законность использования</h2>
-        <p>5.1. Пользователь обязуется использовать Сервис добросовестно и в рамках применимого законодательства, а также правил Steam и платёжных провайдеров.</p>
+        <p>5.1. Пользователь обязуется использовать Сервис добросовестно и в рамках применимого законодательства, а также правил Steam.</p>
         <p>5.2. Запрещено использовать Сервис для мошенничества, обхода ограничений, вмешательства в работу инфраструктуры или передачи вредоносного ПО.</p>
         <h2>6. Интеллектуальная собственность</h2>
         <p>6.1. Дизайн, код, тексты, товарные обозначения SkinsHead и иные материалы Сервиса охраняются законом.</p>
         <p>6.2. Права на игровые предметы, названия и изображения Counter-Strike / Steam принадлежат соответствующим правообладателям.</p>
         <h2>7. Ограничение доступа</h2>
-        <p>7.1. Администрация вправе приостановить или ограничить доступ при нарушении Соглашения, злоупотреблениях, требованиях закона или платёжных провайдеров.</p>
+        <p>7.1. Администрация вправе приостановить или ограничить доступ при нарушении Соглашения, злоупотреблениях или требованиях закона.</p>
         <p>7.2. Ограничение доступа не освобождает от обязательств, возникших до его применения.</p>
         <h2>8. Конфиденциальность</h2>
         <p>8.1. Порядок обработки данных описан в <a href="${privacy}">Политике конфиденциальности</a>.</p>
         <h2>9. Изменение условий</h2>
         <p>9.1. Администрация вправе обновлять Соглашение. Продолжение использования Сервиса означает согласие с новой редакцией.</p>
         <h2>10. Контакты поддержки</h2>
-        <p>10.1. По всем вопросам оплаты, доступа и работы Сервиса: Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>.</p>
+        <p>10.1. По вопросам доступа и работы Сервиса: Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>.</p>
         <p>10.2. Страница поддержки: <a href="/support">${SITE_URL}/support</a>.</p>
         <p>Используя Сервис, Пользователь подтверждает, что ознакомился с настоящим Соглашением и принимает его условия.</p>
       `,
     },
     zh: {
       title: '使用条款',
-      description: 'SkinsHead 使用条款：服务的使用方式、方案、付款和责任。',
+      description: 'SkinsHead 使用条款：服务的使用方式和责任。',
       kicker: `SkinsHead · ${SITE_URL}`,
       updated: '更新日期：2026年10月10日',
-      intro: '本使用条款（下称「条款」）规范 SkinsHead 在线服务的使用。使用服务，包括浏览网站、通过 Steam 登录或支付方案，即表示您完整接受本条款。',
+      intro: '本使用条款（下称「条款」）规范 SkinsHead 在线服务的使用。使用服务，包括浏览网站或通过 Steam 登录，即表示您完整接受本条款。',
       body: `
         <h2>1. 总则</h2>
         <p>1.1. 服务由 SkinsHead 服务管理方在 ${SITE_URL} 提供。</p>
@@ -574,46 +528,37 @@ function renderTermsPage(rawLang) {
         </ul>
         <p>2.2. 服务不是财务顾问、经纪商、收益保证人，也不是 Valve、Steam 或 Counter-Strike 的关联方。</p>
         <p>2.3. 第三方市场和 Steam 上的物品价格可能与服务中的数据不同。交易由您自行决定。</p>
-        <h2>3. 方案与付款</h2>
-        <p>3.1. 当前方案、价格和包含的功能公布在 <a href="/pricing">${SITE_URL}/pricing</a>。</p>
-        <p>3.2. 付款以您付款前服务中显示的条件为准。</p>
-        <p>3.3. 付款成功后，您获得所选方案的功能。</p>
-        <p>3.4. 由于服务是无形的，在已提供访问之后通常不予退款，除非：</p>
-        <ul>
-          <li>因服务自身的技术故障而未提供服务；</li>
-          <li>实际上没有开通已付款的功能。</li>
-        </ul>
-        <p>3.5. 如需退款，请在付款后 24 小时内联系支持。管理方逐案决定。</p>
-        <p>3.6. 您同意在联系服务支持之前不发起退单（chargeback）。</p>
+        <h2>3. 访问</h2>
+        <p>3.1. 服务免费提供。网站上的全部功能无需付款即可使用。</p>
         <h2>4. 免责与责任限制</h2>
         <p>4.1. 服务按「现状」提供。</p>
         <p>4.2. 管理方不保证不间断运行、财务收益、每一条第三方市场报价的准确性，或服务符合您的个人期望。</p>
         <p>4.3. 管理方不对损失、可得利益损失、第三方行为、Steam 账户限制、Valve 的 API 或规则变更，以及暂时的技术限制负责。</p>
         <h2>5. 合法使用</h2>
-        <p>5.1. 您同意善意使用服务，并遵守适用法律以及 Steam 和支付服务商的规则。</p>
+        <p>5.1. 您同意善意使用服务，并遵守适用法律以及 Steam 的规则。</p>
         <p>5.2. 不得将服务用于欺诈、绕过限制、干扰基础设施或传播恶意软件。</p>
         <h2>6. 知识产权</h2>
         <p>6.1. 服务的设计、代码、文字、SkinsHead 标识和其他材料受法律保护。</p>
         <p>6.2. Counter-Strike 和 Steam 的游戏物品、名称和图像的权利归各自权利人所有。</p>
         <h2>7. 限制访问</h2>
-        <p>7.1. 如果违反本条款、存在滥用，或法律或支付服务商要求，管理方可以暂停或限制访问。</p>
+        <p>7.1. 如果违反本条款、存在滥用，或法律要求，管理方可以暂停或限制访问。</p>
         <p>7.2. 限制访问不取消在此之前已经产生的义务。</p>
         <h2>8. 隐私</h2>
         <p>8.1. 数据处理方式见<a href="${privacy}">隐私政策</a>。</p>
         <h2>9. 变更</h2>
         <p>9.1. 管理方可以更新本条款。继续使用服务即表示您接受新版本。</p>
         <h2>10. 支持</h2>
-        <p>10.1. 付款、访问和服务运行问题：Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>。</p>
+        <p>10.1. 访问和服务运行问题：Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>。</p>
         <p>10.2. 支持页面：<a href="/support">${SITE_URL}/support</a>。</p>
         <p>使用服务即表示您确认已阅读并接受本条款。</p>
       `,
     },
     'zh-TW': {
       title: '使用條款',
-      description: 'SkinsHead 使用條款：服務的使用方式、方案、付款和責任。',
+      description: 'SkinsHead 使用條款：服務的使用方式和責任。',
       kicker: `SkinsHead · ${SITE_URL}`,
       updated: '更新日期：2026年10月10日',
-      intro: '本使用條款（下稱「條款」）規範 SkinsHead 線上服務的使用。使用服務，包括瀏覽網站、透過 Steam 登入或支付方案，即表示您完整接受本條款。',
+      intro: '本使用條款（下稱「條款」）規範 SkinsHead 線上服務的使用。使用服務，包括瀏覽網站或透過 Steam 登入，即表示您完整接受本條款。',
       body: `
         <h2>1. 總則</h2>
         <p>1.1. 服務由 SkinsHead 服務管理方在 ${SITE_URL} 提供。</p>
@@ -629,36 +574,27 @@ function renderTermsPage(rawLang) {
         </ul>
         <p>2.2. 服務不是財務顧問、經紀商、收益保證人，也不是 Valve、Steam 或 Counter-Strike 的關係企業。</p>
         <p>2.3. 第三方市場和 Steam 上的物品價格可能與服務中的資料不同。交易由您自行決定。</p>
-        <h2>3. 方案與付款</h2>
-        <p>3.1. 目前方案、價格和包含的功能公布在 <a href="/pricing">${SITE_URL}/pricing</a>。</p>
-        <p>3.2. 付款以您付款前服務中顯示的條件為準。</p>
-        <p>3.3. 付款成功後，您獲得所選方案的功能。</p>
-        <p>3.4. 由於服務是無形的，在已提供存取之後通常不予退款，除非：</p>
-        <ul>
-          <li>因服務自身的技術故障而未提供服務；</li>
-          <li>實際上沒有開通已付款的功能。</li>
-        </ul>
-        <p>3.5. 如需退款，請在付款後 24 小時內聯絡支援。管理方逐案決定。</p>
-        <p>3.6. 您同意在聯絡服務支援之前不發起退單（chargeback）。</p>
+        <h2>3. 存取</h2>
+        <p>3.1. 服務免費提供。網站上的全部功能無需付款即可使用。</p>
         <h2>4. 免責與責任限制</h2>
         <p>4.1. 服務按「現況」提供。</p>
         <p>4.2. 管理方不保證不間斷運行、財務收益、每一條第三方市場報價的準確性，或服務符合您的個人期望。</p>
         <p>4.3. 管理方不對損失、可得利益損失、第三方行為、Steam 帳戶限制、Valve 的 API 或規則變更，以及暫時的技術限制負責。</p>
         <h2>5. 合法使用</h2>
-        <p>5.1. 您同意善意使用服務，並遵守適用法律以及 Steam 和付款服務商的規則。</p>
+        <p>5.1. 您同意善意使用服務，並遵守適用法律以及 Steam 的規則。</p>
         <p>5.2. 不得將服務用於詐欺、繞過限制、干擾基礎設施或散布惡意軟體。</p>
         <h2>6. 智慧財產權</h2>
         <p>6.1. 服務的設計、程式碼、文字、SkinsHead 標識和其他材料受法律保護。</p>
         <p>6.2. Counter-Strike 和 Steam 的遊戲物品、名稱和圖像的權利歸各自權利人所有。</p>
         <h2>7. 限制存取</h2>
-        <p>7.1. 如果違反本條款、存在濫用，或法律或付款服務商要求，管理方可以暫停或限制存取。</p>
+        <p>7.1. 如果違反本條款、存在濫用，或法律要求，管理方可以暫停或限制存取。</p>
         <p>7.2. 限制存取不取消在此之前已經產生的義務。</p>
         <h2>8. 隱私</h2>
         <p>8.1. 資料處理方式見<a href="${privacy}">隱私權政策</a>。</p>
         <h2>9. 變更</h2>
         <p>9.1. 管理方可以更新本條款。繼續使用服務即表示您接受新版本。</p>
         <h2>10. 支援</h2>
-        <p>10.1. 付款、存取和服務運行問題：Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>。</p>
+        <p>10.1. 存取和服務運行問題：Telegram <a href="${SUPPORT_TELEGRAM_URL}">${SUPPORT_TELEGRAM}</a>。</p>
         <p>10.2. 支援頁面：<a href="/support">${SITE_URL}/support</a>。</p>
         <p>使用服務即表示您確認已閱讀並接受本條款。</p>
       `,
@@ -682,18 +618,15 @@ function renderSupportPage() {
 
     <h2>С какими вопросами можно обратиться</h2>
     <ul>
-      <li>оплата тарифа и активация доступа;</li>
-      <li>возврат / неуспешный платёж;</li>
       <li>работа портфеля и расширения для браузера;</li>
       <li>удаление данных или вопросы по конфиденциальности.</li>
     </ul>
 
     <h2>Как быстро мы отвечаем</h2>
-    <p>Обычно отвечаем в течение 24 часов в рабочие дни. Для вопросов по оплате укажите SteamID / логин Steam, дату платежа и тариф.</p>
+    <p>Обычно отвечаем в течение 24 часов в рабочие дни. Укажите SteamID или логин Steam.</p>
 
     <h2>Документы</h2>
     <ul>
-      <li><a href="/pricing">Тарифы и цены</a></li>
       <li><a href="/privacy">Политика конфиденциальности</a></li>
       <li><a href="/terms">Пользовательское соглашение</a></li>
     </ul>
@@ -701,7 +634,7 @@ function renderSupportPage() {
 
   return renderShell({
     title: 'Поддержка',
-    description: 'Контакты поддержки SkinsHead: Telegram @GhostOfSecretum для вопросов по оплате и доступу.',
+    description: 'Контакты поддержки SkinsHead: Telegram @GhostOfSecretum.',
     active: 'support',
     bodyHtml,
   });

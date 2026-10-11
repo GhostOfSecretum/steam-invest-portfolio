@@ -38,12 +38,11 @@ const {
   removeFavoriteProfile,
   migrateFavoriteProfilesToSteam,
 } = require('./services/favorite-profiles');
-const { listPlans, applyItemDisplayLimit, planAllows, getDownloadArtifact } = require('./services/plans');
+const { listPlans, applyItemDisplayLimit, getDownloadArtifact } = require('./services/plans');
 const {
   renderPrivacyPage,
   renderTermsPage,
   renderSupportPage,
-  renderPricingPage,
 } = require('./services/legal');
 const {
   getOwnerPlanId,
@@ -54,13 +53,10 @@ const {
   migrateSubscriptionToSteam,
 } = require('./services/subscriptions');
 const {
-  isBillingReady,
-  createCheckout,
   handlePlategaCallback,
   syncPaymentByQuery,
 } = require('./services/billing');
 const {
-  isBetaMode,
   getBetaPublicConfig,
   unlockBetaAccess,
   unlockInvestorTrialViaTelegram,
@@ -217,20 +213,8 @@ function requireSupportedDesktop(req, res, next) {
   });
 }
 
-// Desktop endpoints authenticate with a device token, not a session, so the plan
-// is resolved from the paired SteamID rather than through resolveOwnerId. Reuses
-// the existing `desktopDownload` entitlement: every plan that may download the
-// client is the same set that may use it.
-async function refuseIfPlanDisallowsDesktop(res, device) {
-  const planId = await getOwnerPlanId(`steam:${device.steamId}`);
-  if (planAllows(planId, 'desktopDownload')) return false;
-  res.status(403).json({
-    error: 'Desktop sync requires the Plus or Investor plan.',
-    code: 'plan_required',
-    requiredFeature: 'desktopDownload',
-    planId,
-  });
-  return true;
+async function refuseIfPlanDisallowsDesktop() {
+  return false;
 }
 
 // Desktop clients sync on a timer, so an IP-keyed limit would throttle every
@@ -284,8 +268,8 @@ const shareLimiter = rateLimit({
 });
 
 function effectiveBillingReady() {
-  // Investor stays purchasable during beta; Plus unlocks free via Telegram.
-  return isBillingReady();
+  // Paid plans are paused. Every site feature stays on the free plan.
+  return false;
 }
 
 function withBillingFlags(subscription) {
@@ -482,27 +466,10 @@ app.get('/api/admin/users', asyncRoute(async (req, res) => {
 }));
 
 app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async (req, res) => {
-  const planId = String(req.body?.planId || '').trim().toLowerCase();
-  const locale = String(req.body?.locale || req.query.locale || '').trim();
-  // RU beta still unlocks Plus via Telegram; other locales can pay (card or crypto).
-  if (isBetaMode() && planId === 'plus' && locale.toLowerCase().startsWith('ru')) {
-    res.status(503).json({
-      error: 'Plus is free during beta. Unlock it via the Telegram channel.',
-      code: 'beta_plus_free',
-      channelUrl: getBetaPublicConfig().channelUrl,
-    });
-    return;
-  }
-  const ownerId = resolveOwnerId(req);
-  const checkout = await createCheckout({
-    ownerId,
-    steamId: req.session.steamId,
-    planId,
-    cycle: req.body?.cycle,
-    locale,
-    req,
+  res.status(403).json({
+    error: 'Paid plans are paused. Every feature on the site is free.',
+    code: 'billing_paused',
   });
-  res.json(checkout);
 }));
 
 app.post('/api/billing/platega/callback', asyncRoute(async (req, res) => {
@@ -845,16 +812,6 @@ app.get('/api/news/telegram-media/:sourceId/:messageId', asyncRoute(async (req, 
 // --- Desktop client pairing & sync ---
 
 app.post('/api/desktop/pairing-code', authLimiter, requireAuth, asyncRoute(async (req, res) => {
-  const planId = await getOwnerPlanId(resolveOwnerId(req));
-  if (!planAllows(planId, 'desktopDownload')) {
-    res.status(403).json({
-      error: 'Desktop sync requires Plus or Investor plan.',
-      code: 'plan_required',
-      requiredFeature: 'desktopDownload',
-      planId,
-    });
-    return;
-  }
   const code = await createPairingCode(req.session.steamId);
   res.json({ code, expiresIn: 300 });
 }));
@@ -873,17 +830,6 @@ app.get('/api/downloads/:artifact', asyncRoute(async (req, res) => {
   const artifact = getDownloadArtifact(req.params.artifact);
   if (!artifact) {
     res.status(404).json({ error: 'Download not found.', code: 'download_not_found' });
-    return;
-  }
-
-  const planId = await getOwnerPlanId(resolveOwnerId(req));
-  if (!planAllows(planId, 'desktopDownload')) {
-    res.status(403).json({
-      error: 'Desktop download requires Plus or Investor plan.',
-      code: 'plan_required',
-      requiredFeature: 'desktopDownload',
-      planId,
-    });
     return;
   }
 
@@ -1242,7 +1188,7 @@ app.get('/support', (req, res) => {
 });
 
 app.get('/pricing', (req, res) => {
-  res.type('html').send(renderPricingPage());
+  res.redirect(302, '/');
 });
 
 app.get('/glock-3d', asyncRoute(async (req, res) => {
@@ -1269,7 +1215,7 @@ app.get('/', (req, res) => {
 // Desktop installers are plan-gated via /api/downloads/:artifact — block direct static access.
 app.use('/downloads', (req, res) => {
   res.status(403).json({
-    error: 'Desktop download requires Plus or Investor plan. Use /api/downloads/:artifact.',
+    error: 'Use /api/downloads/:artifact.',
     code: 'plan_required',
     requiredFeature: 'desktopDownload',
   });

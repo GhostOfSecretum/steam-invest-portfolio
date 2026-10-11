@@ -609,28 +609,11 @@ function inventorySourceLabel(source, lang) {
   return tt(lang, { en: 'public Steam', ru: 'публичный Steam', zh: '公开 Steam', 'zh-TW': '公開 Steam' });
 }
 
-function DesktopPairingButton({ lang, canUseDesktop, onPricing }) {
+function DesktopPairingButton({ lang }) {
   const [code, setCode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
-
-  if (!canUseDesktop) {
-    return (
-      <button
-        className="btn btn-sm btn-ghost"
-        onClick={() => onPricing && onPricing()}
-        title={tt(lang, {
-          en: 'Storage sync requires Plus / Investor',
-          ru: 'Хранилища доступны на Plus / Investor',
-          zh: '仓库同步需要 Plus / Investor',
-          'zh-TW': '倉庫同步需要 Plus / Investor',
-        })}
-      >
-        {tt(lang, { en: 'Extension · Plus', ru: 'Расширение · Plus', zh: '扩展 · Plus', 'zh-TW': '擴充 · Plus' })}
-      </button>
-    );
-  }
 
   const generate = async () => {
     setLoading(true);
@@ -730,7 +713,7 @@ function writeSelectedPortfolioId(id) {
   }
 }
 
-function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUrl = '', onPublicProfile, onPricing }) {
+function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUrl = '', onPublicProfile }) {
   const t = useT(lang);
   // Keep the last portfolio across item-detail remounts (Dashboard unmounts on /item).
   const [selectedPortfolioId, setSelectedPortfolioIdState] = useState(() => readSelectedPortfolioId());
@@ -992,11 +975,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
               </button>
             )}
             {auth?.connected && !isPublicPortfolio && (
-              <DesktopPairingButton
-                lang={lang}
-                canUseDesktop={Boolean(auth?.entitlements?.desktopDownload)}
-                onPricing={onPricing}
-              />
+              <DesktopPairingButton lang={lang} />
             )}
             {!isPublicPortfolio && (
               <button
@@ -1067,11 +1046,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   <a className="btn btn-sm btn-ghost" href="/#extension">
                     {tt(lang, { en: 'Install extension', ru: 'Установить расширение', zh: '安装扩展', 'zh-TW': '安裝擴充' })}
                   </a>
-                  <DesktopPairingButton
-                    lang={lang}
-                    canUseDesktop={Boolean(auth?.entitlements?.desktopDownload)}
-                    onPricing={onPricing}
-                  />
+                  <DesktopPairingButton lang={lang} />
                 </div>
               </div>
             )}
@@ -1229,38 +1204,12 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
 
         {activeSection === 'items' && (
           <div className="dash-section-panel" role="tabpanel">
-            {data.itemsLimited && (
-              <div className="glass dash-limit-notice">
-                <div style={{ fontSize: 13.5, color: 'var(--fg-1)', lineHeight: 1.5 }}>
-                  {tt(lang, {
-                    en: `Free plan: showing ${data.visibleInventoryCount || data.itemDisplayLimit} of ${data.totalInventoryCount} items. Plus removes the limit.`,
-                    ru: `Бесплатный тариф: показаны ${data.visibleInventoryCount || data.itemDisplayLimit} из ${data.totalInventoryCount} предметов. Plus снимает лимит.`,
-                    zh: `免费套餐：显示 ${data.visibleInventoryCount || data.itemDisplayLimit} / ${data.totalInventoryCount} 件物品。Plus 可解除限制。`,
-                    'zh-TW': `免費方案：顯示 ${data.visibleInventoryCount || data.itemDisplayLimit} / ${data.totalInventoryCount} 件物品。Plus 可解除限制。`,
-                  })}
-                </div>
-                <button type="button" className="btn btn-sm btn-primary" onClick={() => onPricing && onPricing()}>
-                  {tt(lang, { en: 'Plans', ru: 'Тарифы', zh: '套餐', 'zh-TW': '方案' })}
-                </button>
-              </div>
-            )}
-
             <div className="glass dash-inventory">
               <div className="dash-inventory-toolbar">
                 <div>
                   <div className="eyebrow">{tt(lang, { en: 'PORTFOLIO ITEMS', ru: 'ПРЕДМЕТЫ ПОРТФЕЛЯ', zh: '库存物品', 'zh-TW': '庫存物品' })}</div>
                   <div className="dash-inventory-meta">
                     {filteredItems.length}/{items.length} · {data.totalInventoryCount} {tt(lang, { en: 'items', ru: 'шт.', zh: '件', 'zh-TW': '件' })}
-                    {data.itemsLimited && (
-                      <span style={{ color: 'var(--accent)' }}>
-                        {tt(lang, {
-                          en: ` · limit ${data.itemDisplayLimit}`,
-                          ru: ` · лимит ${data.itemDisplayLimit}`,
-                          zh: ` · 上限 ${data.itemDisplayLimit}`,
-                          'zh-TW': ` · 上限 ${data.itemDisplayLimit}`,
-                        })}
-                      </span>
-                    )}
                     {data.storageItemCount > 0 && (
                       <span> · {tt(lang, {
                         en: `storage ${data.storageItemCount}`,
