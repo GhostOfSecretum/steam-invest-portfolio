@@ -924,11 +924,11 @@ Did you trade, or did you just refresh the watchlist?
 ```
 The row was never on your public profile.
 
-It was in a unit, under a name you typed, outside the screenshot everyone else can open.
+It was in storage, under a name you typed, outside the screenshot everyone else can open.
 
 A backpack total is the part Steam agrees to show.
 
-What’s still sitting in a unit that isn’t in the number you quote?
+What’s still sitting in storage that isn’t in the number you quote?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
@@ -940,13 +940,13 @@ What’s still sitting in a unit that isn’t in the number you quote?
 ```
 The backpack updates when Steam does.
 
-The unit updates when you last opened it.
+Storage updates when you last opened it.
 
 “As of Tuesday” next to a live total is two clocks on one bag.
 
 If you moved something after that date, the portfolio is describing a drawer you already changed.
 
-When did you last read the unit — not the backpack?
+When did you last read storage — not the backpack?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
@@ -957,7 +957,7 @@ When did you last read the unit — not the backpack?
 - Кадр. Портфель → обзор, сайт на EN, Steam-портфель с хранилищами. Кроп только карточки SELLABLE NOW: сумма, строка «N of M marketable» и подпись «N locked or in storage». Соседние карточки, CASH и весь ряд не брать.
 
 ```
-The sticker got bigger when the unit came in.
+The sticker got bigger when storage came in.
 
 The amount you can actually list did not.
 
@@ -975,15 +975,15 @@ How much of the new total is still stuck?
 - 19:30 пост 53 (не закреплять, только текст, без картинки):
 
 ```
-You named the unit “investments”.
+You named storage “investments”.
 
 That’s a folder.
 
 Cases you meant to open, a knife you hid, duplicates you didn’t want to see — one label, three reasons, zero weights.
 
-The name on the unit is not an allocation.
+The name on storage is not an allocation.
 
-What’s the biggest unit worth, in money, not in the word you typed?
+What’s the biggest storage worth, in money, not in the word you typed?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
@@ -996,7 +996,7 @@ What’s the biggest unit worth, in money, not in the word you typed?
 ```
 Same skin. Two rooms.
 
-One copy is in the backpack. One has been in a unit since you got tired of looking at it.
+One copy is in the backpack. One has been in storage since you got tired of looking at it.
 
 The position is both. The exit is only the copy you can list today.
 
@@ -1031,7 +1031,7 @@ Is the device gone — or still sitting in authorized devices?
 ```
 Public Steam is current.
 
-The unit is a date.
+Storage is a date.
 
 “Storage 96, as of Tuesday” added to a backpack that updated this morning is not one live number.
 
@@ -1047,7 +1047,7 @@ Which half are you calling the portfolio?
 - 19:30 пост 57 (не закреплять, только текст, без картинки):
 
 ```
-You can finally see the names that were in the unit.
+You can finally see the names that were in storage.
 
 You still don’t know what you paid for them.
 
@@ -1068,7 +1068,7 @@ What’s the basis on the most expensive name that was hiding?
 ```
 The total moved and you didn’t buy a thing.
 
-The unit was already yours. It just wasn’t in the mark.
+Storage was already yours. It just wasn’t in the mark.
 
 That jump is not a gain. It’s the book admitting it was short a drawer.
 
@@ -1082,7 +1082,7 @@ If the number rose when storage came in, how much of “up this month” was jus
 - 19:30 пост 59 (не закреплять, только текст, без картинки):
 
 ```
-Seeing the unit does not waive the cut.
+Seeing storage does not waive the cut.
 
 Those names were always yours. The 15% still is, the day you sell them.
 
@@ -1102,11 +1102,11 @@ Did the missing drawer change what you could withdraw — or only what you could
 Two people can open the same account and see two books.
 
 One is the public backpack.
-The other includes the unit.
+The other includes storage.
 
 If you still quote the first number, the second screen is a private correction you haven’t admitted.
 
-Which total are you actually using — the one anyone can open, or the one with the unit in it?
+Which total are you actually using — the one anyone can open, or the one with storage in it?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
@@ -1116,7 +1116,7 @@ Which total are you actually using — the one anyone can open, or the one with 
 - 19:30 пост 61 (не закреплять, только текст, без картинки):
 
 ```
-You synced the unit so the portfolio would be honest.
+You synced storage so the portfolio would be honest.
 
 Then you kept telling the old number, because the old number was the one people already believed.
 
@@ -1134,10 +1134,10 @@ When did you last say the total out loud — and which screen was it from?
 ```
 The row says 4.
 
-Two are in the backpack. Two are in a unit. The table added them and called it one position.
+Two are in the backpack. Two are in storage. The table added them and called it one position.
 
 Qty is not a location.
-A buyer can only take the copies that aren’t in the unit.
+A buyer can only take the copies that aren’t in storage.
 
 If you sized the position off that 4, you sized a number that cannot all leave.
 
@@ -1153,7 +1153,7 @@ How many of the 4 can you list before the weekend?
 ```
 You built the book so you would stop guessing.
 
-The unit is in it now.
+Storage is in it now.
 The basis on those names might still be a blank.
 The sellable line might still be half the sticker.
 
