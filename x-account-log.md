@@ -957,7 +957,7 @@ When did you last read storage — not the backpack?
 - Кадр. Портфель → обзор, сайт на EN, Steam-портфель с хранилищами. Кроп только карточки SELLABLE NOW: сумма, строка «N of M marketable» и подпись «N locked or in storage». Соседние карточки, CASH и весь ряд не брать.
 
 ```
-The sticker got bigger when storage came in.
+The total got bigger when storage came in.
 
 The amount you can actually list did not.
 
@@ -1086,7 +1086,7 @@ Seeing storage does not waive the cut.
 
 Those names were always yours. The 15% still is, the day you sell them.
 
-A fuller inventory is a bigger sticker. A bigger sticker is a bigger fee when you leave.
+A fuller inventory is a bigger total. A bigger total is a bigger fee when you leave.
 
 Did the missing drawer change what you could withdraw — or only what you could screenshot?
 ```
@@ -1155,7 +1155,7 @@ You built the book so you would stop guessing.
 
 Storage is in it now.
 The basis on those names might still be a blank.
-The sellable line might still be half the sticker.
+The sellable line might still be half the total.
 
 A fuller screenshot is not the same as knowing the position.
 

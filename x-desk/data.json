@@ -1215,8 +1215,8 @@
         "n": 52,
         "time": "19:30",
         "pinned": false,
-        "text": "The sticker got bigger when storage came in.\n\nThe amount you can actually list did not.\n\nLocked, or sitting in storage, still cannot leave this week.\n\nA higher total with the same sellable number is not a better position.\n\nHow much of the new total is still stuck?",
-        "textRu": "Стикер стал больше, когда хранилище попало в книгу.\n\nСумма, которую реально можно выставить, — нет.\n\nЗаблокированное или лежащее в хранилище на этой неделе всё ещё не уходит.\n\nБолее высокий тотал при той же доступной сумме — не лучшая позиция.\n\nСколько нового тотала всё ещё застряло?",
+        "text": "The total got bigger when storage came in.\n\nThe amount you can actually list did not.\n\nLocked, or sitting in storage, still cannot leave this week.\n\nA higher total with the same sellable number is not a better position.\n\nHow much of the new total is still stuck?",
+        "textRu": "Тотал стал больше, когда хранилище попало в книгу.\n\nСумма, которую реально можно выставить, — нет.\n\nЗаблокированное или лежащее в хранилище на этой неделе всё ещё не уходит.\n\nБолее высокий тотал при той же доступной сумме — не лучшая позиция.\n\nСколько нового тотала всё ещё застряло?",
         "shot": "still",
         "visual": "Портфель → обзор, сайт на EN, Steam-портфель с хранилищами. Кроп только карточки SELLABLE NOW: сумма, строка «N of M marketable» и подпись «N locked or in storage». Соседние карточки, CASH и весь ряд не брать."
       },
@@ -1321,8 +1321,8 @@
         "n": 59,
         "time": "19:30",
         "pinned": false,
-        "text": "Seeing storage does not waive the cut.\n\nThose names were always yours. The 15% still is, the day you sell them.\n\nA fuller inventory is a bigger sticker. A bigger sticker is a bigger fee when you leave.\n\nDid the missing drawer change what you could withdraw — or only what you could screenshot?",
-        "textRu": "Увидеть хранилище не отменяет комиссию.\n\nЭти имена и так были твоими. 15% всё ещё твои — в день, когда ты их продашь.\n\nБолее полный инвентарь — это больший стикер. Больший стикер — это большая комиссия на выходе.\n\nНедостающий ящик изменил то, что ты мог бы вывести, — или только то, что ты мог снять на скрин?"
+        "text": "Seeing storage does not waive the cut.\n\nThose names were always yours. The 15% still is, the day you sell them.\n\nA fuller inventory is a bigger total. A bigger total is a bigger fee when you leave.\n\nDid the missing drawer change what you could withdraw — or only what you could screenshot?",
+        "textRu": "Увидеть хранилище не отменяет комиссию.\n\nЭти имена и так были твоими. 15% всё ещё твои — в день, когда ты их продашь.\n\nБолее полный инвентарь — это больший тотал. Больший тотал — это большая комиссия на выходе.\n\nНедостающий ящик изменил то, что ты мог бы вывести, — или только то, что ты мог снять на скрин?"
       },
       "notes": "Не закреплять, только текст. 15% на содержимом юнита. Не повтор поста 3."
     },
@@ -1379,8 +1379,8 @@
         "n": 63,
         "time": "19:30",
         "pinned": false,
-        "text": "You built the book so you would stop guessing.\n\nStorage is in it now.\nThe basis on those names might still be a blank.\nThe sellable line might still be half the sticker.\n\nA fuller screenshot is not the same as knowing the position.\n\nWhat’s the one number on that screen you still don’t trust?",
-        "textRu": "Ты собрал книгу, чтобы перестать гадать.\n\nХранилище теперь в ней.\nБаза по этим именам всё ещё может быть пустой.\nСтрока доступного к продаже всё ещё может быть половиной стикера.\n\nБолее полный скриншот — не то же самое, что знать позицию.\n\nКакой одной цифре на этом экране ты всё ещё не веришь?"
+        "text": "You built the book so you would stop guessing.\n\nStorage is in it now.\nThe basis on those names might still be a blank.\nThe sellable line might still be half the total.\n\nA fuller screenshot is not the same as knowing the position.\n\nWhat’s the one number on that screen you still don’t trust?",
+        "textRu": "Ты собрал книгу, чтобы перестать гадать.\n\nХранилище теперь в ней.\nБаза по этим именам всё ещё может быть пустой.\nСтрока доступного к продаже всё ещё может быть половиной тотала.\n\nБолее полный скриншот — не то же самое, что знать позицию.\n\nКакой одной цифре на этом экране ты всё ещё не веришь?"
       },
       "notes": "Не закреплять, только текст. Закрытие двух недель: синк не заменяет базу и sellable."
     }
