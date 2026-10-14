@@ -48,14 +48,15 @@ https://x.com/SkinsheadPro
 - Магазины (lis-skins, tradeit, cs.money, skinsmonkey): только цена / объём / просадка. Текст про fill, не 🤩. GreenFire — не buy-посты
 - Киты: вотчлист на сайте живой. В реплаях уже (activity ≠ your basis). В свои посты — наблюдение с фида, не changelog /investors, не чаще раза в неделю
 - **С 1 окт:** реплаи можно снизить до 10–15. Пост тот же, 19:30. Десктоп / QR / скачать — не писать до релиза.
-- **С 11 окт:** Storage можно кадром с сайта — строка `storage`, счётчик «storage N (as of …)», карточка SELLABLE NOW, подпись `full inventory · Storage`. Попап расширения, код, QR, скачивание и десктоп не снимать и не анонсировать. Ссылку в пост не ставить.
+- **С 11 окт:** Storage можно кадром с сайта — строка `storage`, счётчик «storage N (as of …)», карточка SELLABLE NOW, подпись `full inventory · Storage`. Попап, код, QR и десктоп не снимать. Ссылку в пост не ставить.
+- **С 14 окт:** расширение опубликовано в Chrome Web Store, установка в один клик, zip с сайта снят. В посте и в реплае можно назвать это так. Ссылку на карточку в тело поста не ставить: сайт уже в профиле. В реплае на прямой вопрос «как увидеть Storage» ссылку на карточку можно дать один раз: `https://chromewebstore.google.com/detail/ficgknangpgoaalmjmigkchifhaonadi`. Zip, «загрузить распакованное» и шаги с кодом не расписывать. Десктоп не пишем.
 - Float предмета не пишем и не снимаем. На сайте его нет, и отдельный разбор флоата не делаем: для этого есть CSFloat. Бирка износа (FN/MW) — это имя скина, не пост про float.
 - Не ядро: чистые баеры «always buying 94%» и кейс-сайты. Список на столе в блоке «Реплаи»
 - Добрать ядро (подписать и отвечать): CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs, fengyuanshi1, theSinedinCS, V1rdus, de_copium. Смотреть: CS2Status, SteamDB, skinledger, skinpock, SkinSpecter — не реплаить как коллеге.
 
-X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. Киты уже в ленте. С 20 сен — второй слой клина: два марка (Steam vs market), sellable now, капитал в стикерах, кэш как позиция. С 11 окт Storage — результат синка на сайте, не анонс расширения. Десктоп не пишем. Коллекции — фон. 3D Glock не пишем.
+X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. Киты уже в ленте. С 20 сен — второй слой клина: два марка (Steam vs market), sellable now, капитал в стикерах, кэш как позиция. С 11 окт Storage — результат синка на сайте. С 14 окт расширение можно назвать как установку из Chrome Web Store, без ссылки в теле поста и без кадра попапа. Десктоп не пишем. Коллекции — фон. 3D Glock не пишем.
 
-Этот ритм — пост каждый день. План продлён до 24 окт. С 1 окт реплаи 10–15.
+Этот ритм — пост каждый день. План продлён до 7 ноя. С 1 окт реплаи 10–15. С 25 окт кадр с сайта — норма дня. Текст без картинки только если в дне так написано.
 
 ---
 
@@ -1007,14 +1008,15 @@ Are you marking the name, or only the copy Steam shows?
 
 ### 16 окт 2026 (пт) — день 55
 - 10–15 реплаев
-- 19:30 пост 55 (не закреплять, только текст, без картинки):
+- 19:30 пост 55 (не закреплять, текст + кадр):
+- Кадр. Главная, сайт на EN, блок расширения. Кроп заголовка и кнопки Install from Chrome Web Store. Шапка браузера, адрес, попап, код и QR не брать.
 
 ```
-A QR sign-in is a full Steam session. Still.
+Public Steam still leaves storage off the profile.
 
-What should remain after the read is a list of items.
+Those rows land after a browser extension reads them. It installs from the Chrome Web Store. One click. No archive.
 
-Not a token left on the computer. Not a device that stays authorized because the tab closed early.
+The read is still a QR sign-in. What should remain is the list, not a token left on the computer.
 
 If the list landed and the session didn’t die, you didn’t update a portfolio. You left a login behind.
 
@@ -1129,7 +1131,8 @@ When did you last say the total out loud — and which screen was it from?
 
 ### 23 окт 2026 (пт) — день 62
 - 10–15 реплаев
-- 19:30 пост 62 (не закреплять, только текст, без картинки):
+- 19:30 пост 62 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN. Одна строка, где Qty больше того, что реально лежит в рюкзаке, и под именем бирюзовая подпись storage. Кроп имени, Qty и этой подписи. «N stacks merged» в кроп не бери — это пост 54. Float не снимать.
 
 ```
 The row says 4.
@@ -1148,7 +1151,8 @@ How many of the 4 can you list before the weekend?
 
 ### 24 окт 2026 (сб) — день 63
 - 10–15 реплаев
-- 19:30 пост 63 (не закреплять, только текст, без картинки):
+- 19:30 пост 63 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN. Строка, где колонка Basis пустая, а Now заполнен. Кроп имени, Basis и Now. Редактирование не открывать. Float не снимать.
 
 ```
 You built the book so you would stop guessing.
@@ -1160,6 +1164,242 @@ The sellable line might still be half the total.
 A fuller screenshot is not the same as knowing the position.
 
 What’s the one number on that screen you still don’t trust?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 25 окт 2026 (вс) — неделя 10 · два ценника
+- 10–15 реплаев
+- 19:30 пост 64 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN, переключатель цен Market. Одна строка, где в Value читаются и оценка маркета, и строка Steam под ней. Кроп имени, Now и Value. Переключатель и шапку не бери. Float не снимать.
+
+```
+The row has two prices.
+
+The number on top is the market. The line under it is Steam.
+
+Same skin. Two books. You have been quoting one of them.
+
+Which line is the position?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 26 окт 2026 (пн) — день 65
+- 10–15 реплаев
+- 19:30 пост 65 (не закреплять, текст + кадр):
+- Кадр. Портфель → обзор, сайт на EN, блок Portfolio leaders, диапазон 30d. Кроп списка имён и долей. График Value over time и Best/Worst movers в кадр не бери.
+
+```
+One name is doing the work.
+
+The rest of the list is decoration around it.
+
+Leaders is not a highlight reel. It is the concentration you keep calling diversification.
+
+What share is the top name — and would you buy that share today?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 27 окт 2026 (вт) — день 66
+- 10–15 реплаев
+- 19:30 пост 66 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN. Одна строка, где 1d, 7d и 30d не одного знака: хотя бы одна колонка в плюсе и одна в минусе. Кроп имени и этих трёх колонок. График не снимать — это был рил 39.
+
+```
+1 day is green. 30 days is red. Or the other way around.
+
+You remember the window that agrees with you.
+
+The row is all three.
+
+Which column are you allowed to ignore?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 28 окт 2026 (ср) — день 67
+- 10–15 реплаев
+- 19:30 пост 67 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN. Строка с янтарной подписью restricted или «N restricted». Кроп имени и этой подписи. Бирюзовый storage в кроп не бери. Float не снимать.
+
+```
+Restricted is not storage.
+
+Storage is a drawer you chose. Restricted is a timer Steam started.
+
+Both sit in the total. Neither can leave today.
+
+How much of the bag is waiting, not allocated?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 29 окт 2026 (чт) — день 68
+- 10–15 реплаев
+- 19:30 пост 68 (не закреплять, текст + кадр):
+- Кадр. Портфель → обзор, сайт на EN, переключатель цен Market. Карточка Market value: большая цифра и строка Steam под ней. «N of M priced» в этот кроп не бери — это пост 58. Соседние карточки не брать.
+
+```
+The headline is the number you screenshot.
+
+The line under it is the other book.
+
+Steam under a market total is not a footnote. It is a second mark you decided not to lead with.
+
+Which one would you actually post?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 30 окт 2026 (пт) — день 69
+- 10–15 реплаев
+- 19:30 пост 69 (не закреплять, текст + кадр):
+- Кадр. Портфель → обзор, сайт на EN, блок Value over time, выбран 90d. Кроп графика и чипа 90d. 30d не выбирай — это был рил 39. Movers не бери.
+
+```
+Ninety days looks like a thesis.
+
+It is a line that already happened.
+
+The position is what you would still pay, not the shape of the chart.
+
+Where does the line stop being a story?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 31 окт 2026 (сб) — день 70
+- 10–15 реплаев
+- 19:30 пост 70 (не закреплять, только текст, без картинки):
+
+```
+You can see the drawer now.
+
+Seeing it did not list it.
+
+A fuller screen and a buyer are still two different events.
+
+What on that screen can actually clear this week?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 1 ноя 2026 (вс) — неделя 11 · база
+- 10–15 реплаев
+- 19:30 пост 71 (не закреплять, текст + кадр):
+- Кадр. Свой Steam-портфель, не ручной. Обзор → карточка All-time P&L, под ней строка Cost basis. Если база нулевая или пустая — так и снимай. Не карточка ручного портфеля с Unrealized / Realized — это пост 36.
+
+```
+The percent looks like a result.
+
+Cost basis under it is the only thing that makes the percent true.
+
+If that line is empty, the P&L is a costume on a price tag.
+
+What’s the basis — or are you still celebrating the sticker?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 2 ноя 2026 (пн) — день 72
+- 10–15 реплаев
+- 19:30 пост 72 (не закреплять, текст + кадр):
+- Кадр. Карточка предмета, сайт на EN. Блок Marketplace comparison: Steam и хотя бы ещё одна площадка с ценой. Кроп только этого блока. Float, выбор износа и кнопку Steam Market не бери.
+
+```
+Steam is one booth.
+
+The comparison is the rest of the market for the same name.
+
+If you mark the skin off the booth you opened first, you marked a venue, not a bid.
+
+Which booth would actually fill?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 3 ноя 2026 (вт) — день 73
+- 10–15 реплаев
+- 19:30 пост 73 (не закреплять, текст + кадр):
+- Кадр. Портфель → Activity, сайт на EN. Одна строка, где видно, что количество изменилось: покупка, продажа или смена Qty. Если история пустая — не выдумывай строку. Тогда предметы, сортировка по P&L, кроп одной красной ячейки P&L и имени.
+
+```
+The total moved.
+
+Activity is the only place that says whether you bought, sold, or the price just walked.
+
+A new number with an empty history is a mark, not a trade.
+
+Did you do something — or did the screen?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 4 ноя 2026 (ср) — день 74
+- 10–15 реплаев
+- 19:30 пост 74 (не закреплять, текст + кадр):
+- Кадр. Чужой публичный профиль, сайт на EN. Кроп строки источника «public Steam» и счётчика ITEMS. Имя профиля обрежь. Строки storage на публичном профиле нет — не подменяй кадр своим портфелем.
+
+```
+Open someone else’s profile and the line says public Steam.
+
+Your book says the drawer is in it.
+
+They are not the same inventory. You have been comparing them anyway.
+
+Which one did you quote last?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 5 ноя 2026 (чт) — день 75
+- 10–15 реплаев
+- 19:30 пост 75 (не закреплять, только текст, без картинки):
+
+```
+The sticker is not a footnote.
+
+It is capital glued to a skin, with its own bid and no separate row.
+
+If you marked the gun and ignored the plastic, you marked a fraction.
+
+What’s the sticker worth without the skin under it?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 6 ноя 2026 (пт) — день 76
+- 10–15 реплаев
+- 19:30 пост 76 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN, сортировка по P&L, худшие сверху или так, чтобы красная строка была в кропе. Кроп имени и колонки P&L. Worst movers не снимай — это пост 48. Float не снимать.
+
+```
+Sort by P&L and the red row is still a position.
+
+You talk about the green one.
+
+The book does not sort itself by what you remember.
+
+What’s the worst row still in the bag — in money, not in the story?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 7 ноя 2026 (сб) — день 77
+- 10–15 реплаев
+- 19:30 пост 77 (не закреплять, текст + кадр):
+- Кадр. Портфель → предметы, сайт на EN, сортировка по Value. Кроп двух верхних строк: имя и Value, чтобы был виден разрыв между первой и второй. Portfolio leaders не снимай — это пост 65. Float не снимать.
+
+```
+The top row is a number.
+
+The book is every row under it.
+
+If the first line is half the bag, the screenshot of that line is not a portfolio.
+
+How far is row two from row one — and which one do you actually talk about?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __

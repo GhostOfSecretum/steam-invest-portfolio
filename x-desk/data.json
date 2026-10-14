@@ -28,9 +28,11 @@
     "С 1 окт реплаи можно 10–15. Пост тот же, 19:30. Десктоп не анонсировать до релиза",
     "Float предмета не пишем и не снимаем. На сайте его нет. Для флоата есть CSFloat. Бирка износа — имя скина, не пост про float",
     "Кадр: сайт на EN, кроп блока, без шапки браузера и без URL. Десктоп, QR и скачивание не снимать. 30 сен — ролик 9:16, 8–12 сек, не закреплять, старый рил 31 авг не использовать",
-    "С 11 окт Storage можно кадром результата на сайте: строка storage, счётчик, SELLABLE NOW, подпись full inventory · Storage. Попап расширения, код, QR, скачивание и десктоп не снимать и не анонсировать. Ссылку не ставить",
+    "С 11 окт Storage можно кадром результата на сайте: строка storage, счётчик, SELLABLE NOW, подпись full inventory · Storage. Попап, код, QR и десктоп не снимать. Ссылку в пост не ставить",
+    "С 14 окт расширение в Chrome Web Store, установка в один клик, zip с сайта снят. В посте и в реплае можно назвать. Ссылку на карточку в тело поста не ставить. В реплае на «как увидеть Storage» ссылку можно дать один раз. Zip и «загрузить распакованное» не расписывать. Десктоп не пишем",
     "Не ядро: чистые баеры «always buying 94%» и кейс-сайты — список в блоке Реплаи",
-    "Добрать ядро: CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs — список в блоке Подписки"
+    "Добрать ядро: CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs — список в блоке Подписки",
+    "С 25 окт по 7 ноя кадр с сайта — норма дня. Текст без картинки только если так написано в дне. Кроп одного блока, сайт на EN, без шапки браузера и без ссылки в посте"
   ],
   "followsFocus": {
     "title": "Подписки · добрать",
@@ -135,7 +137,7 @@
         "key": "later",
         "tone": "warn",
         "label": "Позже",
-        "note": "Десктоп не анонсировать, не QR, не скачать. С 11 окт Storage — результат на сайте, не попап. «Read-only Steam» — тезис, без имени продукта. 3D Glock не пишем."
+        "note": "Десктоп не анонсировать, не QR, не zip. С 11 окт Storage — результат на сайте, не попап. С 14 окт расширение можно назвать: Chrome Web Store, без ссылки в теле поста. 3D Glock не пишем."
       }
     ]
   },
@@ -1261,10 +1263,12 @@
         "n": 55,
         "time": "19:30",
         "pinned": false,
-        "text": "A QR sign-in is a full Steam session. Still.\n\nWhat should remain after the read is a list of items.\n\nNot a token left on the computer. Not a device that stays authorized because the tab closed early.\n\nIf the list landed and the session didn’t die, you didn’t update a portfolio. You left a login behind.\n\nIs the device gone — or still sitting in authorized devices?",
-        "textRu": "Вход по QR — это полная сессия Steam. Всё ещё.\n\nПосле чтения должен остаться список предметов.\n\nНе токен на компьютере. Не устройство, которое осталось авторизованным, потому что вкладку закрыли раньше.\n\nЕсли список дошёл, а сессия не умерла, ты не обновил портфель. Ты оставил вход.\n\nУстройство исчезло — или всё ещё лежит в авторизованных?"
+        "text": "Public Steam still leaves storage off the profile.\n\nThose rows land after a browser extension reads them. It installs from the Chrome Web Store. One click. No archive.\n\nThe read is still a QR sign-in. What should remain is the list, not a token left on the computer.\n\nIf the list landed and the session didn’t die, you didn’t update a portfolio. You left a login behind.\n\nIs the device gone — or still sitting in authorized devices?",
+        "textRu": "Публичный Steam по-прежнему не показывает хранилище в профиле.\n\nЭти строки появляются после того, как расширение для браузера их читает. Оно ставится из Chrome Web Store. Один клик. Без архива.\n\nЧтение по-прежнему вход по QR. Остаться должен список, не токен на компьютере.\n\nЕсли список дошёл, а сессия не умерла, ты не обновил портфель. Ты оставил вход.\n\nУстройство исчезло — или всё ещё лежит в авторизованных?",
+        "shot": "still",
+        "visual": "Главная, сайт на EN, блок расширения. Кроп заголовка и кнопки Install from Chrome Web Store. Шапка браузера, адрес, попап, код и QR не брать."
       },
-      "notes": "Не закреплять, только текст. Сессия умирает после чтения. Без имени продукта, без QR в кадре, без инструкции. Не копипаст поста 38."
+      "notes": "Не закреплять. Кадр — кнопка Chrome Web Store на сайте, не попап. Без ссылки в теле. Карточка для реплая на «как»: https://chromewebstore.google.com/detail/ficgknangpgoaalmjmigkchifhaonadi. Сессия умирает после чтения. Не копипаст поста 38."
     },
     {
       "date": "2026-10-17",
@@ -1366,9 +1370,11 @@
         "time": "19:30",
         "pinned": false,
         "text": "The row says 4.\n\nTwo are in the backpack. Two are in storage. The table added them and called it one position.\n\nQty is not a location.\nA buyer can only take the copies that aren’t in storage.\n\nIf you sized the position off that 4, you sized a number that cannot all leave.\n\nHow many of the 4 can you list before the weekend?",
-        "textRu": "В строке 4.\n\nДве в рюкзаке. Две в хранилище. Таблица сложила их и назвала одной позицией.\n\nКоличество — это не место.\nПокупатель может взять только копии, которых нет в хранилище.\n\nЕсли ты оценил размер позиции по этой четвёрке, ты оценил цифру, которая не может уйти целиком.\n\nСколько из четырёх ты можешь выставить до выходных?"
+        "textRu": "В строке 4.\n\nДве в рюкзаке. Две в хранилище. Таблица сложила их и назвала одной позицией.\n\nКоличество — это не место.\nПокупатель может взять только копии, которых нет в хранилище.\n\nЕсли ты оценил размер позиции по этой четвёрке, ты оценил цифру, которая не может уйти целиком.\n\nСколько из четырёх ты можешь выставить до выходных?",
+        "shot": "still",
+        "visual": "Портфель → предметы, сайт на EN. Одна строка, где Qty больше того, что реально лежит в рюкзаке, и под именем бирюзовая подпись storage. Кроп имени, Qty и этой подписи. «N stacks merged» в кроп не бери — это пост 54. Float не снимать."
       },
-      "notes": "Не закреплять, только текст. Qty смешивает рюкзак и юнит. Не кадр поста 54 и не стек поста 40."
+      "notes": "Не закреплять. Qty смешивает рюкзак и юнит. Не кадр поста 54 и не стек поста 40."
     },
     {
       "date": "2026-10-24",
@@ -1380,9 +1386,231 @@
         "time": "19:30",
         "pinned": false,
         "text": "You built the book so you would stop guessing.\n\nStorage is in it now.\nThe basis on those names might still be a blank.\nThe sellable line might still be half the total.\n\nA fuller screenshot is not the same as knowing the position.\n\nWhat’s the one number on that screen you still don’t trust?",
-        "textRu": "Ты собрал книгу, чтобы перестать гадать.\n\nХранилище теперь в ней.\nБаза по этим именам всё ещё может быть пустой.\nСтрока доступного к продаже всё ещё может быть половиной тотала.\n\nБолее полный скриншот — не то же самое, что знать позицию.\n\nКакой одной цифре на этом экране ты всё ещё не веришь?"
+        "textRu": "Ты собрал книгу, чтобы перестать гадать.\n\nХранилище теперь в ней.\nБаза по этим именам всё ещё может быть пустой.\nСтрока доступного к продаже всё ещё может быть половиной тотала.\n\nБолее полный скриншот — не то же самое, что знать позицию.\n\nКакой одной цифре на этом экране ты всё ещё не веришь?",
+        "shot": "still",
+        "visual": "Портфель → предметы, сайт на EN. Строка, где колонка Basis пустая, а Now заполнен. Кроп имени, Basis и Now. Редактирование не открывать. Float не снимать."
       },
-      "notes": "Не закреплять, только текст. Закрытие двух недель: синк не заменяет базу и sellable."
+      "notes": "Не закреплять. Кадр — пустая база рядом с ценой. Закрытие двух недель: синк не заменяет базу и sellable."
+    },
+    {
+      "date": "2026-10-25",
+      "kind": "planned",
+      "dayNum": 64,
+      "label": "неделя 10 · два ценника",
+      "post": {
+        "n": 64,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "The row has two prices.\n\nThe number on top is the market. The line under it is Steam.\n\nSame skin. Two books. You have been quoting one of them.\n\nWhich line is the position?",
+        "textRu": "В строке две цены.\n\nЦифра сверху — маркет. Строка под ней — Steam.\n\nОдин скин. Две книги. Ты называл одну из них.\n\nКакая строка — позиция?",
+        "visual": "Портфель → предметы, сайт на EN, переключатель цен Market. Одна строка, где в Value читаются и оценка маркета, и строка Steam под ней. Кроп имени, Now и Value. Переключатель и шапку не бери. Float не снимать."
+      },
+      "notes": "Не закреплять. Два ценника в одной строке. Не тезис поста 29 без кадра и не карточка Market value (пост 68)."
+    },
+    {
+      "date": "2026-10-26",
+      "kind": "planned",
+      "dayNum": 65,
+      "label": "день 65",
+      "post": {
+        "n": 65,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "One name is doing the work.\n\nThe rest of the list is decoration around it.\n\nLeaders is not a highlight reel. It is the concentration you keep calling diversification.\n\nWhat share is the top name — and would you buy that share today?",
+        "textRu": "Одно имя делает всю работу.\n\nОстальной список — украшение вокруг него.\n\nЛидеры — не хайлайт. Это концентрация, которую ты называешь диверсификацией.\n\nКакая доля у верхнего имени — и купил бы ты эту долю сегодня?",
+        "visual": "Портфель → обзор, сайт на EN, блок Portfolio leaders, диапазон 30d. Кроп списка имён и долей. График Value over time и Best/Worst movers в кадр не бери."
+      },
+      "notes": "Не закреплять. Концентрация, не муверы (посты 32 и 48) и не Allocation (пост 37)."
+    },
+    {
+      "date": "2026-10-27",
+      "kind": "planned",
+      "dayNum": 66,
+      "label": "день 66",
+      "post": {
+        "n": 66,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "1 day is green. 30 days is red. Or the other way around.\n\nYou remember the window that agrees with you.\n\nThe row is all three.\n\nWhich column are you allowed to ignore?",
+        "textRu": "1 день зелёный. 30 дней красные. Или наоборот.\n\nТы помнишь окно, которое с тобой согласно.\n\nВ строке все три.\n\nКакую колонку тебе можно не считать?",
+        "visual": "Портфель → предметы, сайт на EN. Одна строка, где 1d, 7d и 30d не одного знака: хотя бы одна колонка в плюсе и одна в минусе. Кроп имени и этих трёх колонок. График не снимать — это был рил 39."
+      },
+      "notes": "Не закреплять. Три окна в строке, не график."
+    },
+    {
+      "date": "2026-10-28",
+      "kind": "planned",
+      "dayNum": 67,
+      "label": "день 67",
+      "post": {
+        "n": 67,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "Restricted is not storage.\n\nStorage is a drawer you chose. Restricted is a timer Steam started.\n\nBoth sit in the total. Neither can leave today.\n\nHow much of the bag is waiting, not allocated?",
+        "textRu": "Restricted — это не хранилище.\n\nХранилище — ящик, который выбрал ты. Restricted — таймер, который запустил Steam.\n\nОба сидят в тотале. Ни то ни другое сегодня не уходит.\n\nСколько портфеля ждёт, а не аллоцировано?",
+        "visual": "Портфель → предметы, сайт на EN. Строка с янтарной подписью restricted или «N restricted». Кроп имени и этой подписи. Бирюзовый storage в кроп не бери. Float не снимать."
+      },
+      "notes": "Не закреплять. Трейд-лок, не storage (посты 50–54) и не SELLABLE NOW (пост 52)."
+    },
+    {
+      "date": "2026-10-29",
+      "kind": "planned",
+      "dayNum": 68,
+      "label": "день 68",
+      "post": {
+        "n": 68,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "The headline is the number you screenshot.\n\nThe line under it is the other book.\n\nSteam under a market total is not a footnote. It is a second mark you decided not to lead with.\n\nWhich one would you actually post?",
+        "textRu": "Заголовок — это цифра, которую ты скринишь.\n\nСтрока под ней — другая книга.\n\nSteam под рыночным тоталом — не сноска. Это второй ценник, который ты решил не ставить первым.\n\nКакой из них ты реально выложишь?",
+        "visual": "Портфель → обзор, сайт на EN, переключатель цен Market. Карточка Market value: большая цифра и строка Steam под ней. «N of M priced» в этот кроп не бери — это пост 58. Соседние карточки не брать."
+      },
+      "notes": "Не закреплять. Подпись Steam под тоталом. Не строка Value (пост 64) и не «N of M priced» (пост 58)."
+    },
+    {
+      "date": "2026-10-30",
+      "kind": "planned",
+      "dayNum": 69,
+      "label": "день 69",
+      "post": {
+        "n": 69,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "Ninety days looks like a thesis.\n\nIt is a line that already happened.\n\nThe position is what you would still pay, not the shape of the chart.\n\nWhere does the line stop being a story?",
+        "textRu": "Девяносто дней выглядят как тезис.\n\nЭто линия, которая уже случилась.\n\nПозиция — это сколько ты ещё готов заплатить, не форма графика.\n\nГде линия перестаёт быть историей?",
+        "visual": "Портфель → обзор, сайт на EN, блок Value over time, выбран 90d. Кроп графика и чипа 90d. 30d не выбирай — это был рил 39. Movers не бери."
+      },
+      "notes": "Не закреплять. 90d, не рил 30d."
+    },
+    {
+      "date": "2026-10-31",
+      "kind": "planned",
+      "dayNum": 70,
+      "label": "день 70",
+      "post": {
+        "n": 70,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You can see the drawer now.\n\nSeeing it did not list it.\n\nA fuller screen and a buyer are still two different events.\n\nWhat on that screen can actually clear this week?",
+        "textRu": "Ящик теперь видно.\n\nТо, что ты его видишь, не выставило его на продажу.\n\nБолее полный экран и покупатель — всё ещё два разных события.\n\nЧто на этом экране реально может уйти на этой неделе?"
+      },
+      "notes": "Не закреплять, только текст. Видимость ≠ филл. Не SELLABLE NOW кадром (пост 52) и не налог (пост 59)."
+    },
+    {
+      "date": "2026-11-01",
+      "kind": "planned",
+      "dayNum": 71,
+      "label": "неделя 11 · база",
+      "post": {
+        "n": 71,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "The percent looks like a result.\n\nCost basis under it is the only thing that makes the percent true.\n\nIf that line is empty, the P&L is a costume on a price tag.\n\nWhat’s the basis — or are you still celebrating the sticker?",
+        "textRu": "Процент выглядит как результат.\n\nСебестоимость под ним — единственное, что делает процент правдой.\n\nЕсли эта строка пустая, P&L — костюм на ценнике.\n\nКакая база — или ты всё ещё празднуешь наклейку?",
+        "visual": "Свой Steam-портфель, не ручной. Обзор → карточка All-time P&L, под ней строка Cost basis. Если база нулевая или пустая — так и снимай. Не карточка ручного портфеля с Unrealized / Realized — это пост 36."
+      },
+      "notes": "Не закреплять. Cost basis на Steam-карточке. Не ручной P&L (пост 36) и не пустой Basis в таблице (пост 63)."
+    },
+    {
+      "date": "2026-11-02",
+      "kind": "planned",
+      "dayNum": 72,
+      "label": "день 72",
+      "post": {
+        "n": 72,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "Steam is one booth.\n\nThe comparison is the rest of the market for the same name.\n\nIf you mark the skin off the booth you opened first, you marked a venue, not a bid.\n\nWhich booth would actually fill?",
+        "textRu": "Steam — один прилавок.\n\nСравнение — остальной рынок того же имени.\n\nЕсли ты оценил скин по прилавку, который открыл первым, ты оценил площадку, не бид.\n\nКакой прилавок реально заполнится?",
+        "visual": "Карточка предмета, сайт на EN. Блок Marketplace comparison: Steam и хотя бы ещё одна площадка с ценой. Кроп только этого блока. Float, выбор износа и кнопку Steam Market не бери."
+      },
+      "notes": "Не закреплять. Сравнение площадок на карточке. Не два ценника в строке портфеля (пост 64). Float не снимать."
+    },
+    {
+      "date": "2026-11-03",
+      "kind": "planned",
+      "dayNum": 73,
+      "label": "день 73",
+      "post": {
+        "n": 73,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "The total moved.\n\nActivity is the only place that says whether you bought, sold, or the price just walked.\n\nA new number with an empty history is a mark, not a trade.\n\nDid you do something — or did the screen?",
+        "textRu": "Тотал сдвинулся.\n\nИстория — единственное место, где видно, купил ты, продал или цена просто ушла.\n\nНовая цифра при пустой истории — это оценка, не сделка.\n\nТы что-то сделал — или это экран?",
+        "visual": "Портфель → Activity, сайт на EN. Одна строка, где видно, что количество изменилось: покупка, продажа или смена Qty. Если история пустая — не выдумывай строку. Тогда предметы, сортировка по P&L, кроп одной красной ячейки P&L и имени."
+      },
+      "notes": "Не закреплять. Сделка против движения цены. Если Activity пустая — запасной кроп P&L, не выдумывать строку."
+    },
+    {
+      "date": "2026-11-04",
+      "kind": "planned",
+      "dayNum": 74,
+      "label": "день 74",
+      "post": {
+        "n": 74,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "Open someone else’s profile and the line says public Steam.\n\nYour book says the drawer is in it.\n\nThey are not the same inventory. You have been comparing them anyway.\n\nWhich one did you quote last?",
+        "textRu": "Открой чужой профиль — строка говорит public Steam.\n\nТвоя книга говорит, что ящик в ней есть.\n\nЭто не один инвентарь. Ты всё равно их сравнивал.\n\nКакой из них ты назвал в последний раз?",
+        "visual": "Чужой публичный профиль, сайт на EN. Кроп строки источника «public Steam» и счётчика ITEMS. Имя профиля обрежь. Строки storage на публичном профиле нет — не подменяй кадр своим портфелем."
+      },
+      "notes": "Не закреплять. Чужой публичный профиль без имени. Не свой «full inventory · Storage» (пост 60)."
+    },
+    {
+      "date": "2026-11-05",
+      "kind": "planned",
+      "dayNum": 75,
+      "label": "день 75",
+      "post": {
+        "n": 75,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The sticker is not a footnote.\n\nIt is capital glued to a skin, with its own bid and no separate row.\n\nIf you marked the gun and ignored the plastic, you marked a fraction.\n\nWhat’s the sticker worth without the skin under it?",
+        "textRu": "Стикер — не сноска.\n\nЭто капитал, приклеенный к скину, со своим бидом и без отдельной строки.\n\nЕсли ты оценил оружие и не заметил пластик, ты оценил долю.\n\nСколько стоит стикер без скина под ним?"
+      },
+      "notes": "Не закреплять, только текст. Стикер как капитал. Не allocation by type (пост 37)."
+    },
+    {
+      "date": "2026-11-06",
+      "kind": "planned",
+      "dayNum": 76,
+      "label": "день 76",
+      "post": {
+        "n": 76,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "Sort by P&L and the red row is still a position.\n\nYou talk about the green one.\n\nThe book does not sort itself by what you remember.\n\nWhat’s the worst row still in the bag — in money, not in the story?",
+        "textRu": "Отсортируй по P&L — красная строка всё ещё позиция.\n\nТы говоришь о зелёной.\n\nКнига не сортируется по тому, что ты помнишь.\n\nКакая худшая строка всё ещё в портфеле — деньгами, не историей?",
+        "visual": "Портфель → предметы, сайт на EN, сортировка по P&L, худшие сверху или так, чтобы красная строка была в кропе. Кроп имени и колонки P&L. Worst movers не снимай — это пост 48. Float не снимать."
+      },
+      "notes": "Не закреплять. Красная строка в таблице. Не блок Worst movers (пост 48)."
+    },
+    {
+      "date": "2026-11-07",
+      "kind": "planned",
+      "dayNum": 77,
+      "label": "день 77",
+      "post": {
+        "n": 77,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "The top row is a number.\n\nThe book is every row under it.\n\nIf the first line is half the bag, the screenshot of that line is not a portfolio.\n\nHow far is row two from row one — and which one do you actually talk about?",
+        "textRu": "Верхняя строка — это цифра.\n\nКнига — это каждая строка под ней.\n\nЕсли первая строка — половина портфеля, скрин этой строки — не портфель.\n\nНасколько вторая далеко от первой — и о какой ты на самом деле говоришь?",
+        "visual": "Портфель → предметы, сайт на EN, сортировка по Value. Кроп двух верхних строк: имя и Value, чтобы был виден разрыв между первой и второй. Portfolio leaders не снимай — это пост 65. Float не снимать."
+      },
+      "notes": "Не закреплять. Разрыв первой и второй строки. Не блок Leaders (пост 65)."
     }
   ],
   "weekTopReplies": [
