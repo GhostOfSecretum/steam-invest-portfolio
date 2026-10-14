@@ -89,9 +89,9 @@ function buildZip(entries) {
 
 let cached = null;
 
-async function getExtensionZip() {
+// The store zip must have manifest.json at the archive root, or the upload is rejected.
+async function getStoreZip() {
   if (cached) return cached;
-  const folder = 'skinshead-extension';
   let version = '0.0.0';
   const entries = [];
   for (const rel of await listFiles(EXTENSION_DIR)) {
@@ -101,10 +101,10 @@ async function getExtensionZip() {
       version = release.manifest.version;
       data = release.data;
     }
-    entries.push({ name: `${folder}/${rel}`, data });
+    entries.push({ name: rel, data });
   }
   cached = { fileName: `skinshead-extension-${version}.zip`, version, buffer: buildZip(entries) };
   return cached;
 }
 
-module.exports = { getExtensionZip };
+module.exports = { getStoreZip };

@@ -1175,8 +1175,7 @@ function ArmoryROI() {
   );
 }
 
-// Set once the extension is live in the Chrome Web Store; the zip stays as a fallback.
-const EXTENSION_STORE_URL = null;
+const EXTENSION_STORE_URL = 'https://chromewebstore.google.com/detail/ficgknangpgoaalmjmigkchifhaonadi';
 
 function ExtensionInstall({ lang }) {
   const copy = lang === 'ru'
@@ -1184,15 +1183,7 @@ function ExtensionInstall({ lang }) {
       title: 'Хранилища CS2 — через расширение для браузера',
       sub: 'Публичный Steam показывает только основной инвентарь. Расширение SkinsHead читает содержимое Хранилищ и добавляет их в портфель: какие предметы и в каком Хранилище лежат. Бесплатно.',
       browsers: 'Chrome, Edge, Brave, Opera, Яндекс Браузер и другие браузеры на Chromium.',
-      steps: [
-        'Скачайте архив и распакуйте его.',
-        'Откройте chrome://extensions (в Edge — edge://extensions) и включите «Режим разработчика».',
-        'Нажмите «Загрузить распакованное» и выберите папку skinshead-extension.',
-        'Нажмите на значок расширения, введите код из портфеля («Код для расширения») и войдите в Steam по QR.',
-      ],
-      store: 'Скоро — в Chrome Web Store, установка в один клик.',
       security: 'Пароль Steam не запрашивается. Вход по QR при каждой синхронизации: токен Steam живёт только в памяти вкладки, никуда не сохраняется и сразу после чтения отзывается. На сервер уходит только список предметов. Расширение не перемещает, не продаёт и не трейдит предметы.',
-      download: 'Скачать расширение (zip)',
       install: 'Установить из Chrome Web Store',
       badge: 'Бесплатно',
     }
@@ -1200,15 +1191,7 @@ function ExtensionInstall({ lang }) {
       title: 'CS2 Storage Units — via a browser extension',
       sub: 'A public Steam inventory only shows the main backpack. The SkinsHead extension reads what is inside your Storage Units and adds it to the portfolio, unit by unit. Free.',
       browsers: 'Chrome, Edge, Brave, Opera and other Chromium browsers.',
-      steps: [
-        'Download the archive and unzip it.',
-        'Open chrome://extensions (edge://extensions in Edge) and turn on Developer mode.',
-        'Click “Load unpacked” and pick the skinshead-extension folder.',
-        'Click the extension icon, enter the code from your portfolio (“Extension code”) and sign in to Steam with a QR code.',
-      ],
-      store: 'Coming soon to the Chrome Web Store with one-click install.',
       security: 'Your Steam password is never requested. You sign in with a QR code on every sync: the Steam token lives only in the tab’s memory, is never saved and is revoked right after reading. Only the item list reaches our server. The extension never moves, sells or trades items.',
-      download: 'Download extension (zip)',
       install: 'Install from Chrome Web Store',
       badge: 'Free',
     };
@@ -1232,28 +1215,11 @@ function ExtensionInstall({ lang }) {
             <p style={{ marginTop: 12, color: 'var(--fg-2)', fontSize: 13, lineHeight: 1.6, maxWidth: 760 }}>
               {copy.browsers}
             </p>
-            {!EXTENSION_STORE_URL && (
-              <ol style={{ marginTop: 14, paddingLeft: 20, color: 'var(--fg-1)', fontSize: 14, lineHeight: 1.7, maxWidth: 760 }}>
-                {copy.steps.map((step) => <li key={step}>{step}</li>)}
-              </ol>
-            )}
           </div>
           <div className="desktop-panel-actions">
-            {EXTENSION_STORE_URL && (
-              <a className="btn btn-primary" href={EXTENSION_STORE_URL} target="_blank" rel="noopener noreferrer">
-                {copy.install}
-              </a>
-            )}
-            <a
-              className={EXTENSION_STORE_URL ? 'btn btn-ghost' : 'btn btn-primary'}
-              href="/api/downloads/extension"
-              download
-            >
-              {copy.download}
+            <a className="btn btn-primary" href={EXTENSION_STORE_URL} target="_blank" rel="noopener noreferrer">
+              {copy.install}
             </a>
-            {!EXTENSION_STORE_URL && (
-              <div style={{ color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.55 }}>{copy.store}</div>
-            )}
             <div className="glass" style={{ padding: 14, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.55 }}>
               {copy.security}
             </div>

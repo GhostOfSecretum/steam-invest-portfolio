@@ -92,7 +92,6 @@ const {
   isDesktopVersionSupported,
 } = require('./services/desktop');
 const { recordSteamLogin, getSteamLoginStats } = require('./services/users');
-const { getExtensionZip } = require('./services/extension-zip');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -814,16 +813,6 @@ app.get('/api/news/telegram-media/:sourceId/:messageId', asyncRoute(async (req, 
 app.post('/api/desktop/pairing-code', authLimiter, requireAuth, asyncRoute(async (req, res) => {
   const code = await createPairingCode(req.session.steamId);
   res.json({ code, expiresIn: 300 });
-}));
-
-app.get('/api/downloads/extension', asyncRoute(async (req, res) => {
-  const { fileName, buffer } = await getExtensionZip();
-  res.set({
-    'Content-Type': 'application/zip',
-    'Content-Disposition': `attachment; filename="${fileName}"`,
-    'Cache-Control': 'no-cache',
-  });
-  res.send(buffer);
 }));
 
 app.get('/api/downloads/:artifact', asyncRoute(async (req, res) => {
