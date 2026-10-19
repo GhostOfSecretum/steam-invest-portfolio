@@ -20,6 +20,7 @@ const {
   isPublicManualShareId,
   listPortfolios,
   createManualPortfolio,
+  saveSyncedPortfolioAsManual,
   deleteManualPortfolio,
   addManualPortfolioItem,
   sellManualPortfolioItem,
@@ -87,6 +88,7 @@ const {
   redeemDesktopLoginCode,
   saveDesktopInventory,
   getDesktopInventory,
+  getLastDesktopInventory,
   getStorageSnapshot,
   MIN_DESKTOP_VERSION,
   isDesktopVersionSupported,
@@ -627,6 +629,15 @@ app.post('/api/portfolios', asyncRoute(async (req, res) => {
   res.status(201).json({ portfolio });
 }));
 
+app.post('/api/portfolio/save-manual', requireAuth, asyncRoute(async (req, res) => {
+  const portfolio = await saveSyncedPortfolioAsManual(
+    resolveOwnerId(req, { create: true }),
+    req.session.steamId,
+    req.body?.name,
+  );
+  res.status(201).json({ portfolio });
+}));
+
 app.delete('/api/portfolios/:portfolioId', asyncRoute(async (req, res) => {
   const deleted = await deleteManualPortfolio(resolveOwnerId(req, { create: true }), req.params.portfolioId);
   if (!deleted) {
@@ -906,9 +917,12 @@ app.post('/api/desktop/inventory-sync', deviceTokenLimiter, requireSupportedDesk
   }
 
   const sumPieces = (list) => list.reduce((sum, item) => sum + Number(item.amount || 1), 0);
-  // When a background sync omits Хранилища, keep the previously synced storage
-  // items instead of wiping them out of the portfolio.
-  const includeStorage = req.body?.includeStorage !== false;
+  // A sync replaces Хранилища only when it actually read them. Background syncs
+  // and a failed Game Coordinator login send the backpack alone; treating that
+  // as "storage is empty" used to wipe the saved units and the portfolio reset.
+  const payloadHasStorage = items.some((item) => item && item.inStorage);
+  const storageRead = req.body?.storageRead === true;
+  const includeStorage = req.body?.includeStorage !== false && (payloadHasStorage || storageRead);
   let mergedItems = items;
   let storageItemCount;
 
@@ -918,7 +932,8 @@ app.post('/api/desktop/inventory-sync', deviceTokenLimiter, requireSupportedDesk
       : sumPieces(items.filter((item) => item.inStorage));
   } else {
     const previous = await getDesktopInventory(device.steamId).catch(() => null)
-      || await getStorageSnapshot(device.steamId).catch(() => null);
+      || await getStorageSnapshot(device.steamId).catch(() => null)
+      || await getLastDesktopInventory(device.steamId).catch(() => null);
     const previousStorage = (previous?.items || []).filter((item) => item.inStorage);
     const freshNonStorage = items.filter((item) => !item.inStorage);
     mergedItems = [...freshNonStorage, ...previousStorage];

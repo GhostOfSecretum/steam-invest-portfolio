@@ -733,6 +733,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
   const [query, setQuery] = useState('');
   const [activeSection, setActiveSection] = useState('overview');
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [savingCopy, setSavingCopy] = useState(false);
   const [priceMode, setPriceModeState] = useState(readPriceMode);
   const setPriceMode = useCallback((mode) => {
     const next = mode === 'steam' ? 'steam' : 'market';
@@ -1038,11 +1039,46 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   <span className="dash-control-index">01</span>
                   <div>
                     <h3>{tt(lang, { en: 'Steam sync', ru: 'Синхронизация Steam', zh: 'Steam 同步', 'zh-TW': 'Steam 同步' })}</h3>
-                    <p>{tt(lang, { en: 'Add your Storage Units with the browser extension.', ru: 'Добавьте Хранилища через расширение для браузера.', zh: '通过浏览器扩展添加仓库。', 'zh-TW': '透過瀏覽器擴充新增倉庫。' })}</p>
+                    <p>{tt(lang, { en: 'Add your Storage Units with the browser extension. Save a copy if you want this book to stay and stay editable.', ru: 'Добавьте Хранилища через расширение. Сохраните копию, если хотите, чтобы этот портфель остался и его можно было править.', zh: '通过浏览器扩展添加仓库。保存副本后，这份库存会留下来，并且可以编辑。', 'zh-TW': '透過瀏覽器擴充新增倉庫。儲存副本後，這份庫存會留下來，並且可以編輯。' })}</p>
                   </div>
                 </div>
                 <div className="dash-control-section-actions">
                   {data.desktopConnected && <span className="dash-connected-label">● {tt(lang, { en: 'Storage', ru: 'Хранилища', zh: '仓库', 'zh-TW': '倉庫' })}</span>}
+                  <button
+                    className="btn btn-sm btn-primary"
+                    type="button"
+                    disabled={savingCopy}
+                    title={tt(lang, { en: 'Saves the current inventory, including Storage Units, as a manual portfolio you can edit.', ru: 'Сохраняет текущий инвентарь, включая Хранилища, как ручной портфель, который можно редактировать.', zh: '把当前库存（含仓库）存成可编辑的手动库存。', 'zh-TW': '把目前庫存（含倉庫）存成可編輯的手動庫存。' })}
+                    onClick={async () => {
+                      const stamp = new Date().toLocaleDateString();
+                      const title = tt(lang, {
+                        en: `Steam ${stamp}`,
+                        ru: `Steam ${stamp}`,
+                        zh: `Steam ${stamp}`,
+                        'zh-TW': `Steam ${stamp}`,
+                      });
+                      setSavingCopy(true);
+                      try {
+                        const saved = await apiFetch('/api/portfolio/save-manual', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ name: title }),
+                        });
+                        if (saved.portfolio?.id) setSelectedPortfolioId(saved.portfolio.id);
+                        portfolio.reload(false);
+                      } catch (err) {
+                        const empty = err.code === 'empty_portfolio';
+                        window.alert(empty
+                          ? tt(lang, { en: 'Nothing to save yet. Sync the inventory first.', ru: 'Пока нечего сохранять. Сначала синхронизируйте инвентарь.', zh: '还没有可保存的物品。请先同步库存。', 'zh-TW': '還沒有可儲存的物品。請先同步庫存。' })
+                          : (err.message || tt(lang, { en: 'Could not save the portfolio', ru: 'Не удалось сохранить портфель', zh: '无法保存库存', 'zh-TW': '無法儲存庫存' })));
+                      }
+                      setSavingCopy(false);
+                    }}
+                  >
+                    {savingCopy
+                      ? '...'
+                      : tt(lang, { en: 'Save as manual', ru: 'Сохранить как ручной', zh: '存为手动库存', 'zh-TW': '存成手動庫存' })}
+                  </button>
                   <a className="btn btn-sm btn-ghost" href="/#extension">
                     {tt(lang, { en: 'Install extension', ru: 'Установить расширение', zh: '安装扩展', 'zh-TW': '安裝擴充' })}
                   </a>

@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getCached, setCached } = require('./cache');
+const { getCached, getCachedEntry, setCached } = require('./cache');
 
 const PAIRING_CODE_TTL_MS = 5 * 60 * 1000;
 const DEVICE_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -168,6 +168,23 @@ async function getDesktopInventory(steamId) {
   return getCached(key, DESKTOP_INVENTORY_TTL_MS);
 }
 
+// The 24h read above is "is this sync still fresh". The file itself stays, so a
+// private inventory or an expired Storage Units snapshot can fall back to the
+// last successful sync instead of showing an empty portfolio.
+async function getDesktopInventoryEntry(steamId) {
+  const entry = await getCachedEntry(`desktop:inventory:${steamId}`);
+  if (!entry || !entry.value) return null;
+  return {
+    value: entry.value,
+    fresh: Date.now() - entry.updatedAt <= DESKTOP_INVENTORY_TTL_MS,
+  };
+}
+
+async function getLastDesktopInventory(steamId) {
+  const entry = await getDesktopInventoryEntry(steamId);
+  return entry?.value || null;
+}
+
 async function getStorageSnapshot(steamId) {
   return getCached(`desktop:storage:${steamId}`, STORAGE_SNAPSHOT_TTL_MS);
 }
@@ -186,5 +203,7 @@ module.exports = {
   redeemDesktopLoginCode,
   saveDesktopInventory,
   getDesktopInventory,
+  getDesktopInventoryEntry,
+  getLastDesktopInventory,
   getStorageSnapshot,
 };

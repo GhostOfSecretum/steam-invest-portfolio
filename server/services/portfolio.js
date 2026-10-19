@@ -3,7 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { getSteamInventory, getSteamProfile } = require('./steam');
 const { getPortfolioPrices, getPriceHistory, getSkinportSalesHistory, getSteamCurrencyRatio, getSteamRubRate, getSteamCnyRate, getSteamMarketIcon, getMarketIconsByName, rarityToTier } = require('./prices');
-const { getDesktopInventory, getStorageSnapshot } = require('./desktop');
+const { getDesktopInventoryEntry, getStorageSnapshot } = require('./desktop');
 const { attachCollections } = require('./collections');
 const {
   makeActivityEvent,
@@ -80,13 +80,20 @@ async function getPortfolio(steamId, options = {}) {
   }
 
   const includeDesktop = options.includeDesktop !== false;
-  const [profile, desktopInventory, basis] = await Promise.all([
+  const [profile, desktopEntry, basis] = await Promise.all([
     getSteamProfile(steamId),
-    includeDesktop ? getDesktopInventory(steamId).catch(() => null) : Promise.resolve(null),
+    includeDesktop ? getDesktopInventoryEntry(steamId).catch(() => null) : Promise.resolve(null),
     readBasis(steamId),
   ]);
 
-  const useDesktop = desktopInventory && Array.isArray(desktopInventory.items) && desktopInventory.items.length > 0;
+  const lastDesktop = desktopEntry?.value && Array.isArray(desktopEntry.value.items) && desktopEntry.value.items.length > 0
+    ? desktopEntry.value
+    : null;
+  // A sync from the last 24h is the live book. Older syncs stay on disk and are
+  // used when Steam cannot refill a private inventory, or to put Storage Units
+  // back after their own snapshot expires.
+  const freshDesktop = desktopEntry?.fresh ? lastDesktop : null;
+  const useDesktop = Boolean(freshDesktop);
   const allowCommunity = options.allowCommunity !== false;
   let inventoryRateLimited = false;
   let steamInventory = null;
@@ -104,7 +111,7 @@ async function getPortfolio(steamId, options = {}) {
         inventoryRateLimited = true;
       }
     } catch (error) {
-      if (error?.code !== 'rate_limited' && error?.status !== 429 && error?.code !== 'inventory_unavailable') throw error;
+      if (error?.code !== 'rate_limited' && error?.status !== 429 && error?.code !== 'inventory_unavailable' && error?.code !== 'private_inventory') throw error;
       inventoryRateLimited = true;
       steamInventory = {
         syncedAt: null,
@@ -118,37 +125,55 @@ async function getPortfolio(steamId, options = {}) {
   }
   // Once the full desktop snapshot expires, the last synced Storage Units are kept
   // on top of the fresh backpack. Backpack rows win on assetid collisions.
+  // If that storage snapshot is gone too, the last full sync still has the units.
   const storageSnapshot = !useDesktop && includeDesktop
     ? await getStorageSnapshot(steamId).catch(() => null)
     : null;
-  const snapshotItems = storageSnapshot
-    ? (() => {
-      const backpackIds = new Set(steamInventory.items.map((item) => String(item.assetid)));
-      return (storageSnapshot.items || []).filter((item) => item.inStorage && !backpackIds.has(String(item.assetid)));
-    })()
+  const backpackIds = new Set((steamInventory?.items || []).map((item) => String(item.assetid)));
+  const storageRows = (list) => (list || []).filter((item) => item && item.inStorage && !backpackIds.has(String(item.assetid)));
+  const snapshotItems = !useDesktop
+    ? storageRows(storageSnapshot ? storageSnapshot.items : lastDesktop?.items)
     : [];
+  // Steam could not return the backpack (private, rate limit). Keep the last
+  // full sync instead of replacing the portfolio with an empty list.
+  const usingStaleDesktop = !useDesktop
+    && inventoryRateLimited
+    && Boolean(lastDesktop)
+    && !(steamInventory?.items || []).length;
   const storageItemCount = useDesktop
-    ? Number(desktopInventory.storageItemCount || 0)
-    : snapshotItems.reduce((sum, item) => sum + Number(item.amount || 1), 0);
+    ? Number(freshDesktop.storageItemCount || 0)
+    : usingStaleDesktop
+      ? Number(lastDesktop.storageItemCount || 0)
+      : snapshotItems.reduce((sum, item) => sum + Number(item.amount || 1), 0);
   const inventory = useDesktop
     ? {
-      syncedAt: desktopInventory.syncedAt,
+      syncedAt: freshDesktop.syncedAt,
       cached: false,
       inventoryProvider: 'desktop',
-      totalInventoryCount: desktopInventory.totalItemCount,
-      assetEntriesCount: desktopInventory.items.length,
+      totalInventoryCount: freshDesktop.totalItemCount,
+      assetEntriesCount: freshDesktop.items.length,
       storageItemCount,
-      items: desktopInventory.items,
+      items: freshDesktop.items,
     }
-    : snapshotItems.length
+    : usingStaleDesktop
       ? {
-        ...steamInventory,
-        totalInventoryCount: Number(steamInventory.totalInventoryCount || 0) + storageItemCount,
-        assetEntriesCount: Number(steamInventory.assetEntriesCount || 0) + snapshotItems.length,
+        syncedAt: lastDesktop.syncedAt,
+        cached: true,
+        inventoryProvider: 'desktop',
+        totalInventoryCount: lastDesktop.totalItemCount,
+        assetEntriesCount: lastDesktop.items.length,
         storageItemCount,
-        items: [...steamInventory.items, ...snapshotItems],
+        items: lastDesktop.items,
       }
-      : steamInventory;
+      : snapshotItems.length
+        ? {
+          ...steamInventory,
+          totalInventoryCount: Number(steamInventory.totalInventoryCount || 0) + storageItemCount,
+          assetEntriesCount: Number(steamInventory.assetEntriesCount || 0) + snapshotItems.length,
+          storageItemCount,
+          items: [...steamInventory.items, ...snapshotItems],
+        }
+        : steamInventory;
 
   const marketHashNames = [...new Set(inventory.items.map((item) => item.marketHashName).filter(Boolean))];
   // Resolve FX once, then price the book. Skip per-item Steam RUB asks and only pace
@@ -188,7 +213,7 @@ async function getPortfolio(steamId, options = {}) {
   const pnl = pricedItems.reduce((sum, item) => sum + (Number(item.pnl) || 0), 0);
   const pricedCount = pricedItems.reduce((sum, item) => sum + item.qty, 0);
   const totalVolume = pricedItems.reduce((sum, item) => sum + (item.volume24h || 0), 0);
-  const providerLabel = useDesktop ? 'desktop' : (inventory.inventoryProvider || 'steam-public');
+  const providerLabel = (useDesktop || usingStaleDesktop) ? 'desktop' : (inventory.inventoryProvider || 'steam-public');
   const { history, leaders } = await buildPortfolioHistoryAndLeaders(items, totalValue, {
     equityKey: `steam:${steamId}`,
     totalSteamValue,
@@ -214,7 +239,11 @@ async function getPortfolio(steamId, options = {}) {
     inventoryProvider: providerLabel,
     desktopConnected: useDesktop,
     storageItemCount,
-    storageSyncedAt: useDesktop ? desktopInventory.syncedAt : (snapshotItems.length ? storageSnapshot.syncedAt : null),
+    storageSyncedAt: useDesktop
+      ? freshDesktop.syncedAt
+      : usingStaleDesktop
+        ? lastDesktop.syncedAt
+        : (snapshotItems.length ? (storageSnapshot?.syncedAt || lastDesktop?.syncedAt || null) : null),
     totalInventoryCount: inventory.totalInventoryCount,
     assetEntriesCount: inventory.assetEntriesCount,
     uniqueInventoryCount: items.length,
@@ -280,6 +309,87 @@ async function createManualPortfolio(ownerId, name) {
     updatedAt: now,
   };
 
+  bucket.portfolios.push(portfolio);
+  bucket.activePortfolioId = portfolio.id;
+  await writeManualPortfolioStore(store);
+  return portfolio;
+}
+
+function basisRecordFromSyncedItem(item, savedAt) {
+  if (!item?.hasBasis) return null;
+  const usdPerUnit = Number(item.basis);
+  if (!Number.isFinite(usdPerUnit) || usdPerUnit < 0) return null;
+  const currency = item.basisCurrency === 'rub' || item.basisCurrency === 'cny' ? item.basisCurrency : 'usd';
+  const amount = Number.isFinite(Number(item.basisOriginal)) ? Number(item.basisOriginal) : usdPerUnit;
+  return { amount, currency, usdPerUnit, savedAt };
+}
+
+// Copies the current Steam book, including Storage Units, into a manual portfolio.
+// Manual portfolios live in manual-portfolios.json with no expiry, and every row
+// can be edited afterwards.
+async function saveSyncedPortfolioAsManual(ownerId, steamId, name) {
+  if (!steamId) {
+    const err = new Error('Steam account is not connected.');
+    err.status = 401;
+    err.code = 'not_authenticated';
+    throw err;
+  }
+
+  const source = await getPortfolio(steamId, { ownerId, portfolioId: 'steam' });
+  const rows = (source.items || []).filter((item) => item.marketHashName && safeQty(item.qty) > 0);
+  if (!rows.length) {
+    const err = new Error('Nothing to save. Sync the inventory first.');
+    err.status = 400;
+    err.code = 'empty_portfolio';
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const title = String(name || '').trim() || `Steam ${now.slice(0, 10)}`;
+  const items = rows.map((item) => {
+    const quantity = safeQty(item.qty);
+    return {
+      id: `manual-item-${crypto.randomUUID()}`,
+      assetid: `manual-${crypto.randomUUID()}`,
+      marketHashName: item.marketHashName,
+      name: String(item.name || item.marketHashName).trim(),
+      quantity,
+      amount: quantity,
+      basis: basisRecordFromSyncedItem(item, now),
+      iconUrl: normalizeOptionalUrl(item.iconUrl),
+      marketUrl: normalizeOptionalUrl(item.marketUrl),
+      category: normalizeOptionalString(item.category),
+      rarity: normalizeOptionalString(item.rarity),
+      wear: normalizeOptionalString(item.wear),
+      tier: Number.isFinite(Number(item.tier)) ? Number(item.tier) : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
+  const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
+  const portfolio = {
+    id: `manual-${crypto.randomUUID()}`,
+    name: title.slice(0, 80),
+    type: 'manual',
+    items,
+    events: [makeActivityEvent({
+      at: now,
+      kind: 'added',
+      name: title.slice(0, 80),
+      qtyBefore: 0,
+      qtyAfter: totalQty,
+      qtyDelta: totalQty,
+      source: 'manual',
+    })],
+    cashUsd: 0,
+    realizedPnlUsd: 0,
+    realizedCostUsd: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const store = await readManualPortfolioStore();
+  const bucket = resolveOwnerBucketForWrite(store, ownerId);
   bucket.portfolios.push(portfolio);
   bucket.activePortfolioId = portfolio.id;
   await writeManualPortfolioStore(store);
@@ -2443,6 +2553,7 @@ module.exports = {
   isPublicManualShareId,
   listPortfolios,
   createManualPortfolio,
+  saveSyncedPortfolioAsManual,
   deleteManualPortfolio,
   addManualPortfolioItem,
   sellManualPortfolioItem,

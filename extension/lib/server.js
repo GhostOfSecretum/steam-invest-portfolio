@@ -103,7 +103,7 @@ export async function uploadInventory(pairing, items, storageItemCount) {
     method: 'POST',
     credentials: 'omit',
     headers: headers({ 'Content-Type': 'application/json', 'X-Device-Token': pairing.deviceToken }),
-    body: JSON.stringify({ items, storageItemCount, includeStorage: true }),
+    body: JSON.stringify({ items, storageItemCount, includeStorage: true, storageRead: true }),
   });
   if (!res.ok) {
     const error = new Error(await readError(res));

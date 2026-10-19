@@ -664,12 +664,15 @@ async function runInventorySync(steamId, steamSession, deviceToken, { includeSto
   const webItems = await fetchFullInventory(steamId, steamSession);
   const items = mergeInventoryItems(webItems, storageItems);
   const storageItemCount = storageItems.reduce((sum, item) => sum + Number(item.amount || 1), 0);
+  // storageRead is true only after a successful Хранилища read. A missing token
+  // or a failed GC login must not tell the server the units are empty.
+  const storageRead = includeStorage && Boolean(refreshToken) && !gcStorageError;
   const response = await serverFetch(`${serverUrl}/api/desktop/inventory-sync`, {
     method: 'POST',
     headers: serverHeaders({ 'Content-Type': 'application/json', 'X-Device-Token': deviceToken }),
     // includeStorage tells the server whether this sync carries Хранилища. When
     // false (background sync), the server keeps the previously synced storage items.
-    body: JSON.stringify({ items, storageItemCount, includeStorage }),
+    body: JSON.stringify({ items, storageItemCount, includeStorage: storageRead, storageRead }),
   });
   if (await isOutdatedResponse(response)) {
     throw new Error(tx('errAppOutdatedSync'));
