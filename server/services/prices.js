@@ -3726,6 +3726,8 @@ module.exports = {
   getPrice,
   getPrices,
   getPortfolioPrices,
+  getThirdPartyPriceLists,
+  selectMarketMark,
   getPriceHistory,
   getSkinportSalesHistory,
   getTickerItems,

@@ -219,6 +219,25 @@ function useTopInvestorsActivityFeed(enabled = true) {
   return { ...state, reload };
 }
 
+function useTopInvestorsAnalytics(enabled = true) {
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+
+  const reload = apiUseCallback(async () => {
+    if (!enabled) return;
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const data = await apiFetch('/api/top-investors/analytics');
+      setState({ loading: false, data, error: null });
+    } catch (error) {
+      setState((current) => ({ loading: false, data: current.data, error }));
+    }
+  }, [enabled]);
+
+  apiUseEffect(() => { reload(); }, [reload]);
+
+  return { ...state, reload };
+}
+
 function useTopInvestorActivity(steamId, enabled = true) {
   const [state, setState] = apiUseState({ loading: false, syncing: false, data: null, error: null });
   const requestSeq = apiUseRef(0);
@@ -908,6 +927,7 @@ Object.assign(window, {
   usePlans,
   useTopInvestors,
   useTopInvestorsActivityFeed,
+  useTopInvestorsAnalytics,
   useTopInvestorActivity,
   useMarketSnapshot,
   useMarketCatalog,

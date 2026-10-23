@@ -70,6 +70,7 @@ const {
   getTopInvestorActivity,
   startTopInvestorsActivityPoller,
 } = require('./services/top-investors');
+const { getTopInvestorsAnalytics } = require('./services/top-investors-analytics');
 const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory, getPeriodMovers } = require('./services/market');
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
@@ -852,6 +853,10 @@ app.get('/api/top-investors', asyncRoute(async (req, res) => {
 
 app.get('/api/top-investors/activity', asyncRoute(async (req, res) => {
   res.json(await listTopInvestorsActivityFeed());
+}));
+
+app.get('/api/top-investors/analytics', asyncRoute(async (req, res) => {
+  res.json(await getTopInvestorsAnalytics());
 }));
 
 app.get('/api/top-investors/:steamId/activity', asyncRoute(async (req, res) => {

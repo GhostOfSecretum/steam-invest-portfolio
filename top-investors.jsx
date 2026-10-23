@@ -1,4 +1,4 @@
-/* global React, useTopInvestors, useTopInvestorsActivityFeed, useTopInvestorActivity, formatUsd */
+/* global React, useTopInvestors, useTopInvestorsActivityFeed, useTopInvestorActivity, formatUsd, TopInvestorsAnalytics */
 const { useState: tiUseState, useEffect: tiUseEffect } = React;
 
 function investorSignedQty(row) {
@@ -79,6 +79,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
   const investors = useTopInvestors();
   const feed = useTopInvestorsActivityFeed();
   const [selectedSteamId, setSelectedSteamId] = tiUseState(null);
+  const [tab, setTab] = tiUseState('analytics');
   const selectedActivity = useTopInvestorActivity(selectedSteamId, Boolean(selectedSteamId));
 
   const accounts = investors.data?.accounts || [];
@@ -169,6 +170,23 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
         )}
 
         {accounts.length > 0 && (
+          <div className="top-investors-tabs" role="tablist">
+            {[
+              ['analytics', lang === 'ru' ? 'Аналитика' : 'Analytics'],
+              ['feed', lang === 'ru' ? 'Аккаунты и лента' : 'Accounts & feed'],
+            ].map(([key, label]) => (
+              <button key={key} type="button" role="tab" className="tab" data-active={tab === key} aria-selected={tab === key} onClick={() => setTab(key)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {accounts.length > 0 && tab === 'analytics' && (
+          <TopInvestorsAnalytics lang={lang} onOpenItem={onOpenItem} onOpenProfile={onOpenProfile} />
+        )}
+
+        {accounts.length > 0 && tab === 'feed' && (
           <div className="top-investors-layout">
             <div className="top-investors-accounts">
               {accounts.map((account) => {

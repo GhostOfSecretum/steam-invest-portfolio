@@ -317,4 +317,5 @@ module.exports = {
   listInventoryActivityForSteamIds,
   markInventoryActivityAttempt,
   annotateInventoryEventPrices,
+  readInventoryActivityStore,
 };
