@@ -600,6 +600,7 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
 
   return (
     <div className="ta">
+      {window.SmartMoneyTelegram ? <window.SmartMoneyTelegram lang={lang} /> : null}
       <TaKpis totals={data.totals} t={t} />
 
       <SmartMoneySignals lang={lang} t={t} onOpenItem={onOpenItem} />

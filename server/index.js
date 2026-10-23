@@ -75,6 +75,12 @@ const {
 } = require('./services/top-investors');
 const { getTopInvestorsAnalytics } = require('./services/top-investors-analytics');
 const {
+  createTelegramLink,
+  getTelegramLinkStatus,
+  handleTelegramUpdate,
+  telegramWebhookAuthorized,
+} = require('./services/telegram-alerts');
+const {
   startSmartMoneyJobs,
   listSmartMoneySignals,
   getSmartMoneyBacktest,
@@ -887,6 +893,37 @@ app.get('/api/top-investors', asyncRoute(async (req, res) => {
 
 app.get('/api/top-investors/activity', asyncRoute(async (req, res) => {
   res.json(await listTopInvestorsActivityFeed());
+}));
+
+app.post('/api/telegram/webhook', asyncRoute(async (req, res) => {
+  if (!telegramWebhookAuthorized(req.get('x-telegram-bot-api-secret-token'))) {
+    res.status(401).end();
+    return;
+  }
+  try {
+    await handleTelegramUpdate(req.body);
+  } catch (error) {
+    console.warn('[telegram] update failed:', error.message);
+  }
+  res.json({ ok: true });
+}));
+
+app.get('/api/smart-money/telegram', requireAuth, asyncRoute(async (req, res) => {
+  res.json(await getTelegramLinkStatus(resolveOwnerId(req)));
+}));
+
+app.post('/api/smart-money/telegram/link', requireAuth, asyncRoute(async (req, res) => {
+  const ownerId = resolveOwnerId(req);
+  const subscription = await getOwnerSubscription(ownerId);
+  if (!hasSmartMoneyAccess(subscription)) {
+    res.status(403).json({
+      error: 'Smart money analytics require an active plan.',
+      code: 'plan_required',
+      requiredFeature: 'smartMoney',
+    });
+    return;
+  }
+  res.json(await createTelegramLink(ownerId));
 }));
 
 app.get('/api/smart-money/offer', asyncRoute(async (req, res) => {

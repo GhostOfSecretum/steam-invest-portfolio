@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { getTopInvestorsState, getTopInvestorsAnalytics, boostScore, RADAR_MIN_VALUE_USD } = require('./top-investors-analytics');
 const { getPriceHistory, getMarketOverview } = require('./prices');
 const { SITE_URL } = require('./items');
+const { listAlertChatIds, sendTelegramMessage, unlinkChat, ensureTelegramWebhook } = require('./telegram-alerts');
 const { marketHashNameToSlug } = require('../../item-slugs');
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
@@ -234,18 +235,21 @@ function alertChatId() {
 }
 
 async function sendTelegram(text) {
-  const token = String(process.env.TELEGRAM_BOT_TOKEN || '').trim();
-  const chatId = alertChatId();
-  if (!token || !chatId) return false;
-  const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }),
-    signal: AbortSignal.timeout(15000),
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok || !body.ok) throw new Error(body.description || `Telegram HTTP ${response.status}`);
-  return true;
+  const chatIds = await listAlertChatIds();
+  if (!chatIds.length) return false;
+  let sent = 0;
+  for (const chatId of chatIds) {
+    try {
+      await sendTelegramMessage(chatId, text, { html: true });
+      sent += 1;
+    } catch (error) {
+      console.warn('[smart-money] telegram alert failed:', error.message);
+      if (/blocked|deactivated|chat not found/i.test(error.message || '')) {
+        await unlinkChat(chatId).catch(() => {});
+      }
+    }
+  }
+  return sent > 0;
 }
 
 function signalLine(signal) {
@@ -631,6 +635,7 @@ function startSmartMoneyJobs() {
 
   loop(runSmartMoneyScan, SCAN_BOOT_MS, SCAN_EVERY_MS, 'scan');
   loop(runSmartMoneyResearch, SCAN_BOOT_MS + 3 * 60 * 1000, RESEARCH_EVERY_MS, 'research');
+  ensureTelegramWebhook().catch((error) => console.warn('[telegram] webhook setup failed:', error.message));
   console.log(`[smart-money] jobs started${alertChatId() ? ' (telegram alerts on)' : ''}`);
 }
 

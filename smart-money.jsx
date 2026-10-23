@@ -1,6 +1,6 @@
 /* global React, useSmartMoneySignals, useSmartMoneyBacktest, useSmartMoneyIndex, useSmartMoneyItem, useSmartMoneyExposure,
    useAuth, apiFetch, TaSection, TaEmpty, TaIcon, TaAvatarStack, TaScoreRing, taMoney, taSigned, taPct */
-const { useState: smUseState, useEffect: smUseEffect } = React;
+const { useState: smUseState, useEffect: smUseEffect, useRef: smUseRef } = React;
 
 const SM_SIGNAL_META = {
   accumulation: { color: 'var(--green)', ru: 'Скупка', en: 'Accumulation' },
@@ -278,8 +278,8 @@ function SmartMoneyPaywall({ lang, compact = false }) {
       <h2 className="ta-section-title">{t('Аналитика китов по подписке', 'Whale analytics is a paid plan')}</h2>
       <p className="ta-section-sub">
         {t(
-          'Сигналы, доля рынка, бэктест и риск бустеров. Список аккаунтов и лента остаются открытыми.',
-          'Signals, supply share, the backtest, and booster risk. The account list and the feed stay open.',
+          'Сигналы, доля рынка, бэктест, риск бустеров и алерты в Telegram. Список аккаунтов и лента остаются открытыми.',
+          'Signals, supply share, the backtest, booster risk, and Telegram alerts. The account list and the feed stay open.',
         )}
       </p>
       <div className="sm-paywall-plans">
@@ -299,6 +299,67 @@ function SmartMoneyPaywall({ lang, compact = false }) {
         ) : null}
       </div>
       {error ? <div className="sm-paywall-error">{error}</div> : null}
+    </section>
+  );
+}
+
+function SmartMoneyTelegram({ lang }) {
+  const auth = useAuth();
+  const [status, setStatus] = smUseState(null);
+  const [error, setError] = smUseState('');
+  const pollRef = smUseRef(0);
+  const t = (ru, en) => (lang === 'ru' ? ru : en);
+  smUseEffect(() => () => clearInterval(pollRef.current), []);
+
+  const reload = () => {
+    if (!auth.connected) return;
+    apiFetch('/api/smart-money/telegram').then(setStatus).catch(() => setStatus(null));
+  };
+
+  smUseEffect(() => { reload(); }, [auth.connected]);
+
+  const connect = async () => {
+    setError('');
+    try {
+      const data = await apiFetch('/api/smart-money/telegram/link', { method: 'POST' });
+      window.open(data.url, '_blank', 'noopener');
+      const started = Date.now();
+      clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        try {
+          const next = await apiFetch('/api/smart-money/telegram');
+          setStatus(next);
+          if (next.linked || Date.now() - started > 30000) clearInterval(pollRef.current);
+        } catch {
+          clearInterval(pollRef.current);
+        }
+      }, 2000);
+    } catch (err) {
+      setError(err.message || t('Не удалось открыть бота.', 'Could not open the bot.'));
+    }
+  };
+
+  if (!auth.connected || !status) return null;
+  if (status.linked) {
+    return (
+      <div className="sm-tg-on">
+        {t(
+          `Сигналы приходят в Telegram${status.username ? ` · @${status.username}` : ''}.`,
+          `Alerts go to Telegram${status.username ? ` · @${status.username}` : ''}.`,
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <section className="glass sm-tg">
+      <div>
+        <div className="eyebrow" style={{ color: 'var(--accent)' }}>// TELEGRAM</div>
+        <h2 className="ta-section-title">{t('Сигналы в личку бота', 'Alerts in a private chat')}</h2>
+        <p className="ta-section-sub">{t('Бот пишет, пока подписка активна. Когда срок кончится, замолчит.', 'The bot messages you while the plan is active and stops when it ends.')}</p>
+        {error ? <div className="sm-paywall-error">{error}</div> : null}
+      </div>
+      <button type="button" className="btn btn-primary" onClick={connect}>{t('Подключить Telegram', 'Connect Telegram')}</button>
     </section>
   );
 }
@@ -423,4 +484,4 @@ function BoosterExposureCard({ holdings, lang, onItemClick }) {
   );
 }
 
-Object.assign(window, { SmartMoneySignals, SmartMoneyIndex, SmartMoneyBacktest, SmartMoneyItemPanel, BoosterExposureCard, SmartMoneyPaywall });
+Object.assign(window, { SmartMoneySignals, SmartMoneyIndex, SmartMoneyBacktest, SmartMoneyItemPanel, BoosterExposureCard, SmartMoneyPaywall, SmartMoneyTelegram });
