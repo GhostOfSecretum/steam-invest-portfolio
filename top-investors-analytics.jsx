@@ -579,8 +579,11 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
   const t = (ru, en) => (lang === 'ru' ? ru : en);
   const data = analytics.data;
 
-  if (analytics.loading && !data) {
+  if (analytics.loading && !data && !analytics.locked) {
     return <div className="ta-empty">{t('Считаю аналитику по инвентарям…', 'Crunching inventory analytics…')}</div>;
+  }
+  if (analytics.locked || analytics.error?.code === 'plan_required') {
+    return window.SmartMoneyPaywall ? <window.SmartMoneyPaywall lang={lang} /> : null;
   }
   if (analytics.error && !data) {
     return (

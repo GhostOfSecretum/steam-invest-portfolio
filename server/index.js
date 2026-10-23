@@ -39,7 +39,7 @@ const {
   removeFavoriteProfile,
   migrateFavoriteProfilesToSteam,
 } = require('./services/favorite-profiles');
-const { listPlans, applyItemDisplayLimit, getDownloadArtifact } = require('./services/plans');
+const { listPlans, listSmartMoneyOffers, applyItemDisplayLimit, getDownloadArtifact, getPlan, planAllows } = require('./services/plans');
 const {
   renderPrivacyPage,
   renderTermsPage,
@@ -48,14 +48,17 @@ const {
 const {
   getOwnerPlanId,
   getOwnerSubscription,
+  hasSmartMoneyAccess,
   setOwnerPlan,
   startInvestorTrial,
   grantWelcomePlusTrial,
   migrateSubscriptionToSteam,
 } = require('./services/subscriptions');
 const {
+  createCheckout,
   handlePlategaCallback,
   syncPaymentByQuery,
+  isBillingReady,
 } = require('./services/billing');
 const {
   getBetaPublicConfig,
@@ -483,10 +486,22 @@ app.get('/api/admin/users', asyncRoute(async (req, res) => {
 }));
 
 app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async (req, res) => {
-  res.status(403).json({
-    error: 'Paid plans are paused. Every feature on the site is free.',
-    code: 'billing_paused',
-  });
+  const plan = getPlan(req.body?.planId);
+  if (!planAllows(plan.id, 'smartMoney')) {
+    res.status(403).json({
+      error: 'Paid plans are paused. Every feature on the site is free.',
+      code: 'billing_paused',
+    });
+    return;
+  }
+  res.json(await createCheckout({
+    ownerId: resolveOwnerId(req),
+    steamId: req.session.steamId,
+    planId: plan.id,
+    cycle: Number(plan.periodDays) === 3 ? '3day' : 'monthly',
+    locale: req.body?.locale,
+    req,
+  }));
 }));
 
 app.post('/api/billing/platega/callback', asyncRoute(async (req, res) => {
@@ -515,10 +530,14 @@ app.get('/api/billing/sync', checkoutLimiter, asyncRoute(async (req, res) => {
 app.get('/billing/success', asyncRoute(async (req, res) => {
   try {
     if (req.query.payment || req.query.tx) {
-      await syncPaymentByQuery({
+      const result = await syncPaymentByQuery({
         paymentId: req.query.payment,
         transactionId: req.query.tx,
       });
+      if (planAllows(result?.payment?.planId, 'smartMoney')) {
+        res.redirect('/investors?billing=success');
+        return;
+      }
     }
   } catch (error) {
     console.warn('[billing] success sync failed:', error.message);
@@ -870,23 +889,32 @@ app.get('/api/top-investors/activity', asyncRoute(async (req, res) => {
   res.json(await listTopInvestorsActivityFeed());
 }));
 
-app.get('/api/top-investors/analytics', asyncRoute(async (req, res) => {
+app.get('/api/smart-money/offer', asyncRoute(async (req, res) => {
+  const subscription = await getOwnerSubscription(resolveOwnerId(req));
+  res.json({
+    active: hasSmartMoneyAccess(subscription),
+    billingReady: isBillingReady(),
+    plans: listSmartMoneyOffers(req.query.locale),
+  });
+}));
+
+app.get('/api/top-investors/analytics', requireSmartMoney, asyncRoute(async (req, res) => {
   res.json(await getTopInvestorsAnalytics());
 }));
 
-app.get('/api/top-investors/signals', asyncRoute(async (req, res) => {
+app.get('/api/top-investors/signals', requireSmartMoney, asyncRoute(async (req, res) => {
   res.json(await listSmartMoneySignals({ limit: req.query.limit }));
 }));
 
-app.get('/api/top-investors/backtest', asyncRoute(async (req, res) => {
+app.get('/api/top-investors/backtest', requireSmartMoney, asyncRoute(async (req, res) => {
   res.json(await getSmartMoneyBacktest());
 }));
 
-app.get('/api/top-investors/index', asyncRoute(async (req, res) => {
+app.get('/api/top-investors/index', requireSmartMoney, asyncRoute(async (req, res) => {
   res.json(await getSmartMoneyIndex());
 }));
 
-app.get('/api/top-investors/item', asyncRoute(async (req, res) => {
+app.get('/api/top-investors/item', requireSmartMoney, asyncRoute(async (req, res) => {
   const name = String(req.query.name || '').trim();
   if (!name) {
     res.status(400).json({ error: 'Item name is required.', code: 'missing_name' });
@@ -895,7 +923,7 @@ app.get('/api/top-investors/item', asyncRoute(async (req, res) => {
   res.json(await getSmartMoneyItem(name));
 }));
 
-app.post('/api/top-investors/exposure', asyncRoute(async (req, res) => {
+app.post('/api/top-investors/exposure', requireSmartMoney, asyncRoute(async (req, res) => {
   res.json(await getSmartMoneyExposure(req.body?.names));
 }));
 
@@ -1387,6 +1415,23 @@ function resolveOwnerId(req, { create = false } = {}) {
     return req.session.ownerId;
   }
   return null;
+}
+
+async function requireSmartMoney(req, res, next) {
+  try {
+    const subscription = await getOwnerSubscription(resolveOwnerId(req));
+    if (hasSmartMoneyAccess(subscription)) {
+      next();
+      return;
+    }
+    res.status(403).json({
+      error: 'Smart money analytics require an active plan.',
+      code: 'plan_required',
+      requiredFeature: 'smartMoney',
+    });
+  } catch (error) {
+    next(error);
+  }
 }
 
 function requireAuth(req, res, next) {

@@ -78,6 +78,13 @@ function hasUsedWelcomePlusTrial(entry) {
   return String(entry.source || '') === WELCOME_PLUS_TRIAL_SOURCE;
 }
 
+function hasSmartMoneyAccess(subscription) {
+  if (!subscription || !getPlan(subscription.planId).features.smartMoney) return false;
+  const source = String(subscription.source || '');
+  if (source === INVESTOR_TRIAL_SOURCE || source === 'investor_trial_telegram' || source.startsWith('investor_trial')) return false;
+  return true;
+}
+
 function isInvestorTrialEligible(ownerId, entry, planId) {
   if (!ownerId || !String(ownerId).startsWith('steam:')) return false;
   if (hasFullAccess(ownerId)) return false;
@@ -300,6 +307,7 @@ async function migrateSubscriptionToSteam(anonOwnerId, steamId) {
 
 module.exports = {
   getOwnerPlanId,
+  hasSmartMoneyAccess,
   getOwnerSubscription,
   setOwnerPlan,
   startInvestorTrial,

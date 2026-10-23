@@ -1,5 +1,6 @@
 /* global React, useSmartMoneySignals, useSmartMoneyBacktest, useSmartMoneyIndex, useSmartMoneyItem, useSmartMoneyExposure,
-   TaSection, TaEmpty, TaIcon, TaAvatarStack, TaScoreRing, taMoney, taSigned, taPct */
+   useAuth, apiFetch, TaSection, TaEmpty, TaIcon, TaAvatarStack, TaScoreRing, taMoney, taSigned, taPct */
+const { useState: smUseState, useEffect: smUseEffect } = React;
 
 const SM_SIGNAL_META = {
   accumulation: { color: 'var(--green)', ru: 'Скупка', en: 'Accumulation' },
@@ -240,10 +241,73 @@ function SmSparkline({ points }) {
   );
 }
 
+function SmartMoneyPaywall({ lang, compact = false }) {
+  const auth = useAuth();
+  const [offer, setOffer] = smUseState(null);
+  const [pending, setPending] = smUseState('');
+  const [error, setError] = smUseState('');
+  const t = (ru, en) => (lang === 'ru' ? ru : en);
+
+  smUseEffect(() => {
+    let cancelled = false;
+    apiFetch(`/api/smart-money/offer?locale=${encodeURIComponent(lang || 'en')}`)
+      .then((data) => { if (!cancelled) setOffer(data); })
+      .catch(() => { if (!cancelled) setOffer({ plans: [], billingReady: false }); });
+    return () => { cancelled = true; };
+  }, [lang]);
+
+  const buy = async (planId) => {
+    setPending(planId);
+    setError('');
+    try {
+      const data = await apiFetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, locale: lang }),
+      });
+      if (data.redirectUrl) window.location.href = data.redirectUrl;
+    } catch (err) {
+      setError(err.message || t('Не удалось открыть оплату.', 'Could not open checkout.'));
+      setPending('');
+    }
+  };
+
+  return (
+    <section className={`glass sm-paywall${compact ? ' sm-paywall-compact' : ''}`}>
+      <div className="eyebrow" style={{ color: 'var(--accent)' }}>// SMART MONEY</div>
+      <h2 className="ta-section-title">{t('Аналитика китов по подписке', 'Whale analytics is a paid plan')}</h2>
+      <p className="ta-section-sub">
+        {t(
+          'Сигналы, доля рынка, бэктест и риск бустеров. Список аккаунтов и лента остаются открытыми.',
+          'Signals, supply share, the backtest, and booster risk. The account list and the feed stay open.',
+        )}
+      </p>
+      <div className="sm-paywall-plans">
+        {(offer?.plans || []).map((plan) => (
+          auth.connected ? (
+            <button key={plan.id} type="button" className="btn btn-primary" disabled={!offer.billingReady || Boolean(pending)} onClick={() => buy(plan.id)}>
+              {pending === plan.id ? t('Открываю оплату…', 'Opening checkout…') : plan.price}
+            </button>
+          ) : (
+            <span key={plan.id} className="btn">{plan.price}</span>
+          )
+        ))}
+        {!auth.connected && offer?.plans?.length ? (
+          <button type="button" className="btn btn-primary" onClick={() => auth.login()}>
+            {t('Войти через Steam', 'Sign in with Steam')}
+          </button>
+        ) : null}
+      </div>
+      {error ? <div className="sm-paywall-error">{error}</div> : null}
+    </section>
+  );
+}
+
 function SmartMoneyItemPanel({ marketHashName, lang, onOpenProfile }) {
   const state = useSmartMoneyItem(marketHashName);
   const t = (ru, en) => (lang === 'ru' ? ru : en);
   const data = state.data;
+  if (state.locked) return <SmartMoneyPaywall lang={lang} compact />;
   if (!data) return null;
 
   if (!data.tracked) {
@@ -318,6 +382,7 @@ function BoosterExposureCard({ holdings, lang, onItemClick }) {
   const exposure = useSmartMoneyExposure(names);
   const t = (ru, en) => (lang === 'ru' ? ru : en);
   const rows = exposure.data?.items || [];
+  if (exposure.locked) return <SmartMoneyPaywall lang={lang} compact />;
   if (!rows.length) return null;
   const byName = new Map((holdings || []).map((holding) => [holding.marketHashName, holding]));
   const exits = rows.filter((row) => row.exitAt).length;
@@ -358,4 +423,4 @@ function BoosterExposureCard({ holdings, lang, onItemClick }) {
   );
 }
 
-Object.assign(window, { SmartMoneySignals, SmartMoneyIndex, SmartMoneyBacktest, SmartMoneyItemPanel, BoosterExposureCard });
+Object.assign(window, { SmartMoneySignals, SmartMoneyIndex, SmartMoneyBacktest, SmartMoneyItemPanel, BoosterExposureCard, SmartMoneyPaywall });

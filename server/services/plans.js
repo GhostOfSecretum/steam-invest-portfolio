@@ -13,6 +13,7 @@ const PLANS = [
       itemDisplayLimit: null,
       desktopDownload: true,
       topInvestors: true,
+      smartMoney: false,
     },
     bullets: {
       en: [
@@ -42,7 +43,7 @@ const PLANS = [
   {
     id: 'short',
     hidden: true,
-    name: { en: '3 days', ru: '3 дня' },
+    name: { en: 'Smart money, 3 days', ru: 'Smart money, 3 дня' },
     amountRub: 100,
     amountUsd: 2.99,
     periodDays: 3,
@@ -54,6 +55,7 @@ const PLANS = [
       itemDisplayLimit: null,
       desktopDownload: true,
       topInvestors: true,
+      smartMoney: true,
     },
     bullets: {
       en: [
@@ -89,6 +91,7 @@ const PLANS = [
       itemDisplayLimit: null,
       desktopDownload: true,
       topInvestors: true,
+      smartMoney: false,
     },
     bullets: {
       en: [
@@ -107,7 +110,7 @@ const PLANS = [
   {
     id: 'investor',
     hidden: true,
-    name: { en: 'Investor', ru: 'Investor' },
+    name: { en: 'Smart money, 30 days', ru: 'Smart money, 30 дней' },
     amountRub: 499,
     amountUsd: 5,
     annualAmountRub: 4990,
@@ -126,6 +129,7 @@ const PLANS = [
       itemDisplayLimit: null,
       desktopDownload: true,
       topInvestors: true,
+      smartMoney: true,
     },
     bullets: {
       en: [
@@ -146,6 +150,18 @@ const PLANS = [
 
 const PLAN_BY_ID = Object.fromEntries(PLANS.map((plan) => [plan.id, plan]));
 const DEFAULT_PLAN_ID = 'free';
+
+function listSmartMoneyOffers(locale) {
+  const ru = String(locale || '').toLowerCase().startsWith('ru');
+  return ['short', 'investor'].map((id) => {
+    const plan = PLAN_BY_ID[id];
+    return {
+      id: plan.id,
+      days: plan.periodDays,
+      price: ru ? plan.price.ru : plan.price.en,
+    };
+  });
+}
 
 function listPlans(locale) {
   const lang = String(locale || '').toLowerCase().split('-')[0];
@@ -244,6 +260,7 @@ function getDownloadArtifact(key) {
 module.exports = {
   DEFAULT_PLAN_ID,
   listPlans,
+  listSmartMoneyOffers,
   getPlan,
   getPlanFeatures,
   planAllows,

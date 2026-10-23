@@ -66,6 +66,7 @@ function useAuth() {
       itemDisplayLimit: null,
       desktopDownload: true,
       topInvestors: true,
+      smartMoney: false,
     },
     login: () => {
       window.location.href = '/api/auth/steam';
@@ -220,16 +221,17 @@ function useTopInvestorsActivityFeed(enabled = true) {
 }
 
 function useTopInvestorsAnalytics(enabled = true) {
-  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null, locked: false });
 
   const reload = apiUseCallback(async () => {
     if (!enabled) return;
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
       const data = await apiFetch('/api/top-investors/analytics');
-      setState({ loading: false, data, error: null });
+      setState({ loading: false, data, error: null, locked: false });
     } catch (error) {
-      setState((current) => ({ loading: false, data: current.data, error }));
+      const locked = error?.code === 'plan_required';
+      setState((current) => ({ loading: false, data: locked ? null : current.data, error, locked }));
     }
   }, [enabled]);
 
@@ -239,7 +241,7 @@ function useTopInvestorsAnalytics(enabled = true) {
 }
 
 function useSmartMoneyResource(path, { body = null } = {}) {
-  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null, locked: false });
   const bodyJson = body ? JSON.stringify(body) : null;
 
   const reload = apiUseCallback(async () => {
@@ -252,9 +254,9 @@ function useSmartMoneyResource(path, { body = null } = {}) {
       const data = await apiFetch(path, bodyJson
         ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: bodyJson }
         : {});
-      setState({ loading: false, data, error: null });
+      setState({ loading: false, data, error: null, locked: false });
     } catch (error) {
-      setState({ loading: false, data: null, error });
+      setState({ loading: false, data: null, error, locked: error?.code === 'plan_required' });
     }
   }, [path, bodyJson]);
 
