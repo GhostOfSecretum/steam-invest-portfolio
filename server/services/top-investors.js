@@ -1,6 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
-const { resolveSteamProfileInput, getSteamProfile, getSteamInventory, isSteamCommunityCoolingDown } = require('./steam');
+const { resolveSteamProfileInput, getSteamProfile, getSteamInventory } = require('./steam');
 const {
   getInventoryActivityForSteamId,
   listInventoryActivityForSteamIds,
@@ -8,6 +8,7 @@ const {
   isStructuredActivity,
   markInventoryActivityAttempt,
   annotateInventoryEventPrices,
+  readInventoryActivityStore,
 } = require('./activity');
 const { getCached } = require('./cache');
 const { getSteamMarketIcon, getPrices } = require('./prices');
@@ -18,6 +19,8 @@ const FEED_LIMIT = 100;
 const POLL_BOOT_DELAY_MS = Number(process.env.TOP_INVESTORS_POLL_BOOT_MS || 5 * 60 * 1000);
 const POLL_CYCLE_REST_MS = Number(process.env.TOP_INVESTORS_CYCLE_REST_MS || 3 * 60 * 1000);
 const POLL_MIN_SYNC_AGE_MS = Number(process.env.TOP_INVESTORS_MIN_SYNC_AGE_MS || 10 * 60 * 1000);
+const BACKFILL_REST_MS = Number(process.env.TOP_INVESTORS_BACKFILL_REST_MS || 15 * 1000);
+const BACKFILL_RETRY_MS = 6 * 60 * 60 * 1000;
 const PRICE_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const SYNC_LIVE_PRICE_LIMIT = 8;
 
@@ -251,48 +254,54 @@ async function getTopInvestorActivity(steamId, { sync = false } = {}) {
   };
 }
 
+// During a Steam community cooldown getSteamInventory falls back to the proxy, so the cycle keeps going.
+// Accounts without a snapshot are synced first and back to back until every account has a baseline.
 async function runTopInvestorsActivityCycle() {
-  if (isSteamCommunityCoolingDown()) {
-    console.log('[top-investors] skip cycle: steam community cooling down');
-    return;
-  }
-
   const listed = await listTopInvestors();
   const accounts = listed.accounts || [];
-  let skipped = 0;
-  let due = null;
+  const store = await readInventoryActivityStore();
+  const now = Date.now();
 
-  for (const account of accounts) {
-    try {
-      const stored = await getInventoryActivityForSteamId(account.steamId);
-      const touchedAt = activityTouchedAt(stored);
-      const ageMs = touchedAt ? Date.now() - touchedAt : Infinity;
+  const missing = accounts.filter((account) => {
+    const entry = store[account.steamId];
+    if (entry?.snapshot && typeof entry.snapshot === 'object') return false;
+    const triedAt = new Date(entry?.lastAttemptAt).getTime();
+    return !Number.isFinite(triedAt) || now - triedAt > BACKFILL_RETRY_MS;
+  });
+
+  let skipped = 0;
+  let due = missing[0] || null;
+  if (!due) {
+    for (const account of accounts) {
+      const touchedAt = activityTouchedAt(store[account.steamId]);
+      const ageMs = touchedAt ? now - touchedAt : Infinity;
       if (Number.isFinite(ageMs) && ageMs >= 0 && ageMs < POLL_MIN_SYNC_AGE_MS) {
         skipped += 1;
         continue;
       }
       due = account;
       break;
-    } catch (error) {
-      console.warn(`[top-investors] read ${account.personaname || account.steamId} failed:`, error.message || error);
     }
   }
 
   if (!due) {
     if (skipped) console.log(`[top-investors] auto-sync cycle synced=0 skipped=${skipped} failed=0`);
-    return;
+    return { backfill: false };
   }
 
+  const backfilling = missing.length > 0;
   try {
     await syncTopInvestorInventory(due);
-    console.log(`[top-investors] auto-sync cycle synced=1 skipped=${skipped} failed=0`);
+    console.log(`[top-investors] auto-sync ${backfilling ? `backfill left=${missing.length - 1}` : 'cycle'} synced=1 skipped=${skipped} failed=0`);
+    return { backfill: missing.length > 1 };
   } catch (error) {
     console.warn(`[top-investors] auto-sync ${due.personaname || due.steamId} failed:`, error.message || error);
-    if (isSteamRateLimited(error) || isSteamCommunityCoolingDown()) {
+    if (isSteamRateLimited(error)) {
       console.warn('[top-investors] aborting cycle after Steam rate limit');
-    } else {
-      await markInventoryActivityAttempt(due.steamId).catch(() => {});
+      return { backfill: false };
     }
+    await markInventoryActivityAttempt(due.steamId).catch(() => {});
+    return { backfill: missing.length > 1 };
   }
 }
 
@@ -305,12 +314,13 @@ function startTopInvestorsActivityPoller() {
   pollerStarted = true;
 
   const tick = async () => {
+    let backfill = false;
     try {
-      await runTopInvestorsActivityCycle();
+      ({ backfill } = await runTopInvestorsActivityCycle());
     } catch (error) {
       console.warn('[top-investors] poller cycle failed:', error.message || error);
     } finally {
-      setTimeout(tick, POLL_CYCLE_REST_MS);
+      setTimeout(tick, backfill ? BACKFILL_REST_MS : POLL_CYCLE_REST_MS);
     }
   };
 
