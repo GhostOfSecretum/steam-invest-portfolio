@@ -1,25 +1,24 @@
-/* global React, useTopInvestors, useTopInvestorsActivityFeed, useTopInvestorActivity */
+/* global React, useTopInvestors, useTopInvestorsActivityFeed, useTopInvestorActivity, formatUsd */
 const { useState: tiUseState, useEffect: tiUseEffect } = React;
 
-function investorActivityKindLabel(kind, lang) {
-  const ru = {
-    added: 'Появилось',
-    removed: 'Ушло',
-    qty_up: 'Кол-во +',
-    qty_down: 'Кол-во −',
-    updated: 'Изменено',
-  };
-  const en = {
-    added: 'Appeared',
-    removed: 'Left',
-    qty_up: 'Qty +',
-    qty_down: 'Qty −',
-    updated: 'Updated',
-  };
-  return (lang === 'ru' ? ru : en)[kind] || kind;
+function investorSignedQty(row) {
+  if (Number.isFinite(row.qtyDelta) && row.qtyDelta !== 0) {
+    return `${row.qtyDelta > 0 ? '+' : ''}${row.qtyDelta}`;
+  }
+  if (Number.isFinite(row.qtyAfter)) return String(row.qtyAfter);
+  return '—';
 }
 
-function InvestorActivityRows({ events, lang, showInvestor = false, onOpenItem }) {
+function investorPriceLabel(row) {
+  const unit = Number(row.priceUsd);
+  if (!Number.isFinite(unit) || unit < 0) return null;
+  const qty = Math.abs(Number(row.qtyDelta));
+  const unitText = formatUsd(unit);
+  if (Number.isFinite(qty) && qty > 1) return `${unitText} × ${qty} = ${formatUsd(unit * qty)}`;
+  return unitText;
+}
+
+function InvestorActivityRows({ events, showInvestor = false, onOpenItem }) {
   const rows = (Array.isArray(events) ? events : []).filter((row) => row && row.kind && row.at);
   if (!rows.length) return null;
 
@@ -29,9 +28,8 @@ function InvestorActivityRows({ events, lang, showInvestor = false, onOpenItem }
         const kindColor = row.kind === 'removed' || row.kind === 'qty_down'
           ? 'var(--red)'
           : (row.kind === 'added' || row.kind === 'qty_up' ? 'var(--green)' : 'var(--fg-1)');
-        const qtyLabel = Number.isFinite(row.qtyDelta) && row.qtyDelta !== 0
-          ? `${row.qtyDelta > 0 ? '+' : ''}${row.qtyDelta}`
-          : (Number.isFinite(row.qtyAfter) ? String(row.qtyAfter) : '—');
+        const qtyLabel = investorSignedQty(row);
+        const priceLabel = investorPriceLabel(row);
         const canOpen = Boolean(row.marketHashName && onOpenItem);
         return (
           <div
@@ -52,25 +50,23 @@ function InvestorActivityRows({ events, lang, showInvestor = false, onOpenItem }
               : <i className="top-investors-event-icon" aria-hidden="true" />}
             <div className="top-investors-event-copy">
               <div className="top-investors-event-head">
-                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: kindColor }}>
-                  {investorActivityKindLabel(row.kind, lang)}
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: kindColor, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {showInvestor && row.personaname ? `${row.personaname}  ` : ''}
+                  {qtyLabel}
                 </div>
                 <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }} className="top-investors-event-time">
                   {new Date(row.at).toLocaleString()}
                 </div>
               </div>
-              {showInvestor && row.personaname ? (
-                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--fg-3)' }}>
-                  {row.personaname}
-                </div>
-              ) : null}
               <div className="top-investors-event-name" title={row.marketHashName || row.name}>
                 {row.name || row.marketHashName || '—'}
                 {canOpen ? <span>↗</span> : null}
               </div>
-              <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: kindColor }}>
-                {qtyLabel}
-              </div>
+              {priceLabel ? (
+                <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--fg-2)' }}>
+                  {priceLabel}
+                </div>
+              ) : null}
             </div>
           </div>
         );
@@ -102,37 +98,37 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
   const copy = lang === 'ru'
     ? {
       title: 'Топ-аккаунты инвесторов',
-      sub: 'Подборка Steam-портфелей и лента их изменений.',
+      sub: 'Сервер сам снимает инвентари и пишет изменения в ленту: аккаунт, предмет, количество и цена.',
       empty: 'Список пока пуст — аккаунты появятся здесь, когда мы добавим подборку.',
       open: 'Открыть портфель',
       coming: 'Скоро',
       activity: 'Личная активность',
       watchlistFeed: 'Общая лента',
       selected: 'Выбранный аккаунт',
-      live: 'автообновление',
+      live: 'снимки сами',
       refresh: 'Обновить',
       refreshing: 'Обновляю…',
       loading: 'Загрузка…',
       noEvents: 'Пока нет изменений по этому аккаунту. Новые сделки появятся здесь сами.',
       baselineOnly: 'Базовая точка сохранена. Изменения появятся, когда инвентарь изменится.',
-      feedEmpty: 'Общая лента пуста — события появятся после автоматического обновления аккаунтов.',
+      feedEmpty: 'Лента пустая, пока инвентарь не изменился после первого снимка. Снимки идут сами: аккаунт, + или −, предмет, количество и цена.',
     }
     : {
       title: 'Top investor accounts',
-      sub: 'A curated set of Steam portfolios, including the activity feed.',
+      sub: 'The server snapshots inventories on its own and posts changes: account, item, quantity, and price.',
       empty: 'The list is empty for now — accounts will appear here once the curated set is added.',
       open: 'Open portfolio',
       coming: 'Coming soon',
       activity: 'Personal activity',
       watchlistFeed: 'Watchlist feed',
       selected: 'Selected account',
-      live: 'auto-updating',
+      live: 'snapshots on',
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
       loading: 'Loading…',
       noEvents: 'No changes for this account yet. New trades will show up here automatically.',
       baselineOnly: 'Baseline saved. Changes will appear once the inventory moves.',
-      feedEmpty: 'Watchlist feed is empty — events appear after accounts update automatically.',
+      feedEmpty: 'The feed stays empty until an inventory changes after its first snapshot. Snapshots run on their own: account, + or −, item, quantity, and price.',
     };
 
   return (
@@ -267,7 +263,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
               )}
 
               {selectedActivity.data && (selectedActivity.data.activity || []).length > 0 && (
-                <InvestorActivityRows events={selectedActivity.data.activity} lang={lang} onOpenItem={onOpenItem} />
+                <InvestorActivityRows events={selectedActivity.data.activity} onOpenItem={onOpenItem} />
               )}
             </section>
 
@@ -288,7 +284,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
                 <div style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--fg-3)' }}>{copy.feedEmpty}</div>
               )}
               {feed.data && (feed.data.events || []).length > 0 && (
-                <InvestorActivityRows events={feed.data.events} lang={lang} showInvestor onOpenItem={onOpenItem} />
+                <InvestorActivityRows events={feed.data.events} showInvestor onOpenItem={onOpenItem} />
               )}
             </section>
           </div>

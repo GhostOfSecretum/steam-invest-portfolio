@@ -42,6 +42,8 @@ function makeActivityEvent(partial = {}) {
     proceedsCurrency: partial.proceedsCurrency || null,
     source: partial.source || 'manual',
     iconUrl: typeof partial.iconUrl === 'string' && partial.iconUrl.trim() ? partial.iconUrl.trim() : null,
+    priceUsd: finiteOrNull(partial.priceUsd),
+    priceRub: finiteOrNull(partial.priceRub),
   };
 }
 
@@ -224,6 +226,7 @@ async function getInventoryActivityForSteamId(steamId) {
     return {
       steamId: key,
       syncedAt: null,
+      lastAttemptAt: null,
       hasBaseline: false,
       events: [],
     };
@@ -234,9 +237,49 @@ async function getInventoryActivityForSteamId(steamId) {
   return {
     steamId: key,
     syncedAt: entry?.syncedAt || null,
+    lastAttemptAt: entry?.lastAttemptAt || null,
     hasBaseline: Boolean(entry?.snapshot && typeof entry.snapshot === 'object'),
     events: trimEvents(entry?.events || []).filter(isStructuredActivity).map((event) => withEventIcon(event, entry?.icons)),
   };
+}
+
+async function markInventoryActivityAttempt(steamId, at = new Date().toISOString()) {
+  const key = String(steamId || '').trim();
+  if (!/^\d{17}$/.test(key)) return;
+  const store = await readInventoryActivityStore();
+  const entry = store[key] || { snapshot: null, syncedAt: null, events: [] };
+  store[key] = { ...entry, lastAttemptAt: at };
+  await writeInventoryActivityStore(store);
+}
+
+async function annotateInventoryEventPrices(steamId, annotations) {
+  const key = String(steamId || '').trim();
+  const list = Array.isArray(annotations) ? annotations : [];
+  if (!/^\d{17}$/.test(key) || !list.length) return;
+  const byId = new Map(list.filter((row) => row && row.id).map((row) => [row.id, row]));
+  if (!byId.size) return;
+
+  const store = await readInventoryActivityStore();
+  const entry = store[key];
+  if (!entry || !Array.isArray(entry.events)) return;
+
+  let changed = false;
+  const events = entry.events.map((event) => {
+    const patch = byId.get(event && event.id);
+    if (!patch) return event;
+    const priceUsd = Number(patch.priceUsd);
+    const priceRub = Number(patch.priceRub);
+    if (!Number.isFinite(priceUsd) && !Number.isFinite(priceRub)) return event;
+    changed = true;
+    return {
+      ...event,
+      priceUsd: Number.isFinite(priceUsd) ? priceUsd : (Number.isFinite(event.priceUsd) ? event.priceUsd : null),
+      priceRub: Number.isFinite(priceRub) ? priceRub : (Number.isFinite(event.priceRub) ? event.priceRub : null),
+    };
+  });
+  if (!changed) return;
+  store[key] = { ...entry, events };
+  await writeInventoryActivityStore(store);
 }
 
 async function listInventoryActivityForSteamIds(steamIds, { limit = 100 } = {}) {
@@ -272,4 +315,6 @@ module.exports = {
   syncInventoryDiffActivity,
   getInventoryActivityForSteamId,
   listInventoryActivityForSteamIds,
+  markInventoryActivityAttempt,
+  annotateInventoryEventPrices,
 };
