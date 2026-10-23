@@ -6,7 +6,7 @@
   "bio": "CS2 skins as a portfolio. Live inventory value, real P&L, Armory ROI. For people who treat skins like a bag, not a wallpaper.",
   "location": "CS2 skin market",
   "premium": "Premium",
-  "pin": "Пост 1 остаётся закрепом. Thesis-ролик не публикуем. Киты в ленте уже, не чаще раза в неделю. Десктоп не анонсировать.",
+  "pin": "Пост 1 остаётся закрепом. Thesis-ролик не публикуем. С 24 окт киты: список открыт, доля платная, не чаще двух постов в неделю и не в соседние дни. Десктоп не анонсировать.",
   "thesis": "Steam is a price tag. A portfolio is P&L — whether you’re up after fees, not the sticker.",
   "quota": {
     "repliesMin": 15,
@@ -24,7 +24,7 @@
     "Лайки не фармить; взаимки с нишевых мелких — да",
     "Реплаи: 8–10 инвест, 2–3 магазины на всех, 2–4 кто отвечает / киты; витрины и 94% — ноль",
     "Магазины (lis, tradeit, cs.money, skinsmonkey): только цена/объём/просадка, текст про fill, не 🤩",
-    "Киты: вотчлист живой. В реплаях уже. В свои посты — наблюдение с фида, не changelog страницы, не чаще раза в неделю",
+    "С 24 окт киты: список и лента открыты, доля и сигналы по плану. Свои посты — наблюдение, не changelog, не чаще двух в неделю и не в соседние дни. Неделя с понедельника: 31 окт; 5 и 8 ноя; 10 и 12 ноя. Цены EN один раз: $2.99 / 3 days, $5 / 30 days. Пейвол и аналитику не снимать. Бэктест не заявлять. Скин как сигнал не называть. Бота хэндлом не называть",
     "С 1 окт реплаи можно 10–15. Пост тот же, 19:30. Десктоп не анонсировать до релиза",
     "Float предмета не пишем и не снимаем. На сайте его нет. Для флоата есть CSFloat. Бирка износа — имя скина, не пост про float",
     "Кадр: сайт на EN, кроп блока, без шапки браузера и без URL. Десктоп, QR и скачивание не снимать. 30 сен — ролик 9:16, 8–12 сек, не закреплять, старый рил 31 авг не использовать",
@@ -32,7 +32,7 @@
     "С 14 окт расширение в Chrome Web Store, установка в один клик, zip с сайта снят. В посте и в реплае можно назвать. Ссылку на карточку в тело поста не ставить. В реплае на «как увидеть Storage» ссылку можно дать один раз. Zip и «загрузить распакованное» не расписывать. Десктоп не пишем",
     "Не ядро: чистые баеры «always buying 94%» и кейс-сайты — список в блоке Реплаи",
     "Добрать ядро: CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs — список в блоке Подписки",
-    "С 25 окт по 7 ноя кадр с сайта — норма дня. Текст без картинки только если так написано в дне. Кроп одного блока, сайт на EN, без шапки браузера и без ссылки в посте"
+    "С 25 окт по 14 ноя кадр с сайта — норма дня. Текст без картинки только если так написано в дне. Кроп одного блока, сайт на EN, без шапки браузера и без ссылки в посте. Блок «пример сигнала» на главной не снимать"
   ],
   "followsFocus": {
     "title": "Подписки · добрать",
@@ -86,7 +86,7 @@
     },
     "priority": {
       "label": "Упор",
-      "note": "8–10 из квоты. Pricempire — только цифры. ohne — Update, не основной. Под китом на X — activity ≠ your basis",
+      "note": "8–10 из квоты. Pricempire — только цифры. ohne — Update, не основной. Под китом на X — activity ≠ your basis. Если спросят, где список: сайт в профиле, ссылку один раз. Долю и сигнал бесплатно не обещать",
       "handles": [
         "pricempire",
         "cs2insiderX",
@@ -125,13 +125,13 @@
         "key": "replies",
         "tone": "good",
         "label": "Реплаи · уже",
-        "note": "Вотчлист китов живой. Под чужим китом: activity ≠ your basis. Магазины 2–3/день на всех, только рынок. С 1 окт можно 10–15."
+        "note": "Вотчлист китов живой. Под чужим китом: activity ≠ your basis. Список открыт, доля нет. Магазины 2–3/день на всех, только рынок. С 1 окт можно 10–15."
       },
       {
         "key": "week4",
         "tone": "good",
         "label": "Киты · уже в ленте",
-        "note": "Сигнал с фида, не changelog /investors. Не чаще раза в неделю. Шаринг P&L — механика, не тема."
+        "note": "С 24 окт: список и лента открыты, доля листингов и сигналы по плану. Не чаще двух постов в неделю, не в соседние дни. Не changelog. Шаринг P&L — механика, не тема."
       },
       {
         "key": "later",
@@ -1497,10 +1497,10 @@
         "n": 70,
         "time": "19:30",
         "pinned": false,
-        "text": "You can see the drawer now.\n\nSeeing it did not list it.\n\nA fuller screen and a buyer are still two different events.\n\nWhat on that screen can actually clear this week?",
-        "textRu": "Ящик теперь видно.\n\nТо, что ты его видишь, не выставило его на продажу.\n\nБолее полный экран и покупатель — всё ещё два разных события.\n\nЧто на этом экране реально может уйти на этой неделе?"
+        "text": "A listed skin has two owners in the story.\n\nYou, who might buy it. And the accounts already sitting on a pile of the same name.\n\nThe list of those accounts is on the site. What share of the listings they are is the paid read — $5 for 30 days, or $2.99 if you only want three.\n\nIf they start selling, your entry is their exit.\n\nWhose inventory is the offer you are about to lift?",
+        "textRu": "У выставленного скина в этой истории два владельца.\n\nТы, который может его купить. И аккаунты, которые уже сидят на стопке того же имени.\n\nСписок этих аккаунтов на сайте. Какую долю листингов они составляют — платное чтение: $5 за 30 дней или $2.99, если нужны только три.\n\nЕсли они начнут продавать, твой вход — их выход.\n\nЧей инвентарь — оффер, который ты сейчас снимешь?"
       },
-      "notes": "Не закреплять, только текст. Видимость ≠ филл. Не SELLABLE NOW кадром (пост 52) и не налог (пост 59)."
+      "notes": "Не закреплять, только текст. Список открыт, доля платная. Цены EN один раз на весь план. Пейвол и аналитику не снимать. Конкретный скин не называть."
     },
     {
       "date": "2026-11-01",
@@ -1575,10 +1575,10 @@
         "n": 75,
         "time": "19:30",
         "pinned": false,
-        "text": "The sticker is not a footnote.\n\nIt is capital glued to a skin, with its own bid and no separate row.\n\nIf you marked the gun and ignored the plastic, you marked a fraction.\n\nWhat’s the sticker worth without the skin under it?",
-        "textRu": "Стикер — не сноска.\n\nЭто капитал, приклеенный к скину, со своим бидом и без отдельной строки.\n\nЕсли ты оценил оружие и не заметил пластик, ты оценил долю.\n\nСколько стоит стикер без скина под ним?"
+        "text": "Three things are not the same trade.\n\nSeveral accounts buying the same name. Several accounts leaving it. One group holding most of what is listed.\n\nA feed can show the first. The signal is which of the three you are walking into.\n\nAre you adding to a pile, or buying the pile's exit?",
+        "textRu": "Три вещи — не одна сделка.\n\nНесколько аккаунтов покупают одно имя. Несколько выходят из него. Одна группа держит большую часть того, что выставлено.\n\nЛента может показать первое. Сигнал — в какую из трёх ты заходишь.\n\nТы добавляешь в стопку или покупаешь её выход?"
       },
-      "notes": "Не закреплять, только текст. Стикер как капитал. Не allocation by type (пост 37)."
+      "notes": "Не закреплять, только текст. Три типа сигнала. Имя скина не называть. Бэктест не заявлять."
     },
     {
       "date": "2026-11-06",
@@ -1611,6 +1611,110 @@
         "visual": "Портфель → предметы, сайт на EN, сортировка по Value. Кроп двух верхних строк: имя и Value, чтобы был виден разрыв между первой и второй. Portfolio leaders не снимай — это пост 65. Float не снимать."
       },
       "notes": "Не закреплять. Разрыв первой и второй строки. Не блок Leaders (пост 65)."
+    },
+    {
+      "date": "2026-11-08",
+      "kind": "planned",
+      "dayNum": 78,
+      "label": "день 78",
+      "post": {
+        "n": 78,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "The names are public.\n\nWhat they hold, and how much of the listed supply that is, is not a free screenshot.\n\nYou can watch the accounts. You pay to read the position.\n\nWhich one were you doing — watching, or guessing the size?",
+        "textRu": "Имена открыты.\n\nЧто они держат и какую долю выставленного это составляет — не бесплатный скрин.\n\nАккаунты можно смотреть. За позицию платят.\n\nТы смотрел или угадывал размер?",
+        "visual": "Киты → вкладка аккаунтов и ленты, сайт на EN. Кроп списка аккаунтов. Один инвентарь не открывать. Вкладку аналитики, пейвол, сигналы и блок «пример сигнала» на главной не снимать."
+      },
+      "notes": "Не закреплять. Имена открыты, размер позиции нет. Не аналитика и не пейвол."
+    },
+    {
+      "date": "2026-11-09",
+      "kind": "planned",
+      "dayNum": 79,
+      "label": "неделя 12 · база",
+      "post": {
+        "n": 79,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The sticker is not a footnote.\n\nIt is capital glued to a skin, with its own bid and no separate row.\n\nIf you marked the gun and ignored the plastic, you marked a fraction.\n\nWhat’s the sticker worth without the skin under it?",
+        "textRu": "Стикер — не сноска.\n\nЭто капитал, приклеенный к скину, со своим бидом и без отдельной строки.\n\nЕсли ты оценил оружие и не заметил пластик, ты оценил долю.\n\nСколько стоит стикер без скина под ним?"
+      },
+      "notes": "Не закреплять, только текст. Стикер как капитал, перенесён с 5 ноя. Не allocation by type (пост 37)."
+    },
+    {
+      "date": "2026-11-10",
+      "kind": "planned",
+      "dayNum": 80,
+      "label": "день 80",
+      "post": {
+        "n": 80,
+        "time": "19:30",
+        "pinned": false,
+        "text": "An alert is someone else's inventory moving.\n\nIt is not your cost basis and it is not a fill.\n\nIt arrives while the plan is on. It stops when the plan stops.\n\nDid you want the move, or a reason?",
+        "textRu": "Алерт — это чужой инвентарь, который движется.\n\nЭто не твоя база и не филл.\n\nОн приходит, пока план включён. Он кончается вместе с планом.\n\nТебе нужно было движение или повод?"
+      },
+      "notes": "Не закреплять, только текст. Бота хэндлом не называть. Алерт ≠ база и ≠ филл. Ссылку не ставить."
+    },
+    {
+      "date": "2026-11-11",
+      "kind": "planned",
+      "dayNum": 81,
+      "label": "день 81",
+      "post": {
+        "n": 81,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "The chart on the skin is the market's memory.\n\nYours is the day you paid.\n\nThey can share a shape and still be different trades.\n\nWhose line are you holding?",
+        "textRu": "График на скине — память рынка.\n\nТвой — день, когда ты заплатил.\n\nУ них может быть одна форма и всё равно разные сделки.\n\nЧью линию ты держишь?",
+        "visual": "Карточка предмета, сайт на EN. Кроп графика цены, один диапазон. Float, офферы, сравнение площадок и блок китов под графиком не бери. Если вместо графика пейвол — кадр не снимать, пост оставить текстом."
+      },
+      "notes": "Не закреплять. График предмета, не график портфеля (пост 69, рил 39). Блок китов не снимать."
+    },
+    {
+      "date": "2026-11-12",
+      "kind": "planned",
+      "dayNum": 82,
+      "label": "день 82",
+      "post": {
+        "n": 82,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Your row and their row can be the same name.\n\nYours has a basis. Theirs is a pile sitting on the listings.\n\nIf the pile is most of what is offered, your P&L is a guest in their inventory.\n\nAre you long the skin, or long their willingness to keep it?",
+        "textRu": "Твоя строка и их строка могут быть одним именем.\n\nУ тебя база. У них стопка на листингах.\n\nЕсли стопка — большая часть того, что выставлено, твой P&L гостит в их инвентаре.\n\nТы в лонге на скин или на их готовность его держать?"
+      },
+      "notes": "Не закреплять, только текст. Виджет китов на предмете не снимать."
+    },
+    {
+      "date": "2026-11-13",
+      "kind": "planned",
+      "dayNum": 83,
+      "label": "день 83",
+      "post": {
+        "n": 83,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "The pass has a number and a clock.\n\nROI is what the stars returned. Days remaining is how long that number still has to be true.\n\nA percent without a date is a souvenir of a season that already ended.\n\nWhich one did you screenshot — the return, or the time left?",
+        "textRu": "У пасса есть цифра и часы.\n\nROI — это что вернули звёзды. Days remaining — сколько эта цифра ещё обязана быть правдой.\n\nПроцент без даты — сувенир сезона, который уже кончился.\n\nЧто ты снял — доходность или сколько осталось?",
+        "visual": "/armory, сайт на EN. Один тайл: имя, Star ROI и days remaining. Сетку целиком, переключатель валют и тулбар не бери."
+      },
+      "notes": "Не закреплять. Один тайл Armory, не вся сетка."
+    },
+    {
+      "date": "2026-11-14",
+      "kind": "planned",
+      "dayNum": 84,
+      "label": "день 84",
+      "post": {
+        "n": 84,
+        "time": "19:30",
+        "pinned": false,
+        "text": "The week of quotes is not a position.\n\nA position is basis, size, and whether it can leave.\n\nYou have been collecting the first screen.\n\nWhich of those three is still a guess?",
+        "textRu": "Неделя котировок — не позиция.\n\nПозиция — это база, размер и может ли она уйти.\n\nТы собирал первый экран.\n\nКакая из этих трёх всё ещё догадка?"
+      },
+      "notes": "Не закреплять, только текст. Клин, не киты и не цены."
     }
   ],
   "weekTopReplies": [

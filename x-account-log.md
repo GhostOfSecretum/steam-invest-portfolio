@@ -46,7 +46,7 @@ https://x.com/SkinsheadPro
 - Лайки не фармить; взаимки с нишевых мелких — да
 - Реплаи: 8–10 в инвест-блок, 2–3 магазины на всех вместе, 2–4 тем кто отвечает / киты; витрины и 94% — ноль. xMercy_CS с 21 авг не CS — не отвечать, снять.
 - Магазины (lis-skins, tradeit, cs.money, skinsmonkey): только цена / объём / просадка. Текст про fill, не 🤩. GreenFire — не buy-посты
-- Киты: вотчлист на сайте живой. В реплаях уже (activity ≠ your basis). В свои посты — наблюдение с фида, не changelog /investors, не чаще раза в неделю
+- Киты, с 24 окт: список аккаунтов и лента на /investors открыты. Доля листингов, скупка / выход / контроль, бэктест, индекс, виджет на предмете, риск бустера в портфеле и личные сообщения бота — по плану. В посте цены EN можно назвать один раз: $2.99 / 3 days, $5 / 30 days. Ссылку в тело не ставить. Не писать, что весь сайт платный. Бэктест не заявлять: он видит только движение после первого снимка. Конкретный скин как пойманный сигнал не называть. Пейвол и вкладку аналитики не снимать. Вкладку аккаунтов снимать можно. Свои посты про китов — не чаще двух в неделю и не в соседние дни. Наблюдение, не changelog. Блок «пример сигнала» на главной не снимать. Бота в посте не называть хэндлом: the bot. В реплае под чужим китом по-прежнему activity ≠ your basis. Если спросят, где список, — сайт в профиле, ссылку один раз.
 - **С 1 окт:** реплаи можно снизить до 10–15. Пост тот же, 19:30. Десктоп / QR / скачать — не писать до релиза.
 - **С 11 окт:** Storage можно кадром с сайта — строка `storage`, счётчик «storage N (as of …)», карточка SELLABLE NOW, подпись `full inventory · Storage`. Попап, код, QR и десктоп не снимать. Ссылку в пост не ставить.
 - **С 14 окт:** расширение опубликовано в Chrome Web Store, установка в один клик, zip с сайта снят. В посте и в реплае можно назвать это так. Ссылку на карточку в тело поста не ставить: сайт уже в профиле. В реплае на прямой вопрос «как увидеть Storage» ссылку на карточку можно дать один раз: `https://chromewebstore.google.com/detail/ficgknangpgoaalmjmigkchifhaonadi`. Zip, «загрузить распакованное» и шаги с кодом не расписывать. Десктоп не пишем.
@@ -54,9 +54,9 @@ https://x.com/SkinsheadPro
 - Не ядро: чистые баеры «always buying 94%» и кейс-сайты. Список на столе в блоке «Реплаи»
 - Добрать ядро (подписать и отвечать): CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs, fengyuanshi1, theSinedinCS, V1rdus, de_copium. Смотреть: CS2Status, SteamDB, skinledger, skinpock, SkinSpecter — не реплаить как коллеге.
 
-X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. Киты уже в ленте. С 20 сен — второй слой клина: два марка (Steam vs market), sellable now, капитал в стикерах, кэш как позиция. С 11 окт Storage — результат синка на сайте. С 14 окт расширение можно назвать как установку из Chrome Web Store, без ссылки в теле поста и без кадра попапа. Десктоп не пишем. Коллекции — фон. 3D Glock не пишем.
+X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. С 24 окт киты в ленте как продукт: список и лента открыты, чтение позиции платное. С 20 сен — второй слой клина: два марка (Steam vs market), sellable now, капитал в стикерах, кэш как позиция. С 11 окт Storage — результат синка на сайте. С 14 окт расширение можно назвать как установку из Chrome Web Store, без ссылки в теле поста и без кадра попапа. Десктоп не пишем. Коллекции — фон. 3D Glock не пишем.
 
-Этот ритм — пост каждый день. План продлён до 7 ноя. С 1 окт реплаи 10–15. С 25 окт кадр с сайта — норма дня. Текст без картинки только если в дне так написано.
+Этот ритм — пост каждый день. План продлён до 14 ноя. С 1 окт реплаи 10–15. С 25 окт кадр с сайта — норма дня. Текст без картинки только если в дне так написано. Посты про китов: 31 окт, 5 ноя, 8 ноя, 10 ноя, 12 ноя. Не два дня подряд. Лимит двух постов считается с понедельника: 26 окт–1 ноя один, 2–8 ноя два, 9–14 ноя два. 8 ноя закрывает свою неделю, не открывает следующую.
 
 ---
 
@@ -1272,16 +1272,18 @@ Where does the line stop being a story?
 
 ### 31 окт 2026 (сб) — день 70
 - 10–15 реплаев
-- 19:30 пост 70 (не закреплять, только текст, без картинки):
+- 19:30 пост 70 (не закреплять, только текст, без картинки). Пейвол и аналитику не снимать. Конкретный скин не называть. Цены EN в этом посте — один раз на весь план.
 
 ```
-You can see the drawer now.
+A listed skin has two owners in the story.
 
-Seeing it did not list it.
+You, who might buy it. And the accounts already sitting on a pile of the same name.
 
-A fuller screen and a buyer are still two different events.
+The list of those accounts is on the site. What share of the listings they are is the paid read — $5 for 30 days, or $2.99 if you only want three.
 
-What on that screen can actually clear this week?
+If they start selling, your entry is their exit.
+
+Whose inventory is the offer you are about to lift?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
@@ -1356,16 +1358,16 @@ Which one did you quote last?
 
 ### 5 ноя 2026 (чт) — день 75
 - 10–15 реплаев
-- 19:30 пост 75 (не закреплять, только текст, без картинки):
+- 19:30 пост 75 (не закреплять, только текст, без картинки). Три типа сигнала. Имя скина не называть. Бэктест не заявлять.
 
 ```
-The sticker is not a footnote.
+Three things are not the same trade.
 
-It is capital glued to a skin, with its own bid and no separate row.
+Several accounts buying the same name. Several accounts leaving it. One group holding most of what is listed.
 
-If you marked the gun and ignored the plastic, you marked a fraction.
+A feed can show the first. The signal is which of the three you are walking into.
 
-What’s the sticker worth without the skin under it?
+Are you adding to a pile, or buying the pile's exit?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
@@ -1400,6 +1402,121 @@ The book is every row under it.
 If the first line is half the bag, the screenshot of that line is not a portfolio.
 
 How far is row two from row one — and which one do you actually talk about?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 8 ноя 2026 (вс) — день 78
+- 10–15 реплаев
+- 19:30 пост 78 (не закреплять, текст + кадр):
+- Кадр. Киты → вкладка аккаунтов и ленты, сайт на EN. Кроп списка аккаунтов. Один инвентарь не открывать. Вкладку аналитики, пейвол, сигналы и блок «пример сигнала» на главной не снимать.
+
+```
+The names are public.
+
+What they hold, and how much of the listed supply that is, is not a free screenshot.
+
+You can watch the accounts. You pay to read the position.
+
+Which one were you doing — watching, or guessing the size?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 9 ноя 2026 (пн) — неделя 12 · база
+- 10–15 реплаев
+- 19:30 пост 79 (не закреплять, только текст, без картинки). Стикер перенесён с 5 ноя. Не allocation by type — это пост 37.
+
+```
+The sticker is not a footnote.
+
+It is capital glued to a skin, with its own bid and no separate row.
+
+If you marked the gun and ignored the plastic, you marked a fraction.
+
+What’s the sticker worth without the skin under it?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 10 ноя 2026 (вт) — день 80
+- 10–15 реплаев
+- 19:30 пост 80 (не закреплять, только текст, без картинки). Бота хэндлом не называть. Ссылку не ставить.
+
+```
+An alert is someone else's inventory moving.
+
+It is not your cost basis and it is not a fill.
+
+It arrives while the plan is on. It stops when the plan stops.
+
+Did you want the move, or a reason?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 11 ноя 2026 (ср) — день 81
+- 10–15 реплаев
+- 19:30 пост 81 (не закреплять, текст + кадр):
+- Кадр. Карточка предмета, сайт на EN. Кроп графика цены, один диапазон. Float, офферы, сравнение площадок и блок китов под графиком не бери. Если вместо графика пейвол — кадр не снимать, пост оставить текстом.
+
+```
+The chart on the skin is the market's memory.
+
+Yours is the day you paid.
+
+They can share a shape and still be different trades.
+
+Whose line are you holding?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 12 ноя 2026 (чт) — день 82
+- 10–15 реплаев
+- 19:30 пост 82 (не закреплять, только текст, без картинки). Виджет китов на предмете не снимать.
+
+```
+Your row and their row can be the same name.
+
+Yours has a basis. Theirs is a pile sitting on the listings.
+
+If the pile is most of what is offered, your P&L is a guest in their inventory.
+
+Are you long the skin, or long their willingness to keep it?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 13 ноя 2026 (пт) — день 83
+- 10–15 реплаев
+- 19:30 пост 83 (не закреплять, текст + кадр):
+- Кадр. /armory, сайт на EN. Один тайл: имя, Star ROI и days remaining. Сетку целиком, переключатель валют и тулбар не бери.
+
+```
+The pass has a number and a clock.
+
+ROI is what the stars returned. Days remaining is how long that number still has to be true.
+
+A percent without a date is a souvenir of a season that already ended.
+
+Which one did you screenshot — the return, or the time left?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 14 ноя 2026 (сб) — день 84
+- 10–15 реплаев
+- 19:30 пост 84 (не закреплять, только текст, без картинки). Не киты и не цены: клин закрывает две недели.
+
+```
+The week of quotes is not a position.
+
+A position is basis, size, and whether it can leave.
+
+You have been collecting the first screen.
+
+Which of those three is still a guess?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
