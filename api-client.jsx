@@ -238,6 +238,53 @@ function useTopInvestorsAnalytics(enabled = true) {
   return { ...state, reload };
 }
 
+function useSmartMoneyResource(path, { body = null } = {}) {
+  const [state, setState] = apiUseState({ loading: false, data: null, error: null });
+  const bodyJson = body ? JSON.stringify(body) : null;
+
+  const reload = apiUseCallback(async () => {
+    if (!path) {
+      setState({ loading: false, data: null, error: null });
+      return;
+    }
+    setState((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const data = await apiFetch(path, bodyJson
+        ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: bodyJson }
+        : {});
+      setState({ loading: false, data, error: null });
+    } catch (error) {
+      setState({ loading: false, data: null, error });
+    }
+  }, [path, bodyJson]);
+
+  apiUseEffect(() => { reload(); }, [reload]);
+
+  return { ...state, reload };
+}
+
+function useSmartMoneySignals() {
+  return useSmartMoneyResource('/api/top-investors/signals?limit=30');
+}
+
+function useSmartMoneyBacktest() {
+  return useSmartMoneyResource('/api/top-investors/backtest');
+}
+
+function useSmartMoneyIndex() {
+  return useSmartMoneyResource('/api/top-investors/index');
+}
+
+function useSmartMoneyItem(marketHashName) {
+  const name = String(marketHashName || '').trim();
+  return useSmartMoneyResource(name ? `/api/top-investors/item?name=${encodeURIComponent(name)}` : null);
+}
+
+function useSmartMoneyExposure(names) {
+  const list = [...new Set((names || []).filter(Boolean))].sort();
+  return useSmartMoneyResource(list.length ? '/api/top-investors/exposure' : null, { body: list.length ? { names: list } : null });
+}
+
 function useTopInvestorActivity(steamId, enabled = true) {
   const [state, setState] = apiUseState({ loading: false, syncing: false, data: null, error: null });
   const requestSeq = apiUseRef(0);
@@ -928,6 +975,11 @@ Object.assign(window, {
   useTopInvestors,
   useTopInvestorsActivityFeed,
   useTopInvestorsAnalytics,
+  useSmartMoneySignals,
+  useSmartMoneyBacktest,
+  useSmartMoneyIndex,
+  useSmartMoneyItem,
+  useSmartMoneyExposure,
   useTopInvestorActivity,
   useMarketSnapshot,
   useMarketCatalog,

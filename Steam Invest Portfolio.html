@@ -84,6 +84,7 @@
   <script type="text/babel" src="dashboard.jsx"></script>
   <script type="text/babel" src="favorite-profiles.jsx"></script>
   <script type="text/babel" src="top-investors-analytics.jsx"></script>
+  <script type="text/babel" src="smart-money.jsx"></script>
   <script type="text/babel" src="top-investors.jsx"></script>
   <script type="text/babel" src="item-detail.jsx"></script>
   <script type="text/babel" src="collection-detail.jsx"></script>
@@ -648,6 +649,7 @@
           {screen === 'item' && (
             <ItemDetail
               lang={t.lang}
+              onOpenProfile={openPublicProfile}
               item={activeItem}
               loading={!activeItem && slugItem.loading}
               error={!activeItem ? slugItem.error : null}

@@ -1235,6 +1235,10 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
 
               <PortfolioLeaders leaders={data.leaders} lang={lang} onItemClick={onItemClick} />
             </div>
+
+            {window.BoosterExposureCard ? (
+              <window.BoosterExposureCard holdings={items} lang={lang} onItemClick={onItemClick} />
+            ) : null}
           </div>
         )}
 

@@ -49,6 +49,12 @@ function listedSupply(lists, name) {
   return counts.length ? counts.reduce((sum, n) => sum + n, 0) : null;
 }
 
+function boostScore(view) {
+  const holderScore = Math.min(view.holders / 4, 1);
+  const accumScore = view.flow7d && view.flow7d.netUnits > 0 ? Math.min(view.flow7d.buyers / 3, 1) : 0;
+  return Math.round(100 * (0.45 * (view.control ?? 0) + 0.25 * holderScore + 0.3 * accumScore));
+}
+
 function jaccard(a, b) {
   if (!a.size || !b.size) return 0;
   const [small, large] = a.size < b.size ? [a, b] : [b, a];
@@ -205,12 +211,9 @@ async function computeAnalytics() {
     .filter((item) => item.valueUsd >= RADAR_MIN_VALUE_USD)
     .map((item) => {
       const view = itemView(item.name);
-      const holderScore = Math.min(view.holders / 4, 1);
-      const accumScore = view.flow7d && view.flow7d.netUnits > 0 ? Math.min(view.flow7d.buyers / 3, 1) : 0;
-      const score = Math.round(100 * (0.45 * (view.control ?? 0) + 0.25 * holderScore + 0.3 * accumScore));
       return {
         ...view,
-        score,
+        score: boostScore(view),
         topHolders: item.holders.slice().sort((a, b) => b.qty - a.qty).slice(0, 5).map(holderView),
       };
     })
@@ -322,7 +325,7 @@ async function computeAnalytics() {
       };
     });
 
-  return {
+  const view = {
     generatedAt: new Date(now).toISOString(),
     flowDays: FLOW_DAYS,
     totals: {
@@ -346,9 +349,14 @@ async function computeAnalytics() {
     network: { nodes, links },
     leaderboard,
   };
+
+  return {
+    view,
+    state: { now, tracked, items, itemView, holderView, priceOf, icons, accountById, byValue, totalValue },
+  };
 }
 
-async function getTopInvestorsAnalytics() {
+function loadAnalytics() {
   if (memo && Date.now() - memo.at < CACHE_MS) return memo.promise;
   const promise = computeAnalytics();
   memo = { at: Date.now(), promise };
@@ -356,4 +364,12 @@ async function getTopInvestorsAnalytics() {
   return promise;
 }
 
-module.exports = { getTopInvestorsAnalytics };
+async function getTopInvestorsAnalytics() {
+  return (await loadAnalytics()).view;
+}
+
+async function getTopInvestorsState() {
+  return (await loadAnalytics()).state;
+}
+
+module.exports = { getTopInvestorsAnalytics, getTopInvestorsState, boostScore, RADAR_MIN_VALUE_USD };

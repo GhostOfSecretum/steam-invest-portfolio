@@ -1,4 +1,4 @@
-/* global React, useTopInvestorsAnalytics, formatMoney */
+/* global React, useTopInvestorsAnalytics, formatMoney, SmartMoneySignals, SmartMoneyIndex, SmartMoneyBacktest */
 const { useState: taUseState, useMemo: taUseMemo } = React;
 
 const TA_CATEGORY_COLORS = {
@@ -599,6 +599,8 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
     <div className="ta">
       <TaKpis totals={data.totals} t={t} />
 
+      <SmartMoneySignals lang={lang} t={t} onOpenItem={onOpenItem} />
+
       <TaSection
         eyebrow="// BOOST RADAR"
         title={t('Где отслеживаемые аккаунты держат рынок', 'Where tracked accounts hold the market')}
@@ -634,6 +636,10 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
         </div>
       </TaSection>
 
+      <SmartMoneyIndex t={t} />
+
+      <SmartMoneyBacktest lang={lang} t={t} onOpenItem={onOpenItem} />
+
       <TaSection
         eyebrow="// SYNDICATES"
         title={t('Связанные аккаунты', 'Linked accounts')}
@@ -663,4 +669,4 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
   );
 }
 
-window.TopInvestorsAnalytics = TopInvestorsAnalytics;
+Object.assign(window, { TopInvestorsAnalytics, TaSection, TaEmpty, TaIcon, TaAvatarStack, TaScoreRing, taMoney, taSigned, taPct });

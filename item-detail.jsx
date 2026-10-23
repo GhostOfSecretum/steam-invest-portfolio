@@ -116,7 +116,7 @@ function TightItemImage({ src, alt }) {
   return <img src={displaySrc} alt={alt} />;
 }
 
-function ItemDetail({ lang, item, loading = false, error = null, onBack, onCollectionClick }) {
+function ItemDetail({ lang, item, loading = false, error = null, onBack, onCollectionClick, onOpenProfile }) {
   const t = useT(lang);
   const PERIOD_OPTIONS = [
     { key: '7d',  days: 7,   label: lang === 'ru' ? 'Неделя' : 'Week' },
@@ -640,6 +640,9 @@ function ItemDetail({ lang, item, loading = false, error = null, onBack, onColle
             </section>
           )}
         </div>
+        {window.SmartMoneyItemPanel ? (
+          <window.SmartMoneyItemPanel marketHashName={activeName} lang={lang} onOpenProfile={onOpenProfile} />
+        ) : null}
       </div>
     </main>
   );

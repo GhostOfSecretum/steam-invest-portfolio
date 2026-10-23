@@ -71,6 +71,14 @@ const {
   startTopInvestorsActivityPoller,
 } = require('./services/top-investors');
 const { getTopInvestorsAnalytics } = require('./services/top-investors-analytics');
+const {
+  startSmartMoneyJobs,
+  listSmartMoneySignals,
+  getSmartMoneyBacktest,
+  getSmartMoneyIndex,
+  getSmartMoneyItem,
+  getSmartMoneyExposure,
+} = require('./services/smart-money');
 const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory, getPeriodMovers } = require('./services/market');
 const { getCsNews } = require('./services/news');
 const { getArmoryRoi } = require('./services/armory');
@@ -253,6 +261,13 @@ const investorTrialLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many trial attempts. Try again later.', code: 'rate_limited' },
+});
+const smartMoneyApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Try again later.', code: 'rate_limited' },
 });
 const ogLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -859,6 +874,58 @@ app.get('/api/top-investors/analytics', asyncRoute(async (req, res) => {
   res.json(await getTopInvestorsAnalytics());
 }));
 
+app.get('/api/top-investors/signals', asyncRoute(async (req, res) => {
+  res.json(await listSmartMoneySignals({ limit: req.query.limit }));
+}));
+
+app.get('/api/top-investors/backtest', asyncRoute(async (req, res) => {
+  res.json(await getSmartMoneyBacktest());
+}));
+
+app.get('/api/top-investors/index', asyncRoute(async (req, res) => {
+  res.json(await getSmartMoneyIndex());
+}));
+
+app.get('/api/top-investors/item', asyncRoute(async (req, res) => {
+  const name = String(req.query.name || '').trim();
+  if (!name) {
+    res.status(400).json({ error: 'Item name is required.', code: 'missing_name' });
+    return;
+  }
+  res.json(await getSmartMoneyItem(name));
+}));
+
+app.post('/api/top-investors/exposure', asyncRoute(async (req, res) => {
+  res.json(await getSmartMoneyExposure(req.body?.names));
+}));
+
+const SMART_MONEY_API_RESOURCES = {
+  analytics: () => getTopInvestorsAnalytics(),
+  signals: (req) => listSmartMoneySignals({ limit: req.query.limit, marketHashName: req.query.name || null }),
+  backtest: () => getSmartMoneyBacktest(),
+  index: () => getSmartMoneyIndex(),
+  item: (req) => getSmartMoneyItem(req.query.name),
+};
+
+app.get('/api/v1/smart-money/:resource', smartMoneyApiLimiter, asyncRoute(async (req, res) => {
+  const keys = String(process.env.SMART_MONEY_API_KEYS || '').split(',').map((key) => key.trim()).filter(Boolean);
+  const provided = String(req.headers['x-api-key'] || '').trim();
+  if (!keys.length || !provided || !keys.some((key) => key.length === provided.length && crypto.timingSafeEqual(Buffer.from(key), Buffer.from(provided)))) {
+    res.status(401).json({ error: 'Valid X-API-Key header is required.', code: 'api_key_required' });
+    return;
+  }
+  const handler = SMART_MONEY_API_RESOURCES[req.params.resource];
+  if (!handler) {
+    res.status(404).json({ error: 'Unknown resource.', code: 'unknown_resource', resources: Object.keys(SMART_MONEY_API_RESOURCES) });
+    return;
+  }
+  if (req.params.resource === 'item' && !String(req.query.name || '').trim()) {
+    res.status(400).json({ error: 'Item name is required.', code: 'missing_name' });
+    return;
+  }
+  res.json(await handler(req));
+}));
+
 app.get('/api/top-investors/:steamId/activity', asyncRoute(async (req, res) => {
   const steamId = String(req.params.steamId || '').trim();
   if (!/^\d{17}$/.test(steamId)) {
@@ -1307,6 +1374,7 @@ app.use((req, res) => {
 app.listen(port, () => {
   console.log(`Steam Invest Portfolio running at http://localhost:${port}`);
   startTopInvestorsActivityPoller();
+  startSmartMoneyJobs();
 });
 
 // Owner id scopes manual portfolios & basis per user: the Steam account when
