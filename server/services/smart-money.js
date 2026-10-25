@@ -149,6 +149,37 @@ function recordHistory(store, state) {
 
 // ─── Signals ────────────────────────────────────────────────────────────────
 
+// One seller counts only when they held a large share of the tracked position
+// and sold at least 30% of that holding. Selling a single copy does not.
+function isLargeHolderDump(moves, trackedUnitsNow) {
+  const byAccount = new Map();
+  let totalSold = 0;
+  for (const move of moves) {
+    const sold = -(Number(move.qtyDelta) || 0);
+    const before = Number(move.qtyBefore) || 0;
+    if (!(sold > 0)) continue;
+    totalSold += sold;
+    const row = byAccount.get(move.steamId) || { sold: 0, before: 0 };
+    row.sold += sold;
+    if (before > row.before) row.before = before;
+    byAccount.set(move.steamId, row);
+  }
+  const beforeGroup = Math.max(0, Number(trackedUnitsNow) || 0) + totalSold;
+  if (!(beforeGroup > 0)) return false;
+  for (const row of byAccount.values()) {
+    const dumpedOwn = row.before > 0 && row.sold / row.before >= EXIT_POSITION_SHARE;
+    const wasLarge = row.before / beforeGroup >= EXIT_POSITION_SHARE;
+    if (dumpedOwn && wasLarge) return true;
+  }
+  return false;
+}
+
+function isListedSignal(signal) {
+  if (signal?.type !== 'exit') return true;
+  if ((signal.accounts || []).length >= 2) return true;
+  return signal.largeDump === true;
+}
+
 function detectSignals(store, state) {
   const now = state.now;
   const since = now - SIGNAL_WINDOW_MS;
@@ -207,11 +238,10 @@ function detectSignals(store, state) {
     const accounts = accountsOf(moves);
     const deltaUnits = accounts.reduce((sum, row) => sum + row.qtyDelta, 0);
     const deltaUsd = deltaUnits * (state.priceOf(name) || 0);
-    const view = state.itemView(name);
-    const bigExit = moves.some((move) => move.qtyBefore > 0 && -move.qtyDelta / move.qtyBefore >= EXIT_POSITION_SHARE)
-      && (view.control ?? 0) >= 0.3;
+    const item = state.items.get(name);
+    const bigExit = isLargeHolderDump(moves, item?.units || 0);
     if ((accounts.length >= 2 || bigExit) && -deltaUsd >= MIN_SIGNAL_USD && !cooling('exit', name, SIGNAL_WINDOW_MS)) {
-      emit('exit', name, { accounts, deltaUnits, deltaUsd: round2(deltaUsd) });
+      emit('exit', name, { accounts, deltaUnits, deltaUsd: round2(deltaUsd), largeDump: bigExit });
     }
   }
 
@@ -259,7 +289,8 @@ function signalLine(signal) {
     return `🟢 Скупка: ${name} — ${who} акк. +${signal.deltaUnits} шт (~${compactUsd(signal.deltaUsd)}), контроль ${pct(signal.control)}`;
   }
   if (signal.type === 'exit') {
-    return `🔴 Выход: ${name} — ${who} акк. ${signal.deltaUnits} шт (~${compactUsd(signal.deltaUsd)}), контроль ${pct(signal.control)}`;
+    const seller = signal.largeDump && who < 2 ? 'крупный держатель' : `${who} акк.`;
+    return `🔴 Выход: ${name} — ${seller} ${signal.deltaUnits} шт (~${compactUsd(signal.deltaUsd)}), контроль ${pct(signal.control)}`;
   }
   return `🎯 Контроль: ${name} — ${pct(signal.control)} рыночного предложения у ${signal.holders} акк., скор ${signal.score}`;
 }
@@ -283,7 +314,7 @@ function digestDue(store, now) {
 
 async function sendWeeklyDigest(store, now) {
   const view = await getTopInvestorsAnalytics();
-  const weekSignals = store.signals.filter((signal) => new Date(signal.at).getTime() > now - 7 * DAY_MS);
+  const weekSignals = store.signals.filter((signal) => isListedSignal(signal) && new Date(signal.at).getTime() > now - 7 * DAY_MS);
   const count = (type) => weekSignals.filter((signal) => signal.type === type).length;
   const lines = [
     '<b>Smart money · итоги недели</b>',
@@ -536,7 +567,8 @@ async function runSmartMoneyResearch() {
 
 async function listSmartMoneySignals({ limit = 50, marketHashName = null } = {}) {
   const store = await readStore();
-  const rows = marketHashName ? store.signals.filter((signal) => signal.marketHashName === marketHashName) : store.signals;
+  const rows = (marketHashName ? store.signals.filter((signal) => signal.marketHashName === marketHashName) : store.signals)
+    .filter(isListedSignal);
   return {
     alertsConfigured: Boolean(alertChatId()),
     signals: rows.slice(0, Math.min(Math.max(Number(limit) || 50, 1), 200)),
@@ -587,7 +619,7 @@ async function getSmartMoneyItem(marketHashName) {
     holdersList: holders,
     moves,
     unitsHistory,
-    signals: store.signals.filter((signal) => signal.marketHashName === name).slice(0, 5),
+    signals: store.signals.filter((signal) => signal.marketHashName === name && isListedSignal(signal)).slice(0, 5),
   };
 }
 
@@ -597,7 +629,7 @@ async function getSmartMoneyExposure(names) {
   const since = state.now - 7 * DAY_MS;
   const exits = new Map();
   for (const signal of store.signals) {
-    if (signal.type === 'exit' && new Date(signal.at).getTime() > since && !exits.has(signal.marketHashName)) exits.set(signal.marketHashName, signal.at);
+    if (signal.type === 'exit' && isListedSignal(signal) && new Date(signal.at).getTime() > since && !exits.has(signal.marketHashName)) exits.set(signal.marketHashName, signal.at);
   }
 
   const items = list

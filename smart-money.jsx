@@ -38,9 +38,12 @@ function smSignalDetail(signal, t) {
     );
   }
   const units = `${signal.deltaUnits > 0 ? '+' : ''}${signal.deltaUnits}`;
+  const who = signal.type === 'exit' && accounts < 2
+    ? t('крупный держатель', 'large holder')
+    : t(`${accounts} акк.`, `${accounts} acc.`);
   return t(
-    `${accounts} акк. · ${units} шт · ${taSigned(signal.deltaUsd)} · контроль ${taPct(signal.control)}`,
-    `${accounts} acc. · ${units} pcs · ${taSigned(signal.deltaUsd)} · control ${taPct(signal.control)}`,
+    `${who} · ${units} шт · ${taSigned(signal.deltaUsd)} · контроль ${taPct(signal.control)}`,
+    `${who} · ${units} pcs · ${taSigned(signal.deltaUsd)} · control ${taPct(signal.control)}`,
   );
 }
 
