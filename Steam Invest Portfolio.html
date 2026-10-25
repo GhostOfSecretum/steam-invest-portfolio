@@ -268,10 +268,12 @@
 
     function parseAppRoute() {
       const path = window.location.pathname.replace(/\/+$/, '') || '/';
-      const profile = String(new URLSearchParams(window.location.search).get('profile') || '').trim();
+      const params = new URLSearchParams(window.location.search);
+      const profile = String(params.get('profile') || '').trim();
+      const itemName = String(params.get('name') || '').trim();
       if (path.startsWith('/item/')) {
         const slug = decodeURIComponent(path.slice('/item/'.length)).toLowerCase();
-        if (slug) return { screen: 'item', slug };
+        if (slug) return { screen: 'item', slug, marketHashName: itemName || null };
       }
       if (path === '/collections') {
         return { screen: 'collections' };
@@ -345,7 +347,15 @@
         return '/dashboard';
       }
       if (screen === 'item' && item?.marketHashName && window.ItemSlugs) {
-        return `/item/${window.ItemSlugs.marketHashNameToSlug(item.marketHashName)}`;
+        const slug = window.ItemSlugs.marketHashNameToSlug(item.marketHashName);
+        const path = `/item/${slug}`;
+        const rebuilt = window.ItemSlugs.slugToMarketHashName(slug);
+        // Keep Steam's exact name on the URL when the slug cannot rebuild it
+        // (DDPAT, X-Ray, CAUTION!, letters outside ASCII).
+        if (rebuilt && rebuilt !== item.marketHashName) {
+          return `${path}?name=${encodeURIComponent(item.marketHashName)}`;
+        }
+        return path;
       }
       if (screen === 'collection' && collectionSlug) {
         return `/collection/${encodeURIComponent(collectionSlug)}`;
@@ -360,6 +370,7 @@
       const state = {
         screen,
         slug: screen === 'item' ? window.ItemSlugs?.marketHashNameToSlug(item?.marketHashName) : null,
+        marketHashName: screen === 'item' ? (item?.marketHashName || null) : null,
         collectionSlug: screen === 'collection' ? collectionSlug || null : null,
         profileUrl: profileUrl || null,
       };
@@ -385,6 +396,7 @@
       const [t, setTweak] = useTweaks(initialTweaks);
       const [screen, setScreen] = useState(initialRoute.screen);
       const [itemSlug, setItemSlug] = useState(initialRoute.slug || null);
+      const [itemNameHint, setItemNameHint] = useState(initialRoute.marketHashName || null);
       const [collectionSlug, setCollectionSlug] = useState(initialRoute.collectionSlug || null);
       const [activeItem, setActiveItem] = useState(null);
       const [itemReturnScreen, setItemReturnScreen] = useState(
@@ -404,7 +416,11 @@
         && window.ItemSlugs
         && window.ItemSlugs.marketHashNameToSlug(activeItem.marketHashName) === itemSlug
       );
-      const slugItem = useItemBySlug(itemSlug, screen === 'item' && itemSlug && !slugMatchesItem);
+      const slugItem = useItemBySlug(
+        itemSlug,
+        screen === 'item' && itemSlug && !slugMatchesItem,
+        itemNameHint,
+      );
       const collectionState = useCollectionBySlug(collectionSlug, screen === 'collection' && Boolean(collectionSlug));
 
       // Set lang/currency during render so children format on this frame,
@@ -447,10 +463,11 @@
         setActiveItem(slugItem.data);
       }, [screen, slugItem.data]);
       useEffect(() => {
-        const onPopState = () => {
+        const onPopState = (event) => {
           const route = parseAppRoute();
           setScreen(route.screen);
           setItemSlug(route.slug || null);
+          setItemNameHint(route.screen === 'item' ? (route.marketHashName || event.state?.marketHashName || null) : null);
           setCollectionSlug(route.collectionSlug || null);
           setPublicProfileUrl(route.profile || '');
           if (route.screen !== 'item') setActiveItem(null);
@@ -484,6 +501,7 @@
         const slug = window.ItemSlugs?.marketHashNameToSlug(item.marketHashName);
         setItemReturnScreen(screen === 'collection' ? 'collection' : screen);
         setActiveItem(item);
+        setItemNameHint(item?.marketHashName || null);
         setItemSlug(slug || null);
         setScreen('item');
         syncAppUrl('item', item);
@@ -637,6 +655,7 @@
                 if (!slug) return;
                 setItemReturnScreen(screen === 'item' ? itemReturnScreen : screen);
                 setActiveItem(null);
+                setItemNameHint(hash);
                 setItemSlug(slug);
                 setScreen('item');
                 syncAppUrl('item', { marketHashName: hash });

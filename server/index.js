@@ -1179,7 +1179,7 @@ app.get(['/.well-known/security.txt', '/security.txt'], (req, res) => {
 });
 
 app.get('/api/items/by-slug/:slug', asyncRoute(async (req, res) => {
-  const data = await getItemPageData(req.params.slug);
+  const data = await getItemPageData(req.params.slug, req.query.name);
   if (!data) {
     res.status(404).json({ error: 'Item not found.', code: 'item_not_found' });
     return;
@@ -1204,7 +1204,7 @@ app.get('/api/collections/:slug', asyncRoute(async (req, res) => {
 }));
 
 app.get('/item/:slug', asyncRoute(async (req, res) => {
-  const data = await getItemPageData(req.params.slug);
+  const data = await getItemPageData(req.params.slug, req.query.name);
   if (!data) {
     res.status(404).type('text/html').send('<!doctype html><title>Item not found · SkinsHead</title><p>Item not found.</p>');
     return;

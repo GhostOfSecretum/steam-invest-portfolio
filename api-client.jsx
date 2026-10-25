@@ -851,7 +851,7 @@ function withSteamImageSize(url, width = 640, height = 360) {
   return `${cleanUrl}/${width}fx${height}f`;
 }
 
-function useItemBySlug(slug, enabled = true) {
+function useItemBySlug(slug, enabled = true, marketHashName = null) {
   const [state, setState] = apiUseState({ loading: false, data: null, error: null });
 
   apiUseEffect(() => {
@@ -862,7 +862,11 @@ function useItemBySlug(slug, enabled = true) {
 
     let active = true;
     setState({ loading: true, data: null, error: null });
-    apiFetch(`/api/items/by-slug/${encodeURIComponent(slug)}`)
+    const hinted = marketHashName && window.ItemSlugs?.marketHashNameToSlug(marketHashName) === slug
+      ? marketHashName
+      : '';
+    const query = hinted ? `?name=${encodeURIComponent(hinted)}` : '';
+    apiFetch(`/api/items/by-slug/${encodeURIComponent(slug)}${query}`)
       .then((payload) => {
         if (!active) return;
         setState({ loading: false, data: payload.item || null, error: null });
@@ -873,7 +877,7 @@ function useItemBySlug(slug, enabled = true) {
       });
 
     return () => { active = false; };
-  }, [slug, enabled]);
+  }, [slug, enabled, marketHashName]);
 
   return state;
 }

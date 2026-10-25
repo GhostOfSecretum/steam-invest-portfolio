@@ -13,9 +13,15 @@ const { getCollectionForMarketHashName } = require('./collections');
 
 const SITE_URL = String(process.env.APP_BASE_URL || 'https://skinshead.pro').replace(/\/+$/, '');
 
-async function resolveItemBySlug(slug) {
+async function resolveItemBySlug(slug, hintedMarketHashName = null) {
   const normalized = String(slug || '').trim().toLowerCase();
   if (!normalized) return null;
+
+  // Analytics (and the rest of the app) already has Steam's exact market_hash_name.
+  // Trust it when it slugs to this URL — reconstructed names drop "★" and recase
+  // short words ("Blue Ply" → "Blue PLY"), and Steam then returns no price.
+  const hinted = String(hintedMarketHashName || '').trim().slice(0, 300);
+  if (hinted && marketHashNameToSlug(hinted) === normalized) return hinted;
 
   const curated = SLUG_INDEX.get(normalized);
   if (curated) return curated;
@@ -54,8 +60,8 @@ async function resolveItemBySlug(slug) {
   return null;
 }
 
-async function getItemPageData(slug) {
-  const marketHashName = await resolveItemBySlug(slug);
+async function getItemPageData(slug, hintedMarketHashName = null) {
+  const marketHashName = await resolveItemBySlug(slug, hintedMarketHashName);
   if (!marketHashName) return null;
 
   const [priceData, iconData] = await Promise.all([

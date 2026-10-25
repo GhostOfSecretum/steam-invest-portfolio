@@ -35,15 +35,15 @@
     'AK-47 | Redline (Field-Tested)',
     'M4A4 | Asiimov (Battle-Scarred)',
     'AWP | Dragon Lore (Factory New)',
-    'Karambit | Doppler (Factory New)',
+    '★ Karambit | Doppler (Factory New)',
     'Glock-18 | Fade (Factory New)',
     'M4A1-S | Hyper Beast (Minimal Wear)',
     'Desert Eagle | Blaze (Factory New)',
     'USP-S | Kill Confirmed (Field-Tested)',
-    'Butterfly Knife | Tiger Tooth (Factory New)',
+    '★ Butterfly Knife | Tiger Tooth (Factory New)',
     'AWP | Lightning Strike (Factory New)',
     'AK-47 | Vulcan (Minimal Wear)',
-    "Sport Gloves | Pandora's Box (Field-Tested)",
+    "★ Sport Gloves | Pandora's Box (Field-Tested)",
     'AK-47 | Wild Lotus (Minimal Wear)',
     'M4A4 | Howl (Minimal Wear)',
     'AWP | Dragon Lore (Minimal Wear)',
@@ -203,11 +203,30 @@
     }).join(' ');
   }
 
+  // Skin words of 1–3 letters are usually words ("Ply", "Tie", "the"), not acronyms.
+  // Uppercasing them produced "Blue PLY" / "Black TIE", which Steam does not list.
+  const SKIN_SMALL_WORDS = new Set(['a', 'an', 'and', 'or', 'the', 'of', 'in', 'on', 'for', 'to', 'de', 'da', 'di', 'du', 'von', 'van']);
+
+  function titleCaseSkinWord(word, isFirst) {
+    if (!word) return word;
+    if (word.includes('-')) {
+      return word.split('-').map((part, index) => titleCaseSkinWord(part, isFirst && index === 0)).join('-');
+    }
+    if (/^\d/.test(word)) return word;
+    if (/^(i{1,3}|iv|v|vi{0,3}|ix|x)$/.test(word)) return word.toUpperCase();
+    if (!isFirst && SKIN_SMALL_WORDS.has(word)) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }
+
+  function titleCaseSkin(segment) {
+    return String(segment || '').split(' ').map((word, index) => titleCaseSkinWord(word, index === 0)).join(' ');
+  }
+
   function formatSkinName(skin) {
     const normalized = skin.trim().toLowerCase();
     if (!normalized) return '';
     if (SKIN_OVERRIDES[normalized]) return SKIN_OVERRIDES[normalized];
-    return capitalizeSegment(normalized);
+    return titleCaseSkin(normalized);
   }
 
   function formatWeaponName(weapon) {
@@ -220,6 +239,19 @@
     return capitalizeSegment(normalized);
   }
 
+  // Knives and gloves are starred on Steam. The slug drops "★ ", so put it back
+  // or priceoverview looks up a name that does not exist.
+  function isStarredWeapon(weapon) {
+    const value = String(weapon || '').trim().toLowerCase();
+    if (!value) return false;
+    return value === 'karambit'
+      || value === 'bayonet'
+      || value === 'shadow daggers'
+      || value.endsWith(' knife')
+      || value.endsWith(' gloves')
+      || value.endsWith(' wraps');
+  }
+
   function slugToMarketHashName(slug) {
     const parsed = parseSlug(slug);
     if (!parsed) return null;
@@ -230,13 +262,19 @@
     const { weapon, skin } = splitCoreSlug(parsed.core);
     const weaponName = formatWeaponName(weapon);
     const skinName = formatSkinName(skin);
-    let prefix = '';
-    if (parsed.prefix === 'stattrak') prefix = 'StatTrak™ ';
-    if (parsed.prefix === 'souvenir') prefix = 'Souvenir ';
-
     let name = skinName ? `${weaponName} | ${skinName}` : weaponName;
     if (parsed.finish) name += ` (${parsed.finish})`;
     if (parsed.wear) name += ` (${parsed.wear})`;
+
+    if (isStarredWeapon(weapon)) {
+      if (parsed.prefix === 'stattrak') return `★ StatTrak™ ${name}`;
+      if (parsed.prefix === 'souvenir') return `★ Souvenir ${name}`;
+      return `★ ${name}`;
+    }
+
+    let prefix = '';
+    if (parsed.prefix === 'stattrak') prefix = 'StatTrak™ ';
+    if (parsed.prefix === 'souvenir') prefix = 'Souvenir ';
     return `${prefix}${name}`;
   }
 
