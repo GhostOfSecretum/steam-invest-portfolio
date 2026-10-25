@@ -1,5 +1,5 @@
 /* global React, useTopInvestorsAnalytics, formatMoney, SmartMoneySignals, SmartMoneyIndex, SmartMoneyBacktest */
-const { useState: taUseState, useMemo: taUseMemo } = React;
+const { useState: taUseState } = React;
 
 const TA_CATEGORY_COLORS = {
   skins: 'var(--accent)',
@@ -31,65 +31,6 @@ function taFlowColor(flow) {
 function taShortName(name, max = 34) {
   const text = String(name || '');
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
-}
-
-function taSquarify(items, width, height) {
-  const total = items.reduce((sum, item) => sum + item.value, 0);
-  if (!total) return [];
-  const scale = (width * height) / total;
-  const queue = items.map((item) => ({ item, area: item.value * scale }));
-  const rects = [];
-  let x = 0;
-  let y = 0;
-  let w = width;
-  let h = height;
-  let row = [];
-
-  const worst = (entries, side) => {
-    const sum = entries.reduce((acc, entry) => acc + entry.area, 0);
-    let max = 0;
-    let min = Infinity;
-    for (const entry of entries) {
-      max = Math.max(max, entry.area);
-      min = Math.min(min, entry.area);
-    }
-    return Math.max((side * side * max) / (sum * sum), (sum * sum) / (side * side * min));
-  };
-
-  const flush = () => {
-    const sum = row.reduce((acc, entry) => acc + entry.area, 0);
-    if (!sum) return;
-    if (w >= h) {
-      const colW = sum / h;
-      let cy = y;
-      for (const entry of row) {
-        const eh = entry.area / colW;
-        rects.push({ item: entry.item, x, y: cy, w: colW, h: eh });
-        cy += eh;
-      }
-      x += colW;
-      w -= colW;
-    } else {
-      const rowH = sum / w;
-      let cx = x;
-      for (const entry of row) {
-        const ew = entry.area / rowH;
-        rects.push({ item: entry.item, x: cx, y, w: ew, h: rowH });
-        cx += ew;
-      }
-      y += rowH;
-      h -= rowH;
-    }
-    row = [];
-  };
-
-  while (queue.length) {
-    const side = Math.min(w, h);
-    if (!row.length || worst([...row, queue[0]], side) <= worst(row, side)) row.push(queue.shift());
-    else flush();
-  }
-  flush();
-  return rects;
 }
 
 function TaSection({ eyebrow, title, sub, children, className = '' }) {
@@ -274,48 +215,55 @@ function TaRadarList({ items, t, onOpenItem }) {
   );
 }
 
-function TaTreemap({ holdings, totalValue, t, onOpenItem }) {
-  const tiles = taUseMemo(() => {
-    const top = holdings.slice(0, 30).filter((item) => item.valueUsd > 0);
-    const rest = totalValue - top.reduce((sum, item) => sum + item.valueUsd, 0);
-    const list = top.map((item) => ({ value: item.valueUsd, item }));
-    if (rest > totalValue * 0.01) list.push({ value: rest, item: null });
-    return taSquarify(list, 100, 100);
-  }, [holdings, totalValue]);
+const TA_CAPITAL_ROWS = 12;
 
-  if (!tiles.length) return <TaEmpty>{t('Нет оценённых позиций.', 'No priced positions yet.')}</TaEmpty>;
+function TaCapitalList({ holdings, totalValue, uniqueItems, t, onOpenItem }) {
+  const top = holdings.filter((item) => item.valueUsd > 0).slice(0, TA_CAPITAL_ROWS);
+  if (!top.length || !totalValue) return <TaEmpty>{t('Нет оценённых позиций.', 'No priced positions yet.')}</TaEmpty>;
+
+  const maxValue = top[0].valueUsd;
+  const restValue = Math.max(0, totalValue - top.reduce((sum, item) => sum + item.valueUsd, 0));
+  const restCount = Math.max(0, (uniqueItems || 0) - top.length);
 
   return (
-    <div className="ta-treemap">
-      {tiles.map(({ item: tile, x, y, w, h }) => {
-        const item = tile.item;
-        const color = item ? TA_CATEGORY_COLORS[item.category] : 'var(--fg-4)';
-        const big = w >= 12 && h >= 18;
-        const mid = w >= 6 && h >= 9;
-        return (
-          <div
-            key={item ? item.marketHashName : 'rest'}
-            className={`ta-tile${item ? ' is-link' : ''}`}
-            style={{
-              left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`,
-              '--tile': color,
-            }}
-            title={item ? `${item.marketHashName}\n${taMoney(item.valueUsd)} · ${item.units} · ${item.holders}` : t('Остальное', 'Other')}
-            onClick={item && onOpenItem ? () => onOpenItem(item.marketHashName) : undefined}
-          >
-            {big && item?.iconUrl ? <img src={item.iconUrl} alt="" loading="lazy" /> : null}
-            {mid ? (
-              <div className="ta-tile-copy">
-                {big ? <div className="ta-tile-name">{item ? item.marketHashName : t('Остальное', 'Other')}</div> : null}
-                <div className="ta-tile-value">
-                  {taMoney(tile.value)}
-                  {item?.flow7d ? <span style={{ color: taFlowColor(item.flow7d) }}>{item.flow7d.netUnits > 0 ? ' ▲' : ' ▼'}</span> : null}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
+    <div className="ta-capital">
+      <div className="ta-capital-list">
+        {top.map((item, index) => {
+          const flow = item.flow7d && item.flow7d.netUnits ? item.flow7d : null;
+          return (
+            <button
+              key={item.marketHashName}
+              type="button"
+              className="ta-capital-row"
+              style={{ '--cat': TA_CATEGORY_COLORS[item.category] || TA_CATEGORY_COLORS.other }}
+              onClick={() => onOpenItem && onOpenItem(item.marketHashName)}
+            >
+              <span className="ta-rank">{String(index + 1).padStart(2, '0')}</span>
+              <TaIcon src={item.iconUrl} />
+              <span className="ta-radar-copy">
+                <span className="ta-radar-name" title={item.marketHashName}>{item.marketHashName}</span>
+                <span className="ta-capital-bar"><span style={{ width: `${(item.valueUsd / maxValue) * 100}%` }} /></span>
+                <span className="ta-radar-meta">
+                  {item.units.toLocaleString()} {t('шт', 'pcs')} · {item.holders} {t('держ.', 'holders')}
+                  {flow ? <b style={{ color: taFlowColor(flow) }}> · 7d {flow.netUnits > 0 ? '▲ +' : '▼ '}{flow.netUnits}</b> : null}
+                </span>
+              </span>
+              <span className="ta-flow-num">
+                {taMoney(item.valueUsd)}
+                <small>{t('доля', 'share')} {(item.valueUsd / totalValue * 100).toFixed(1)}%</small>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {restValue > 0 ? (
+        <div className="ta-capital-rest">
+          {t(
+            `Ещё ${restCount.toLocaleString()} позиций — ${taMoney(restValue)} · ${taPct(restValue / totalValue)} капитала`,
+            `${restCount.toLocaleString()} more positions — ${taMoney(restValue)} · ${taPct(restValue / totalValue)} of capital`,
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -622,10 +570,10 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
       <TaSection
         eyebrow="// CAPITAL MAP"
         title={t('Во что вложен капитал', 'Where the capital sits')}
-        sub={t('Площадь плитки — стоимость суммарной позиции всех аккаунтов. ▲▼ — направление потока за 7 дней.', 'Tile area = combined position value across all accounts. ▲▼ = 7-day flow direction.')}
+        sub={t('Крупнейшие позиции по суммарной стоимости у всех аккаунтов. Доля — процент от всего капитала, ▲▼ — чистый поток штук за 7 дней.', 'Largest positions by combined value across all accounts. Share = percent of total capital, ▲▼ = net 7-day unit flow.')}
       >
         <TaCategoryBar categories={data.categories} totalValue={data.totals.valueUsd} t={t} />
-        <TaTreemap holdings={data.holdings} totalValue={data.totals.valueUsd} t={t} onOpenItem={onOpenItem} />
+        <TaCapitalList holdings={data.holdings} totalValue={data.totals.valueUsd} uniqueItems={data.totals.uniqueItems} t={t} onOpenItem={onOpenItem} />
       </TaSection>
 
       <TaSection
