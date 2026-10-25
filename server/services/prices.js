@@ -390,6 +390,7 @@ function selectMarketMark(quotes, steamAsk) {
     .map((entry) => ({
       provider: entry?.provider,
       price: Number(entry?.price),
+      volume: Number(entry?.volume),
     }))
     .filter((entry) => entry.provider && Number.isFinite(entry.price) && entry.price > 0);
 
@@ -408,6 +409,15 @@ function selectMarketMark(quotes, steamAsk) {
         && entry.price >= packMedian * MARK_PACK_LOW
       ));
       if (tightened.length) usable = tightened;
+      else {
+        // No quote sits near the median, e.g. one $374K ask against $2.65 with 6 listings.
+        // Trust the market with the most listings; thin books carry stray asks.
+        const depth = (entry) => (Number.isFinite(entry.volume) ? entry.volume : 0);
+        const deepest = usable.reduce((best, entry) => (
+          depth(entry) > depth(best) || (depth(entry) === depth(best) && entry.price < best.price) ? entry : best
+        ));
+        usable = [deepest];
+      }
     }
   }
 
@@ -455,9 +465,9 @@ async function getPortfolioPrices(marketHashNames, options = {}) {
     const steamPriceRub = Number.isFinite(steam.priceRub) ? steam.priceRub
       : (Number.isFinite(steam.medianPriceRub) ? steam.medianPriceRub : null);
     const selected = selectMarketMark([
-      { provider: 'skinport', price: lists.skinport[name]?.price },
-      { provider: 'csgomarket', price: lists.csgomarket[name]?.price },
-      { provider: 'lisskins', price: lists.lisskins[name]?.price },
+      { provider: 'skinport', price: lists.skinport[name]?.price, volume: lists.skinport[name]?.volume },
+      { provider: 'csgomarket', price: lists.csgomarket[name]?.price, volume: lists.csgomarket[name]?.volume },
+      { provider: 'lisskins', price: lists.lisskins[name]?.price, volume: lists.lisskins[name]?.volume },
     ], steamAsk);
     const usedSteamFallback = !Number.isFinite(selected.mark) && Number.isFinite(steamAsk);
     const value = Number.isFinite(selected.mark) ? selected.mark : steamAsk;

@@ -34,9 +34,9 @@ function buildPricer(lists, eventPrices) {
   return (name) => {
     if (memoized.has(name)) return memoized.get(name);
     const { mark } = selectMarketMark([
-      { provider: 'skinport', price: lists.skinport[name]?.price },
-      { provider: 'csgomarket', price: lists.csgomarket[name]?.price },
-      { provider: 'lisskins', price: lists.lisskins[name]?.price },
+      { provider: 'skinport', price: lists.skinport[name]?.price, volume: lists.skinport[name]?.volume },
+      { provider: 'csgomarket', price: lists.csgomarket[name]?.price, volume: lists.csgomarket[name]?.volume },
+      { provider: 'lisskins', price: lists.lisskins[name]?.price, volume: lists.lisskins[name]?.volume },
     ], null);
     const price = Number.isFinite(mark) ? mark : (eventPrices.get(name)?.priceUsd ?? null);
     memoized.set(name, price);
