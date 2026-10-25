@@ -16,15 +16,18 @@ const { getSteamMarketIcon, getPrices } = require('./prices');
 const DATA_DIR = path.join(__dirname, '..', '..', '.data');
 const TOP_INVESTORS_FILE = path.join(DATA_DIR, 'top-investors.json');
 const FEED_LIMIT = 100;
-const POLL_BOOT_DELAY_MS = Number(process.env.TOP_INVESTORS_POLL_BOOT_MS || 5 * 60 * 1000);
-const POLL_CYCLE_REST_MS = Number(process.env.TOP_INVESTORS_CYCLE_REST_MS || 3 * 60 * 1000);
-const POLL_MIN_SYNC_AGE_MS = Number(process.env.TOP_INVESTORS_MIN_SYNC_AGE_MS || 10 * 60 * 1000);
-const BACKFILL_REST_MS = Number(process.env.TOP_INVESTORS_BACKFILL_REST_MS || 15 * 1000);
-const BACKFILL_RETRY_MS = 6 * 60 * 60 * 1000;
+const POLL_BOOT_DELAY_MS = Number(process.env.TOP_INVESTORS_POLL_BOOT_MS || 20 * 1000);
+const POLL_CYCLE_REST_MS = Number(process.env.TOP_INVESTORS_CYCLE_REST_MS || 5 * 1000);
+const POLL_MIN_SYNC_AGE_MS = Number(process.env.TOP_INVESTORS_MIN_SYNC_AGE_MS || 5 * 60 * 1000);
+const POLL_IDLE_MS = Number(process.env.TOP_INVESTORS_POLL_IDLE_MS || 30 * 1000);
+const RATE_LIMIT_REST_MS = Number(process.env.TOP_INVESTORS_RATE_LIMIT_REST_MS || 2 * 60 * 1000);
+const BACKFILL_RETRY_MS = Number(process.env.TOP_INVESTORS_BACKFILL_RETRY_MS || 30 * 60 * 1000);
+const SMART_MONEY_REFRESH_DELAY_MS = 20 * 1000;
 const PRICE_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const SYNC_LIVE_PRICE_LIMIT = 8;
 
 let pollerStarted = false;
+let smartMoneyRefreshTimer = null;
 
 async function ensureDataDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -198,10 +201,30 @@ async function hydrateActivityIcons(events) {
   return rows.map((event) => (event.iconUrl || !icons[event.marketHashName] ? event : { ...event, iconUrl: icons[event.marketHashName] }));
 }
 
-async function syncTopInvestorInventory(account) {
+function scheduleSmartMoneyRefresh() {
+  try {
+    require('./top-investors-analytics').invalidateTopInvestorsAnalytics();
+  } catch (error) {
+    console.warn('[top-investors] analytics cache reset failed:', error.message || error);
+  }
+  clearTimeout(smartMoneyRefreshTimer);
+  smartMoneyRefreshTimer = setTimeout(() => {
+    require('./smart-money').runSmartMoneyScan()
+      .catch((error) => console.warn('[top-investors] smart money scan failed:', error.message || error));
+  }, SMART_MONEY_REFRESH_DELAY_MS);
+}
+
+async function syncTopInvestorInventory(account, { priority = 1 } = {}) {
   const prior = await getInventoryActivityForSteamId(account.steamId);
   const priorIds = new Set((prior.events || []).map((event) => event.id));
-  const inventory = await getSteamInventory(account.steamId, { force: true, allowCommunity: true });
+  const hadBaseline = prior.hasBaseline;
+  const inventory = await getSteamInventory(account.steamId, { force: true, allowCommunity: true, priority });
+  if (inventory.cached || inventory.stale) {
+    const err = new Error('Steam inventory was not refreshed.');
+    err.status = 503;
+    err.code = 'inventory_stale';
+    throw err;
+  }
   const items = Array.isArray(inventory.items) ? inventory.items : [];
   const syncedAt = inventory.syncedAt || new Date().toISOString();
   const events = await syncInventoryDiffActivity(account.steamId, items, {
@@ -210,6 +233,7 @@ async function syncTopInvestorInventory(account) {
   });
   const added = events.filter((event) => isStructuredActivity(event) && event.id && !priorIds.has(event.id));
   if (added.length) await priceAddedEvents(account.steamId, added);
+  if (added.length || !hadBaseline) scheduleSmartMoneyRefresh();
   const stored = added.length ? await getInventoryActivityForSteamId(account.steamId) : null;
   const activity = newestFirst(await hydrateActivityPrices(await hydrateActivityIcons(
     (stored ? stored.events : events).filter(isStructuredActivity),
@@ -254,54 +278,59 @@ async function getTopInvestorActivity(steamId, { sync = false } = {}) {
   };
 }
 
-// During a Steam community cooldown getSteamInventory falls back to the proxy, so the cycle keeps going.
-// Accounts without a snapshot are synced first and back to back until every account has a baseline.
+// Refresh accounts that already have a snapshot first (those are the trades on screen).
+// Fill in accounts that have never been snapshotted once the watched ones are fresh.
+// A failed read is stamped and skipped so one private or rate-limited profile cannot block the rest.
+function pickDueAccount(accounts, store, now) {
+  const missing = [];
+  let stalest = null;
+  let stalestAt = Infinity;
+
+  for (const account of accounts) {
+    const entry = store[account.steamId];
+    const hasSnapshot = Boolean(entry?.snapshot && typeof entry.snapshot === 'object');
+    if (!hasSnapshot) {
+      const triedAt = new Date(entry?.lastAttemptAt).getTime();
+      if (!Number.isFinite(triedAt) || now - triedAt > BACKFILL_RETRY_MS) missing.push(account);
+      continue;
+    }
+    const touchedAt = activityTouchedAt(entry);
+    const ageMs = touchedAt ? now - touchedAt : Infinity;
+    if (ageMs < POLL_MIN_SYNC_AGE_MS) continue;
+    const stamp = touchedAt ?? 0;
+    if (stamp < stalestAt) {
+      stalestAt = stamp;
+      stalest = account;
+    }
+  }
+
+  if (stalest) return { account: stalest, backfill: false };
+  if (missing.length) return { account: missing[0], backfill: true };
+  return { account: null, backfill: false };
+}
+
 async function runTopInvestorsActivityCycle() {
   const listed = await listTopInvestors();
   const accounts = listed.accounts || [];
   const store = await readInventoryActivityStore();
-  const now = Date.now();
+  const picked = pickDueAccount(accounts, store, Date.now());
+  const due = picked.account;
 
-  const missing = accounts.filter((account) => {
-    const entry = store[account.steamId];
-    if (entry?.snapshot && typeof entry.snapshot === 'object') return false;
-    const triedAt = new Date(entry?.lastAttemptAt).getTime();
-    return !Number.isFinite(triedAt) || now - triedAt > BACKFILL_RETRY_MS;
-  });
+  if (!due) return { waitMs: POLL_IDLE_MS };
 
-  let skipped = 0;
-  let due = missing[0] || null;
-  if (!due) {
-    for (const account of accounts) {
-      const touchedAt = activityTouchedAt(store[account.steamId]);
-      const ageMs = touchedAt ? now - touchedAt : Infinity;
-      if (Number.isFinite(ageMs) && ageMs >= 0 && ageMs < POLL_MIN_SYNC_AGE_MS) {
-        skipped += 1;
-        continue;
-      }
-      due = account;
-      break;
-    }
-  }
-
-  if (!due) {
-    if (skipped) console.log(`[top-investors] auto-sync cycle synced=0 skipped=${skipped} failed=0`);
-    return { backfill: false };
-  }
-
-  const backfilling = missing.length > 0;
   try {
-    await syncTopInvestorInventory(due);
-    console.log(`[top-investors] auto-sync ${backfilling ? `backfill left=${missing.length - 1}` : 'cycle'} synced=1 skipped=${skipped} failed=0`);
-    return { backfill: missing.length > 1 };
+    // Priority 2 stays behind a visitor's own inventory request on the Steam queue.
+    await syncTopInvestorInventory(due, { priority: 2 });
+    console.log(`[top-investors] auto-sync ${picked.backfill ? 'backfill' : 'cycle'} ${due.personaname || due.steamId}`);
+    return { waitMs: POLL_CYCLE_REST_MS };
   } catch (error) {
     console.warn(`[top-investors] auto-sync ${due.personaname || due.steamId} failed:`, error.message || error);
-    if (isSteamRateLimited(error)) {
-      console.warn('[top-investors] aborting cycle after Steam rate limit');
-      return { backfill: false };
-    }
     await markInventoryActivityAttempt(due.steamId).catch(() => {});
-    return { backfill: missing.length > 1 };
+    if (isSteamRateLimited(error)) {
+      console.warn('[top-investors] pausing after Steam rate limit');
+      return { waitMs: RATE_LIMIT_REST_MS };
+    }
+    return { waitMs: POLL_CYCLE_REST_MS };
   }
 }
 
@@ -314,13 +343,14 @@ function startTopInvestorsActivityPoller() {
   pollerStarted = true;
 
   const tick = async () => {
-    let backfill = false;
+    let waitMs = POLL_CYCLE_REST_MS;
     try {
-      ({ backfill } = await runTopInvestorsActivityCycle());
+      const result = await runTopInvestorsActivityCycle();
+      if (Number.isFinite(result?.waitMs) && result.waitMs >= 0) waitMs = result.waitMs;
     } catch (error) {
       console.warn('[top-investors] poller cycle failed:', error.message || error);
     } finally {
-      setTimeout(tick, backfill ? BACKFILL_REST_MS : POLL_CYCLE_REST_MS);
+      setTimeout(tick, waitMs);
     }
   };
 

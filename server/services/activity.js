@@ -201,10 +201,10 @@ async function syncInventoryDiffActivity(steamId, items, { source = 'steam-diff'
   }
 
   if (snapshotsEqual(entry.snapshot, nextSnapshot)) {
-    if (Object.keys(nextIcons).length !== Object.keys(entry.icons || {}).length) {
-      store[key] = { ...entry, icons: nextIcons, syncedAt: stamp };
-      await writeInventoryActivityStore(store);
-    }
+    // Stamp the check even when nothing moved. Otherwise the investor poller
+    // keeps selecting this account and never reaches the rest of the list.
+    store[key] = { ...entry, icons: nextIcons, syncedAt: stamp };
+    await writeInventoryActivityStore(store);
     return trimEvents(entry.events || []);
   }
 

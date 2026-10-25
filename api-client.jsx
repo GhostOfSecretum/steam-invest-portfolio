@@ -222,20 +222,35 @@ function useTopInvestorsActivityFeed(enabled = true) {
 
 function useTopInvestorsAnalytics(enabled = true) {
   const [state, setState] = apiUseState({ loading: false, data: null, error: null, locked: false });
+  const stopPollRef = apiUseRef(false);
 
-  const reload = apiUseCallback(async () => {
+  const reload = apiUseCallback(async ({ silent = false } = {}) => {
     if (!enabled) return;
-    setState((current) => ({ ...current, loading: true, error: null }));
+    setState((current) => ({
+      ...current,
+      loading: silent && current.data ? false : true,
+      error: null,
+    }));
     try {
       const data = await apiFetch('/api/top-investors/analytics');
+      stopPollRef.current = false;
       setState({ loading: false, data, error: null, locked: false });
     } catch (error) {
       const locked = error?.code === 'plan_required';
+      stopPollRef.current = locked;
       setState((current) => ({ loading: false, data: locked ? null : current.data, error, locked }));
     }
   }, [enabled]);
 
-  apiUseEffect(() => { reload(); }, [reload]);
+  apiUseEffect(() => {
+    reload();
+    if (!enabled) return undefined;
+    const timer = setInterval(() => {
+      if (stopPollRef.current) return;
+      reload({ silent: true });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [reload, enabled]);
 
   return { ...state, reload };
 }
@@ -243,24 +258,46 @@ function useTopInvestorsAnalytics(enabled = true) {
 function useSmartMoneyResource(path, { body = null } = {}) {
   const [state, setState] = apiUseState({ loading: false, data: null, error: null, locked: false });
   const bodyJson = body ? JSON.stringify(body) : null;
+  const stopPollRef = apiUseRef(false);
 
-  const reload = apiUseCallback(async () => {
+  const reload = apiUseCallback(async ({ silent = false } = {}) => {
     if (!path) {
-      setState({ loading: false, data: null, error: null });
+      stopPollRef.current = false;
+      setState({ loading: false, data: null, error: null, locked: false });
       return;
     }
-    setState((current) => ({ ...current, loading: true, error: null }));
+    setState((current) => ({
+      ...current,
+      loading: silent && current.data ? false : true,
+      error: null,
+    }));
     try {
       const data = await apiFetch(path, bodyJson
         ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: bodyJson }
         : {});
+      stopPollRef.current = false;
       setState({ loading: false, data, error: null, locked: false });
     } catch (error) {
-      setState({ loading: false, data: null, error, locked: error?.code === 'plan_required' });
+      const locked = error?.code === 'plan_required';
+      stopPollRef.current = locked;
+      setState((current) => ({
+        loading: false,
+        data: silent && !locked ? current.data : null,
+        error,
+        locked,
+      }));
     }
   }, [path, bodyJson]);
 
-  apiUseEffect(() => { reload(); }, [reload]);
+  apiUseEffect(() => {
+    reload();
+    if (!path) return undefined;
+    const timer = setInterval(() => {
+      if (stopPollRef.current) return;
+      reload({ silent: true });
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [reload, path]);
 
   return { ...state, reload };
 }

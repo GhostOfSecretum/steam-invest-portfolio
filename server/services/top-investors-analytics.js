@@ -356,6 +356,10 @@ async function computeAnalytics() {
   };
 }
 
+function invalidateTopInvestorsAnalytics() {
+  memo = null;
+}
+
 function loadAnalytics() {
   if (memo && Date.now() - memo.at < CACHE_MS) return memo.promise;
   const promise = computeAnalytics();
@@ -372,4 +376,10 @@ async function getTopInvestorsState() {
   return (await loadAnalytics()).state;
 }
 
-module.exports = { getTopInvestorsAnalytics, getTopInvestorsState, boostScore, RADAR_MIN_VALUE_USD };
+module.exports = {
+  getTopInvestorsAnalytics,
+  getTopInvestorsState,
+  invalidateTopInvestorsAnalytics,
+  boostScore,
+  RADAR_MIN_VALUE_USD,
+};
