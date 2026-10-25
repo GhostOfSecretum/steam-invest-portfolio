@@ -10,6 +10,14 @@ async function ensureDataDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
 }
 
+let activityQueue = Promise.resolve();
+
+function withActivityLock(task) {
+  const run = activityQueue.then(task, task);
+  activityQueue = run.then(() => {}, () => {});
+  return run;
+}
+
 function makeActivityEvent(partial = {}) {
   const qtyBefore = Number.isFinite(partial.qtyBefore) ? partial.qtyBefore : null;
   const qtyAfter = Number.isFinite(partial.qtyAfter) ? partial.qtyAfter : null;
@@ -163,24 +171,35 @@ function backfillManualEvents(portfolio) {
 
 async function readInventoryActivityStore() {
   await ensureDataDir();
-  try {
-    const raw = await fs.readFile(INVENTORY_ACTIVITY_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch (error) {
-    if (error.code === 'ENOENT') return {};
-    console.error('[activity] corrupt inventory-activity.json, resetting:', error.message);
-    return {};
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const raw = await fs.readFile(INVENTORY_ACTIVITY_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (error) {
+      if (error.code === 'ENOENT') return {};
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 40 * (attempt + 1)));
+    }
   }
+  console.error('[activity] inventory-activity.json unreadable:', lastError.message);
+  throw lastError;
 }
 
 async function writeInventoryActivityStore(store) {
   await ensureDataDir();
-  await fs.writeFile(INVENTORY_ACTIVITY_FILE, `${JSON.stringify(store, null, 2)}\n`, 'utf8');
+  const tmp = `${INVENTORY_ACTIVITY_FILE}.${process.pid}.tmp`;
+  await fs.writeFile(tmp, `${JSON.stringify(store, null, 2)}\n`, 'utf8');
+  await fs.rename(tmp, INVENTORY_ACTIVITY_FILE);
 }
 
-async function syncInventoryDiffActivity(steamId, items, { source = 'steam-diff', syncedAt = null } = {}) {
+async function syncInventoryDiffActivity(steamId, items, options) {
   if (!steamId) return [];
+  return withActivityLock(() => applyInventoryDiff(steamId, items, options));
+}
+
+async function applyInventoryDiff(steamId, items, { source = 'steam-diff', syncedAt = null } = {}) {
 
   const store = await readInventoryActivityStore();
   const key = String(steamId);
@@ -246,6 +265,10 @@ async function getInventoryActivityForSteamId(steamId) {
 async function markInventoryActivityAttempt(steamId, at = new Date().toISOString()) {
   const key = String(steamId || '').trim();
   if (!/^\d{17}$/.test(key)) return;
+  return withActivityLock(() => markInventoryActivityAttemptLocked(key, at));
+}
+
+async function markInventoryActivityAttemptLocked(key, at) {
   const store = await readInventoryActivityStore();
   const entry = store[key] || { snapshot: null, syncedAt: null, events: [] };
   store[key] = { ...entry, lastAttemptAt: at };
@@ -258,7 +281,10 @@ async function annotateInventoryEventPrices(steamId, annotations) {
   if (!/^\d{17}$/.test(key) || !list.length) return;
   const byId = new Map(list.filter((row) => row && row.id).map((row) => [row.id, row]));
   if (!byId.size) return;
+  return withActivityLock(() => annotateInventoryEventPricesLocked(key, byId));
+}
 
+async function annotateInventoryEventPricesLocked(key, byId) {
   const store = await readInventoryActivityStore();
   const entry = store[key];
   if (!entry || !Array.isArray(entry.events)) return;
