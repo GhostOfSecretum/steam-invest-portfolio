@@ -7612,6 +7612,13 @@ i.ta-icon-sm { background: linear-gradient(135deg, rgba(255,255,255,0.08), #0a0c
 .sm-paywall-compact { margin: 18px 0 24px; grid-column: 1 / -1; }
 .sm-paywall .ta-section-title { margin-top: 4px; }
 .sm-paywall-plans { display: flex; flex-wrap: wrap; gap: 10px; }
+.sm-paywall-offer { display: inline-flex; align-items: center; gap: 8px; }
+.sm-paywall-offer em {
+  font-style: normal;
+  color: var(--green);
+  font-family: var(--f-mono);
+  font-size: 11px;
+}
 .sm-paywall-error { font-family: var(--f-mono); font-size: 12px; color: var(--red); }
 .sm-item,
 .sm-exposure {

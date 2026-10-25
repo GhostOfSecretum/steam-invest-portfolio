@@ -504,8 +504,9 @@ app.post('/api/billing/checkout', checkoutLimiter, requireAuth, asyncRoute(async
     ownerId: resolveOwnerId(req),
     steamId: req.session.steamId,
     planId: plan.id,
-    cycle: Number(plan.periodDays) === 3 ? '3day' : 'monthly',
+    cycle: req.body?.cycle || (Number(plan.periodDays) === 3 ? '3day' : 'monthly'),
     locale: req.body?.locale,
+    currency: req.body?.currency,
     req,
   }));
 }));
@@ -931,7 +932,7 @@ app.get('/api/smart-money/offer', asyncRoute(async (req, res) => {
   res.json({
     active: hasSmartMoneyAccess(subscription),
     billingReady: isBillingReady(),
-    plans: listSmartMoneyOffers(req.query.locale),
+    plans: listSmartMoneyOffers(),
   });
 }));
 

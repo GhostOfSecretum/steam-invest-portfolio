@@ -53,6 +53,12 @@ function isRuLocale(locale) {
   return String(locale || '').toLowerCase().startsWith('ru');
 }
 
+// RUB is its own price list. Anything else, including the default, uses the dollar list.
+// Platega still charges rubles, converted from that dollar price.
+function usesRubPriceList(currency) {
+  return String(currency || '').trim().toLowerCase() === 'rub';
+}
+
 function resolveUsdAmount(plan, cycle) {
   if (cycle === 'annual') {
     const annual = Number(plan.annualAmountUsd);
@@ -78,12 +84,12 @@ function resolveCheckoutAmount(plan, cycle) {
   return Number(plan.amountRub) || 0;
 }
 
-async function resolveCheckoutAmountRub(plan, cycle, locale) {
-  if (isRuLocale(locale)) {
+async function resolveCheckoutAmountRub(plan, cycle, locale, currency) {
+  if (usesRubPriceList(currency)) {
     return {
       amountRub: resolveCheckoutAmount(plan, cycle),
       amountUsd: resolveUsdAmount(plan, cycle),
-      displayCurrency: isRuLocale(locale) ? 'RUB' : 'USD',
+      displayCurrency: 'RUB',
     };
   }
   const amountUsd = resolveUsdAmount(plan, cycle);
@@ -145,7 +151,7 @@ async function getPaymentByTransactionId(transactionId) {
   return findPayment(store, (p) => p.transactionId === transactionId) || null;
 }
 
-async function createCheckout({ ownerId, steamId, planId, cycle, locale, req }) {
+async function createCheckout({ ownerId, steamId, planId, cycle, locale, currency, req }) {
   if (!isPlategaConfigured()) {
     const err = new Error('Billing is not configured.');
     err.status = 503;
@@ -171,7 +177,7 @@ async function createCheckout({ ownerId, steamId, planId, cycle, locale, req }) 
   if (billingCycle === 'annual' && !(Number(plan.annualAmountRub) > 0) && !(Number(plan.annualAmountUsd) > 0)) {
     billingCycle = 'monthly';
   }
-  const priced = await resolveCheckoutAmountRub(plan, billingCycle, locale);
+  const priced = await resolveCheckoutAmountRub(plan, billingCycle, locale, currency);
   const amountRub = priced.amountRub;
   if (!(amountRub > 0)) {
     const err = new Error('Invalid plan price.');

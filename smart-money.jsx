@@ -1,5 +1,5 @@
 /* global React, useSmartMoneySignals, useSmartMoneyBacktest, useSmartMoneyIndex, useSmartMoneyItem, useSmartMoneyExposure,
-   useAuth, apiFetch, TaSection, TaEmpty, TaIcon, TaAvatarStack, TaScoreRing, taMoney, taSigned, taPct */
+   useAuth, useDisplayCurrency, apiFetch, formatSmartMoneyTerm, TaSection, TaEmpty, TaIcon, TaAvatarStack, TaScoreRing, taMoney, taSigned, taPct */
 const { useState: smUseState, useEffect: smUseEffect, useRef: smUseRef } = React;
 
 const SM_SIGNAL_META = {
@@ -243,6 +243,7 @@ function SmSparkline({ points }) {
 
 function SmartMoneyPaywall({ lang, compact = false }) {
   const auth = useAuth();
+  const currency = useDisplayCurrency();
   const [offer, setOffer] = smUseState(null);
   const [pending, setPending] = smUseState('');
   const [error, setError] = smUseState('');
@@ -250,20 +251,21 @@ function SmartMoneyPaywall({ lang, compact = false }) {
 
   smUseEffect(() => {
     let cancelled = false;
-    apiFetch(`/api/smart-money/offer?locale=${encodeURIComponent(lang || 'en')}`)
+    apiFetch('/api/smart-money/offer')
       .then((data) => { if (!cancelled) setOffer(data); })
       .catch(() => { if (!cancelled) setOffer({ plans: [], billingReady: false }); });
     return () => { cancelled = true; };
-  }, [lang]);
+  }, []);
 
-  const buy = async (planId) => {
-    setPending(planId);
+  const buy = async (plan) => {
+    const key = `${plan.id}:${plan.cycle}`;
+    setPending(key);
     setError('');
     try {
       const data = await apiFetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, locale: lang }),
+        body: JSON.stringify({ planId: plan.id, cycle: plan.cycle, locale: lang, currency }),
       });
       if (data.redirectUrl) window.location.href = data.redirectUrl;
     } catch (err) {
@@ -278,20 +280,28 @@ function SmartMoneyPaywall({ lang, compact = false }) {
       <h2 className="ta-section-title">{t('Аналитика китов по подписке', 'Whale analytics is a paid plan')}</h2>
       <p className="ta-section-sub">
         {t(
-          'Сигналы, доля рынка, бэктест, риск бустеров и алерты в Telegram. Список аккаунтов и лента остаются открытыми.',
-          'Signals, supply share, the backtest, booster risk, and Telegram alerts. The account list and the feed stay open.',
+          'Сигналы, доля рынка, бэктест, риск бустеров и алерты в Telegram. Список аккаунтов и лента остаются открытыми. Год дешевле помесячной оплаты.',
+          'Signals, supply share, the backtest, booster risk, and Telegram alerts. The account list and the feed stay open. The year is cheaper than paying month by month.',
         )}
       </p>
       <div className="sm-paywall-plans">
-        {(offer?.plans || []).map((plan) => (
-          auth.connected ? (
-            <button key={plan.id} type="button" className="btn btn-primary" disabled={!offer.billingReady || Boolean(pending)} onClick={() => buy(plan.id)}>
-              {pending === plan.id ? t('Открываю оплату…', 'Opening checkout…') : plan.price}
+        {(offer?.plans || []).map((plan) => {
+          const key = `${plan.id}:${plan.cycle}`;
+          const label = pending === key
+            ? t('Открываю оплату…', 'Opening checkout…')
+            : formatSmartMoneyTerm(plan, currency, lang, { discount: false });
+          return auth.connected ? (
+            <button key={key} type="button" className="btn btn-primary sm-paywall-offer" disabled={!offer.billingReady || Boolean(pending)} onClick={() => buy(plan)}>
+              <span>{label}</span>
+              {plan.discount && pending !== key ? <em>−{plan.discount}%</em> : null}
             </button>
           ) : (
-            <span key={plan.id} className="btn">{plan.price}</span>
-          )
-        ))}
+            <span key={key} className="btn sm-paywall-offer">
+              <span>{formatSmartMoneyTerm(plan, currency, lang, { discount: false })}</span>
+              {plan.discount ? <em>−{plan.discount}%</em> : null}
+            </span>
+          );
+        })}
         {!auth.connected && offer?.plans?.length ? (
           <button type="button" className="btn btn-primary" onClick={() => auth.login()}>
             {t('Войти через Steam', 'Sign in with Steam')}

@@ -195,15 +195,18 @@
     }
 
     const PREFS_KEY = 'skinshead:prefs';
-    const PREFS_VERSION = 2;
+    const PREFS_VERSION = 3;
     function readPrefs() {
       try {
         const raw = localStorage.getItem(PREFS_KEY);
         if (!raw) return {};
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== 'object') return {};
-        // v1 auto-saved the old ru/RUB defaults. Ignore those so first open is en/USD.
-        if (parsed.v !== PREFS_VERSION) return {};
+        // Older saves defaulted the site to rubles. Keep the language, open in dollars.
+        if (parsed.v !== PREFS_VERSION) {
+          const lang = (window.LANGS || ['en', 'ru', 'zh', 'zh-TW']).includes(parsed.lang) ? parsed.lang : undefined;
+          return lang ? { lang } : {};
+        }
         return parsed;
       } catch (_) {
         return {};

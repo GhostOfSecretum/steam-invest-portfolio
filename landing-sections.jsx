@@ -1,4 +1,4 @@
-/* global React, useT, apiFetch, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo, Sparkline, withSteamImageSize, CURRENCIES, getCnyPerUsdRate, getActiveCurrency */
+/* global React, useT, apiFetch, formatMoney, formatUsd, formatItemMoney, useMarketSnapshot, useMarketCatalog, useCsNews, useArmoryRoi, usePortfolio, ItemArt, AnimNum, Logo, Sparkline, withSteamImageSize, CURRENCIES, getCnyPerUsdRate, getActiveCurrency, useDisplayCurrency, formatSmartMoneyTerm */
 const { useState, useEffect, useRef, useMemo } = React;
 
 /* ───────────────────────────────────────────────────
@@ -1234,8 +1234,23 @@ function Pricing() {
   return null;
 }
 
+function useSmartMoneyOffer() {
+  const [offer, setOffer] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch('/api/smart-money/offer')
+      .then((data) => { if (!cancelled) setOffer(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  return offer;
+}
+
 function WhaleWatch({ lang }) {
   const ru = lang === 'ru';
+  const currency = useDisplayCurrency();
+  const offer = useSmartMoneyOffer();
+  const prices = (offer?.plans || []).map((plan) => formatSmartMoneyTerm(plan, currency, lang));
   const copy = ru
     ? {
       eyebrow: '// SMART MONEY',
@@ -1246,7 +1261,6 @@ function WhaleWatch({ lang }) {
         { k: 'Сигналы', t: 'Скупка, выход и контроль предложения. Бот пишет в личку, пока подписка активна.' },
         { k: 'Риск', t: 'На странице предмета и в своём портфеле видно, если позицию уже держат киты.' },
       ],
-      prices: ['100 ₽ / 3 дня', '499 ₽ / 30 дней'],
       cta: 'Открыть китов',
       note: 'Остальной сайт бесплатный: портфель, маркет, Armory и хранилища.',
       feed: 'Пример сигнала',
@@ -1265,7 +1279,6 @@ function WhaleWatch({ lang }) {
         { k: 'Signals', t: 'Accumulation, exits, and supply control. The bot messages you while the plan is active.' },
         { k: 'Risk', t: 'Item pages and your portfolio show when whales already hold the position.' },
       ],
-      prices: ['$2.99 / 3 days', '$5 / 30 days'],
       cta: 'Open the whales',
       note: 'The rest of the site stays free: portfolio, market, Armory, and Storage Units.',
       feed: 'Signal example',
@@ -1292,7 +1305,7 @@ function WhaleWatch({ lang }) {
             ))}
           </div>
           <div className="landing-whale-prices">
-            {copy.prices.map((price) => <span key={price}>{price}</span>)}
+            {prices.map((price) => <span key={price}>{price}</span>)}
           </div>
           <a className="btn btn-primary" href="/investors">{copy.cta}</a>
           <p className="landing-whales-note">{copy.note}</p>
@@ -1449,6 +1462,9 @@ function StatsBand() {
 
 /* SEO intro */
 function SeoIntro({ lang }) {
+  const currency = useDisplayCurrency();
+  const offer = useSmartMoneyOffer();
+  const priceLine = (offer?.plans || []).map((plan) => formatSmartMoneyTerm(plan, currency, lang)).join(lang === 'ru' ? ' или ' : ', or ');
   const copy = lang === 'ru'
     ? {
         title: 'Портфель скинов CS2',
@@ -1456,7 +1472,9 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead помогает считать скины CS2 как портфель: live-оценка инвентаря, себестоимость, P&L, распределение по типам и история цен по предметам. Цены собираются со Steam Community Market и сторонних площадок.',
           'Кроме портфеля на сайте есть маркет-эксплорер, лидеры позиций, лента новостей из Telegram и калькулятор ROI Armory Pass. Подключите Steam через OpenID, откройте чужой публичный профиль по ссылке или создайте ручной портфель.',
-          'Портфель, маркет, Armory, новости и хранилища бесплатны. Список китов и лента их сделок тоже открыты. Аналитика по их позициям, сигналы и алерты в Telegram — 100 ₽ за 3 дня или 499 ₽ за 30 дней.',
+          priceLine
+            ? `Портфель, маркет, Armory, новости и хранилища бесплатны. Список китов и лента их сделок тоже открыты. Аналитика по их позициям, сигналы и алерты в Telegram — ${priceLine}.`
+            : 'Портфель, маркет, Armory, новости и хранилища бесплатны. Список китов и лента их сделок тоже открыты. Аналитика по их позициям, сигналы и алерты в Telegram оплачиваются отдельно.',
         ],
       }
     : {
@@ -1465,7 +1483,9 @@ function SeoIntro({ lang }) {
         paragraphs: [
           'SkinsHead treats CS2 skins as a portfolio: live inventory valuation, cost basis, P&L, allocation by type, and per-item price history. Prices come from the Steam Community Market and major third-party marketplaces.',
           'Beyond the portfolio you get a market explorer, portfolio leaders, Telegram news, and an Armory Pass ROI board. Link Steam via OpenID, open any public profile URL, or keep a manual portfolio.',
-          'The portfolio, market, Armory, news, and Storage Units are free. The whale account list and their trade feed are open too. Position analytics, signals, and Telegram alerts are $2.99 for 3 days or $5 for 30 days.',
+          priceLine
+            ? `The portfolio, market, Armory, news, and Storage Units are free. The whale account list and their trade feed are open too. Position analytics, signals, and Telegram alerts are ${priceLine}.`
+            : 'The portfolio, market, Armory, news, and Storage Units are free. The whale account list and their trade feed are open too. Position analytics, signals, and Telegram alerts are a paid plan.',
         ],
       };
 
@@ -1492,7 +1512,7 @@ const FAQ_ITEMS = {
     { q: 'Where do prices come from?', a: 'Portfolio value is a cash-market mark: the median of lowest asks on Skinport, Market.CSGO, and LIS-Skins. Steam Community Market stays as a list price and a fallback when those quotes are missing. Each item page shows offers and history from the providers we could reach.' },
     { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. The browser extension signs in with a QR code on every sync, never saves the Steam token and revokes it right after reading; only the item list reaches our server. We never request SDA seeds or authenticator codes.' },
     { q: 'Can I export my portfolio?', a: 'Yes. From the portfolio dashboard you can export a CSV of priced inventory for your own records or spreadsheets.' },
-    { q: 'Is SkinsHead free?', a: 'The portfolio, market explorer, Armory ROI, news, and Storage Units are free. The whale account list and trade feed are open. Analytics on what they hold, signals, and Telegram alerts are $2.99 for 3 days or $5 for 30 days.' },
+    { q: 'Is SkinsHead free?', a: '' },
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
@@ -1502,15 +1522,24 @@ const FAQ_ITEMS = {
     { q: 'Откуда берутся цены?', a: 'Стоимость портфеля — оценка по сторонним маркетам: медиана нижних ask на Skinport, Market.CSGO и LIS-Skins. Steam Community Market остаётся ценником и запасным источником, если котировок нет. На карточке предмета видны предложения и история цен из источников, до которых удалось достучаться.' },
     { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. Расширение входит в Steam по QR при каждой синхронизации, не сохраняет токен и отзывает его сразу после чтения; на сервер уходит только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
     { q: 'Можно ли экспортировать портфель?', a: 'Да. В дашборде портфеля есть CSV-экспорт оценённого инвентаря — для своих таблиц и учёта.' },
-    { q: 'SkinsHead бесплатный?', a: 'Портфель, маркет, Armory ROI, новости и хранилища бесплатны. Список китов и лента сделок открыты. Аналитика их позиций, сигналы и алерты в Telegram стоят 100 ₽ за 3 дня или 499 ₽ за 30 дней.' },
+    { q: 'SkinsHead бесплатный?', a: '' },
     { q: 'Вы связаны с Valve?', a: 'Нет. SkinsHead — независимый проект и не аффилирован со Steam, Valve или Counter-Strike.' },
   ],
 };
 
 function FAQ({ lang }) {
   const t = useT(lang);
+  const currency = useDisplayCurrency();
+  const offer = useSmartMoneyOffer();
   const [open, setOpen] = useState(0);
-  const items = FAQ_ITEMS[lang] || FAQ_ITEMS.en;
+  const priceLine = (offer?.plans || []).map((plan) => formatSmartMoneyTerm(plan, currency, lang)).join(lang === 'ru' ? ' или ' : ', or ');
+  const items = (FAQ_ITEMS[lang] || FAQ_ITEMS.en).map((item) => {
+    if (item.q !== 'Is SkinsHead free?' && item.q !== 'SkinsHead бесплатный?') return item;
+    const answer = lang === 'ru'
+      ? `Портфель, маркет, Armory ROI, новости и хранилища бесплатны. Список китов и лента сделок открыты. Аналитика их позиций, сигналы и алерты в Telegram${priceLine ? ` стоят ${priceLine}` : ' оплачиваются отдельно'}.`
+      : `The portfolio, market explorer, Armory ROI, news, and Storage Units are free. The whale account list and trade feed are open. Analytics on what they hold, signals, and Telegram alerts${priceLine ? ` are ${priceLine}` : ' are a paid plan'}.`;
+    return { ...item, a: answer };
+  });
   return (
     <section className="section">
       <div className="container">

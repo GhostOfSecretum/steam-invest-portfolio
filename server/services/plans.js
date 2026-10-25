@@ -151,14 +151,30 @@ const PLANS = [
 const PLAN_BY_ID = Object.fromEntries(PLANS.map((plan) => [plan.id, plan]));
 const DEFAULT_PLAN_ID = 'free';
 
-function listSmartMoneyOffers(locale) {
-  const ru = String(locale || '').toLowerCase().startsWith('ru');
-  return ['short', 'investor'].map((id) => {
-    const plan = PLAN_BY_ID[id];
+const SMART_MONEY_TERMS = [
+  { id: 'short', cycle: '3day', days: 3 },
+  { id: 'investor', cycle: 'monthly', days: 30 },
+  { id: 'investor', cycle: 'annual', days: 365 },
+];
+
+function listSmartMoneyOffers() {
+  return SMART_MONEY_TERMS.map((term) => {
+    const plan = PLAN_BY_ID[term.id];
+    const annual = term.cycle === 'annual';
+    const amountRub = annual ? Number(plan.annualAmountRub) : Number(plan.amountRub);
+    const amountUsd = annual ? Number(plan.annualAmountUsd) : Number(plan.amountUsd);
+    const fullRub = annual ? Number(plan.amountRub) * 12 : null;
+    const fullUsd = annual ? Number(plan.amountUsd) * 12 : null;
+    const discount = annual && fullRub > 0 ? Math.round((1 - amountRub / fullRub) * 100) : null;
     return {
       id: plan.id,
-      days: plan.periodDays,
-      price: ru ? plan.price.ru : plan.price.en,
+      cycle: term.cycle,
+      days: term.days,
+      amountRub,
+      amountUsd,
+      discount,
+      fullRub,
+      fullUsd,
     };
   });
 }

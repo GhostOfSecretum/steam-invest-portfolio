@@ -693,6 +693,55 @@ function getActiveCurrency() {
   return CURRENCY_META[key] ? key : 'usd';
 }
 
+function useDisplayCurrency() {
+  const [currency, setCurrency] = apiUseState(getActiveCurrency);
+  apiUseEffect(() => {
+    const sync = () => setCurrency(getActiveCurrency());
+    window.addEventListener('currency-change', sync);
+    return () => window.removeEventListener('currency-change', sync);
+  }, []);
+  return currency;
+}
+
+// RUB is a separate price list. USD is the international list. CNY shows that
+// dollar list in yuan, not a conversion of the ruble price.
+function formatSmartMoneyAmount(amountRub, amountUsd, currency) {
+  const code = normalizeCurrencyCode(currency) || getActiveCurrency();
+  if (code === 'rub') {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB',
+      maximumFractionDigits: 0,
+    }).format(Number(amountRub) || 0);
+  }
+  if (code === 'cny') {
+    const yuan = (Number(amountUsd) || 0) * getCnyPerUsdRate();
+    return new Intl.NumberFormat('zh-CN', {
+      style: 'currency',
+      currency: 'CNY',
+      maximumFractionDigits: yuan >= 20 ? 0 : 2,
+    }).format(yuan);
+  }
+  const dollars = Number(amountUsd) || 0;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: Number.isInteger(dollars) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(dollars);
+}
+
+function formatSmartMoneyTerm(offer, currency, lang, { discount = true } = {}) {
+  const ru = lang === 'ru';
+  const money = formatSmartMoneyAmount(offer?.amountRub, offer?.amountUsd, currency);
+  let period = ru ? `${offer?.days || ''} дн.` : `${offer?.days || ''} days`;
+  if (offer?.cycle === 'annual') period = ru ? 'год' : 'year';
+  else if (Number(offer?.days) === 3) period = ru ? '3 дня' : '3 days';
+  else if (Number(offer?.days) === 30) period = ru ? '30 дней' : '30 days';
+  const off = discount && offer?.discount ? ` −${offer.discount}%` : '';
+  return `${money} / ${period}${off}`;
+}
+
 function normalizeCurrencyCode(value) {
   const key = String(value || '').trim().toLowerCase();
   return CURRENCY_META[key] ? key : null;
@@ -1047,6 +1096,9 @@ Object.assign(window, {
   holdingPnl,
   compactUsd,
   getActiveCurrency,
+  useDisplayCurrency,
+  formatSmartMoneyAmount,
+  formatSmartMoneyTerm,
   getRubPerUsdRate,
   getCnyPerUsdRate,
   CURRENCIES,
