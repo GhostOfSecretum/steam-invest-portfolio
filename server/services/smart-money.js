@@ -93,7 +93,7 @@ function updateStore(mutate) {
 
 function itemUrl(name) {
   const slug = marketHashNameToSlug(name);
-  return slug ? `${SITE_URL}/item/${slug}` : `${SITE_URL}/investors`;
+  return slug ? `${SITE_URL}/item/${slug}?name=${encodeURIComponent(name)}` : `${SITE_URL}/investors`;
 }
 
 function escapeHtml(text) {

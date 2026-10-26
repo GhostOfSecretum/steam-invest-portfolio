@@ -92,6 +92,9 @@
     'tec-9': 'Tec-9',
     'ak-47': 'AK-47',
     'mag-7': 'MAG-7',
+    'famas': 'FAMAS',
+    'g3sg1': 'G3SG1',
+    'xm1014': 'XM1014',
   };
 
   function marketHashNameToSlug(marketHashName) {
