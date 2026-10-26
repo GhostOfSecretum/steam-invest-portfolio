@@ -327,10 +327,10 @@ async function sendWeeklyDigest(store, now) {
     ...view.radar.slice(0, 5).map((row, index) => `${index + 1}. <a href="${itemUrl(row.marketHashName)}">${escapeHtml(row.marketHashName)}</a> — скор ${row.score}, контроль ${pct(row.control)}`),
   ];
   if (view.accumulating.length) {
-    lines.push('', '<b>Скупают</b>', ...view.accumulating.slice(0, 3).map((row) => `• ${escapeHtml(row.marketHashName)} ${compactUsd(row.flow7d.netUsd)}`));
+    lines.push('', '<b>Скупают</b>', ...view.accumulating.slice(0, 3).map((row) => `• <a href="${itemUrl(row.marketHashName)}">${escapeHtml(row.marketHashName)}</a> ${compactUsd(row.flow7d.netUsd)}`));
   }
   if (view.distributing.length) {
-    lines.push('', '<b>Сливают</b>', ...view.distributing.slice(0, 3).map((row) => `• ${escapeHtml(row.marketHashName)} ${compactUsd(row.flow7d.netUsd)}`));
+    lines.push('', '<b>Сливают</b>', ...view.distributing.slice(0, 3).map((row) => `• <a href="${itemUrl(row.marketHashName)}">${escapeHtml(row.marketHashName)}</a> ${compactUsd(row.flow7d.netUsd)}`));
   }
   const bt = store.backtest?.summary?.all;
   if (bt && bt.n7) {
