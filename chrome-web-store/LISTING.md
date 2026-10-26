@@ -25,6 +25,7 @@ How it works:
 
 Security:
 - Your Steam password is never requested.
+- The link to your portfolio is encrypted on this computer with a password you choose. That password is never saved and never sent to SkinsHead.
 - The Steam token lives only in the tab’s memory during the reading. It is never saved and is revoked at Steam as soon as the reading finishes.
 - Only the item list is sent to skinshead.pro. The extension cannot move, sell or trade items.
 - If you close the tab mid-reading, the token is not revoked. Remove the device “SkinsHead Browser Extension” in Steam → Settings → Security → Authorized devices.
@@ -51,6 +52,7 @@ SkinsHead читает содержимое хранилищ CS2 и добавл
 
 Безопасность:
 - Пароль Steam не запрашивается.
+- Привязка к портфелю шифруется на этом компьютере паролем, который выбирает пользователь. Этот пароль не сохраняется и не отправляется в SkinsHead.
 - Токен Steam живёт только в памяти вкладки, пока идёт чтение. Он не сохраняется и отзывается в Steam сразу после чтения.
 - На skinshead.pro уходит только список предметов. Расширение не перемещает, не продаёт и не обменивает предметы.
 - Если закрыть вкладку посреди чтения, отзыв не произойдёт. Удалите устройство «SkinsHead Browser Extension» в Steam → Настройки → Безопасность → Авторизованные устройства.
@@ -95,7 +97,9 @@ The user’s own portfolio service. The extension sends the item list there and 
 
 ## Файлы
 
-- Архив для загрузки: скачать с https://skinshead.pro/api/downloads/extension после выкладки этой версии. В нём нет localhost.
+- Архив для магазина: `chrome-web-store/skinshead-extension-0.1.0.zip`. `manifest.json` в корне архива, localhost вырезан. Собрать заново: `node scripts/pack-cws.js`.
+- Архив с сайта (`/api/downloads/extension`) для магазина не подходит: внутри папка `skinshead-extension/`, её выбирают при «Загрузить распакованное».
 - Иконка 128: chrome-web-store/icon-128.png (та же, что в расширении).
-- Плитка 440×280: chrome-web-store/promo-440x280.png
-- Скриншоты 1280×800: chrome-web-store/screenshot-1.png, screenshot-2.png, screenshot-3.png
+- Плитка 440×280: chrome-web-store/promo-440x280.png (без альфа-канала).
+- Скриншоты 1280×800, английский (язык по умолчанию): screenshot-1.png, screenshot-2.png, screenshot-3.png.
+- Те же кадры по-русски, для языка Russian: screenshot-ru-1.png, screenshot-ru-2.png, screenshot-ru-3.png.

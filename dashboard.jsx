@@ -997,13 +997,6 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
               label={tt(lang, { en: 'Share on X', ru: 'В X', zh: '分享到 X', 'zh-TW': '分享到 X' })}
               title={tt(lang, { en: 'Share this portfolio on X', ru: 'Поделиться портфелем в X', zh: '分享到 X', 'zh-TW': '分享到 X' })}
             />
-            <button
-              className="btn btn-sm btn-ghost"
-              onClick={() => portfolio.reload(isSteamPortfolio || isPublicPortfolio)}
-              title={tt(lang, { en: 'Refresh portfolio data', ru: 'Обновить данные портфеля', zh: '刷新库存数据', 'zh-TW': '重新整理庫存資料' })}
-            >
-              {portfolio.loading ? '...' : (tt(lang, { en: 'Refresh', ru: 'Обновить', zh: '刷新', 'zh-TW': '重新整理' }))}
-            </button>
           </div>
         </div>
         {favoriteError && (

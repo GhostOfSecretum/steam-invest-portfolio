@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Store screenshots</title>
+  <link rel="stylesheet" href="../extension/sync.css">
+  <style>
+    html, body { margin: 0; background: #050608; }
+    .shot {
+      width: 1280px;
+      height: 800px;
+      box-sizing: border-box;
+      padding: 72px 72px 0;
+      overflow: hidden;
+    }
+    .hero {
+      margin: 0;
+      font-size: 44px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+    }
+    .sub {
+      margin: 10px 0 28px;
+      color: #ff2d78;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .shot main {
+      max-width: 980px;
+      margin: 0;
+      padding: 0;
+    }
+    .shot h2 { margin: 0 0 8px; }
+    .shot .note { margin: 0; font-size: 15px; max-width: 980px; }
+    .shot .actions { margin: 22px 0 0; }
+    .shot table { margin-top: 8px; max-width: 720px; }
+    .shot #pair-code { color: #e7e9ec; }
+  </style>
+</head>
+<body>
+  <section class="shot" id="shot-1">
+    <h1 class="hero">Code from the site</h1>
+    <p class="sub">Pairing lasts 5 minutes</p>
+    <main>
+      <div class="top">
+        <h1><img src="../extension/icons/48.png" width="28" height="28" alt="">CS2 Storage</h1>
+        <div class="lang-switch"><button type="button" aria-pressed="true">EN</button><button type="button">RU</button><button type="button">简</button><button type="button">繁</button></div>
+      </div>
+      <h2>Link to SkinsHead</h2>
+      <p class="note">On the site, open your portfolio and click “Extension code”. The code is valid for 5 minutes.</p>
+      <form class="actions">
+        <input id="pair-code" value="AB12CD34" readonly>
+        <button type="button">Link</button>
+      </form>
+    </main>
+  </section>
+  <section class="shot" id="shot-2">
+    <h1 class="hero">QR sign-in</h1>
+    <p class="sub">The token is never saved</p>
+    <main>
+      <div class="top">
+        <h1><img src="../extension/icons/48.png" width="28" height="28" alt="">CS2 Storage</h1>
+        <div class="lang-switch"><button type="button" aria-pressed="true">EN</button><button type="button">RU</button><button type="button">简</button><button type="button">繁</button></div>
+      </div>
+      <p class="note">Steam account 76561198000000000 is linked. <button type="button" class="link">Disconnect</button></p>
+      <p class="note">Signing in with a QR code gives this tab a Steam token. It stays only in memory while the reading runs, is never saved, and is never sent to SkinsHead — only the item list is. The token is revoked at Steam after reading. If you close the tab mid-reading, it is not revoked: remove the device “SkinsHead Browser Extension” in Steam → Settings → Security → Authorized devices.</p>
+      <div class="actions"><button type="button">Sign in with QR and sync</button></div>
+    </main>
+  </section>
+  <section class="shot" id="shot-3">
+    <h1 class="hero">In the portfolio</h1>
+    <p class="sub">Items and storage units</p>
+    <main>
+      <div class="top">
+        <h1><img src="../extension/icons/48.png" width="28" height="28" alt="">CS2 Storage</h1>
+        <div class="lang-switch"><button type="button" aria-pressed="true">EN</button><button type="button">RU</button><button type="button">简</button><button type="button">繁</button></div>
+      </div>
+      <h2>Sent to the portfolio: 2140 items</h2>
+      <p class="note">Storage units: 3, items inside: 2100.</p>
+      <table>
+        <thead><tr><th>Storage unit</th><th>Expected</th><th>Read</th></tr></thead>
+        <tbody>
+          <tr><td>Cases</td><td>1200</td><td>1200</td></tr>
+          <tr><td>Knives</td><td>40</td><td>40</td></tr>
+          <tr><td>Stickers</td><td>860</td><td>860</td></tr>
+        </tbody>
+      </table>
+      <p><a>Open portfolio</a></p>
+    </main>
+  </section>
+  <script>
+    const n = new URLSearchParams(location.search).get('n');
+    if (n) {
+      document.querySelectorAll('.shot').forEach((el) => {
+        if (el.id !== `shot-${n}`) el.remove();
+      });
+    }
+  </script>
+</body>
+</html>
