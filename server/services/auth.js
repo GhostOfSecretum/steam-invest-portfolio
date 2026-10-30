@@ -134,7 +134,11 @@ async function postOpenIdDirect(body) {
 }
 
 async function fetchOpenIdViaProxy(body) {
-  const target = `${STEAM_OPENID.opEndpoint}?${body}`;
+  // r.jina.ai decodes the target URL once before fetching it. Steam reads "+"
+  // in that query as a space, so the signature no longer matches and every
+  // login comes back is_valid:false. Encode percents twice so one decode
+  // leaves Steam the original form-urlencoded body.
+  const target = `${STEAM_OPENID.opEndpoint}?${String(body).replace(/%/g, '%25')}`;
   const response = await fetch(`https://r.jina.ai/${target}`, {
     headers: {
       Accept: 'text/plain,text/html,*/*',
