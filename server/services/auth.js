@@ -32,6 +32,37 @@ function callbackUrl(baseUrl) {
   return `${baseUrl}/api/auth/steam/callback`;
 }
 
+// Only in-app paths. A crafted `next` must not become an open redirect.
+function safeAuthReturnPath(value) {
+  const raw = String(value || '').trim();
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\') || raw.includes('\0')) {
+    return '/dashboard';
+  }
+  let url;
+  try {
+    url = new URL(raw, 'http://localhost');
+  } catch {
+    return '/dashboard';
+  }
+  const path = url.pathname.replace(/\/+$/, '') || '/';
+  const exact = new Set(['/dashboard', '/investors', '/market', '/collections', '/armory', '/favorites', '/glock-3d']);
+  if (exact.has(path)) {
+    if (path === '/dashboard') {
+      const profile = String(url.searchParams.get('profile') || '').trim().slice(0, 300);
+      return profile ? `/dashboard?profile=${encodeURIComponent(profile)}` : '/dashboard';
+    }
+    return path;
+  }
+  const item = path.match(/^\/item\/([a-z0-9-]{1,180})$/);
+  if (item) {
+    const name = String(url.searchParams.get('name') || '').trim().slice(0, 300);
+    return name ? `/item/${item[1]}?name=${encodeURIComponent(name)}` : `/item/${item[1]}`;
+  }
+  const collection = path.match(/^\/collection\/([a-z0-9-]{1,180})$/);
+  if (collection) return `/collection/${collection[1]}`;
+  return '/dashboard';
+}
+
 function authError(message, status, code) {
   const err = new Error(message);
   err.status = status;
@@ -222,6 +253,7 @@ async function authenticateSteam(req) {
 
 module.exports = {
   resolveBaseUrl,
+  safeAuthReturnPath,
   getSteamRedirectUrl,
   authenticateSteam,
 };

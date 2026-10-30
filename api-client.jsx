@@ -19,6 +19,29 @@ async function apiFetch(path, options = {}) {
   return data;
 }
 
+// Page to reopen after Steam confirms the login. Home stays the portfolio.
+function authReturnPath() {
+  const allowed = new Set(['/dashboard', '/investors', '/market', '/collections', '/armory', '/favorites', '/glock-3d']);
+  try {
+    const url = new URL(window.location.href);
+    const path = url.pathname.replace(/\/+$/, '') || '/';
+    if (allowed.has(path)) {
+      if (path === '/dashboard') {
+        const profile = url.searchParams.get('profile');
+        return profile ? `/dashboard?profile=${encodeURIComponent(profile)}` : '/dashboard';
+      }
+      return path;
+    }
+    if (/^\/item\/[a-z0-9-]{1,180}$/.test(path) || /^\/collection\/[a-z0-9-]{1,180}$/.test(path)) {
+      const name = url.searchParams.get('name');
+      return name ? `${path}?name=${encodeURIComponent(name)}` : path;
+    }
+  } catch {
+    // Fall through to the portfolio.
+  }
+  return '/dashboard';
+}
+
 function useAuth() {
   const [state, setState] = apiUseState({
     loading: true,
@@ -69,7 +92,11 @@ function useAuth() {
       smartMoney: false,
     },
     login: () => {
-      window.location.href = '/api/auth/steam';
+      const next = authReturnPath();
+      const params = new URLSearchParams();
+      if (next !== '/dashboard') params.set('next', next);
+      const query = params.toString();
+      window.location.href = query ? `/api/auth/steam?${query}` : '/api/auth/steam';
     },
     logout: async () => {
       await apiFetch('/api/auth/logout', { method: 'POST' });

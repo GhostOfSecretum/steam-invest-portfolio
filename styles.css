@@ -6870,6 +6870,9 @@ button:disabled,
 .top-investors-page {
   padding: 40px 64px 80px;
 }
+.top-investors-embedded {
+  min-width: 0;
+}
 .top-investors-title {
   font-size: 44px;
   font-weight: 500;

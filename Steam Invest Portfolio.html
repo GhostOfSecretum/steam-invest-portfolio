@@ -307,9 +307,12 @@
     }
 
     function takeAuthErrorFromUrl() {
-      const code = String(new URLSearchParams(window.location.search).get('auth_error') || '').trim();
+      const params = new URLSearchParams(window.location.search);
+      const code = String(params.get('auth_error') || '').trim();
       if (!code) return null;
-      window.history.replaceState({}, '', window.location.pathname);
+      params.delete('auth_error');
+      const query = params.toString();
+      window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
       return code;
     }
 

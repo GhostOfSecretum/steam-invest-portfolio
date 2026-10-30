@@ -75,7 +75,7 @@ function InvestorActivityRows({ events, showInvestor = false, onOpenItem }) {
   );
 }
 
-function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
+function TopInvestorsPage({ lang, onOpenProfile, onOpenItem, embedded = false }) {
   const investors = useTopInvestors();
   const feed = useTopInvestorsActivityFeed();
   const [selectedSteamId, setSelectedSteamId] = tiUseState(null);
@@ -133,9 +133,9 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
     };
 
   return (
-    <div className="top-investors-page">
-      <div className="container">
-        <div style={{ marginBottom: 28 }}>
+    <div className={embedded ? 'top-investors-embedded' : 'top-investors-page'}>
+      <div className={embedded ? undefined : 'container'}>
+        {!embedded && <div style={{ marginBottom: 28 }}>
           <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--accent)' }}>
             // WATCHLIST
           </div>
@@ -145,7 +145,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem }) {
           <div className="top-investors-sub">
             {copy.sub}
           </div>
-        </div>
+        </div>}
 
         {investors.loading && !investors.data && (
           <div style={{ fontFamily: 'var(--f-mono)', fontSize: 13, color: 'var(--fg-3)' }}>...</div>

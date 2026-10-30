@@ -12,7 +12,7 @@ const express = require('express');
 const session = require('express-session');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { getSteamRedirectUrl, authenticateSteam } = require('./services/auth');
+const { getSteamRedirectUrl, authenticateSteam, safeAuthReturnPath } = require('./services/auth');
 const { getSteamProfile, resolveSteamProfileInput, saveIngestedSteamInventory } = require('./services/steam');
 const {
   getPortfolio,
@@ -316,17 +316,24 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/auth/steam', authLimiter, asyncRoute(async (req, res) => {
+  const next = safeAuthReturnPath(req.query.next);
+  if (next === '/dashboard') delete req.session.authReturnTo;
+  else req.session.authReturnTo = next;
+  await saveSession(req);
   const redirectUrl = await getSteamRedirectUrl(req);
   res.redirect(redirectUrl);
 }));
 
 app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => {
+  const returnTo = safeAuthReturnPath(req.session.authReturnTo);
   let auth;
   try {
     auth = await authenticateSteam(req);
   } catch (error) {
     console.warn('[auth] Steam login failed:', error.code || error.message);
-    res.redirect(`/?auth_error=${encodeURIComponent(error.code || 'steam_login_failed')}`);
+    const code = encodeURIComponent(error.code || 'steam_login_failed');
+    const joiner = returnTo.includes('?') ? '&' : '?';
+    res.redirect(`${returnTo}${joiner}auth_error=${code}`);
     return;
   }
 
@@ -344,7 +351,7 @@ app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => 
   } catch (error) {
     console.warn('[welcome-plus-trial]', error.message);
   }
-  res.redirect('/dashboard');
+  res.redirect(returnTo);
 }));
 
 app.post('/api/auth/logout', asyncRoute(async (req, res) => {

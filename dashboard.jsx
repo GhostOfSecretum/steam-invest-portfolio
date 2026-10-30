@@ -865,6 +865,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
     { id: 'overview', label: tt(lang, { en: 'Overview', ru: 'Обзор', zh: '总览', 'zh-TW': '總覽' }) },
     { id: 'items', label: tt(lang, { en: 'Items', ru: 'Предметы', zh: '物品', 'zh-TW': '物品' }), count: isSwitchingPortfolio ? null : data.totalInventoryCount },
     { id: 'activity', label: tt(lang, { en: 'Activity', ru: 'История', zh: '动态', 'zh-TW': '動態' }) },
+    { id: 'investors', label: tt(lang, { en: 'Top investors', ru: 'Топ инвесторы', zh: '顶尖投资者', 'zh-TW': '頂尖投資者' }) },
   ];
 
   const shareProfileRef = publicPortfolioShareRef({ data, auth, publicSteamId, publicProfileUrl });
@@ -1311,6 +1312,20 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                 onEventDeleted={() => portfolio.reload(false)}
               />
             </div>
+          </div>
+        )}
+
+        {activeSection === 'investors' && window.TopInvestorsPage && (
+          <div className="dash-section-panel" role="tabpanel">
+            <window.TopInvestorsPage
+              embedded
+              lang={lang}
+              onOpenProfile={onPublicProfile}
+              onOpenItem={(marketHashName) => {
+                const hash = String(marketHashName || '').trim();
+                if (hash) onItemClick({ marketHashName: hash });
+              }}
+            />
           </div>
         )}
         </div>
