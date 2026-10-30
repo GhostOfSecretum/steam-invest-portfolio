@@ -89,7 +89,7 @@ async function computeAnalytics() {
       const prev = eventPrices.get(event.marketHashName);
       if (!prev || prev.t < event.t) eventPrices.set(event.marketHashName, { priceUsd: event.priceUsd, t: event.t });
     }
-    tracked.push({ account, snapshot: entry.snapshot, events });
+    tracked.push({ account, snapshot: entry.snapshot, events, hiddenLog: entry.hiddenLog || [] });
   }
 
   const priceOf = buildPricer(lists, eventPrices);

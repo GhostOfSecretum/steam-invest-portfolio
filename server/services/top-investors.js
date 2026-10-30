@@ -230,6 +230,7 @@ async function syncTopInvestorInventory(account, { priority = 1 } = {}) {
   const events = await syncInventoryDiffActivity(account.steamId, items, {
     source: 'public-diff',
     syncedAt,
+    hiddenCount: inventory.hiddenCount,
   });
   const added = events.filter((event) => isStructuredActivity(event) && event.id && !priorIds.has(event.id));
   if (added.length) await priceAddedEvents(account.steamId, added);

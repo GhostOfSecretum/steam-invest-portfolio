@@ -49,6 +49,7 @@ function makeActivityEvent(partial = {}) {
     currency: partial.currency || null,
     proceedsCurrency: partial.proceedsCurrency || null,
     source: partial.source || 'manual',
+    origin: partial.origin || null,
     iconUrl: typeof partial.iconUrl === 'string' && partial.iconUrl.trim() ? partial.iconUrl.trim() : null,
     priceUsd: finiteOrNull(partial.priceUsd),
     priceRub: finiteOrNull(partial.priceRub),
@@ -142,6 +143,23 @@ function diffSnapshots(prevSnapshot, nextSnapshot, { source, at, icons } = {}) {
   return events;
 }
 
+// Market buys and trades stay hidden from other viewers for ~10 days, so a gain
+// that shows up together with an equal drop in the hidden count is an old
+// acquisition becoming visible. A gain with no hidden drop came out of storage.
+function tagGainOrigins(events, hiddenBefore, hiddenAfter) {
+  if (!Number.isFinite(hiddenBefore) || !Number.isFinite(hiddenAfter)) return events;
+  const gained = events.reduce((sum, event) => sum + Math.max(0, event.qtyDelta || 0), 0);
+  const revealed = Math.max(0, hiddenBefore - hiddenAfter);
+  const origin = revealed === 0 ? 'storage' : revealed >= gained ? 'trade' : 'mixed';
+  return events.map((event) => (event.qtyDelta > 0 ? { ...event, origin } : event));
+}
+
+function appendHiddenLog(log, at, before, after) {
+  const list = Array.isArray(log) ? log : [];
+  if (!Number.isFinite(before) || !Number.isFinite(after) || before === after) return list;
+  return [...list, { at, before, after }].slice(-MAX_EVENTS);
+}
+
 function backfillManualEvents(portfolio) {
   const existing = Array.isArray(portfolio?.events) ? portfolio.events.filter(isStructuredActivity) : [];
   if (existing.length) return existing;
@@ -199,7 +217,7 @@ async function syncInventoryDiffActivity(steamId, items, options) {
   return withActivityLock(() => applyInventoryDiff(steamId, items, options));
 }
 
-async function applyInventoryDiff(steamId, items, { source = 'steam-diff', syncedAt = null } = {}) {
+async function applyInventoryDiff(steamId, items, { source = 'steam-diff', syncedAt = null, hiddenCount = null } = {}) {
 
   const store = await readInventoryActivityStore();
   const key = String(steamId);
@@ -207,12 +225,16 @@ async function applyInventoryDiff(steamId, items, { source = 'steam-diff', synce
   const nextSnapshot = buildQtySnapshot(items);
   const nextIcons = { ...(entry.icons || {}), ...collectItemIcons(items) };
   const stamp = syncedAt || new Date().toISOString();
+  const hidden = Number.isFinite(hiddenCount) ? hiddenCount : null;
+  const hiddenLog = appendHiddenLog(entry.hiddenLog, stamp, entry.hidden, hidden);
 
   if (!entry.snapshot || typeof entry.snapshot !== 'object') {
     store[key] = {
       snapshot: nextSnapshot,
       icons: nextIcons,
       syncedAt: stamp,
+      hidden,
+      hiddenLog,
       events: trimEvents(entry.events || []),
     };
     await writeInventoryActivityStore(store);
@@ -222,17 +244,23 @@ async function applyInventoryDiff(steamId, items, { source = 'steam-diff', synce
   if (snapshotsEqual(entry.snapshot, nextSnapshot)) {
     // Stamp the check even when nothing moved. Otherwise the investor poller
     // keeps selecting this account and never reaches the rest of the list.
-    store[key] = { ...entry, icons: nextIcons, syncedAt: stamp };
+    store[key] = { ...entry, icons: nextIcons, syncedAt: stamp, hidden, hiddenLog };
     await writeInventoryActivityStore(store);
     return trimEvents(entry.events || []);
   }
 
-  const diffEvents = diffSnapshots(entry.snapshot, nextSnapshot, { source, at: stamp, icons: nextIcons });
+  const diffEvents = tagGainOrigins(
+    diffSnapshots(entry.snapshot, nextSnapshot, { source, at: stamp, icons: nextIcons }),
+    entry.hidden,
+    hidden,
+  );
   const events = trimEvents([...(entry.events || []), ...diffEvents]);
   store[key] = {
     snapshot: nextSnapshot,
     icons: nextIcons,
     syncedAt: stamp,
+    hidden,
+    hiddenLog,
     events,
   };
   await writeInventoryActivityStore(store);

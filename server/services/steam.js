@@ -449,11 +449,17 @@ function assembleInventory(pages, inventoryProvider) {
     }
   }
 
+  const visibleCount = allAssets.reduce((sum, asset) => sum + Number(asset.amount || 1), 0);
+  // Steam counts items it hides from other viewers (recent market buys and
+  // trades, ~10 days) in total_inventory_count but leaves them out of assets.
+  const steamTotal = Number(pages[0]?.total_inventory_count);
+
   return {
     appId: STEAM_APP_ID,
     contextId: STEAM_CONTEXT_ID,
     inventoryProvider,
-    totalInventoryCount: allAssets.reduce((sum, asset) => sum + Number(asset.amount || 1), 0),
+    totalInventoryCount: visibleCount,
+    hiddenCount: Number.isFinite(steamTotal) ? Math.max(0, steamTotal - visibleCount) : null,
     assetEntriesCount: allAssets.length,
     syncedAt: new Date().toISOString(),
     items: allAssets.map((asset) => normalizeInventoryItem(asset, descriptionMap.get(`${asset.classid}_${asset.instanceid}`))),

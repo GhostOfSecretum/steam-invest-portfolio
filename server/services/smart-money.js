@@ -15,6 +15,9 @@ const SIGNALS_MAX = 500;
 const HISTORY_DAYS = 400;
 const HISTORY_ITEMS = 300;
 const SIGNAL_WINDOW_MS = 48 * 60 * 60 * 1000;
+const TRANSFER_WINDOW_MS = 14 * DAY_MS;
+const ORIGIN_ALERT_MIN_USD = 50;
+const HIDDEN_ALERT_MIN_ITEMS = 10;
 const CONTROL_SIGNAL_THRESHOLD = 0.5;
 const EXIT_POSITION_SHARE = 0.3;
 const MIN_SIGNAL_USD = 20;
@@ -66,10 +69,11 @@ async function readStore() {
       lastDigestAt: parsed.lastDigestAt || null,
       backtest: parsed.backtest || null,
       index: parsed.index || null,
+      hiddenSeenAt: parsed.hiddenSeenAt && typeof parsed.hiddenSeenAt === 'object' ? parsed.hiddenSeenAt : {},
     };
   } catch (error) {
     if (error.code !== 'ENOENT') console.error('[smart-money] unreadable store, starting fresh:', error.message);
-    return { initializedAt: null, ledger: [], signals: [], lastSignalAt: {}, history: {}, lastDigestAt: null, backtest: null, index: null };
+    return { initializedAt: null, ledger: [], signals: [], lastSignalAt: {}, history: {}, lastDigestAt: null, backtest: null, index: null, hiddenSeenAt: {} };
   }
 }
 
@@ -115,26 +119,54 @@ function pct(value) {
 
 function appendLedger(store, state) {
   const known = new Set(store.ledger.map((entry) => entry.id));
-  let added = 0;
+  const fresh = [];
   for (const row of state.tracked) {
     for (const event of row.events) {
       if (!event.id || known.has(event.id)) continue;
       const price = Number.isFinite(event.priceUsd) ? event.priceUsd : state.priceOf(event.marketHashName);
-      store.ledger.push({
+      const entry = {
         id: event.id,
         steamId: row.account.steamId,
         name: event.marketHashName,
         t: event.t,
         qtyDelta: event.qtyDelta,
         priceUsd: Number.isFinite(price) ? price : null,
-      });
+        origin: event.origin || null,
+      };
+      store.ledger.push(entry);
+      fresh.push(entry);
       known.add(event.id);
-      added += 1;
     }
   }
   store.ledger.sort((a, b) => a.t - b.t);
+  for (const entry of fresh.sort((a, b) => a.t - b.t)) matchTransfer(store.ledger, entry);
   if (store.ledger.length > LEDGER_MAX) store.ledger = store.ledger.slice(store.ledger.length - LEDGER_MAX);
-  return added;
+  if (fresh.length) {
+    const byOrigin = {};
+    for (const entry of fresh) {
+      const key = `${entry.qtyDelta > 0 ? 'in' : 'out'}:${entry.origin || 'unknown'}`;
+      byOrigin[key] = (byOrigin[key] || 0) + 1;
+    }
+    console.log('[smart-money] new moves by origin:', JSON.stringify(byOrigin));
+  }
+  return fresh;
+}
+
+// A trade between two tracked accounts shows up as an exit on one and, once the
+// ~10-day public hiding ends, an equal gain on the other.
+function matchTransfer(ledger, entry) {
+  if (!(entry.qtyDelta > 0) || entry.origin === 'storage') return;
+  const since = entry.t - TRANSFER_WINDOW_MS;
+  const sender = ledger.find((row) => row.name === entry.name
+    && row.steamId !== entry.steamId
+    && row.qtyDelta === -entry.qtyDelta
+    && row.origin !== 'transfer'
+    && row.t >= since
+    && row.t <= entry.t);
+  if (!sender) return;
+  sender.origin = 'transfer';
+  entry.origin = 'transfer';
+  entry.from = sender.steamId;
 }
 
 function recordHistory(store, state) {
@@ -305,6 +337,49 @@ async function sendSignalAlert(signals) {
   return sendTelegram(`<b>Smart money · SkinsHead</b>\n\n${lines.join('\n')}\n\n<a href="${SITE_URL}/investors">Вся аналитика</a>`);
 }
 
+// Per-account moves labelled by origin, plus fresh hidden buys. Telegram only:
+// these do not enter store.signals, so the site and the weekly digest are unchanged.
+function detectOriginAlerts(store, state, freshMoves) {
+  const alerts = [];
+  for (const entry of freshMoves) {
+    if (!(entry.qtyDelta > 0) || !['trade', 'storage', 'transfer'].includes(entry.origin)) continue;
+    const usd = entry.qtyDelta * (entry.priceUsd || 0);
+    if (usd < ORIGIN_ALERT_MIN_USD) continue;
+    alerts.push({ kind: entry.origin, steamId: entry.steamId, from: entry.from || null, name: entry.name, qty: entry.qtyDelta, usd });
+  }
+  for (const row of state.tracked) {
+    const steamId = row.account.steamId;
+    const seen = store.hiddenSeenAt[steamId] || '';
+    for (const change of row.hiddenLog) {
+      if (change.at <= seen) continue;
+      const added = change.after - change.before;
+      if (added >= HIDDEN_ALERT_MIN_ITEMS) alerts.push({ kind: 'hidden', steamId, qty: added, usd: Infinity });
+    }
+    const last = row.hiddenLog[row.hiddenLog.length - 1];
+    if (last) store.hiddenSeenAt[steamId] = last.at;
+  }
+  return alerts.sort((a, b) => b.usd - a.usd);
+}
+
+function originLine(alert, state) {
+  const who = (steamId) => escapeHtml(state.accountById.get(steamId)?.personaname || steamId);
+  if (alert.kind === 'hidden') {
+    return `🕵️ Свежая покупка: ${who(alert.steamId)} — +${alert.qty} скрытых предметов (что именно, станет видно через ~10 дн.)`;
+  }
+  const name = `<a href="${itemUrl(alert.name)}">${escapeHtml(alert.name)}</a>`;
+  const size = `+${alert.qty} шт (~${compactUsd(alert.usd)})`;
+  if (alert.kind === 'trade') return `🟡 Покупка ~10 дн. назад: ${name} — ${who(alert.steamId)} ${size}`;
+  if (alert.kind === 'storage') return `📦 Из хранилища: ${name} — ${who(alert.steamId)} ${size}`;
+  return `🔁 Перекладка между своими: ${name} — ${who(alert.from)} → ${who(alert.steamId)} ${size}`;
+}
+
+async function sendOriginAlert(alerts, state) {
+  if (!alerts.length) return false;
+  const lines = alerts.slice(0, ALERT_MAX_LINES).map((alert) => originLine(alert, state));
+  if (alerts.length > ALERT_MAX_LINES) lines.push(`…и ещё ${alerts.length - ALERT_MAX_LINES}`);
+  return sendTelegram(`<b>Smart money · происхождение движений (бета)</b>\n\n${lines.join('\n')}\n\n<a href="${SITE_URL}/investors">Вся аналитика</a>`);
+}
+
 function digestDue(store, now) {
   const date = new Date(now);
   if (date.getUTCDay() !== 1 || date.getUTCHours() < 9) return false;
@@ -346,14 +421,19 @@ async function runSmartMoneyScan() {
   const state = await getTopInvestorsState();
   if (!state.tracked.length) return;
   let toAlert = [];
+  let originAlerts = [];
   let digest = false;
   await updateStore(async (store) => {
     const firstRun = !store.initializedAt;
-    appendLedger(store, state);
+    const freshMoves = appendLedger(store, state);
     recordHistory(store, state);
     const fresh = detectSignals(store, state);
     store.signals = [...fresh, ...store.signals].slice(0, SIGNALS_MAX);
-    if (!firstRun) toAlert = fresh;
+    const origins = detectOriginAlerts(store, state, freshMoves);
+    if (!firstRun) {
+      toAlert = fresh;
+      originAlerts = origins;
+    }
     store.initializedAt = store.initializedAt || new Date(state.now).toISOString();
     if (alertChatId() && digestDue(store, state.now)) {
       store.lastDigestAt = new Date(state.now).toISOString();
@@ -363,6 +443,7 @@ async function runSmartMoneyScan() {
   });
 
   if (toAlert.length) await sendSignalAlert(toAlert).catch((error) => console.warn('[smart-money] alert failed:', error.message));
+  if (originAlerts.length) await sendOriginAlert(originAlerts, state).catch((error) => console.warn('[smart-money] origin alert failed:', error.message));
   if (digest) {
     const store = await readStore();
     await sendWeeklyDigest(store, state.now).catch((error) => console.warn('[smart-money] digest failed:', error.message));
