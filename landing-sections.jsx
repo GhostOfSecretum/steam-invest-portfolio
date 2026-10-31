@@ -1258,16 +1258,17 @@ function WhaleWatch({ lang }) {
       sub: 'Сервер сам снимает инвентари известных инвесторов и считает, какую долю рынка они держат. Список аккаунтов и лента открыты. Аналитика, сигналы и сообщения в Telegram — по подписке.',
       points: [
         { k: 'Доля', t: 'Видно, сколько выставленного предложения собрано у отслеживаемых аккаунтов.' },
-        { k: 'Сигналы', t: 'Прирост, выход и контроль предложения. Бот пишет в личку, пока подписка активна.' },
+        { k: 'Сигналы', t: 'Покупка, продажа и контроль предложения. Бот пишет в личку, пока подписка активна.' },
+        { k: 'Дайджест', t: 'Раз в неделю в Telegram приходят итоги: куда двигались киты.' },
         { k: 'Риск', t: 'На странице предмета и в своём портфеле видно, если позицию уже держат киты.' },
       ],
       cta: 'Открыть китов',
       note: 'Остальной сайт бесплатный: портфель, маркет, Armory и хранилища.',
       feed: 'Пример сигнала',
       rows: [
-        { kind: 'Прирост', tone: 'var(--green)', text: 'Плюс одного предмета сразу у нескольких аккаунтов' },
-        { kind: 'Выход', tone: 'var(--red)', text: 'Начали продавать позицию с высокой долей предложения' },
-        { kind: 'Контроль', tone: 'var(--accent)', text: 'Группа держит больше половины того, что выставлено' },
+        { kind: 'Покупка', tone: 'var(--green)', text: 'Киты заходят в один предмет' },
+        { kind: 'Продажа', tone: 'var(--red)', text: 'Начинают продавать позицию' },
+        { kind: 'Контроль', tone: 'var(--accent)', text: 'Предложение собирается в одних руках' },
       ],
     }
     : {
@@ -1276,16 +1277,17 @@ function WhaleWatch({ lang }) {
       sub: 'The server snapshots known investor inventories and measures how much of the listed supply they hold. The account list and the feed are open. Analytics, signals, and Telegram alerts are a paid plan.',
       points: [
         { k: 'Share', t: 'See how much of the listed supply sits with the tracked accounts.' },
-        { k: 'Signals', t: 'Gains, exits, and supply control. The bot messages you while the plan is active.' },
+        { k: 'Signals', t: 'Buys, sales, and supply control. The bot messages you while the plan is active.' },
+        { k: 'Digest', t: 'Once a week, Telegram sends a recap of where the whales moved.' },
         { k: 'Risk', t: 'Item pages and your portfolio show when whales already hold the position.' },
       ],
       cta: 'Open the whales',
       note: 'The rest of the site stays free: portfolio, market, Armory, and Storage Units.',
       feed: 'Signal example',
       rows: [
-        { kind: 'Gain', tone: 'var(--green)', text: 'The same item went up on several accounts at once' },
-        { kind: 'Exit', tone: 'var(--red)', text: 'They started selling a position with a high supply share' },
-        { kind: 'Control', tone: 'var(--accent)', text: 'The group holds more than half of what is listed' },
+        { kind: 'Buy', tone: 'var(--green)', text: 'Whales step into the same item' },
+        { kind: 'Sale', tone: 'var(--red)', text: 'They start selling a position' },
+        { kind: 'Control', tone: 'var(--accent)', text: 'Supply gathers in a few hands' },
       ],
     };
 
@@ -1467,22 +1469,22 @@ function SeoIntro({ lang }) {
   const priceLine = (offer?.plans || []).map((plan) => formatSmartMoneyTerm(plan, currency, lang)).join(lang === 'ru' ? ' или ' : ', or ');
   const copy = lang === 'ru'
     ? {
-        title: 'Портфель скинов CS2',
-        sub: 'SkinsHead — трекер инвентаря Steam и аналитика цен Counter-Strike 2',
+        title: 'Рынок скинов CS2',
+        sub: 'SkinsHead — портфель, маркет, киты и аналитика Counter-Strike 2',
         paragraphs: [
-          'SkinsHead помогает считать скины CS2 как портфель: live-оценка инвентаря, себестоимость, P&L, распределение по типам и история цен по предметам. Цены собираются со Steam Community Market и сторонних площадок.',
-          'Кроме портфеля на сайте есть маркет-эксплорер, лидеры позиций, лента новостей из Telegram и калькулятор ROI Armory Pass. Подключите Steam через OpenID, откройте чужой публичный профиль по ссылке или создайте ручной портфель.',
+          'SkinsHead собирает рынок скинов CS2 в одном месте: свой портфель с live-оценкой, себестоимостью, P&L и распределением, маркет с ценами, коллекции, китов, ROI Armory Pass и новости из Telegram.',
+          'Портфель подключается через Steam OpenID, открывается по ссылке на публичный профиль или собирается вручную. Хранилища читает бесплатное расширение для браузера. Цены берутся со Steam Community Market и сторонних площадок.',
           priceLine
             ? `Портфель, маркет, Armory, новости и хранилища бесплатны. Список китов и лента их сделок тоже открыты. Аналитика по их позициям, сигналы и алерты в Telegram — ${priceLine}.`
             : 'Портфель, маркет, Armory, новости и хранилища бесплатны. Список китов и лента их сделок тоже открыты. Аналитика по их позициям, сигналы и алерты в Telegram оплачиваются отдельно.',
         ],
       }
     : {
-        title: 'CS2 skin portfolio tracker',
-        sub: 'SkinsHead — Steam inventory tracker and Counter-Strike 2 price analytics',
+        title: 'The CS2 skin market',
+        sub: 'SkinsHead — portfolio, market, whales, and Counter-Strike 2 analytics',
         paragraphs: [
-          'SkinsHead treats CS2 skins as a portfolio: live inventory valuation, cost basis, P&L, allocation by type, and per-item price history. Prices come from the Steam Community Market and major third-party marketplaces.',
-          'Beyond the portfolio you get a market explorer, portfolio leaders, Telegram news, and an Armory Pass ROI board. Link Steam via OpenID, open any public profile URL, or keep a manual portfolio.',
+          'SkinsHead puts the CS2 skin market in one place: your portfolio with live valuation, cost basis, P&L, and allocation, plus market prices, collections, whale holdings, Armory Pass ROI, and Telegram news.',
+          'Link a portfolio through Steam OpenID, open a public profile URL, or build one by hand. A free browser extension reads Storage Units. Prices come from the Steam Community Market and major third-party marketplaces.',
           priceLine
             ? `The portfolio, market, Armory, news, and Storage Units are free. The whale account list and their trade feed are open too. Position analytics, signals, and Telegram alerts are ${priceLine}.`
             : 'The portfolio, market, Armory, news, and Storage Units are free. The whale account list and their trade feed are open too. Position analytics, signals, and Telegram alerts are a paid plan.',
@@ -1506,7 +1508,7 @@ function SeoIntro({ lang }) {
 /* FAQ */
 const FAQ_ITEMS = {
   en: [
-    { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin portfolio tracker. It values a Steam inventory with live market prices and shows P&L, cost basis, allocation, market explorer, Armory Pass ROI, and Telegram news in one place.' },
+    { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin market. It values a Steam inventory with live prices and P&L, and also covers market prices, whale holdings, collections, Armory Pass ROI, and Telegram news.' },
     { q: 'How do I track a portfolio?', a: 'Link Steam with OpenID, paste a public profile URL, or create a manual portfolio and add purchases. SkinsHead prices items and surfaces leaders, 24h change, and inventory breakdown.' },
     { q: 'How do I add my Storage Units?', a: 'Public Steam inventories exclude Storage Units. Install the free SkinsHead browser extension for Chrome, Edge, Brave or Opera, enter the code from your portfolio and sign in to Steam with a QR code. The extension reads the Storage Units and adds every item to your portfolio.' },
     { q: 'Where do prices come from?', a: 'Portfolio value is a cash-market mark: the median of lowest asks on Skinport, Market.CSGO, and LIS-Skins. Steam Community Market stays as a list price and a fallback when those quotes are missing. Each item page shows offers and history from the providers we could reach.' },
@@ -1516,7 +1518,7 @@ const FAQ_ITEMS = {
     { q: 'Are you affiliated with Valve?', a: 'No. SkinsHead is an independent project and is not affiliated with Steam, Valve, or Counter-Strike.' },
   ],
   ru: [
-    { q: 'Что такое SkinsHead?', a: 'SkinsHead — трекер портфеля скинов CS2. Сервис оценивает инвентарь Steam по live-ценам и показывает P&L, себестоимость, распределение, маркет, ROI Armory Pass и новости из Telegram в одном месте.' },
+    { q: 'Что такое SkinsHead?', a: 'SkinsHead — рынок скинов CS2. Сервис оценивает инвентарь Steam по live-ценам и показывает P&L, а ещё маркет, китов, коллекции, ROI Armory Pass и новости из Telegram.' },
     { q: 'Как отслеживать портфель?', a: 'Привяжите Steam через OpenID, вставьте ссылку на публичный профиль или создайте ручной портфель и добавьте покупки. SkinsHead оценит предметы и покажет лидеров, изменение за 24ч и разбивку инвентаря.' },
     { q: 'Как добавить Хранилища?', a: 'Публичный инвентарь Steam не включает Хранилища. Установите бесплатное расширение SkinsHead для Chrome, Edge, Brave, Opera или Яндекс Браузера, введите код из портфеля и войдите в Steam по QR. Расширение прочитает Хранилища и добавит все предметы в портфель.' },
     { q: 'Откуда берутся цены?', a: 'Стоимость портфеля — оценка по сторонним маркетам: медиана нижних ask на Skinport, Market.CSGO и LIS-Skins. Steam Community Market остаётся ценником и запасным источником, если котировок нет. На карточке предмета видны предложения и история цен из источников, до которых удалось достучаться.' },
@@ -1675,8 +1677,8 @@ function Footer({ lang }) {
           <Logo />
           <p style={{ marginTop: 16, color: 'var(--fg-2)', fontSize: 12.5, lineHeight: 1.6, maxWidth: 320 }}>
             {lang === 'ru'
-              ? 'Независимый трекер портфеля скинов CS2 на skinshead.pro: live-цены, P&L, маркет, Armory ROI и Хранилища через расширение для браузера. Не аффилирован со Steam, Valve или Counter-Strike.'
-              : 'Independent CS2 skin portfolio tracker at skinshead.pro: live prices, P&L, market explorer, Armory ROI and Storage Units via a browser extension. Not affiliated with Steam, Valve, or Counter-Strike.'}
+              ? 'Независимая аналитика рынка скинов CS2 на skinshead.pro: портфель и P&L, маркет, киты, коллекции, Armory ROI и Хранилища через расширение. Не аффилирован со Steam, Valve или Counter-Strike.'
+              : 'Independent CS2 skin market at skinshead.pro: portfolio and P&L, market prices, whales, collections, Armory ROI, and Storage Units via a browser extension. Not affiliated with Steam, Valve, or Counter-Strike.'}
           </p>
           <a
             href="/support"

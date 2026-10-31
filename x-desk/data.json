@@ -17,6 +17,7 @@
   },
   "rules": [
     "1 свой пост в день, окно 19:30 МСК. С 2 ноя второй пост в тот же день можно, третий нет: понедельник — сводка бота в 14:00, другой день — один сильный сигнал",
+    "Сленг рынка CS2, не трейдинг-деска. Не писать: mark, book, bag, fill, lift the offer, booth, long, the cut, sticker в значении ценника. Писать: inventory, entry (что заплатил), listings, floor, cash out, overpay и SP% для наклеенных стикеров, craft. Buff — кэш-ориентир, по нему смотрят цену. Steam — кошелёк: комиссия 15% (5% Steam + 10% CS2), вывести нельзя. Buy — обычное слово; в сигнале бота по-прежнему не buy. Float, фазу Doppler, blue gem, FN/MW/FT писать только если пост про них. Задержку публичного инвентаря ~10 дней не называть trade hold и не называть trade protection: protection — это 7 дней после трейда, предмет можно реверснуть. Souvenir — тип скина, не метафора. Quicksell — продажа ниже рынка за скорость, не любая продажа",
     "15–20 реплаев, пауза 2–4 мин, английский, свои мысли",
     "Ссылку в тело поста не ставить",
     "Свои посты — текст. С 23 сен картинка только если у поста в столе есть пометка «кадр» или «рил»",
@@ -89,7 +90,7 @@
     },
     "priority": {
       "label": "Упор",
-      "note": "8–10 из квоты. Pricempire — только цифры. ohne — Update, не основной. Под китом на X — activity ≠ your basis. Если спросят, где список: сайт в профиле, ссылку один раз. Долю и сигнал бесплатно не обещать",
+      "note": "8–10 из квоты. Pricempire — только цифры. ohne — Update, не основной. Под китом на X — их движение ≠ твой entry. Не mark, book, fill, lift. Если спросят, где список: сайт в профиле, ссылку один раз. Долю и сигнал бесплатно не обещать",
       "handles": [
         "pricempire",
         "cs2insiderX",
@@ -104,7 +105,7 @@
     },
     "quiet": {
       "label": "Магазины · 2–3",
-      "note": "На все вместе в день. Только рынок, не витрина и не гив. Текст — fill/P&L. GreenFire — не buy-посты",
+      "note": "На все вместе в день. Только рынок, не витрина и не гив. Текст — кэш-цена, overpay, P&L. Не fill. GreenFire — не buy-посты",
       "handles": [
         "lisskins",
         "tradeit_gg",
@@ -122,7 +123,7 @@
         "key": "now",
         "tone": "good",
         "label": "Сейчас · клин",
-        "note": "Steam — ценник. Портфель — P&L после налога и маркета. С 20 сен в ленте: два марка, sellable, стикеры, кэш. Ссылку не ставить."
+        "note": "Steam — кошелёк, 15%, без cash out. Портфель — P&L после комиссии и кэш-цены. С 20 сен в ленте: Steam против кэша, sellable, стикеры как overpay, кэш. Ссылку не ставить."
       },
       {
         "key": "replies",
@@ -1500,8 +1501,8 @@
         "n": 70,
         "time": "19:30",
         "pinned": false,
-        "text": "A listed skin has two owners in the story.\n\nYou, who might buy it. And the accounts already sitting on a pile of the same name.\n\nThe list of those accounts is on the site. What share of the listings they are is the paid read — $5 for 30 days, or $2.99 if you only want three.\n\nIf they start selling, your entry is their exit.\n\nWhose inventory is the offer you are about to lift?",
-        "textRu": "У выставленного скина в этой истории два владельца.\n\nТы, который может его купить. И аккаунты, которые уже сидят на стопке того же имени.\n\nСписок этих аккаунтов на сайте. Какую долю листингов они составляют — платное чтение: $5 за 30 дней или $2.99, если нужны только три.\n\nЕсли они начнут продавать, твой вход — их выход.\n\nЧей инвентарь — оффер, который ты сейчас снимешь?"
+        "text": "A listed skin has two holders.\n\nYou, about to buy it. And the accounts already sitting on a stack of the same skin.\n\nThe list of those accounts is on the site. What share of the listings they hold is the paid read — $5 for 30 days, or $2.99 if you only want three.\n\nIf they start selling, your entry is their exit.\n\nWhose inventory is the listing you're about to buy?",
+        "textRu": "У выставленного скина два держателя.\n\nТы, который сейчас может его купить. И аккаунты, которые уже сидят на стеке того же скина.\n\nСписок этих аккаунтов на сайте. Какую долю листингов они держат — платное чтение: $5 за 30 дней или $2.99, если нужны только три.\n\nЕсли они начнут продавать, твой вход — их выход.\n\nЧей инвентарь — листинг, который ты сейчас купишь?"
       },
       "notes": "Не закреплять, только текст. Список открыт, доля платная. Цены EN один раз на весь план. Пейвол и аналитику не снимать. Конкретный скин не называть."
     },
@@ -1515,8 +1516,8 @@
         "time": "19:30",
         "pinned": false,
         "shot": "still",
-        "text": "The percent looks like a result.\n\nCost basis under it is the only thing that makes the percent true.\n\nIf that line is empty, the P&L is a costume on a price tag.\n\nWhat’s the basis — or are you still celebrating the sticker?",
-        "textRu": "Процент выглядит как результат.\n\nСебестоимость под ним — единственное, что делает процент правдой.\n\nЕсли эта строка пустая, P&L — костюм на ценнике.\n\nКакая база — или ты всё ещё празднуешь наклейку?",
+        "text": "The percent looks like a result.\n\nYour entry is the only thing that makes it true. On the card that line is cost basis — what you paid.\n\nIf the line is empty, the P&L is just today's price.\n\nWhat's the entry — or are you still counting the Steam price?",
+        "textRu": "Процент выглядит как результат.\n\nВход — единственное, что делает его правдой. На карточке эта строка называется cost basis: сколько ты заплатил.\n\nЕсли строка пустая, P&L — просто сегодняшняя цена.\n\nКакой вход — или ты всё ещё считаешь цену Steam?",
         "visual": "Свой Steam-портфель, не ручной. Обзор → карточка All-time P&L, под ней строка Cost basis. Если база нулевая или пустая — так и снимай. Не карточка ручного портфеля с Unrealized / Realized — это пост 36."
       },
       "notes": "Не закреплять. Cost basis на Steam-карточке. Не ручной P&L (пост 36) и не пустой Basis в таблице (пост 63)."
@@ -1531,15 +1532,15 @@
         "time": "19:30",
         "pinned": false,
         "shot": "still",
-        "text": "Steam is one booth.\n\nThe comparison is the rest of the market for the same name.\n\nIf you mark the skin off the booth you opened first, you marked a venue, not a bid.\n\nWhich booth would actually fill?",
-        "textRu": "Steam — один прилавок.\n\nСравнение — остальной рынок того же имени.\n\nЕсли ты оценил скин по прилавку, который открыл первым, ты оценил площадку, не бид.\n\nКакой прилавок реально заполнится?",
+        "text": "Steam is wallet money.\n\nIt takes 15% and you can't cash it out. The other row is what a cash site pays for the same skin.\n\nIf you priced it off Steam because that row was first, you priced a site, not the sale.\n\nWhich number could you actually cash out?",
+        "textRu": "Steam — это деньги кошелька.\n\nОн забирает 15%, и вывести их нельзя. Другая строка — сколько за тот же скин платит кэш-площадка.\n\nЕсли ты оценил по Steam, потому что строка была первой, ты оценил площадку, не продажу.\n\nКакую цифру ты реально мог бы вывести?",
         "visual": "Карточка предмета, сайт на EN. Блок Marketplace comparison: Steam и хотя бы ещё одна площадка с ценой. Кроп только этого блока. Float, выбор износа и кнопку Steam Market не бери."
       },
       "extra": {
         "time": "14:00",
         "title": "сводка бота",
-        "text": "Week on the watchlist.\n\n$____ across __ accounts.\nGains: __. Exits: __. New control: __.\n\nAdded: ____, ____.\nLeft: ____, ____.\n\nA same-day plus out of a storage unit is not on this list.\n\nAre you marking their move, or your own basis?",
-        "textRu": "Неделя по вотчлисту.\n\n$____ в __ аккаунтах.\nПриросты: __. Выходы: __. Новый контроль: __.\n\nПрибавили: ____, ____.\nУшло: ____, ____.\n\nПлюс в тот же день из хранилища в этот список не входит.\n\nТы отмечаешь их движение или свою базу?",
+        "text": "Week on the watchlist.\n\n$____ across __ accounts.\nGains: __. Exits: __. New control: __.\n\nAdded: ____, ____.\nLeft: ____, ____.\n\nA same-day plus out of a storage unit is not on this list.\n\nAre you pricing their move, or your own entry?",
+        "textRu": "Неделя по вотчлисту.\n\n$____ в __ аккаунтах.\nПриросты: __. Выходы: __. Новый контроль: __.\n\nПрибавили: ____, ____.\nУшло: ____, ____.\n\nПлюс в тот же день из хранилища в этот список не входит.\n\nТы оцениваешь их движение или свой вход?",
         "visual": "Цифры и имена подставить из Telegram за это утро, после 12:00 МСК. Бэктест и ссылку не переносить. Если сводки нет — доп не публиковать. Картинка не обязательна. Если ставишь — один предмет из прироста или слива, сам скин, без сайта и без скрина чата."
       },
       "notes": "Не закреплять. 14:00 сводка бота — второй пост, шаблон в extra. 19:30 сравнение площадок. Не два ценника в строке портфеля (пост 64). Float не снимать."
@@ -1554,8 +1555,8 @@
         "time": "19:30",
         "pinned": false,
         "shot": "still",
-        "text": "The total moved.\n\nActivity is the only place that says whether you bought, sold, or the price just walked.\n\nA new number with an empty history is a mark, not a trade.\n\nDid you do something — or did the screen?",
-        "textRu": "Тотал сдвинулся.\n\nИстория — единственное место, где видно, купил ты, продал или цена просто ушла.\n\nНовая цифра при пустой истории — это оценка, не сделка.\n\nТы что-то сделал — или это экран?",
+        "text": "The total moved.\n\nActivity is the only place that says whether you bought, sold, or the price just moved.\n\nA new number with an empty history is a price, not a trade.\n\nDid you do something — or did the screen?",
+        "textRu": "Тотал сдвинулся.\n\nИстория — единственное место, где видно: ты купил, продал или просто цена ушла.\n\nНовая цифра при пустой истории — это цена, не сделка.\n\nТы что-то сделал — или это экран?",
         "visual": "Портфель → Activity, сайт на EN. Одна строка, где видно, что количество изменилось: покупка, продажа или смена Qty. Если история пустая — не выдумывай строку. Тогда предметы, сортировка по P&L, кроп одной красной ячейки P&L и имени."
       },
       "notes": "Не закреплять. Сделка против движения цены. Если Activity пустая — запасной кроп P&L, не выдумывать строку."
@@ -1570,8 +1571,8 @@
         "time": "19:30",
         "pinned": false,
         "shot": "still",
-        "text": "Open someone else’s profile and the line says public Steam.\n\nYour book says the drawer is in it.\n\nThey are not the same inventory. You have been comparing them anyway.\n\nWhich one did you quote last?",
-        "textRu": "Открой чужой профиль — строка говорит public Steam.\n\nТвоя книга говорит, что ящик в ней есть.\n\nЭто не один инвентарь. Ты всё равно их сравнивал.\n\nКакой из них ты назвал в последний раз?",
+        "text": "Open someone else’s profile and the line says public Steam.\n\nYours includes storage units. Theirs doesn’t show them.\n\nThose are not the same inventory.\n\nWhich one did you price?",
+        "textRu": "Открой чужой профиль — строка говорит public Steam.\n\nВ твоём есть хранилища. В чужом их не видно.\n\nЭто не один инвентарь.\n\nКакой из них ты оценил?",
         "visual": "Чужой публичный профиль, сайт на EN. Кроп строки источника «public Steam» и счётчика ITEMS. Имя профиля обрежь. Строки storage на публичном профиле нет — не подменяй кадр своим портфелем."
       },
       "notes": "Не закреплять. Чужой публичный профиль без имени. Не свой «full inventory · Storage» (пост 60)."
@@ -1585,8 +1586,8 @@
         "n": 75,
         "time": "19:30",
         "pinned": false,
-        "text": "A plus in a public bag is not a buy.\n\nSteam hides a real purchase for about ten days. Emptying a storage unit into the same bag shows up the same afternoon.\n\nThe screenshot is identical. The trade is not.\n\nWhich plus did you just treat as a fill?",
-        "textRu": "Плюс в публичном инвентаре — не покупка.\n\nSteam прячет настоящую покупку около десяти дней. Вывод из хранилища в тот же инвентарь виден в тот же день.\n\nСкриншот один и тот же. Сделка — нет.\n\nКакой плюс ты только что принял за филл?"
+        "text": "A plus in a public inventory is not a buy.\n\nSteam hides a real purchase for about ten days. Moving a skin out of a storage unit into the same inventory shows up the same afternoon.\n\nThe screenshot looks the same. The trade does not.\n\nWhich plus did you just count as a buy?",
+        "textRu": "Плюс в публичном инвентаре — не покупка.\n\nSteam прячет настоящую покупку около десяти дней. Перенос из хранилища в тот же инвентарь виден в тот же день.\n\nСкриншот один. Сделка — нет.\n\nКакой плюс ты только что посчитал покупкой?"
       },
       "notes": "Не закреплять, только текст. Плюс ≠ покупка. «Скупку» не говорить. Steam Market и сторонний обмен не различать. Имя скина не называть. Бэктест не заявлять."
     },
@@ -1600,8 +1601,8 @@
         "time": "19:30",
         "pinned": false,
         "shot": "still",
-        "text": "Sort by P&L and the red row is still a position.\n\nYou talk about the green one.\n\nThe book does not sort itself by what you remember.\n\nWhat’s the worst row still in the bag — in money, not in the story?",
-        "textRu": "Отсортируй по P&L — красная строка всё ещё позиция.\n\nТы говоришь о зелёной.\n\nКнига не сортируется по тому, что ты помнишь.\n\nКакая худшая строка всё ещё в портфеле — деньгами, не историей?",
+        "text": "Sort by P&L and the red row is still in the inventory.\n\nYou talk about the green one.\n\nThe list doesn’t reorder itself around the skin you remember.\n\nWhat’s the worst row still in there — in money, not in the story?",
+        "textRu": "Отсортируй по P&L — красная строка всё ещё в инвентаре.\n\nТы говоришь о зелёной.\n\nСписок не перестраивается вокруг скина, который ты помнишь.\n\nКакая худшая строка всё ещё там — деньгами, не историей?",
         "visual": "Портфель → предметы, сайт на EN, сортировка по P&L, худшие сверху или так, чтобы красная строка была в кропе. Кроп имени и колонки P&L. Worst movers не снимай — это пост 48. Float не снимать."
       },
       "notes": "Не закреплять. Красная строка в таблице. Не блок Worst movers (пост 48)."
@@ -1616,8 +1617,8 @@
         "time": "19:30",
         "pinned": false,
         "shot": "still",
-        "text": "The top row is a number.\n\nThe book is every row under it.\n\nIf the first line is half the bag, the screenshot of that line is not a portfolio.\n\nHow far is row two from row one — and which one do you actually talk about?",
-        "textRu": "Верхняя строка — это цифра.\n\nКнига — это каждая строка под ней.\n\nЕсли первая строка — половина портфеля, скрин этой строки — не портфель.\n\nНасколько вторая далеко от первой — и о какой ты на самом деле говоришь?",
+        "text": "The top row is one skin.\n\nThe inventory is every row under it.\n\nIf the first line is half the inventory, a screenshot of that line is not the inventory.\n\nHow far is row two from row one — and which one do you actually talk about?",
+        "textRu": "Верхняя строка — один скин.\n\nИнвентарь — каждая строка под ней.\n\nЕсли первая строка — половина инвентаря, скрин этой строки — не инвентарь.\n\nНасколько вторая далеко от первой — и о какой ты на самом деле говоришь?",
         "visual": "Портфель → предметы, сайт на EN, сортировка по Value. Кроп двух верхних строк: имя и Value, чтобы был виден разрыв между первой и второй. Portfolio leaders не снимай — это пост 65. Float не снимать."
       },
       "notes": "Не закреплять. Разрыв первой и второй строки. Не блок Leaders (пост 65)."
@@ -1632,8 +1633,8 @@
         "time": "19:30",
         "pinned": false,
         "shot": "still",
-        "text": "The names are public.\n\nWhat they hold, and how much of the listed supply that is, is not a free screenshot.\n\nYou can watch the accounts. You pay to read the position.\n\nWhich one were you doing — watching, or guessing the size?",
-        "textRu": "Имена открыты.\n\nЧто они держат и какую долю выставленного это составляет — не бесплатный скрин.\n\nАккаунты можно смотреть. За позицию платят.\n\nТы смотрел или угадывал размер?",
+        "text": "The names are public.\n\nWhat they hold, and how much of the listings that is, is not a free screenshot.\n\nYou can watch the accounts. You pay to see the size.\n\nWere you watching, or guessing the size?",
+        "textRu": "Имена открыты.\n\nЧто они держат и какую долю листингов это составляет — не бесплатный скрин.\n\nАккаунты можно смотреть. За размер платят.\n\nТы смотрел или угадывал размер?",
         "visual": "Киты → вкладка аккаунтов и ленты, сайт на EN. Кроп списка аккаунтов. Один инвентарь не открывать. Вкладку аналитики, пейвол, сигналы и блок «пример сигнала» на главной не снимать."
       },
       "notes": "Не закреплять. Имена открыты, размер позиции нет. Не аналитика и не пейвол."
@@ -1647,14 +1648,14 @@
         "n": 79,
         "time": "19:30",
         "pinned": false,
-        "text": "The sticker is not a footnote.\n\nIt is capital glued to a skin, with its own bid and no separate row.\n\nIf you marked the gun and ignored the plastic, you marked a fraction.\n\nWhat’s the sticker worth without the skin under it?",
-        "textRu": "Стикер — не сноска.\n\nЭто капитал, приклеенный к скину, со своим бидом и без отдельной строки.\n\nЕсли ты оценил оружие и не заметил пластик, ты оценил долю.\n\nСколько стоит стикер без скина под ним?"
+        "text": "Applied stickers are not a footnote.\n\nThey have no listing of their own. The market pays overpay: a percent of the sticker price, SP%, on top of the skin. Not the sticker’s full price.\n\nIf you priced the gun and skipped the craft, you priced a fraction.\n\nScraping doesn’t cash the stickers out. It deletes them.",
+        "textRu": "Наклеенные стикеры — не сноска.\n\nСвоего листинга у них нет. Рынок платит оверпей: процент цены стикера, SP%, сверху скина. Не полную цену стикера.\n\nЕсли ты оценил оружие и пропустил крафт, ты оценил долю.\n\nСкрап не выводит стикеры в кэш. Он их удаляет."
       },
       "extra": {
         "time": "14:00",
         "title": "сводка бота",
-        "text": "Week on the watchlist.\n\n$____ across __ accounts.\nGains: __. Exits: __. New control: __.\n\nAdded: ____, ____.\nLeft: ____, ____.\n\nA same-day plus out of a storage unit is not on this list.\n\nAre you marking their move, or your own basis?",
-        "textRu": "Неделя по вотчлисту.\n\n$____ в __ аккаунтах.\nПриросты: __. Выходы: __. Новый контроль: __.\n\nПрибавили: ____, ____.\nУшло: ____, ____.\n\nПлюс в тот же день из хранилища в этот список не входит.\n\nТы отмечаешь их движение или свою базу?",
+        "text": "Week on the watchlist.\n\n$____ across __ accounts.\nGains: __. Exits: __. New control: __.\n\nAdded: ____, ____.\nLeft: ____, ____.\n\nA same-day plus out of a storage unit is not on this list.\n\nAre you pricing their move, or your own entry?",
+        "textRu": "Неделя по вотчлисту.\n\n$____ в __ аккаунтах.\nПриросты: __. Выходы: __. Новый контроль: __.\n\nПрибавили: ____, ____.\nУшло: ____, ____.\n\nПлюс в тот же день из хранилища в этот список не входит.\n\nТы оцениваешь их движение или свой вход?",
         "visual": "Тот же шаблон, что 2 ноя. Цифры из утреннего сообщения бота. Бэктест и ссылку не переносить. Нет сводки — нет поста."
       },
       "notes": "Не закреплять. 14:00 сводка бота. 19:30 стикер как капитал, перенесён с 5 ноя. Не allocation by type (пост 37)."
@@ -1668,10 +1669,10 @@
         "n": 80,
         "time": "19:30",
         "pinned": false,
-        "text": "An alert is someone else's inventory moving.\n\nIt is not your cost basis and it is not a fill.\n\nIt arrives while the plan is on. It stops when the plan stops.\n\nDid you want the move, or a reason?",
-        "textRu": "Алерт — это чужой инвентарь, который движется.\n\nЭто не твоя база и не филл.\n\nОн приходит, пока план включён. Он кончается вместе с планом.\n\nТебе нужно было движение или повод?"
+        "text": "An alert is someone else's inventory moving.\n\nIt is not your entry. It is not a buy you made.\n\nIt shows up while the plan is on. It stops when the plan stops.\n\nDid you want the move, or a reason?",
+        "textRu": "Алерт — это чужой инвентарь, который движется.\n\nЭто не твой вход. Это не твоя покупка.\n\nОн приходит, пока план включён. Он кончается вместе с планом.\n\nТебе нужно было движение или повод?"
       },
-      "notes": "Не закреплять, только текст. Бота хэндлом не называть. Алерт ≠ база и ≠ филл. Плюс в публичном инвентаре не называть покупкой: это может быть хранилище. Ссылку не ставить."
+      "notes": "Не закреплять, только текст. Бота хэндлом не называть. Алерт ≠ entry и ≠ твоя покупка. Плюс в публичном инвентаре не называть покупкой: это может быть хранилище. Ссылку не ставить."
     },
     {
       "date": "2026-11-11",
@@ -1683,8 +1684,8 @@
         "time": "19:30",
         "pinned": false,
         "shot": "still",
-        "text": "The chart on the skin is the market's memory.\n\nYours is the day you paid.\n\nThey can share a shape and still be different trades.\n\nWhose line are you holding?",
-        "textRu": "График на скине — память рынка.\n\nТвой — день, когда ты заплатил.\n\nУ них может быть одна форма и всё равно разные сделки.\n\nЧью линию ты держишь?",
+        "text": "The chart on the skin is what the market paid.\n\nYours is the day you bought.\n\nThey can share a shape and still be different trades.\n\nAre you holding the market's line, or your entry?",
+        "textRu": "График на скине — что платил рынок.\n\nТвой — день, когда ты купил.\n\nФорма может совпасть, а сделки всё равно разные.\n\nТы держишь линию рынка или свой вход?",
         "visual": "Карточка предмета, сайт на EN. Кроп графика цены, один диапазон. Float, офферы, сравнение площадок и блок китов под графиком не бери. Если вместо графика пейвол — кадр не снимать, пост оставить текстом."
       },
       "notes": "Не закреплять. График предмета, не график портфеля (пост 69, рил 39). Блок китов не снимать."
@@ -1698,8 +1699,8 @@
         "n": 82,
         "time": "19:30",
         "pinned": false,
-        "text": "Your row and their row can be the same name.\n\nYours has a basis. Theirs is a pile sitting on the listings.\n\nIf the pile is most of what is offered, your P&L is a guest in their inventory.\n\nAre you long the skin, or long their willingness to keep it?",
-        "textRu": "Твоя строка и их строка могут быть одним именем.\n\nУ тебя база. У них стопка на листингах.\n\nЕсли стопка — большая часть того, что выставлено, твой P&L гостит в их инвентаре.\n\nТы в лонге на скин или на их готовность его держать?"
+        "text": "Your row and theirs can be the same skin.\n\nYours has an entry. Theirs is a stack on the listings.\n\nIf that stack is most of what's listed, your P&L is sitting in their inventory.\n\nAre you holding the skin, or their choice not to sell?",
+        "textRu": "Твоя строка и их строка могут быть одним скином.\n\nУ тебя вход. У них стек на листингах.\n\nЕсли этот стек — большая часть того, что выставлено, твой P&L сидит в их инвентаре.\n\nТы держишь скин или их решение не продавать?"
       },
       "notes": "Не закреплять, только текст. Виджет китов на предмете не снимать."
     },
@@ -1713,8 +1714,8 @@
         "time": "19:30",
         "pinned": false,
         "shot": "still",
-        "text": "The pass has a number and a clock.\n\nROI is what the stars returned. Days remaining is how long that number still has to be true.\n\nA percent without a date is a souvenir of a season that already ended.\n\nWhich one did you screenshot — the return, or the time left?",
-        "textRu": "У пасса есть цифра и часы.\n\nROI — это что вернули звёзды. Days remaining — сколько эта цифра ещё обязана быть правдой.\n\nПроцент без даты — сувенир сезона, который уже кончился.\n\nЧто ты снял — доходность или сколько осталось?",
+        "text": "The pass has a number and a clock.\n\nROI is what the stars returned. Days remaining is how long that number still has to stay true.\n\nA percent with no date is leftover from a pass that already ended.\n\nWhich one did you screenshot — the return, or the time left?",
+        "textRu": "У пасса есть цифра и часы.\n\nROI — что вернули звёзды. Days remaining — сколько эта цифра ещё должна оставаться правдой.\n\nПроцент без даты — остаток пасса, который уже кончился.\n\nЧто ты снял — доходность или сколько осталось?",
         "visual": "/armory, сайт на EN. Один тайл: имя, Star ROI и days remaining. Сетку целиком, переключатель валют и тулбар не бери."
       },
       "notes": "Не закреплять. Один тайл Armory, не вся сетка."
@@ -1728,8 +1729,8 @@
         "n": 84,
         "time": "19:30",
         "pinned": false,
-        "text": "The week of quotes is not a position.\n\nA position is basis, size, and whether it can leave.\n\nYou have been collecting the first screen.\n\nWhich of those three is still a guess?",
-        "textRu": "Неделя котировок — не позиция.\n\nПозиция — это база, размер и может ли она уйти.\n\nТы собирал первый экран.\n\nКакая из этих трёх всё ещё догадка?"
+        "text": "A week of prices is not a position.\n\nA position is your entry, the size, and whether you can sell it.\n\nYou've been collecting the first screen.\n\nWhich of those three is still a guess?",
+        "textRu": "Неделя цен — не позиция.\n\nПозиция — это вход, размер и можешь ли ты это продать.\n\nТы собирал первый экран.\n\nКакая из этих трёх всё ещё догадка?"
       },
       "notes": "Не закреплять, только текст. Клин, не киты и не цены."
     }
