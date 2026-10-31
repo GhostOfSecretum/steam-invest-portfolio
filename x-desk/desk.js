@@ -192,6 +192,7 @@ function renderDays(data) {
     const extra = [
       d.post && d.post.pinned && !(d.label || '').includes('закреп') ? 'закреп' : '',
       d.post && d.post.media ? mediaLabel(d.post.media) : '',
+      d.extra ? `ещё ${d.extra.time || ''} ${d.extra.title || ''}`.trim() : '',
       shotLabel(d.post),
     ].filter(Boolean);
     const titleExtra = extra.length ? ` · ${extra.join(' · ')}` : '';
@@ -247,6 +248,24 @@ function buildPostCard(day, data, idSuffix) {
   return { html, copyId, text: day.post.text, pinHint, date: day.date, label: day.label, n: day.post.n, time: day.post.time };
 }
 
+function extraCard(day, idSuffix) {
+  const extra = day && day.extra;
+  if (!extra || !extra.text) return { html: '', copyId: '', text: '' };
+  const copyId = `copy-extra-${idSuffix}`;
+  const ru = extra.textRu
+    ? `<div class="post-col ru"><div class="post-kicker">смысл</div><pre class="post-text">${esc(extra.textRu)}</pre></div>`
+    : '';
+  const html = `
+    <header style="margin-top:18px">
+      <h2>Доп · ${esc(extra.title || 'второй пост')}</h2>
+      <span class="hint">${esc(extra.time || '')} МСК · не закреплять</span>
+    </header>
+    ${extra.visual ? `<p class="shot">${esc(extra.visual)}</p>` : ''}
+    <div class="post-pair"><div class="post-col"><div class="post-kicker">пост</div><pre class="post-text">${esc(extra.text)}</pre></div>${ru}</div>
+    <button type="button" class="copy" id="${copyId}">Скопировать доп</button>`;
+  return { html, copyId, text: extra.text };
+}
+
 function renderNext(data) {
   const today = plannedToday(data);
   const next = plannedNext(data);
@@ -256,13 +275,16 @@ function renderNext(data) {
 
   if (today && today.post) {
     const c = buildPostCard(today, data, 'today');
+    const extra = extraCard(today, 'today');
     todayCard.innerHTML = `
       <header>
         <h2>Сегодня · ${c.label} · пост ${c.n}</h2>
         <span class="hint">${c.date.slice(5)} · ${c.time} МСК · ${c.pinHint}</span>
       </header>
-      ${c.html}`;
+      ${c.html}
+      ${extra.html}`;
     bindCopy($('copy-post-today'), c.text);
+    bindCopy($(extra.copyId), extra.text);
     todayCard.style.display = '';
   } else {
     todayCard.innerHTML = `<header><h2>Сегодня</h2></header><p class="empty">Пост на сегодня не запланирован</p>`;
@@ -271,13 +293,16 @@ function renderNext(data) {
 
   if (next && next.post) {
     const c = buildPostCard(next, data, 'next');
+    const extra = extraCard(next, 'next');
     nextCard.innerHTML = `
       <header>
         <h2>Завтра · ${c.label} · пост ${c.n}</h2>
         <span class="hint">${c.date.slice(5)} · ${c.time} МСК · ${c.pinHint}</span>
       </header>
-      ${c.html}`;
+      ${c.html}
+      ${extra.html}`;
     bindCopy($('copy-post-next'), c.text);
+    bindCopy($(extra.copyId), extra.text);
   } else {
     nextCard.innerHTML = `<header><h2>Завтра</h2></header><p class="empty">Плана нет</p>`;
   }
