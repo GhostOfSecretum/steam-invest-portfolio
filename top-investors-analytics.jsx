@@ -91,7 +91,7 @@ function TaKpis({ totals, t }) {
     {
       label: t('Чистый поток 7д', 'Net flow 7d'),
       value: taSigned(totals.flow7dUsd),
-      hint: t(`${totals.moves7d} движений`, `${totals.moves7d} moves`),
+      hint: t(`${totals.moves7d} сделок · только покупки с рынка и продажи`, `${totals.moves7d} trades · market buys and sales only`),
       color: totals.flow7dUsd > 0 ? 'var(--green)' : (totals.flow7dUsd < 0 ? 'var(--red)' : undefined),
     },
   ];
@@ -181,7 +181,7 @@ function TaBoostMap({ items, t, onOpenItem }) {
         </div>
       ) : null}
       <div className="ta-legend">
-        <span><i style={{ background: 'var(--green)' }} />{t('скупают за 7д', 'accumulating 7d')}</span>
+        <span><i style={{ background: 'var(--green)' }} />{t('прирост за 7д', 'gaining 7d')}</span>
         <span><i style={{ background: 'var(--red)' }} />{t('сливают за 7д', 'distributing 7d')}</span>
         <span><i style={{ background: 'var(--cyan)' }} />{t('без движения', 'no moves')}</span>
         <span>{t('размер = стоимость позиции', 'size = position value')}</span>
@@ -300,7 +300,7 @@ function TaFlowTimeline({ timeline, lang, t }) {
   const B = 24;
   const mid = T + (H - T - B) / 2;
   const half = (H - T - B) / 2;
-  const max = Math.max(1, ...timeline.map((day) => Math.max(day.inUsd, day.outUsd)));
+  const max = Math.max(1, ...timeline.map((day) => Math.max(day.inUsd + day.storageUsd + day.transferUsd, day.outUsd)));
   const step = W / timeline.length;
   const fmtDay = (day) => new Date(`${day}T00:00:00Z`).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'short' });
   const labelIdx = [0, Math.floor(timeline.length / 2), timeline.length - 1];
@@ -311,13 +311,21 @@ function TaFlowTimeline({ timeline, lang, t }) {
       {timeline.map((day, index) => {
         const inH = (day.inUsd / max) * half;
         const outH = (day.outUsd / max) * half;
+        const storageH = (day.storageUsd / max) * half;
+        const transferH = (day.transferUsd / max) * half;
         const x = index * step + step * 0.18;
         const bw = step * 0.64;
+        const extra = [
+          day.storageUsd ? `${t('хранилище', 'storage')} ${taMoney(day.storageUsd)}` : '',
+          day.transferUsd ? `${t('перекладки', 'transfers')} ${taMoney(day.transferUsd)}` : '',
+        ].filter(Boolean).join(' · ');
         return (
           <g key={day.day}>
-            <title>{`${fmtDay(day.day)}: +${taMoney(day.inUsd)} / −${taMoney(day.outUsd)} · ${day.moves}`}</title>
+            <title>{`${fmtDay(day.day)}: +${taMoney(day.inUsd)} / −${taMoney(day.outUsd)} · ${day.moves}${extra ? `\n${extra}` : ''}`}</title>
             <rect x={index * step} y={T} width={step} height={H - T - B} fill="transparent" />
             {inH > 0 ? <rect x={x} y={mid - inH} width={bw} height={inH} rx="2" fill="var(--green)" opacity="0.85" /> : null}
+            {storageH > 0 ? <rect x={x} y={mid - inH - storageH} width={bw} height={storageH} rx="2" fill="var(--cyan)" opacity="0.45" /> : null}
+            {transferH > 0 ? <rect x={x} y={mid - inH - storageH - transferH} width={bw} height={transferH} rx="2" fill="var(--amber)" opacity="0.55" /> : null}
             {outH > 0 ? <rect x={x} y={mid} width={bw} height={outH} rx="2" fill="var(--red)" opacity="0.85" /> : null}
           </g>
         );
@@ -328,6 +336,84 @@ function TaFlowTimeline({ timeline, lang, t }) {
         </text>
       ))}
     </svg>
+  );
+}
+
+function TaOrigins({ origins, t }) {
+  if (!origins) return null;
+  const cards = [
+    { key: 'buy', color: 'var(--green)', label: t('Реальные покупки', 'Real buys'), sign: '+' },
+    { key: 'sell', color: 'var(--red)', label: t('Продажи и выводы', 'Sales and exits'), sign: '−' },
+    { key: 'storage', color: 'var(--cyan)', label: t('Из хранилищ', 'From storage units'), sign: '' },
+    { key: 'transfer', color: 'var(--amber)', label: t('Перекладки между своими', 'Transfers between tracked'), sign: '' },
+  ];
+  const unlabeled = origins.unknown?.moves || 0;
+  return (
+    <div className="ta-origins">
+      {cards.map((card) => (
+        <div key={card.key} className="ta-origin" style={{ '--tone': card.color }}>
+          <span className="eyebrow">{card.label}</span>
+          <b>{card.sign}{taMoney(origins[card.key].usd)}</b>
+          <small>{origins[card.key].moves} {t('движ.', 'moves')} · {origins.days}{t('д', 'd')}</small>
+        </div>
+      ))}
+      {unlabeled ? (
+        <div className="ta-origins-note">
+          {t(
+            `${unlabeled} движений на ${taMoney(origins.unknown.usd)} без подтверждённой покупки — старые записи и смешанные. В прирост, поток и сигналы не входят.`,
+            `${unlabeled} moves worth ${taMoney(origins.unknown.usd)} are not confirmed buys — old records and mixed changes. Excluded from gains, flow and signals.`,
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TaHiddenBuys({ rows, lang, t, onOpenProfile }) {
+  if (!rows?.length) return <TaEmpty>{t('За 7 дней скрытых покупок не замечено.', 'No hidden buys spotted in 7 days.')}</TaEmpty>;
+  const fmt = (iso) => new Date(iso).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'short' });
+  return (
+    <div className="ta-links">
+      {rows.map((row) => (
+        <button key={row.steamId} type="button" className="ta-link ta-link-btn" onClick={() => onOpenProfile && onOpenProfile(row.profileUrl || row.steamId)}>
+          <div className="ta-link-pair">
+            <TaAvatarStack holders={[row]} />
+            <span>{taShortName(row.personaname, 22)}</span>
+            <b className="ta-hidden-count">+{row.added}</b>
+          </div>
+          <div className="ta-link-items">
+            {t(
+              `последний рост ${fmt(row.lastAt)} · станут видны ≈ ${fmt(row.revealAt)}${row.hidden != null ? ` · всего скрыто ${row.hidden}` : ''}`,
+              `last rise ${fmt(row.lastAt)} · visible ≈ ${fmt(row.revealAt)}${row.hidden != null ? ` · ${row.hidden} hidden total` : ''}`,
+            )}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TaTransfers({ transfers, nodesById, lang, t, onOpenItem }) {
+  if (!transfers?.length) return null;
+  const fmt = (iso) => new Date(iso).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'short' });
+  const name = (steamId) => taShortName(nodesById.get(steamId)?.personaname || steamId.slice(-6), 14);
+  return (
+    <div className="ta-flowlist">
+      <div className="eyebrow">{t('Последние перекладки между своими', 'Latest transfers between tracked accounts')}</div>
+      {transfers.map((row) => (
+        <button key={`${row.at}-${row.to}-${row.marketHashName}`} type="button" className="ta-flow-row" onClick={() => onOpenItem && onOpenItem(row.marketHashName)}>
+          <TaIcon src={row.iconUrl} />
+          <span className="ta-radar-copy">
+            <span className="ta-flow-name" title={row.marketHashName}>{row.marketHashName}</span>
+            <span className="ta-radar-meta">{name(row.from)} → {name(row.to)} · {fmt(row.at)}</span>
+          </span>
+          <span className="ta-flow-num" style={{ color: 'var(--amber)' }}>
+            {taMoney(row.usd)}
+            <small>×{row.qty}</small>
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -387,11 +473,12 @@ function TaNetwork({ network, t, onOpenProfile }) {
               key={`${link.a}-${link.b}`}
               d={`M${a.x},${a.y} Q${C},${C} ${b.x},${b.y}`}
               fill="none"
-              stroke={TA_GROUP_COLORS[a.node.group % TA_GROUP_COLORS.length]}
-              strokeWidth={1 + link.strength * 3}
+              stroke={link.transfers ? 'var(--amber)' : TA_GROUP_COLORS[a.node.group % TA_GROUP_COLORS.length]}
+              strokeWidth={1 + Math.min(link.strength, 1.5) * 3}
+              strokeDasharray={link.transfers ? '6 4' : undefined}
               opacity={isActive(link) ? 0.25 + Math.min(link.strength, 1) * 0.6 : 0.06}
             >
-              <title>{`${taPct(link.overlap)} · ${link.coMoves}`}</title>
+              <title>{`${taPct(link.overlap)} · ${link.coMoves}${link.transfers ? ` · ${t('перекладок', 'transfers')} ${link.transfers}` : ''}`}</title>
             </path>
           );
         })}
@@ -440,6 +527,11 @@ function TaLinkList({ network, t }) {
               <TaAvatarStack holders={[a, b].filter(Boolean)} />
               <span>{taShortName(a?.personaname, 16)} ↔ {taShortName(b?.personaname, 16)}</span>
             </div>
+            {link.transfers ? (
+              <div className="ta-link-meta" style={{ color: 'var(--amber)' }}>
+                {t(`🔁 ${link.transfers} перекладок напрямую · ${taMoney(link.transferUsd)} — вероятно один владелец`, `🔁 ${link.transfers} direct transfers · ${taMoney(link.transferUsd)} — likely one owner`)}
+              </div>
+            ) : null}
             <div className="ta-link-meta">
               {t('пересечение', 'overlap')} {taPct(link.overlap)}
               {link.coMoves ? ` · ${link.coMoves} ${t('совместных покупок за 48ч', 'joint buys within 48h')}` : ''}
@@ -489,7 +581,10 @@ function TaLeaderboard({ rows, lang, t, onOpenProfile, onOpenItem }) {
             {row.avatar ? <img src={row.avatar} alt="" /> : <i />}
             <span>
               <b>{row.personaname}</b>
-              <small>{row.itemCount} {t('поз.', 'pos.')} · {row.units.toLocaleString()} {t('шт', 'pcs')}</small>
+              <small>
+                {row.itemCount} {t('поз.', 'pos.')} · {row.units.toLocaleString()} {t('шт', 'pcs')}
+                {row.hiddenAdded7d ? <span style={{ color: 'var(--amber)' }}> · 🕵 +{row.hiddenAdded7d} {t('скрыто', 'hidden')}</span> : null}
+              </small>
             </span>
           </span>
           <span className="ta-board-num">{taMoney(row.valueUsd)}</span>
@@ -499,6 +594,11 @@ function TaLeaderboard({ rows, lang, t, onOpenProfile, onOpenItem }) {
           </span>
           <span className="ta-board-num" style={{ color: row.flow30Usd > 0 ? 'var(--green)' : (row.flow30Usd < 0 ? 'var(--red)' : 'var(--fg-2)') }}>
             {row.moves30 ? taSigned(row.flow30Usd) : '—'}
+            {row.storage30 || row.transfers30 ? (
+              <small className="ta-board-muted" style={{ display: 'block' }}>
+                {[row.storage30 ? `📦 ${row.storage30}` : '', row.transfers30 ? `🔁 ${row.transfers30}` : ''].filter(Boolean).join(' · ')}
+              </small>
+            ) : null}
           </span>
           <span className="ta-board-muted">{daysAgo(row.lastMoveAt)}</span>
           <span className="ta-board-items">
@@ -557,8 +657,8 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
         eyebrow="// BOOST RADAR"
         title={t('Где отслеживаемые аккаунты держат рынок', 'Where tracked accounts hold the market')}
         sub={t(
-          'Скор = 45% доля рыночного предложения у отслеживаемых аккаунтов + 25% сколько аккаунтов держат предмет + 30% сколько из них докупали за 7 дней. Высокий скор — кандидат на буст.',
-          'Score = 45% share of market supply held by tracked accounts + 25% how many accounts hold it + 30% how many of them bought more in 7 days. High score = boost candidate.',
+          'Скор = 45% доля рыночного предложения у отслеживаемых аккаунтов + 25% сколько аккаунтов держат предмет + 30% сколько из них купили его на рынке за 7 дней. Покупка — предмет был скрыт Steam и потом появился. Вывод из хранилища и перекладка в скор не входят.',
+          'Score = 45% share of market supply held by tracked accounts + 25% how many accounts hold it + 30% how many of them bought it on the market in 7 days. A buy is an item Steam hid and then revealed. Storage withdrawals and transfers are not scored.',
         )}
       >
         <div className="ta-radar">
@@ -578,12 +678,16 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
 
       <TaSection
         eyebrow="// FLOWS"
-        title={t('Smart money: что скупают и что сливают', 'Smart money: what they buy and dump')}
-        sub={t('Ежедневная сумма входов и выходов по всем аккаунтам за 30 дней, и лидеры потока за 7 дней.', 'Daily inflow and outflow across all accounts over 30 days, plus 7-day flow leaders.')}
+        title={t('Smart money: прирост и слив', 'Smart money: gains and dumps')}
+        sub={t(
+          'Зелёным — плюс в инвентаре только по подтверждённой покупке: предмет был скрыт около 10 дней и потом появился. Красным — продажи. Голубым — хранилище, жёлтым — перекладки между своими. Эти три в прирост, радар и сигналы не входят. Записи без метки источника тоже не считаются.',
+          'Green is an inventory plus only for a confirmed buy: the item was hidden for about 10 days and then appeared. Red is sales. Cyan is storage, yellow is transfers between tracked accounts. Those three are excluded from gains, the radar and signals. Untagged records are not counted either.',
+        )}
       >
         <TaFlowTimeline timeline={data.timeline} lang={lang} t={t} />
+        <TaOrigins origins={data.origins} t={t} />
         <div className="ta-flows">
-          <TaFlowList title={t('Скупают', 'Accumulating')} items={data.accumulating} t={t} onOpenItem={onOpenItem} />
+          <TaFlowList title={t('Прирост', 'Gaining')} items={data.accumulating} t={t} onOpenItem={onOpenItem} />
           <TaFlowList title={t('Сливают', 'Distributing')} items={data.distributing} t={t} onOpenItem={onOpenItem} />
         </div>
       </TaSection>
@@ -596,14 +700,32 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
         eyebrow="// SYNDICATES"
         title={t('Связанные аккаунты', 'Linked accounts')}
         sub={t(
-          'Связь = похожий набор нетривиальных позиций и покупки одного предмета в пределах 48 часов. Кластеры одного цвета, вероятно, действуют вместе.',
-          'Link = similar set of non-trivial positions plus buying the same item within 48 hours. Same-colour clusters likely act together.',
+          'Связь = похожий набор нетривиальных позиций, покупки одного предмета в пределах 48 часов и прямые перекладки: предмет ушёл с одного аккаунта и то же количество пришло на другой в течение 14 дней. Жёлтый пунктир — перекладки, самый сильный признак одного владельца. Кластеры одного цвета, вероятно, действуют вместе.',
+          'Link = similar set of non-trivial positions, buying the same item within 48 hours, and direct transfers: an item left one account and the same quantity arrived on another within 14 days. Yellow dashes are transfers, the strongest sign of a single owner. Same-colour clusters likely act together.',
         )}
       >
         <div className="ta-syndicates">
           <TaNetwork network={data.network} t={t} onOpenProfile={onOpenProfile} />
           {data.network.links.length ? <TaLinkList network={data.network} t={t} /> : null}
         </div>
+        <TaTransfers
+          transfers={data.transfers}
+          nodesById={new Map(data.leaderboard.concat(data.network.nodes).map((row) => [row.steamId, row]))}
+          lang={lang}
+          t={t}
+          onOpenItem={onOpenItem}
+        />
+      </TaSection>
+
+      <TaSection
+        eyebrow="// STEALTH BUYS"
+        title={t('Свежие скрытые покупки', 'Fresh hidden buys')}
+        sub={t(
+          'Steam прячет купленное на рынке ~10 дней. Рост числа скрытых предметов за 7 дней значит, что аккаунт только что закупился, и это ещё не видно в инвентаре. Ранний индикатор.',
+          'Steam hides market buys for ~10 days. A rise in hidden items over 7 days means the account just bought something that is not visible in the inventory yet. A leading indicator.',
+        )}
+      >
+        <TaHiddenBuys rows={data.hiddenBuys} lang={lang} t={t} onOpenProfile={onOpenProfile} />
       </TaSection>
 
       <TaSection eyebrow="// WHALES" title={t('Киты', 'Whales')} sub={t('Крупнейшие инвентари под наблюдением.', 'Largest inventories under watch.')}>

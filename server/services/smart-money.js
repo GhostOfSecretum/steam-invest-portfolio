@@ -207,6 +207,7 @@ function isLargeHolderDump(moves, trackedUnitsNow) {
 }
 
 function isListedSignal(signal) {
+  if (signal?.type === 'accumulation') return signal.origin === 'trade';
   if (signal?.type !== 'exit') return true;
   if ((signal.accounts || []).length >= 2) return true;
   return signal.largeDump === true;
@@ -220,7 +221,8 @@ function detectSignals(store, state) {
   for (const row of state.tracked) {
     for (const event of row.events) {
       if (event.t < since) continue;
-      const bucket = event.qtyDelta > 0 ? buys : sells;
+      const bucket = event.kind === 'buy' ? buys : (event.kind === 'sell' ? sells : null);
+      if (!bucket) continue;
       if (!bucket.has(event.marketHashName)) bucket.set(event.marketHashName, []);
       bucket.get(event.marketHashName).push({ steamId: row.account.steamId, qtyDelta: event.qtyDelta, qtyBefore: event.qtyBefore });
     }
@@ -262,7 +264,7 @@ function detectSignals(store, state) {
     const deltaUnits = accounts.reduce((sum, row) => sum + row.qtyDelta, 0);
     const deltaUsd = deltaUnits * (state.priceOf(name) || 0);
     if (accounts.length >= 2 && deltaUsd >= MIN_SIGNAL_USD && !cooling('accumulation', name, SIGNAL_WINDOW_MS)) {
-      emit('accumulation', name, { accounts, deltaUnits, deltaUsd: round2(deltaUsd) });
+      emit('accumulation', name, { origin: 'trade', accounts, deltaUnits, deltaUsd: round2(deltaUsd) });
     }
   }
 
@@ -318,7 +320,7 @@ function signalLine(signal) {
   const name = `<a href="${itemUrl(signal.marketHashName)}">${escapeHtml(signal.marketHashName)}</a>`;
   const who = (signal.accounts || []).length;
   if (signal.type === 'accumulation') {
-    return `🟢 Скупка: ${name} — ${who} акк. +${signal.deltaUnits} шт (~${compactUsd(signal.deltaUsd)}), контроль ${pct(signal.control)}`;
+    return `🟢 Прирост: ${name} — ${who} акк. +${signal.deltaUnits} шт (~${compactUsd(signal.deltaUsd)}), контроль ${pct(signal.control)}`;
   }
   if (signal.type === 'exit') {
     const seller = signal.largeDump && who < 2 ? 'крупный держатель' : `${who} акк.`;
@@ -396,13 +398,13 @@ async function sendWeeklyDigest(store, now) {
     '',
     `Капитал под наблюдением: ${compactUsd(view.totals.valueUsd)} в ${view.totals.withSnapshot} аккаунтах`,
     `Чистый поток 7д: ${compactUsd(view.totals.flow7dUsd)} · ${view.totals.moves7d} движений`,
-    `Сигналы: ${count('accumulation')} скупок, ${count('exit')} выходов, ${count('control')} новых зон контроля`,
+    `Сигналы: ${count('accumulation')} приростов, ${count('exit')} выходов, ${count('control')} новых зон контроля`,
     '',
     '<b>Буст-радар</b>',
     ...view.radar.slice(0, 5).map((row, index) => `${index + 1}. <a href="${itemUrl(row.marketHashName)}">${escapeHtml(row.marketHashName)}</a> — скор ${row.score}, контроль ${pct(row.control)}`),
   ];
   if (view.accumulating.length) {
-    lines.push('', '<b>Скупают</b>', ...view.accumulating.slice(0, 3).map((row) => `• <a href="${itemUrl(row.marketHashName)}">${escapeHtml(row.marketHashName)}</a> ${compactUsd(row.flow7d.netUsd)}`));
+    lines.push('', '<b>Прирост</b>', ...view.accumulating.slice(0, 3).map((row) => `• <a href="${itemUrl(row.marketHashName)}">${escapeHtml(row.marketHashName)}</a> ${compactUsd(row.flow7d.netUsd)}`));
   }
   if (view.distributing.length) {
     lines.push('', '<b>Сливают</b>', ...view.distributing.slice(0, 3).map((row) => `• <a href="${itemUrl(row.marketHashName)}">${escapeHtml(row.marketHashName)}</a> ${compactUsd(row.flow7d.netUsd)}`));
@@ -530,7 +532,7 @@ async function computeBacktest(store, state, seriesMap, market) {
   const now = state.now;
   const groups = new Map();
   for (const entry of store.ledger) {
-    if (entry.qtyDelta <= 0 || entry.t > now - DAY_MS || entry.t < now - 365 * DAY_MS) continue;
+    if (entry.origin !== 'trade' || entry.qtyDelta <= 0 || entry.t > now - DAY_MS || entry.t < now - 365 * DAY_MS) continue;
     const key = `${entry.name}|${dayKey(entry.t)}`;
     if (!groups.has(key)) groups.set(key, { name: entry.name, t: entry.t, accounts: new Set(), units: 0, usd: 0 });
     const group = groups.get(key);
@@ -626,7 +628,7 @@ async function runSmartMoneyResearch() {
 
   const tradeNames = new Map();
   for (const entry of store.ledger) {
-    if (entry.qtyDelta > 0) tradeNames.set(entry.name, (tradeNames.get(entry.name) || 0) + entry.qtyDelta * (entry.priceUsd || 0));
+    if (entry.origin === 'trade' && entry.qtyDelta > 0) tradeNames.set(entry.name, (tradeNames.get(entry.name) || 0) + entry.qtyDelta * (entry.priceUsd || 0));
   }
   const names = [...new Set([
     ...[...tradeNames.entries()].sort((a, b) => b[1] - a[1]).slice(0, BACKTEST_NAMES).map(([name]) => name),

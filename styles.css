@@ -7413,6 +7413,28 @@ i.ta-icon-sm { background: linear-gradient(135deg, rgba(255,255,255,0.08), #0a0c
   font-size: 12.5px;
 }
 .ta-flow-num small { font-size: 10px; color: var(--fg-3); }
+.ta-origins {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.ta-origin {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--tone);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+}
+.ta-origin b { font-family: var(--f-mono); font-size: 15px; font-weight: 500; color: var(--tone); }
+.ta-origin small { font-family: var(--f-mono); font-size: 10.5px; color: var(--fg-3); }
+.ta-origins-note {
+  grid-column: 1 / -1;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--fg-3);
+}
 
 /* Syndicates */
 .ta-syndicates {
@@ -7447,6 +7469,15 @@ i.ta-icon-sm { background: linear-gradient(135deg, rgba(255,255,255,0.08), #0a0c
   font-size: 10.5px;
   color: var(--accent);
 }
+.ta-link-btn {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ta-link-btn:hover { border-color: var(--line-strong); background: rgba(255,255,255,0.045); }
+.ta-hidden-count { margin-left: auto; font-family: var(--f-mono); font-size: 13px; color: var(--amber); }
 .ta-link-items {
   font-family: var(--f-mono);
   font-size: 10.5px;
@@ -7680,7 +7711,8 @@ i.ta-icon-sm { background: linear-gradient(135deg, rgba(255,255,255,0.08), #0a0c
   .sm-tg { flex-direction: column; align-items: flex-start; }
 }
 @media (max-width: 960px) {
-  .ta-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ta-kpis,
+  .ta-origins { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ta-kpi-value { font-size: 22px; }
   .ta-section { padding: 16px; }
   .ta-radar,

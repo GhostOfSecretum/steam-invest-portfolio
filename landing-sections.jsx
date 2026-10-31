@@ -1258,14 +1258,14 @@ function WhaleWatch({ lang }) {
       sub: 'Сервер сам снимает инвентари известных инвесторов и считает, какую долю рынка они держат. Список аккаунтов и лента открыты. Аналитика, сигналы и сообщения в Telegram — по подписке.',
       points: [
         { k: 'Доля', t: 'Видно, сколько выставленного предложения собрано у отслеживаемых аккаунтов.' },
-        { k: 'Сигналы', t: 'Скупка, выход и контроль предложения. Бот пишет в личку, пока подписка активна.' },
+        { k: 'Сигналы', t: 'Прирост, выход и контроль предложения. Бот пишет в личку, пока подписка активна.' },
         { k: 'Риск', t: 'На странице предмета и в своём портфеле видно, если позицию уже держат киты.' },
       ],
       cta: 'Открыть китов',
       note: 'Остальной сайт бесплатный: портфель, маркет, Armory и хранилища.',
       feed: 'Пример сигнала',
       rows: [
-        { kind: 'Скупка', tone: 'var(--green)', text: 'Несколько аккаунтов купили один предмет за 48 часов' },
+        { kind: 'Прирост', tone: 'var(--green)', text: 'Плюс одного предмета сразу у нескольких аккаунтов' },
         { kind: 'Выход', tone: 'var(--red)', text: 'Начали продавать позицию с высокой долей предложения' },
         { kind: 'Контроль', tone: 'var(--accent)', text: 'Группа держит больше половины того, что выставлено' },
       ],
@@ -1276,14 +1276,14 @@ function WhaleWatch({ lang }) {
       sub: 'The server snapshots known investor inventories and measures how much of the listed supply they hold. The account list and the feed are open. Analytics, signals, and Telegram alerts are a paid plan.',
       points: [
         { k: 'Share', t: 'See how much of the listed supply sits with the tracked accounts.' },
-        { k: 'Signals', t: 'Accumulation, exits, and supply control. The bot messages you while the plan is active.' },
+        { k: 'Signals', t: 'Gains, exits, and supply control. The bot messages you while the plan is active.' },
         { k: 'Risk', t: 'Item pages and your portfolio show when whales already hold the position.' },
       ],
       cta: 'Open the whales',
       note: 'The rest of the site stays free: portfolio, market, Armory, and Storage Units.',
       feed: 'Signal example',
       rows: [
-        { kind: 'Buy', tone: 'var(--green)', text: 'Several accounts bought the same item within 48 hours' },
+        { kind: 'Gain', tone: 'var(--green)', text: 'The same item went up on several accounts at once' },
         { kind: 'Exit', tone: 'var(--red)', text: 'They started selling a position with a high supply share' },
         { kind: 'Control', tone: 'var(--accent)', text: 'The group holds more than half of what is listed' },
       ],

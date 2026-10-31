@@ -3,7 +3,7 @@
 const { useState: smUseState, useEffect: smUseEffect, useRef: smUseRef } = React;
 
 const SM_SIGNAL_META = {
-  accumulation: { color: 'var(--green)', ru: 'Скупка', en: 'Accumulation' },
+  accumulation: { color: 'var(--green)', ru: 'Прирост', en: 'Gain' },
   exit: { color: 'var(--red)', ru: 'Выход', en: 'Exit' },
   control: { color: 'var(--accent)', ru: 'Контроль', en: 'Control' },
 };
@@ -55,8 +55,8 @@ function SmartMoneySignals({ lang, t, onOpenItem }) {
       eyebrow="// SIGNALS"
       title={t('Сигналы', 'Signals')}
       sub={t(
-        'Скупка — 2+ аккаунта докупили предмет за 48 часов. Выход — 2+ аккаунта продают или крупный держатель сбрасывает 30%+ позиции. Контроль — у отслеживаемых аккаунтов 50%+ рыночного предложения.',
-        'Accumulation — 2+ accounts bought the item within 48 hours. Exit — 2+ accounts sell or a large holder dumps 30%+ of the position. Control — tracked accounts hold 50%+ of market supply.',
+        'Прирост — плюс одного предмета у 2+ аккаунтов. Это не название покупки: покупка считается отдельно, когда предмет был скрыт и потом появился. В прирост попадает только такой плюс. Вывод из хранилища и перекладка не считаются. Выход — 2+ аккаунта продают или крупный держатель сбрасывает 30%+ позиции. Контроль — у отслеживаемых аккаунтов 50%+ рыночного предложения.',
+        'Gain — the same item went up on 2+ accounts. It is not the purchase label: a purchase is counted separately, when Steam hid the item and then revealed it. Only that kind of plus becomes a gain. Storage withdrawals and transfers do not. Exit — 2+ accounts sell or a large holder dumps 30%+ of the position. Control — tracked accounts hold 50%+ of market supply.',
       )}
     >
       {signals.loading && !signals.data ? <TaEmpty>{t('Загрузка…', 'Loading…')}</TaEmpty> : null}
@@ -438,13 +438,23 @@ function SmartMoneyItemPanel({ marketHashName, lang, onOpenProfile }) {
             </div>
           ) : null}
           <div className="eyebrow">{t('Последние движения', 'Recent moves')}</div>
-          {data.moves.length ? data.moves.slice(0, 8).map((move) => (
-            <div key={move.id} className="sm-move">
-              <span style={{ color: move.qtyDelta > 0 ? 'var(--green)' : 'var(--red)' }}>{move.qtyDelta > 0 ? '+' : ''}{move.qtyDelta}</span>
-              <span className="sm-move-name">{move.personaname || move.steamId}</span>
-              <span className="ta-board-muted">{smAgo(move.at, lang)}</span>
-            </div>
-          )) : <TaEmpty>{t('Движений пока не было.', 'No moves yet.')}</TaEmpty>}
+          {data.moves.length ? data.moves.slice(0, 8).map((move) => {
+            const tone = move.origin === 'transfer' ? 'var(--amber)' : move.origin === 'storage' ? 'var(--cyan)' : (move.origin === 'trade' ? 'var(--green)' : (move.qtyDelta > 0 ? 'var(--fg-3)' : 'var(--red)'));
+            const label = move.origin === 'transfer'
+              ? t('перекладка', 'transfer')
+              : move.origin === 'storage'
+                ? t('хранилище', 'storage')
+                : move.origin === 'trade'
+                  ? t('покупка', 'buy')
+                  : (move.qtyDelta > 0 ? t('не покупка', 'not a buy') : t('выход', 'exit'));
+            return (
+              <div key={move.id} className="sm-move">
+                <span style={{ color: tone }}>{move.qtyDelta > 0 ? '+' : ''}{move.qtyDelta}</span>
+                <span className="sm-move-name">{move.personaname || move.steamId} · {label}</span>
+                <span className="ta-board-muted">{smAgo(move.at, lang)}</span>
+              </div>
+            );
+          }) : <TaEmpty>{t('Движений пока не было.', 'No moves yet.')}</TaEmpty>}
         </div>
       </div>
     </section>

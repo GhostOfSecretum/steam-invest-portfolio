@@ -7,6 +7,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const FLOW_DAYS = 7;
 const TIMELINE_DAYS = 30;
 const CO_MOVE_WINDOW_MS = 48 * 60 * 60 * 1000;
+const TRANSFER_WINDOW_MS = 14 * DAY_MS;
+const HIDDEN_REVEAL_MS = 10 * DAY_MS;
 const RADAR_MIN_VALUE_USD = 25;
 const SIGNAL_MIN_PRICE_USD = 1;
 const SIGNAL_MAX_HOLDER_SHARE = 0.4;
@@ -63,6 +65,49 @@ function jaccard(a, b) {
   return shared / (a.size + b.size - shared);
 }
 
+// kind 'buy' is only a confirmed market purchase: the hidden count dropped enough
+// to explain the gain. Anything else that merely appeared (storage, a transfer,
+// a mixed change, or a move recorded before origin tagging) is not a buy.
+function classifyMoves(tracked) {
+  const all = [];
+  for (const row of tracked) {
+    for (const event of row.events) {
+      event.steamId = row.account.steamId;
+      if (event.qtyDelta > 0) {
+        event.kind = event.origin === 'storage' ? 'storage' : (event.origin === 'trade' ? 'buy' : 'unknown');
+      } else {
+        event.kind = 'sell';
+      }
+      all.push(event);
+    }
+  }
+  all.sort((a, b) => a.t - b.t);
+  const exitsByName = new Map();
+  for (const event of all) {
+    if (event.qtyDelta >= 0) continue;
+    if (!exitsByName.has(event.marketHashName)) exitsByName.set(event.marketHashName, []);
+    exitsByName.get(event.marketHashName).push(event);
+  }
+  for (const gain of all) {
+    if (gain.kind === 'sell') continue;
+    const exits = exitsByName.get(gain.marketHashName) || [];
+    if (gain.kind === 'buy' || gain.kind === 'unknown') {
+      const sender = exits.find((exit) => exit.kind === 'sell' && exit.steamId !== gain.steamId
+        && exit.qtyDelta === -gain.qtyDelta && exit.t <= gain.t && exit.t >= gain.t - TRANSFER_WINDOW_MS);
+      if (!sender) continue;
+      sender.kind = 'transfer';
+      gain.kind = 'transfer';
+      sender.peer = gain.steamId;
+      gain.peer = sender.steamId;
+    } else {
+      const deposit = exits.find((exit) => exit.kind === 'sell' && exit.steamId === gain.steamId
+        && exit.qtyDelta === -gain.qtyDelta && exit.t <= gain.t);
+      if (deposit) deposit.kind = 'storage';
+    }
+  }
+  return all;
+}
+
 async function computeAnalytics() {
   const [listed, store, lists] = await Promise.all([
     listTopInvestors(),
@@ -89,8 +134,9 @@ async function computeAnalytics() {
       const prev = eventPrices.get(event.marketHashName);
       if (!prev || prev.t < event.t) eventPrices.set(event.marketHashName, { priceUsd: event.priceUsd, t: event.t });
     }
-    tracked.push({ account, snapshot: entry.snapshot, events, hiddenLog: entry.hiddenLog || [] });
+    tracked.push({ account, snapshot: entry.snapshot, events, hidden: entry.hidden, hiddenLog: entry.hiddenLog || [] });
   }
+  const allMoves = classifyMoves(tracked);
 
   const priceOf = buildPricer(lists, eventPrices);
   const items = new Map();
@@ -124,15 +170,25 @@ async function computeAnalytics() {
   }
 
   const timeline = new Map();
-  for (let t = timelineSince; t <= now; t += DAY_MS) timeline.set(dayKey(t), { day: dayKey(t), inUsd: 0, outUsd: 0, moves: 0 });
+  for (let t = timelineSince; t <= now; t += DAY_MS) timeline.set(dayKey(t), { day: dayKey(t), inUsd: 0, outUsd: 0, moves: 0, storageUsd: 0, transferUsd: 0 });
 
   const flows = new Map();
   const buysByItem = new Map();
   let flow7dUsd = 0;
   let moves7d = 0;
+  const origins = {
+    days: TIMELINE_DAYS,
+    buy: { usd: 0, moves: 0 },
+    sell: { usd: 0, moves: 0 },
+    storage: { usd: 0, moves: 0 },
+    transfer: { usd: 0, moves: 0 },
+    unknown: { usd: 0, moves: 0 },
+  };
   for (const row of tracked) {
     row.flow30Usd = 0;
     row.moves30 = 0;
+    row.storage30 = 0;
+    row.transfers30 = 0;
     row.lastMoveAt = null;
     for (const event of row.events) {
       if (!row.lastMoveAt || event.t > new Date(row.lastMoveAt).getTime()) row.lastMoveAt = event.at;
@@ -140,6 +196,28 @@ async function computeAnalytics() {
       const price = Number.isFinite(event.priceUsd) ? event.priceUsd : priceOf(event.marketHashName);
       const usd = Number.isFinite(price) ? price * event.qtyDelta : 0;
       const bucket = timeline.get(dayKey(event.t));
+      if (event.kind === 'storage' || event.kind === 'transfer') {
+        if (event.kind === 'storage') row.storage30 += 1;
+        else row.transfers30 += 1;
+        if (event.qtyDelta > 0) {
+          origins[event.kind].usd += usd;
+          origins[event.kind].moves += 1;
+          if (bucket) bucket[`${event.kind}Usd`] += usd;
+        }
+        continue;
+      }
+      if (event.kind === 'unknown') {
+        origins.unknown.usd += usd;
+        origins.unknown.moves += 1;
+        continue;
+      }
+      if (event.qtyDelta > 0) {
+        origins.buy.usd += usd;
+        origins.buy.moves += 1;
+      } else {
+        origins.sell.usd += -usd;
+        origins.sell.moves += 1;
+      }
       if (bucket) {
         if (usd >= 0) bucket.inUsd += usd;
         else bucket.outUsd += -usd;
@@ -161,6 +239,15 @@ async function computeAnalytics() {
       flow.netUnits += event.qtyDelta;
       flow.netUsd += usd;
       (event.qtyDelta > 0 ? flow.buyers : flow.sellers).add(row.account.steamId);
+    }
+
+    row.hiddenAdded7d = 0;
+    row.lastHiddenAt = null;
+    for (const log of row.hiddenLog) {
+      const t = new Date(log.at).getTime();
+      if (!(t >= flowSince) || !(log.after > log.before)) continue;
+      row.hiddenAdded7d += log.after - log.before;
+      if (!row.lastHiddenAt || t > new Date(row.lastHiddenAt).getTime()) row.lastHiddenAt = log.at;
     }
   }
 
@@ -238,7 +325,7 @@ async function computeAnalytics() {
   const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
   const pairOf = (a, b) => {
     const key = pairKey(a, b);
-    if (!pairs.has(key)) pairs.set(key, { a: a < b ? a : b, b: a < b ? b : a, overlap: 0, coMoves: 0, coItems: new Set() });
+    if (!pairs.has(key)) pairs.set(key, { a: a < b ? a : b, b: a < b ? b : a, overlap: 0, coMoves: 0, coItems: new Set(), transfers: 0, transferUsd: 0, transferItems: new Set() });
     return pairs.get(key);
   };
   for (let i = 0; i < signalSets.length; i += 1) {
@@ -259,11 +346,30 @@ async function computeAnalytics() {
       }
     }
   }
+  const recentTransfers = [];
+  for (const event of allMoves) {
+    if (event.kind !== 'transfer' || !(event.qtyDelta > 0)) continue;
+    const pair = pairOf(event.peer, event.steamId);
+    const price = Number.isFinite(event.priceUsd) ? event.priceUsd : priceOf(event.marketHashName);
+    const usd = Number.isFinite(price) ? price * event.qtyDelta : 0;
+    pair.transfers += 1;
+    pair.transferUsd += usd;
+    pair.transferItems.add(event.marketHashName);
+    recentTransfers.push({
+      at: event.at,
+      from: event.peer,
+      to: event.steamId,
+      marketHashName: event.marketHashName,
+      iconUrl: icons[event.marketHashName] || null,
+      qty: event.qtyDelta,
+      usd: round2(usd),
+    });
+  }
 
   const positionsById = new Map(tracked.map((row) => [row.account.steamId, row.positions]));
   const links = [...pairs.values()]
-    .map((pair) => ({ ...pair, strength: round2(pair.overlap + Math.min(pair.coMoves, 5) * 0.15) }))
-    .filter((pair) => pair.overlap >= 0.3 || pair.coMoves >= 2)
+    .map((pair) => ({ ...pair, strength: round2(pair.overlap + Math.min(pair.coMoves, 5) * 0.15 + Math.min(pair.transfers, 3) * 0.5) }))
+    .filter((pair) => pair.overlap >= 0.3 || pair.coMoves >= 2 || pair.transfers >= 1)
     .sort((x, y) => y.strength - x.strength)
     .slice(0, 30)
     .map((pair) => {
@@ -275,7 +381,9 @@ async function computeAnalytics() {
         overlap: round2(pair.overlap),
         coMoves: pair.coMoves,
         strength: pair.strength,
-        sharedItems: [...new Set([...pair.coItems, ...shared])].slice(0, 4),
+        transfers: pair.transfers,
+        transferUsd: round2(pair.transferUsd),
+        sharedItems: [...new Set([...pair.transferItems, ...pair.coItems, ...shared])].slice(0, 4),
       };
     });
 
@@ -321,9 +429,28 @@ async function computeAnalytics() {
         topItems: top3.map((pos) => ({ marketHashName: pos.name, iconUrl: icons[pos.name] || null, valueUsd: round2(pos.valueUsd) })),
         flow30Usd: round2(row.flow30Usd),
         moves30: row.moves30,
+        storage30: row.storage30,
+        transfers30: row.transfers30,
+        hidden: Number.isFinite(row.hidden) ? row.hidden : null,
+        hiddenAdded7d: row.hiddenAdded7d,
         lastMoveAt: row.lastMoveAt,
       };
     });
+
+  const hiddenBuys = tracked
+    .filter((row) => row.hiddenAdded7d > 0)
+    .sort((a, b) => b.hiddenAdded7d - a.hiddenAdded7d)
+    .slice(0, 10)
+    .map((row) => ({
+      steamId: row.account.steamId,
+      personaname: row.account.personaname,
+      avatar: row.account.avatar,
+      profileUrl: row.account.profileUrl,
+      added: row.hiddenAdded7d,
+      hidden: Number.isFinite(row.hidden) ? row.hidden : null,
+      lastAt: row.lastHiddenAt,
+      revealAt: new Date(new Date(row.lastHiddenAt).getTime() + HIDDEN_REVEAL_MS).toISOString(),
+    }));
 
   const view = {
     generatedAt: new Date(now).toISOString(),
@@ -337,7 +464,18 @@ async function computeAnalytics() {
       pricedShare: totalUnits ? round2(pricedUnits / totalUnits) : null,
       flow7dUsd: round2(flow7dUsd),
       moves7d,
+      hiddenAdded7d: tracked.reduce((sum, row) => sum + row.hiddenAdded7d, 0),
     },
+    origins: {
+      days: origins.days,
+      buy: { ...origins.buy, usd: round2(origins.buy.usd) },
+      sell: { ...origins.sell, usd: round2(origins.sell.usd) },
+      storage: { ...origins.storage, usd: round2(origins.storage.usd) },
+      transfer: { ...origins.transfer, usd: round2(origins.transfer.usd) },
+      unknown: { ...origins.unknown, usd: round2(origins.unknown.usd) },
+    },
+    hiddenBuys,
+    transfers: recentTransfers.reverse().slice(0, 12),
     categories: Object.values(categories)
       .map((row) => ({ ...row, valueUsd: round2(row.valueUsd) }))
       .sort((a, b) => b.valueUsd - a.valueUsd),
@@ -345,7 +483,13 @@ async function computeAnalytics() {
     radar,
     accumulating,
     distributing,
-    timeline: [...timeline.values()].map((row) => ({ ...row, inUsd: round2(row.inUsd), outUsd: round2(row.outUsd) })),
+    timeline: [...timeline.values()].map((row) => ({
+      ...row,
+      inUsd: round2(row.inUsd),
+      outUsd: round2(row.outUsd),
+      storageUsd: round2(row.storageUsd),
+      transferUsd: round2(row.transferUsd),
+    })),
     network: { nodes, links },
     leaderboard,
   };
