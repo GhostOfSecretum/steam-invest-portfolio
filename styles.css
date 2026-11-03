@@ -2817,6 +2817,13 @@ a { color: inherit; text-decoration: none; }
 .market-sort-control select:focus {
   border-color: oklch(0.72 0.24 5 / 0.55);
 }
+/* iOS zooms the page when a focused field is under 16px and keeps that scale on the next screen. */
+@media (hover: none) and (pointer: coarse) {
+  .market-search-input,
+  .market-sort-control select {
+    font-size: 16px;
+  }
+}
 .market-advanced-trigger {
   display: inline-flex;
   align-items: center;
