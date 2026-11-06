@@ -14,8 +14,10 @@ const WELCOME_PLUS_TRIAL_SOURCE = 'welcome_plus_trial';
 
 // Hardcoded owner exceptions with permanent Investor access.
 // eldokto/eldoktor → https://steamcommunity.com/id/eldoktor/
+// pepalanair → https://steamcommunity.com/id/poweredes/
 const FULL_ACCESS_STEAM_IDS = new Set([
   '76561198114681917',
+  '76561198728232246',
 ]);
 
 function parseEnvFullAccessIds() {
