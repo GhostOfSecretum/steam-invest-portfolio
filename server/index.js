@@ -86,6 +86,7 @@ const {
   getSmartMoneyBacktest,
   getSmartMoneyIndex,
   getSmartMoneyItem,
+  searchSmartMoneyItems,
   getSmartMoneyExposure,
 } = require('./services/smart-money');
 const { getMarketSnapshot, getMarketCatalog, getPrices, getPriceHistory, getItemOffers, getItemVariants, getMultiWearHistory, getPeriodMovers } = require('./services/market');
@@ -959,13 +960,22 @@ app.get('/api/top-investors/index', requireSmartMoney, asyncRoute(async (req, re
   res.json(await getSmartMoneyIndex());
 }));
 
+app.get('/api/top-investors/items', requireSmartMoney, asyncRoute(async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 2) {
+    res.json({ items: [] });
+    return;
+  }
+  res.json({ items: await searchSmartMoneyItems(q) });
+}));
+
 app.get('/api/top-investors/item', requireSmartMoney, asyncRoute(async (req, res) => {
   const name = String(req.query.name || '').trim();
   if (!name) {
     res.status(400).json({ error: 'Item name is required.', code: 'missing_name' });
     return;
   }
-  res.json(await getSmartMoneyItem(name));
+  res.json(await getSmartMoneyItem(name, { days: req.query.days }));
 }));
 
 app.post('/api/top-investors/exposure', requireSmartMoney, asyncRoute(async (req, res) => {
@@ -977,7 +987,7 @@ const SMART_MONEY_API_RESOURCES = {
   signals: (req) => listSmartMoneySignals({ limit: req.query.limit, marketHashName: req.query.name || null }),
   backtest: () => getSmartMoneyBacktest(),
   index: () => getSmartMoneyIndex(),
-  item: (req) => getSmartMoneyItem(req.query.name),
+  item: (req) => getSmartMoneyItem(req.query.name, { days: req.query.days }),
 };
 
 app.get('/api/v1/smart-money/:resource', smartMoneyApiLimiter, asyncRoute(async (req, res) => {

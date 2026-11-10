@@ -668,17 +668,148 @@ async function getSmartMoneyIndex() {
   return store.index || { computedAt: null, series: [], components: [], capital: [] };
 }
 
-async function getSmartMoneyItem(marketHashName) {
+const ITEM_WINDOWS = new Set([7, 30, 60, 90]);
+
+function itemWindowDays(value) {
+  const days = Number(value);
+  return ITEM_WINDOWS.has(days) ? days : null;
+}
+
+function moveKind(entry) {
+  if (entry.origin === 'transfer') return 'transfer';
+  if (entry.origin === 'storage') return 'storage';
+  if (entry.qtyDelta > 0 && entry.origin === 'trade') return 'buy';
+  if (entry.qtyDelta < 0) return 'sell';
+  return 'other';
+}
+
+function blankFlow() {
+  return { units: 0, usd: 0, moves: 0, accounts: new Set() };
+}
+
+function finishFlow(row) {
+  return { units: row.units, usd: round2(row.usd), moves: row.moves, accounts: row.accounts.size };
+}
+
+function buildItemWindow(name, days, state, store) {
+  const since = state.now - days * DAY_MS;
+  const named = store.ledger.filter((entry) => entry.name === name);
+  const rows = named.filter((entry) => entry.t >= since);
+  const flows = { buy: blankFlow(), sell: blankFlow(), storage: blankFlow(), transfer: blankFlow(), other: blankFlow() };
+  const byAccount = new Map();
+  const accountRow = (steamId) => {
+    if (!byAccount.has(steamId)) {
+      byAccount.set(steamId, { steamId, buyUnits: 0, sellUnits: 0, netUnits: 0, netUsd: 0 });
+    }
+    return byAccount.get(steamId);
+  };
+
+  const moves = [];
+  for (const entry of rows) {
+    const kind = moveKind(entry);
+    const price = Number.isFinite(entry.priceUsd) ? entry.priceUsd : state.priceOf(name);
+    const signed = Number.isFinite(price) ? price * entry.qtyDelta : 0;
+    const bucket = flows[kind];
+    bucket.units += Math.abs(entry.qtyDelta) || 0;
+    bucket.usd += Math.abs(signed);
+    bucket.moves += 1;
+    bucket.accounts.add(entry.steamId);
+    if (kind === 'buy' || kind === 'sell') {
+      const row = accountRow(entry.steamId);
+      row.netUnits += entry.qtyDelta;
+      row.netUsd += signed;
+      if (kind === 'buy') row.buyUnits += entry.qtyDelta;
+      else row.sellUnits += -entry.qtyDelta;
+    }
+    moves.push({
+      id: entry.id,
+      at: new Date(entry.t).toISOString(),
+      qtyDelta: entry.qtyDelta,
+      usd: Number.isFinite(signed) && signed !== 0 ? round2(signed) : null,
+      origin: entry.origin || null,
+      kind,
+      steamId: entry.steamId,
+      personaname: state.accountById.get(entry.steamId)?.personaname || null,
+      avatar: state.accountById.get(entry.steamId)?.avatar || null,
+    });
+  }
+
+  const firstAt = named.length ? named[0].t : null;
+  const current = state.priceOf(name);
+  return {
+    days,
+    since: new Date(since).toISOString(),
+    from: firstAt ? new Date(firstAt).toISOString() : null,
+    partial: Boolean(firstAt && firstAt > since),
+    price: { usd: Number.isFinite(current) ? round2(current) : null },
+    buy: finishFlow(flows.buy),
+    sell: finishFlow(flows.sell),
+    storage: finishFlow(flows.storage),
+    transfer: finishFlow(flows.transfer),
+    other: finishFlow(flows.other),
+    netUnits: flows.buy.units - flows.sell.units,
+    netUsd: round2(flows.buy.usd - flows.sell.usd),
+    accounts: [...byAccount.values()]
+      .sort((a, b) => Math.abs(b.netUsd) - Math.abs(a.netUsd) || Math.abs(b.netUnits) - Math.abs(a.netUnits))
+      .slice(0, 8)
+      .map((row) => ({
+        ...row,
+        netUsd: round2(row.netUsd),
+        personaname: state.accountById.get(row.steamId)?.personaname || null,
+        avatar: state.accountById.get(row.steamId)?.avatar || null,
+      })),
+    moves: moves.slice(-12).reverse(),
+  };
+}
+
+async function searchSmartMoneyItems(query, { limit = 8 } = {}) {
+  const q = String(query || '').trim().toLowerCase();
+  if (q.length < 2) return [];
+  const [state, store] = await Promise.all([getTopInvestorsState(), readStore()]);
+  const names = new Set(state.items.keys());
+  for (const entry of store.ledger) if (entry.name) names.add(entry.name);
+  const ranked = [];
+  for (const name of names) {
+    const hay = name.toLowerCase();
+    let score = 0;
+    if (hay === q) score = 4;
+    else if (hay.startsWith(q)) score = 3;
+    else if (hay.includes(q)) score = 2;
+    else continue;
+    const view = state.itemView(name);
+    ranked.push({
+      score,
+      marketHashName: name,
+      iconUrl: view.iconUrl,
+      priceUsd: view.priceUsd,
+      holders: view.holders,
+      units: view.units,
+    });
+  }
+  ranked.sort((a, b) => b.score - a.score || b.holders - a.holders || b.units - a.units || a.marketHashName.localeCompare(b.marketHashName));
+  return ranked.slice(0, Math.min(Math.max(Number(limit) || 8, 1), 20)).map(({ score, ...row }) => row);
+}
+
+async function getSmartMoneyItem(marketHashName, options = {}) {
   const name = String(marketHashName || '').trim();
   const [state, store] = await Promise.all([getTopInvestorsState(), readStore()]);
   const item = state.items.get(name);
-  if (!item) return { marketHashName: name, tracked: false, accounts: state.tracked.length };
+  const seen = item || store.ledger.some((entry) => entry.name === name);
+  const days = itemWindowDays(options.days);
+  if (!seen) {
+    return {
+      marketHashName: name,
+      tracked: false,
+      accounts: state.tracked.length,
+      window: days ? buildItemWindow(name, days, state, store) : null,
+    };
+  }
 
   const view = state.itemView(name);
-  const holders = item.holders
+  const holders = (item?.holders || [])
     .slice()
     .sort((a, b) => b.qty - a.qty)
-    .map((holder) => ({ ...state.holderView(holder), valueUsd: round2(holder.valueUsd), share: item.units ? round4(holder.qty / item.units) : null }));
+    .map((holder) => ({ ...state.holderView(holder), valueUsd: round2(holder.valueUsd), share: item?.units ? round4(holder.qty / item.units) : null }));
   const moves = store.ledger
     .filter((entry) => entry.name === name)
     .slice(-25)
@@ -703,6 +834,7 @@ async function getSmartMoneyItem(marketHashName) {
     moves,
     unitsHistory,
     signals: store.signals.filter((signal) => signal.marketHashName === name && isListedSignal(signal)).slice(0, 5),
+    window: days ? buildItemWindow(name, days, state, store) : null,
   };
 }
 
@@ -762,5 +894,6 @@ module.exports = {
   getSmartMoneyBacktest,
   getSmartMoneyIndex,
   getSmartMoneyItem,
+  searchSmartMoneyItems,
   getSmartMoneyExposure,
 };

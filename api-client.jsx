@@ -341,9 +341,13 @@ function useSmartMoneyIndex() {
   return useSmartMoneyResource('/api/top-investors/index');
 }
 
-function useSmartMoneyItem(marketHashName) {
+function useSmartMoneyItem(marketHashName, days) {
   const name = String(marketHashName || '').trim();
-  return useSmartMoneyResource(name ? `/api/top-investors/item?name=${encodeURIComponent(name)}` : null);
+  const windowDays = [7, 30, 60, 90].includes(Number(days)) ? Number(days) : null;
+  const query = name
+    ? `/api/top-investors/item?name=${encodeURIComponent(name)}${windowDays ? `&days=${windowDays}` : ''}`
+    : null;
+  return useSmartMoneyResource(query);
 }
 
 function useSmartMoneyExposure(names) {

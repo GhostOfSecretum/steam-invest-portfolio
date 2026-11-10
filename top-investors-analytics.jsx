@@ -1,4 +1,4 @@
-/* global React, useTopInvestorsAnalytics, formatMoney, SmartMoneySignals, SmartMoneyIndex, SmartMoneyBacktest */
+/* global React, useTopInvestorsAnalytics, useSmartMoneyItem, useItemHistory, apiFetch, formatMoney, SmartMoneySignals, SmartMoneyIndex, SmartMoneyBacktest */
 const { useState: taUseState } = React;
 
 const TA_CATEGORY_COLORS = {
@@ -622,6 +622,173 @@ function TaLeaderboard({ rows, lang, t, onOpenProfile, onOpenItem }) {
   );
 }
 
+const TA_ITEM_WINDOWS = [7, 30, 60, 90];
+
+function taPctSigned(value) {
+  if (!Number.isFinite(value)) return '—';
+  const points = value * 100;
+  const text = `${Math.abs(points).toFixed(1)}%`;
+  return points > 0 ? `+${text}` : (points < 0 ? `−${text}` : text);
+}
+
+function TaItemSearch({ lang, t, onOpenItem, onOpenProfile }) {
+  const [query, setQuery] = taUseState('');
+  const [picked, setPicked] = taUseState('');
+  const [days, setDays] = taUseState(30);
+  const [hits, setHits] = taUseState([]);
+  const report = useSmartMoneyItem(picked, days);
+  const history = useItemHistory(picked, days, null);
+  const data = report.data && report.data.marketHashName === picked ? report.data : null;
+  const chart = history.data && history.data.marketHashName === picked && history.data.provider !== 'synthetic' && history.data.provider !== 'none'
+    ? (history.data.data || []).filter((point) => Number.isFinite(point.price))
+    : [];
+  const changePct = chart.length >= 2 && chart[0].price ? (chart[chart.length - 1].price - chart[0].price) / chart[0].price : null;
+  const showHits = query.trim().length >= 2 && query.trim().toLowerCase() !== picked.toLowerCase();
+
+  React.useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setHits([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      apiFetch(`/api/top-investors/items?q=${encodeURIComponent(q)}`)
+        .then((payload) => { if (!cancelled) setHits(payload.items || []); })
+        .catch(() => { if (!cancelled) setHits([]); });
+    }, 180);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  const pick = (name) => {
+    setPicked(name);
+    setQuery(name);
+    setHits([]);
+  };
+
+  const span = data?.window;
+  const priceUsd = Number.isFinite(span?.price?.usd) ? span.price.usd : data?.priceUsd;
+  const fromLabel = span?.from ? new Date(span.from).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US') : null;
+
+  return (
+    <TaSection
+      eyebrow="// ITEM"
+      title={t('Отчёт по предмету', 'Item report')}
+      sub={t(
+        'Поиск по предметам, которые держат или двигали отслеживаемые аккаунты. Цена — рыночный график. Покупка — скрытый предмет появился. Выход — количество ушло из инвентаря. Кэшфлоу — эти две суммы по цене на момент движения. Хранилище и перекладки в кэшфлоу не входят.',
+        'Search items held or moved by tracked accounts. Price is the market chart. A buy is a hidden item that appeared. An exit is quantity that left an inventory. Cash flow is those two amounts at the price when the inventory changed. Storage and transfers are not in the cash flow.',
+      )}
+    >
+      <div className="ta-search">
+        <input
+          type="search"
+          value={query}
+          placeholder={t('Название предмета', 'Item name')}
+          aria-label={t('Найти предмет', 'Find an item')}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && hits[0]) pick(hits[0].marketHashName);
+            if (event.key === 'Escape') setHits([]);
+          }}
+        />
+        {showHits && hits.length ? (
+          <div className="ta-search-list" role="listbox">
+            {hits.map((hit) => (
+              <button key={hit.marketHashName} type="button" className="ta-search-hit" onClick={() => pick(hit.marketHashName)}>
+                <TaIcon src={hit.iconUrl} />
+                <span className="ta-radar-name">{hit.marketHashName}</span>
+                <small>{hit.units ? `${hit.units.toLocaleString()} ${t('шт', 'pcs')} · ` : ''}{taMoney(hit.priceUsd)}</small>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {picked && report.loading && !data ? <TaEmpty>{t('Собираю отчёт…', 'Building the report…')}</TaEmpty> : null}
+      {data && !data.tracked ? <TaEmpty>{t('Этого предмета нет в собранных инвентарях.', 'This item is not in the collected inventories.')}</TaEmpty> : null}
+      {data?.tracked && span ? (
+        <div className="ta-report">
+          <div className="ta-report-head">
+            <TaIcon src={data.iconUrl} />
+            <div>
+              <div className="ta-radar-name">{data.marketHashName}</div>
+              <div className="ta-radar-meta">
+                {taMoney(priceUsd)}
+                {Number.isFinite(changePct) ? (
+                  <b style={{ color: changePct > 0 ? 'var(--green)' : (changePct < 0 ? 'var(--red)' : undefined) }}> {taPctSigned(changePct)} / {days}{t('д', 'd')}</b>
+                ) : null}
+                {' · '}{data.units.toLocaleString()} {t('шт сейчас', 'pcs now')} · {data.holders} {t('акк.', 'acc.')}
+              </div>
+            </div>
+            <div className="ta-windows">
+              {TA_ITEM_WINDOWS.map((value) => (
+                <button key={value} type="button" className="btn btn-sm btn-ghost" aria-pressed={days === value} onClick={() => setDays(value)}>{value}{t('д', 'd')}</button>
+              ))}
+            </div>
+          </div>
+          {span.partial && fromLabel ? (
+            <div className="ta-section-sub">
+              {t(
+                `Движения этого предмета записаны с ${fromLabel}. Окно ${days} дн. шире собранной истории, кэшфлоу покрывает только её.`,
+                `Moves for this item are recorded from ${fromLabel}. The ${days}d window is wider than the collected history, so cash flow only covers that history.`,
+              )}
+            </div>
+          ) : null}
+          <div className="sm-stats">
+            <div><span className="eyebrow">{t('Покупки', 'Buys')}</span><b style={{ color: 'var(--green)' }}>{span.buy.units.toLocaleString()}</b><span className="ta-radar-meta">{taMoney(span.buy.usd)} · {span.buy.accounts} {t('акк.', 'acc.')}</span></div>
+            <div><span className="eyebrow">{t('Выходы', 'Exits')}</span><b style={{ color: 'var(--red)' }}>{span.sell.units.toLocaleString()}</b><span className="ta-radar-meta">{taMoney(span.sell.usd)} · {span.sell.accounts} {t('акк.', 'acc.')}</span></div>
+            <div><span className="eyebrow">{t('Кэшфлоу', 'Cash flow')}</span><b style={{ color: span.netUsd > 0 ? 'var(--green)' : (span.netUsd < 0 ? 'var(--red)' : undefined) }}>{taSigned(span.netUsd)}</b><span className="ta-radar-meta">{span.netUnits > 0 ? '+' : ''}{span.netUnits} {t('шт', 'pcs')}</span></div>
+            <div><span className="eyebrow">{t('Сейчас держат', 'Held now')}</span><b>{taMoney(data.valueUsd)}</b><span className="ta-radar-meta">{taPct(data.control)} {t('предложения', 'of supply')}</span></div>
+          </div>
+          <div className="ta-section-sub">
+            {t(
+              `Хранилище ${span.storage.units} шт · перекладки ${span.transfer.units} шт · без метки источника ${span.other.units} шт.`,
+              `Storage ${span.storage.units} pcs · transfers ${span.transfer.units} pcs · untagged ${span.other.units} pcs.`,
+            )}
+          </div>
+          <div className="sm-item-grid">
+            <div className="ta-links">
+              <div className="eyebrow">{t('Аккаунты', 'Accounts')}</div>
+              {span.accounts.length ? span.accounts.map((row) => (
+                <button key={row.steamId} type="button" className="ta-flow-row sm-holder" onClick={() => onOpenProfile && onOpenProfile(`https://steamcommunity.com/profiles/${row.steamId}`)}>
+                  {row.avatar ? <img src={row.avatar} alt="" /> : <i />}
+                  <span className="ta-radar-copy">
+                    <span className="ta-radar-name">{row.personaname || row.steamId}</span>
+                    <span className="ta-radar-meta">+{row.buyUnits} / −{row.sellUnits}</span>
+                  </span>
+                  <span className="ta-flow-num" style={{ color: row.netUsd > 0 ? 'var(--green)' : (row.netUsd < 0 ? 'var(--red)' : undefined) }}>{taSigned(row.netUsd)}</span>
+                </button>
+              )) : <TaEmpty>{t('Покупок и выходов в этом окне нет.', 'No buys or exits in this window.')}</TaEmpty>}
+            </div>
+            <div className="sm-item-side">
+              <div className="eyebrow">{t('Движения', 'Moves')}</div>
+              {span.moves.length ? span.moves.map((move) => {
+                const tone = move.kind === 'transfer' ? 'var(--amber)' : move.kind === 'storage' ? 'var(--cyan)' : (move.kind === 'buy' ? 'var(--green)' : (move.kind === 'sell' ? 'var(--red)' : 'var(--fg-3)'));
+                const label = move.kind === 'buy' ? t('покупка', 'buy')
+                  : move.kind === 'sell' ? t('выход', 'exit')
+                    : move.kind === 'storage' ? t('хранилище', 'storage')
+                      : move.kind === 'transfer' ? t('перекладка', 'transfer')
+                        : t('без метки', 'untagged');
+                return (
+                  <div key={move.id} className="sm-move">
+                    <span style={{ color: tone }}>{move.qtyDelta > 0 ? '+' : ''}{move.qtyDelta}</span>
+                    <span className="sm-move-name">{move.personaname || move.steamId} · {label}</span>
+                    <span className="ta-board-muted">{new Date(move.at).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US')}</span>
+                  </div>
+                );
+              }) : <TaEmpty>{t('Движений в этом окне нет.', 'No moves in this window.')}</TaEmpty>}
+            </div>
+          </div>
+          {onOpenItem ? <button type="button" className="btn btn-sm btn-ghost" onClick={() => onOpenItem(data.marketHashName)}>{t('Карточка предмета', 'Item page')}</button> : null}
+        </div>
+      ) : null}
+    </TaSection>
+  );
+}
+
 function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
   const analytics = useTopInvestorsAnalytics();
   const t = (ru, en) => (lang === 'ru' ? ru : en);
@@ -650,6 +817,8 @@ function TopInvestorsAnalytics({ lang, onOpenItem, onOpenProfile }) {
     <div className="ta">
       {window.SmartMoneyTelegram ? <window.SmartMoneyTelegram lang={lang} /> : null}
       <TaKpis totals={data.totals} t={t} />
+
+      <TaItemSearch lang={lang} t={t} onOpenItem={onOpenItem} onOpenProfile={onOpenProfile} />
 
       <SmartMoneySignals lang={lang} t={t} onOpenItem={onOpenItem} />
 
