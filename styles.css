@@ -6185,12 +6185,6 @@ button:disabled,
   text-transform: uppercase;
   color: var(--fg-0);
 }
-.armory-tile-rank {
-  font-family: var(--f-mono);
-  font-size: 13px;
-  color: var(--fg-2);
-  flex-shrink: 0;
-}
 .armory-tile-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 108px;
@@ -6207,17 +6201,9 @@ button:disabled,
   gap: 12px;
 }
 .armory-stat {
-  display: grid;
-  grid-template-columns: 18px 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 8px;
-  align-items: center;
-}
-.armory-stat-icon {
-  grid-row: 1 / span 2;
-  color: var(--fg-2);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 2px;
 }
 .armory-stat-label {
   font-family: var(--f-mono);
@@ -6287,13 +6273,6 @@ button:disabled,
   font-size: 10px;
   color: var(--fg-2);
   letter-spacing: 0.04em;
-}
-.armory-tile-volume {
-  margin-left: auto;
-  font-family: var(--f-mono);
-  font-size: 10px;
-  color: var(--fg-3);
-  letter-spacing: 0.06em;
 }
 
 @media (max-width: 1100px) {

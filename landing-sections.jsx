@@ -1115,23 +1115,16 @@ function ArmoryROI() {
 
                 <div className="armory-tile-head">
                   <h3 className="armory-tile-title">{item.name}</h3>
-                  <span className="armory-tile-rank">#{item.rank}</span>
                 </div>
 
                 <div className="armory-tile-body">
                   <div className="armory-tile-stats">
                     <div className="armory-stat">
-                      <span className="armory-stat-icon" aria-hidden="true">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 8h16v10H4z" stroke="currentColor" strokeWidth="1.5"/><path d="M8 8V6h8v2" stroke="currentColor" strokeWidth="1.5"/></svg>
-                      </span>
                       <span className="armory-stat-label">{copy.starRoi}</span>
                       <span className="armory-stat-val">{Number.isFinite(item.roi) ? `${item.roi}%` : '—'}</span>
                     </div>
                     {Number.isFinite(item.profitChance) ? (
                       <div className="armory-stat">
-                        <span className="armory-stat-icon" aria-hidden="true">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M8 7h8M7 12h10M8 17h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                        </span>
                         <span className="armory-stat-label">{copy.profit}</span>
                         <span className="armory-stat-val">{item.profitChance}%</span>
                       </div>
@@ -1160,9 +1153,6 @@ function ArmoryROI() {
                       <span aria-hidden="true">⏱</span>
                       {item.daysRemaining} {copy.days}
                     </div>
-                  ) : null}
-                  {item.volumeLabel ? (
-                    <span className="armory-tile-volume">{item.volumeLabel}</span>
                   ) : null}
                 </div>
                 <div className="armory-tile-accent" aria-hidden="true" />

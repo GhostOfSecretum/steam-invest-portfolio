@@ -154,8 +154,9 @@ app.use(helmet({
       // subdomains chosen by Steam at runtime, so the whole vendor domain is
       // allowed rather than a list that silently breaks avatars in production.
       // Collection logos that Steam has not published with a CDN hash come from
-      // the CSGO-API image tracker on GitHub.
-      imgSrc: ["'self'", 'data:', 'blob:', 'https://*.steamstatic.com', 'https://raw.githubusercontent.com', 'https://mc.yandex.ru'],
+      // the CSGO-API image tracker on GitHub. Armory showcase art for collections
+      // without a Steam economy hash is hosted on the CSROI image CDN.
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://*.steamstatic.com', 'https://raw.githubusercontent.com', 'https://cdn.csroi.com', 'https://mc.yandex.ru'],
       mediaSrc: ["'self'"],
       // Yandex Metrika opens a websocket and a hidden match.html iframe; without
       // these two it logs a CSP error on every page load.
