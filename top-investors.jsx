@@ -98,7 +98,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem, embedded = false })
 
   const copy = lang === 'ru'
     ? {
-      title: 'Топ-аккаунты инвесторов',
+      title: 'Аналитика',
       sub: 'Сервер сам снимает инвентари и пишет изменения в ленту: аккаунт, предмет, количество и цена.',
       empty: 'Список пока пуст — аккаунты появятся здесь, когда мы добавим подборку.',
       open: 'Открыть портфель',
@@ -115,7 +115,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem, embedded = false })
       feedEmpty: 'Лента пустая, пока инвентарь не изменился после первого снимка. Снимки идут сами: аккаунт, + или −, предмет, количество и цена.',
     }
     : {
-      title: 'Top investor accounts',
+      title: 'Analytics',
       sub: 'The server snapshots inventories on its own and posts changes: account, item, quantity, and price.',
       empty: 'The list is empty for now — accounts will appear here once the curated set is added.',
       open: 'Open portfolio',
@@ -137,7 +137,7 @@ function TopInvestorsPage({ lang, onOpenProfile, onOpenItem, embedded = false })
       <div className={embedded ? undefined : 'container'}>
         {!embedded && <div style={{ marginBottom: 28 }}>
           <div className="eyebrow" style={{ marginBottom: 10, color: 'var(--accent)' }}>
-            // WATCHLIST
+            // ANALYTICS
           </div>
           <h1 className="display top-investors-title">
             {copy.title}

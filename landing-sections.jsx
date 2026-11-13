@@ -1331,9 +1331,9 @@ function HowItWorks({ lang }) {
     ? {
       eyebrow: '// БЕЗ ЛИШНИХ ТАБЛИЦ',
       title: 'От инвентаря до понятного портфеля',
-      sub: 'Подключение занимает пару минут. После этого стоимость и структура портфеля обновляются в одном месте.',
+      sub: 'Подключение занимает пару минут. После этого стоимость и структура портфеля обновляются в одном месте. Несколько Steam-аккаунтов в одной сессии и переключение портфеля между ними входят во все платные тарифы и недоступны на бесплатном.',
       steps: [
-        { title: 'Подключите Steam', text: 'Войдите через безопасный Steam OpenID или откройте любой публичный профиль по ссылке.' },
+        { title: 'Подключите Steam', text: 'Войдите через безопасный Steam OpenID или откройте публичный профиль по ссылке. На платном тарифе к этой же сессии можно добавить ещё аккаунты и переключать портфель между ними.' },
         { title: 'Получите оценку', text: 'SkinsHead сопоставит предметы с рынком и посчитает актуальную стоимость инвентаря.' },
         { title: 'Следите за результатом', text: 'Добавьте цены покупки, чтобы видеть прибыль, концентрацию и историю изменений.' },
       ],
@@ -1341,9 +1341,9 @@ function HowItWorks({ lang }) {
     : {
       eyebrow: '// NO SPREADSHEETS REQUIRED',
       title: 'From inventory to a clear portfolio',
-      sub: 'Setup takes a couple of minutes. Your value and portfolio structure then stay together in one place.',
+      sub: 'Setup takes a couple of minutes. Your value and portfolio structure then stay together in one place. Several Steam accounts in one session, and switching the portfolio between them, are included on every paid plan and stay off the free plan.',
       steps: [
-        { title: 'Connect Steam', text: 'Sign in through secure Steam OpenID or open any public profile by URL.' },
+        { title: 'Connect Steam', text: 'Sign in through secure Steam OpenID, or open a public profile by URL. On a paid plan you can add more accounts to the same session and switch the portfolio between them.' },
         { title: 'Get a valuation', text: 'SkinsHead matches your items to the market and calculates their current value.' },
         { title: 'Track the result', text: 'Add purchase prices to see profit, concentration, and portfolio history.' },
       ],
@@ -1426,16 +1426,16 @@ function StatsBand() {
   const isRu = lang === 'ru';
   const stats = isRu
     ? [
-      { id: 'portfolio', name: 'Портфель', note: 'Оценка, P&L и история' },
+      { id: 'portfolio', name: 'Портфель', note: 'Один аккаунт бесплатно, несколько — на платном' },
       { id: 'market', name: 'Маркет', note: 'Скины, ножи, стикеры' },
       { id: 'storage', name: 'Хранилища', note: 'Через расширение' },
-      { id: 'tools', name: 'Инструменты', note: 'Armory, коллекции, топ' },
+      { id: 'tools', name: 'Инструменты', note: 'Armory, коллекции, аналитика' },
     ]
     : [
-      { id: 'portfolio', name: 'Portfolio', note: 'Value, P&L and history' },
+      { id: 'portfolio', name: 'Portfolio', note: 'One account free, several on a paid plan' },
       { id: 'market', name: 'Market', note: 'Skins, knives, stickers' },
       { id: 'storage', name: 'Storage', note: 'Via the extension' },
-      { id: 'tools', name: 'Tools', note: 'Armory, collections, top accounts' },
+      { id: 'tools', name: 'Tools', note: 'Armory, collections, analytics' },
     ];
   return (
     <section className="section-tight">
@@ -1473,7 +1473,7 @@ function SeoIntro({ lang }) {
         sub: 'SkinsHead — портфель, маркет, киты и аналитика Counter-Strike 2',
         paragraphs: [
           'SkinsHead собирает рынок скинов CS2 в одном месте: свой портфель с live-оценкой, себестоимостью, P&L и распределением, маркет с ценами, коллекции, китов, ROI Armory Pass и новости из Telegram.',
-          'Портфель подключается через Steam OpenID, открывается по ссылке на публичный профиль или собирается вручную. Хранилища читает бесплатное расширение для браузера. Цены берутся со Steam Community Market и сторонних площадок.',
+          'Портфель подключается через Steam OpenID, открывается по ссылке на публичный профиль или собирается вручную. На бесплатном тарифе в сессии один Steam-аккаунт. На всех платных в той же сессии можно подключить несколько и переключать портфель между ними. Хранилища читает бесплатное расширение для браузера. Цены берутся со Steam Community Market и сторонних площадок.',
           priceLine
             ? `Портфель, маркет, Armory, новости и хранилища бесплатны. Список китов и лента их сделок тоже открыты. Аналитика по их позициям, сигналы и алерты в Telegram — ${priceLine}.`
             : 'Портфель, маркет, Armory, новости и хранилища бесплатны. Список китов и лента их сделок тоже открыты. Аналитика по их позициям, сигналы и алерты в Telegram оплачиваются отдельно.',
@@ -1484,7 +1484,7 @@ function SeoIntro({ lang }) {
         sub: 'SkinsHead — portfolio, market, whales, and Counter-Strike 2 analytics',
         paragraphs: [
           'SkinsHead puts the CS2 skin market in one place: your portfolio with live valuation, cost basis, P&L, and allocation, plus market prices, collections, whale holdings, Armory Pass ROI, and Telegram news.',
-          'Link a portfolio through Steam OpenID, open a public profile URL, or build one by hand. A free browser extension reads Storage Units. Prices come from the Steam Community Market and major third-party marketplaces.',
+          'Link a portfolio through Steam OpenID, open a public profile URL, or build one by hand. The free plan keeps one Steam account in the session. Every paid plan can connect several and switch the portfolio between them. A free browser extension reads Storage Units. Prices come from the Steam Community Market and major third-party marketplaces.',
           priceLine
             ? `The portfolio, market, Armory, news, and Storage Units are free. The whale account list and their trade feed are open too. Position analytics, signals, and Telegram alerts are ${priceLine}.`
             : 'The portfolio, market, Armory, news, and Storage Units are free. The whale account list and their trade feed are open too. Position analytics, signals, and Telegram alerts are a paid plan.',
@@ -1510,6 +1510,7 @@ const FAQ_ITEMS = {
   en: [
     { q: 'What is SkinsHead?', a: 'SkinsHead is a CS2 skin market. It values a Steam inventory with live prices and P&L, and also covers market prices, whale holdings, collections, Armory Pass ROI, and Telegram news.' },
     { q: 'How do I track a portfolio?', a: 'Link Steam with OpenID, paste a public profile URL, or create a manual portfolio and add purchases. SkinsHead prices items and surfaces leaders, 24h change, and inventory breakdown.' },
+    { q: 'Can I connect several Steam accounts?', a: 'Yes, on every paid plan. They stay in one session, and the portfolio switches between them. The free plan keeps a single Steam account.' },
     { q: 'How do I add my Storage Units?', a: 'Public Steam inventories exclude Storage Units. Install the free SkinsHead browser extension for Chrome, Edge, Brave or Opera, enter the code from your portfolio and sign in to Steam with a QR code. The extension reads the Storage Units and adds every item to your portfolio.' },
     { q: 'Where do prices come from?', a: 'Portfolio value is a cash-market mark: the median of lowest asks on Skinport, Market.CSGO, and LIS-Skins. Steam Community Market stays as a list price and a fallback when those quotes are missing. Each item page shows offers and history from the providers we could reach.' },
     { q: 'Do you ask for my Steam password?', a: 'No. Website linking uses Steam OpenID. The browser extension signs in with a QR code on every sync, never saves the Steam token and revokes it right after reading; only the item list reaches our server. We never request SDA seeds or authenticator codes.' },
@@ -1520,6 +1521,7 @@ const FAQ_ITEMS = {
   ru: [
     { q: 'Что такое SkinsHead?', a: 'SkinsHead — рынок скинов CS2. Сервис оценивает инвентарь Steam по live-ценам и показывает P&L, а ещё маркет, китов, коллекции, ROI Armory Pass и новости из Telegram.' },
     { q: 'Как отслеживать портфель?', a: 'Привяжите Steam через OpenID, вставьте ссылку на публичный профиль или создайте ручной портфель и добавьте покупки. SkinsHead оценит предметы и покажет лидеров, изменение за 24ч и разбивку инвентаря.' },
+    { q: 'Можно подключить несколько аккаунтов Steam?', a: 'Да, на всех платных тарифах. Они остаются в одной сессии, а портфель переключается между ними. На бесплатном тарифе остаётся один Steam-аккаунт.' },
     { q: 'Как добавить Хранилища?', a: 'Публичный инвентарь Steam не включает Хранилища. Установите бесплатное расширение SkinsHead для Chrome, Edge, Brave, Opera или Яндекс Браузера, введите код из портфеля и войдите в Steam по QR. Расширение прочитает Хранилища и добавит все предметы в портфель.' },
     { q: 'Откуда берутся цены?', a: 'Стоимость портфеля — оценка по сторонним маркетам: медиана нижних ask на Skinport, Market.CSGO и LIS-Skins. Steam Community Market остаётся ценником и запасным источником, если котировок нет. На карточке предмета видны предложения и история цен из источников, до которых удалось достучаться.' },
     { q: 'Вы запрашиваете пароль Steam?', a: 'Нет. На сайте — Steam OpenID. Расширение входит в Steam по QR при каждой синхронизации, не сохраняет токен и отзывает его сразу после чтения; на сервер уходит только список предметов. SDA-seed и коды аутентификатора мы не трогаем.' },
@@ -1538,8 +1540,8 @@ function FAQ({ lang }) {
   const items = (FAQ_ITEMS[lang] || FAQ_ITEMS.en).map((item) => {
     if (item.q !== 'Is SkinsHead free?' && item.q !== 'SkinsHead бесплатный?') return item;
     const answer = lang === 'ru'
-      ? `Портфель, маркет, Armory ROI, новости и хранилища бесплатны. Список китов и лента сделок открыты. Аналитика их позиций, сигналы и алерты в Telegram${priceLine ? ` стоят ${priceLine}` : ' оплачиваются отдельно'}.`
-      : `The portfolio, market explorer, Armory ROI, news, and Storage Units are free. The whale account list and trade feed are open. Analytics on what they hold, signals, and Telegram alerts${priceLine ? ` are ${priceLine}` : ' are a paid plan'}.`;
+      ? `Портфель, маркет, Armory ROI, новости и хранилища бесплатны, с одним Steam-аккаунтом в сессии. Список китов и лента сделок открыты. Несколько аккаунтов в одной сессии есть на всех платных тарифах и недоступны на бесплатном. Аналитика позиций, сигналы и алерты в Telegram${priceLine ? ` стоят ${priceLine}` : ' оплачиваются отдельно'}.`
+      : `The portfolio, market explorer, Armory ROI, news, and Storage Units are free, with one Steam account in the session. The whale account list and trade feed are open. Several accounts in one session are on every paid plan and are not on the free plan. Analytics on what they hold, signals, and Telegram alerts${priceLine ? ` are ${priceLine}` : ' are a paid plan'}.`;
     return { ...item, a: answer };
   });
   return (

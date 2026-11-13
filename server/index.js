@@ -203,6 +203,20 @@ app.use(session({
   },
 }));
 
+// Keep the active Steam inventory inside the plan. Login and link finish
+// their own session write, so they are skipped here.
+app.use('/api', asyncRoute(async (req, res, next) => {
+  const path = req.path || '';
+  if (/\/auth\/steam$/.test(path) || path.endsWith('/auth/steam/callback')) {
+    next();
+    return;
+  }
+  if (req.session && (req.session.steamId || req.session.primarySteamId)) {
+    await settleSteamSession(req);
+  }
+  next();
+}));
+
 const pairingLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -317,9 +331,28 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/auth/steam', authLimiter, asyncRoute(async (req, res) => {
+  const linking = req.query.mode === 'link' && isSteamId64(req.session.primarySteamId || req.session.steamId);
+  if (linking) {
+    const state = await settleSteamSession(req);
+    if (!state.multiAccount) {
+      res.redirect('/dashboard?auth_error=multi_account_plan');
+      return;
+    }
+    if (state.accounts.length >= MAX_STEAM_ACCOUNTS) {
+      res.redirect('/dashboard?auth_error=multi_account_limit');
+      return;
+    }
+    req.session.linkAccount = true;
+    req.session.authReturnTo = '/dashboard';
+    await saveSession(req);
+    res.redirect(await getSteamRedirectUrl(req));
+    return;
+  }
+
   const next = safeAuthReturnPath(req.query.next);
   if (next === '/dashboard') delete req.session.authReturnTo;
   else req.session.authReturnTo = next;
+  req.session.linkAccount = false;
   await saveSession(req);
   const redirectUrl = await getSteamRedirectUrl(req);
   res.redirect(redirectUrl);
@@ -327,20 +360,58 @@ app.get('/api/auth/steam', authLimiter, asyncRoute(async (req, res) => {
 
 app.get('/api/auth/steam/callback', authLimiter, asyncRoute(async (req, res) => {
   const returnTo = safeAuthReturnPath(req.session.authReturnTo);
+  const linking = req.session.linkAccount === true;
+  const preserved = linking ? readSteamAccounts(req.session) : null;
   let auth;
   try {
     auth = await authenticateSteam(req);
   } catch (error) {
     console.warn('[auth] Steam login failed:', error.code || error.message);
+    req.session.linkAccount = false;
+    await saveSession(req);
     const code = encodeURIComponent(error.code || 'steam_login_failed');
     const joiner = returnTo.includes('?') ? '&' : '?';
     res.redirect(`${returnTo}${joiner}auth_error=${code}`);
     return;
   }
 
+  if (preserved && preserved.primarySteamId) {
+    const subscription = await getOwnerSubscription(`steam:${preserved.primarySteamId}`);
+    await regenerateSession(req);
+    req.session.primarySteamId = preserved.primarySteamId;
+    req.session.steamAccounts = preserved.accounts;
+    req.session.steamRaw = auth.raw;
+    if (!planAllows(subscription.planId, 'multiAccount')) {
+      req.session.steamId = preserved.primarySteamId;
+      await saveSession(req);
+      res.redirect('/dashboard?auth_error=multi_account_plan');
+      return;
+    }
+    const already = preserved.accounts.some((row) => row.steamId === auth.steamId);
+    if (!already && preserved.accounts.length >= MAX_STEAM_ACCOUNTS) {
+      req.session.steamId = preserved.primarySteamId;
+      await saveSession(req);
+      res.redirect('/dashboard?auth_error=multi_account_limit');
+      return;
+    }
+    if (!already) {
+      req.session.steamAccounts = [
+        ...preserved.accounts,
+        { steamId: auth.steamId, linkedAt: new Date().toISOString() },
+      ];
+    }
+    req.session.steamId = auth.steamId;
+    await saveSession(req);
+    await recordSteamLogin(auth.steamId, { source: 'steam_openid' });
+    res.redirect('/dashboard?focus=steam');
+    return;
+  }
+
   const priorOwnerId = req.session.ownerId || null;
   await regenerateSession(req);
+  req.session.primarySteamId = auth.steamId;
   req.session.steamId = auth.steamId;
+  req.session.steamAccounts = [{ steamId: auth.steamId, linkedAt: new Date().toISOString() }];
   req.session.steamRaw = auth.raw;
   await saveSession(req);
   await migrateOwnershipToSteam(priorOwnerId, auth.steamId);
@@ -360,42 +431,45 @@ app.post('/api/auth/logout', asyncRoute(async (req, res) => {
   res.json({ ok: true });
 }));
 
-app.get('/api/me', asyncRoute(async (req, res) => {
-  const ownerId = resolveOwnerId(req);
-  const subscription = withBillingFlags(await getOwnerSubscription(ownerId));
-  const beta = getBetaPublicConfig();
-  if (!req.session.steamId) {
-    res.json({
-      connected: false,
-      steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY),
-      subscription,
-      beta,
-      billingReady: effectiveBillingReady(),
+app.post('/api/auth/accounts/active', requireAuth, asyncRoute(async (req, res) => {
+  const state = await settleSteamSession(req);
+  const steamId = String(req.body?.steamId || '').trim();
+  if (!state.accounts.some((row) => row.steamId === steamId)) {
+    res.status(404).json({ error: 'That Steam account is not connected in this session.', code: 'account_not_linked' });
+    return;
+  }
+  if (steamId !== state.primarySteamId && !state.multiAccount) {
+    res.status(403).json({
+      error: 'Several Steam accounts are included on paid plans.',
+      code: 'plan_required',
+      requiredFeature: 'multiAccount',
     });
     return;
   }
+  req.session.steamId = steamId;
+  await saveSession(req);
+  res.json(await publicSession(req));
+}));
 
-  let profile;
-  try {
-    profile = await getSteamProfile(req.session.steamId);
-  } catch {
-    profile = {
-      steamId: req.session.steamId,
-      personaname: `STEAM/${String(req.session.steamId).slice(-6)}`,
-      profileurl: `https://steamcommunity.com/profiles/${req.session.steamId}`,
-      avatar: null,
-      avatarmedium: null,
-      avatarfull: null,
-    };
+app.delete('/api/auth/accounts/:steamId', requireAuth, asyncRoute(async (req, res) => {
+  const state = await settleSteamSession(req);
+  const steamId = String(req.params.steamId || '').trim();
+  if (steamId === state.primarySteamId) {
+    res.status(400).json({ error: 'The account that owns this session stays connected. Sign out to remove it.', code: 'primary_account' });
+    return;
   }
-  res.json({
-    connected: true,
-    profile,
-    steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY),
-    subscription,
-    beta,
-    billingReady: effectiveBillingReady(),
-  });
+  if (!state.accounts.some((row) => row.steamId === steamId)) {
+    res.status(404).json({ error: 'That Steam account is not connected in this session.', code: 'account_not_linked' });
+    return;
+  }
+  req.session.steamAccounts = state.accounts.filter((row) => row.steamId !== steamId);
+  if (req.session.steamId === steamId) req.session.steamId = state.primarySteamId;
+  await saveSession(req);
+  res.json(await publicSession(req));
+}));
+
+app.get('/api/me', asyncRoute(async (req, res) => {
+  res.json(await publicSession(req));
 }));
 
 app.get('/api/beta', (req, res) => {
@@ -1350,12 +1424,8 @@ app.get('/pricing', (req, res) => {
   res.redirect(302, '/');
 });
 
-app.get('/glock-3d', asyncRoute(async (req, res) => {
-  await sendAppShell(res);
-}));
-
-app.get('/glock3d', (req, res) => {
-  res.redirect(301, '/glock-3d');
+app.get(['/glock-3d', '/glock3d'], (req, res) => {
+  res.redirect(301, '/');
 });
 
 app.get('/pulse-preview', (req, res) => {
@@ -1462,8 +1532,131 @@ app.listen(port, () => {
 
 // Owner id scopes manual portfolios & basis per user: the Steam account when
 // logged in, otherwise a stable per-session anonymous id (only created on write).
+const MAX_STEAM_ACCOUNTS = 8;
+
+function isSteamId64(value) {
+  return /^\d{17}$/.test(String(value || ''));
+}
+
+function readSteamAccounts(session) {
+  const primary = isSteamId64(session.primarySteamId)
+    ? session.primarySteamId
+    : (isSteamId64(session.steamId) ? session.steamId : null);
+  const stored = Array.isArray(session.steamAccounts) ? session.steamAccounts : [];
+  const rows = [];
+  const seen = new Set();
+  const push = (steamId, linkedAt) => {
+    const id = String(steamId || '');
+    if (!isSteamId64(id) || seen.has(id)) return;
+    seen.add(id);
+    rows.push({ steamId: id, linkedAt: linkedAt || null });
+  };
+  const primaryRow = stored.find((row) => row && row.steamId === primary);
+  if (primary) push(primary, primaryRow && primaryRow.linkedAt);
+  for (const row of stored) {
+    push(row && row.steamId, row && row.linkedAt);
+  }
+  return { primarySteamId: primary, accounts: rows.slice(0, MAX_STEAM_ACCOUNTS) };
+}
+
+async function settleSteamSession(req) {
+  const { primarySteamId, accounts } = readSteamAccounts(req.session);
+  if (!primarySteamId) {
+    return {
+      connected: false,
+      accounts: [],
+      multiAccount: false,
+      primarySteamId: null,
+      activeSteamId: null,
+      subscription: null,
+    };
+  }
+  const subscription = await getOwnerSubscription(`steam:${primarySteamId}`);
+  const multiAccount = planAllows(subscription.planId, 'multiAccount');
+  let active = isSteamId64(req.session.steamId) && accounts.some((row) => row.steamId === req.session.steamId)
+    ? req.session.steamId
+    : primarySteamId;
+  if (!multiAccount && active !== primarySteamId) active = primarySteamId;
+  const nextAccounts = JSON.stringify(accounts);
+  const changed = req.session.primarySteamId !== primarySteamId
+    || req.session.steamId !== active
+    || JSON.stringify(req.session.steamAccounts || []) !== nextAccounts;
+  req.session.primarySteamId = primarySteamId;
+  req.session.steamId = active;
+  req.session.steamAccounts = accounts;
+  if (changed) await saveSession(req);
+  return {
+    connected: true,
+    accounts,
+    multiAccount,
+    primarySteamId,
+    activeSteamId: active,
+    subscription,
+  };
+}
+
+async function accountProfiles(accounts, activeSteamId, primarySteamId) {
+  return Promise.all(accounts.map(async (row) => {
+    let profile;
+    try {
+      profile = await getSteamProfile(row.steamId);
+    } catch {
+      profile = {
+        steamId: row.steamId,
+        personaname: `STEAM/${row.steamId.slice(-6)}`,
+        profileurl: `https://steamcommunity.com/profiles/${row.steamId}`,
+        avatar: null,
+        avatarmedium: null,
+        avatarfull: null,
+      };
+    }
+    return {
+      steamId: row.steamId,
+      personaname: profile.personaname,
+      profileurl: profile.profileurl,
+      avatar: profile.avatar || null,
+      avatarmedium: profile.avatarmedium || null,
+      active: row.steamId === activeSteamId,
+      primary: row.steamId === primarySteamId,
+      profile,
+    };
+  }));
+}
+
+async function publicSession(req) {
+  const state = await settleSteamSession(req);
+  const beta = getBetaPublicConfig();
+  if (!state.connected) {
+    return {
+      connected: false,
+      accounts: [],
+      multiAccount: false,
+      steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY),
+      subscription: withBillingFlags(await getOwnerSubscription(resolveOwnerId(req))),
+      beta,
+      billingReady: effectiveBillingReady(),
+    };
+  }
+  const rows = await accountProfiles(state.accounts, state.activeSteamId, state.primarySteamId);
+  const active = rows.find((row) => row.active) || rows[0];
+  return {
+    connected: true,
+    profile: active.profile,
+    accounts: rows.map(({ profile, ...row }) => row),
+    multiAccount: state.multiAccount,
+    primarySteamId: state.primarySteamId,
+    steamApiKeyConfigured: Boolean(process.env.STEAM_API_KEY),
+    subscription: withBillingFlags(state.subscription),
+    beta,
+    billingReady: effectiveBillingReady(),
+  };
+}
+
 function resolveOwnerId(req, { create = false } = {}) {
-  if (req.session.steamId) return `steam:${req.session.steamId}`;
+  const ownerSteam = isSteamId64(req.session.primarySteamId)
+    ? req.session.primarySteamId
+    : (isSteamId64(req.session.steamId) ? req.session.steamId : null);
+  if (ownerSteam) return `steam:${ownerSteam}`;
   if (req.session.ownerId) return req.session.ownerId;
   if (create) {
     req.session.ownerId = `anon:${crypto.randomUUID()}`;

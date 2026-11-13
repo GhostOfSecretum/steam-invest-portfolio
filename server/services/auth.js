@@ -45,7 +45,7 @@ function safeAuthReturnPath(value) {
     return '/dashboard';
   }
   const path = url.pathname.replace(/\/+$/, '') || '/';
-  const exact = new Set(['/dashboard', '/investors', '/market', '/collections', '/armory', '/favorites', '/glock-3d']);
+  const exact = new Set(['/dashboard', '/investors', '/market', '/collections', '/armory', '/favorites']);
   if (exact.has(path)) {
     if (path === '/dashboard') {
       const profile = String(url.searchParams.get('profile') || '').trim().slice(0, 300);

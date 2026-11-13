@@ -14,6 +14,7 @@ const PLANS = [
       desktopDownload: true,
       topInvestors: true,
       smartMoney: false,
+      multiAccount: false,
     },
     bullets: {
       en: [
@@ -22,7 +23,7 @@ const PLANS = [
         'Live prices, P&L, allocation',
         'Unlimited items displayed',
         'Storage Units via the browser extension',
-        'Top investor accounts',
+        'Analytics',
         'Market explorer, Armory ROI, news',
       ],
       ru: [
@@ -31,13 +32,13 @@ const PLANS = [
         'Live-цены, P&L, распределение',
         'Безлимит предметов в списке',
         'Хранилища через расширение для браузера',
-        'Топ-аккаунты инвесторов',
+        'Аналитика',
         'Маркет, Armory ROI, новости',
       ],
     },
     missing: {
-      en: [],
-      ru: [],
+      en: ['Several Steam accounts in one session'],
+      ru: ['Несколько Steam-аккаунтов в одной сессии'],
     },
   },
   {
@@ -56,15 +57,18 @@ const PLANS = [
       desktopDownload: true,
       topInvestors: true,
       smartMoney: true,
+      multiAccount: true,
     },
     bullets: {
       en: [
         'Everything on the website',
+        'Several Steam accounts in one session',
         '3 days of access',
         'No auto-renewal',
       ],
       ru: [
         'Весь сайт без ограничений',
+        'Несколько Steam-аккаунтов в одной сессии',
         'Доступ на 3 дня',
         'Без автопродления',
       ],
@@ -92,14 +96,17 @@ const PLANS = [
       desktopDownload: true,
       topInvestors: true,
       smartMoney: false,
+      multiAccount: true,
     },
     bullets: {
       en: [
         '7 days free on first Steam login',
         'Everything on the website',
+        'Several Steam accounts in one session',
       ],
       ru: [
         'Весь сайт без ограничений',
+        'Несколько Steam-аккаунтов в одной сессии',
       ],
     },
     missing: {
@@ -130,15 +137,18 @@ const PLANS = [
       desktopDownload: true,
       topInvestors: true,
       smartMoney: true,
+      multiAccount: true,
     },
     bullets: {
       en: [
         '7-day free trial via Telegram channel',
         'Everything on the website',
+        'Several Steam accounts in one session',
       ],
       ru: [
         '7 дней бесплатно за подписку на Telegram-канал',
         'Весь сайт без ограничений',
+        'Несколько Steam-аккаунтов в одной сессии',
       ],
     },
     missing: {

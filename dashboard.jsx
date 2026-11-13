@@ -682,6 +682,14 @@ const PRICE_MODE_KEY = 'skinshead:priceMode';
 
 function readSelectedPortfolioId() {
   try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('focus') === 'steam') {
+      window.sessionStorage.setItem(SELECTED_PORTFOLIO_KEY, 'steam');
+      params.delete('focus');
+      const query = params.toString();
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+      return 'steam';
+    }
     return window.sessionStorage.getItem(SELECTED_PORTFOLIO_KEY) || null;
   } catch {
     return null;
@@ -865,7 +873,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
     { id: 'overview', label: tt(lang, { en: 'Overview', ru: 'Обзор', zh: '总览', 'zh-TW': '總覽' }) },
     { id: 'items', label: tt(lang, { en: 'Items', ru: 'Предметы', zh: '物品', 'zh-TW': '物品' }), count: isSwitchingPortfolio ? null : data.totalInventoryCount },
     { id: 'activity', label: tt(lang, { en: 'Activity', ru: 'История', zh: '动态', 'zh-TW': '動態' }) },
-    { id: 'investors', label: tt(lang, { en: 'Top investors', ru: 'Топ инвесторы', zh: '顶尖投资者', 'zh-TW': '頂尖投資者' }) },
+    { id: 'investors', label: tt(lang, { en: 'Analytics', ru: 'Аналитика', zh: '分析', 'zh-TW': '分析' }) },
   ];
 
   const shareProfileRef = publicPortfolioShareRef({ data, auth, publicSteamId, publicProfileUrl });
@@ -1000,6 +1008,13 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
             />
           </div>
         </div>
+        {auth?.connected && !isPublicPortfolio && (
+          <AccountSwitcher
+            lang={lang}
+            auth={auth}
+            onSwitched={() => setSelectedPortfolioId('steam')}
+          />
+        )}
         {favoriteError && (
           <div style={{ marginBottom: 16, fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--red)' }}>{favoriteError}</div>
         )}
@@ -1510,6 +1525,121 @@ function ActivityTable({ activity, portfolioId, portfolioType, lang, onEventDele
   );
 }
 
+function AccountSwitcher({ lang, auth, onSwitched }) {
+  const accounts = Array.isArray(auth?.accounts) && auth.accounts.length
+    ? auth.accounts
+    : (auth?.profile?.steamId ? [{
+      steamId: auth.profile.steamId,
+      personaname: auth.profile.personaname,
+      avatar: auth.profile.avatar,
+      active: true,
+      primary: true,
+    }] : []);
+  const multi = Boolean(auth?.multiAccount);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const atCap = accounts.length >= 8;
+  const planNote = tt(lang, {
+    en: 'Several Steam accounts in one session are on paid plans. The free plan keeps one account.',
+    ru: 'Несколько Steam-аккаунтов в одной сессии есть на всех платных тарифах. На бесплатном остаётся один аккаунт.',
+    zh: '同一会话中的多个 Steam 账号包含在所有付费方案中。免费方案只能保留一个账号。',
+    'zh-TW': '同一工作階段中的多個 Steam 帳號包含在所有付費方案中。免費方案只能保留一個帳號。',
+  });
+
+  const activate = async (steamId) => {
+    const current = accounts.find((row) => row.active);
+    if (!steamId || busy || current?.steamId === steamId) return;
+    if (!multi && !accounts.find((row) => row.steamId === steamId)?.primary) {
+      setError(planNote);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await auth.switchAccount(steamId);
+      if (onSwitched) onSwitched();
+    } catch (err) {
+      setError(err?.code === 'plan_required' ? planNote : (err?.message || planNote));
+    }
+    setBusy(false);
+  };
+
+  const remove = async (event, steamId) => {
+    event.stopPropagation();
+    if (busy) return;
+    const ok = window.confirm(tt(lang, {
+      en: 'Disconnect this Steam account from the session?',
+      ru: 'Отключить этот Steam-аккаунт от сессии?',
+      zh: '从当前会话断开这个 Steam 账号？',
+      'zh-TW': '從目前工作階段斷開這個 Steam 帳號？',
+    }));
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await auth.unlinkAccount(steamId);
+      if (onSwitched) onSwitched();
+    } catch (err) {
+      setError(err?.message || tt(lang, { en: 'Could not disconnect the account', ru: 'Не удалось отключить аккаунт', zh: '无法断开账号', 'zh-TW': '無法斷開帳號' }));
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="dash-accounts">
+      <div className="dash-accounts-row" role="listbox" aria-label={tt(lang, { en: 'Steam accounts', ru: 'Аккаунты Steam', zh: 'Steam 账号', 'zh-TW': 'Steam 帳號' })}>
+        {accounts.map((account) => (
+          <span
+            key={account.steamId}
+            className="dash-account"
+            data-active={account.active ? 'true' : 'false'}
+          >
+            <button
+              type="button"
+              role="option"
+              aria-selected={account.active ? 'true' : 'false'}
+              disabled={busy || (!multi && !account.active && !account.primary)}
+              onClick={() => activate(account.steamId)}
+            >
+              {account.avatar
+                ? <img src={account.avatar} alt="" />
+                : <span className="dash-account-fallback">{String(account.personaname || 'S').slice(0, 1)}</span>}
+              <span>{account.personaname || `STEAM/${String(account.steamId).slice(-6)}`}</span>
+            </button>
+            {!account.primary && multi && (
+              <button
+                type="button"
+                className="dash-account-remove"
+                aria-label={tt(lang, { en: 'Disconnect account', ru: 'Отключить аккаунт', zh: '断开账号', 'zh-TW': '斷開帳號' })}
+                disabled={busy}
+                onClick={(event) => remove(event, account.steamId)}
+              >
+                ×
+              </button>
+            )}
+          </span>
+        ))}
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost dash-account-add"
+          disabled={busy || (multi && atCap)}
+          onClick={() => {
+            if (!multi) {
+              setError(planNote);
+              return;
+            }
+            if (auth?.linkAccount) auth.linkAccount();
+          }}
+        >
+          {tt(lang, { en: 'Add account', ru: 'Ещё аккаунт', zh: '添加账号', 'zh-TW': '新增帳號' })}
+        </button>
+      </div>
+      {error && <div className="dash-account-note">{error}</div>}
+      {!multi && !error && <div className="dash-account-note">{planNote}</div>}
+    </div>
+  );
+}
+
 function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfolioType, switching = false, cashUsd = 0, onSelect, onChanged, onPublicProfile }) {
   const t = useT(lang);
   const [name, setName] = useState('');
@@ -1577,11 +1707,17 @@ function PortfolioControls({ lang, auth, portfolios, activePortfolioId, portfoli
             })}
           >
             {!activePortfolioId && <option value="">{tt(lang, { en: 'Choose a portfolio', ru: 'Выберите портфель', zh: '请选择库存', 'zh-TW': '請選擇庫存' })}</option>}
-            {portfolios.map((portfolio) => (
-              <option key={portfolio.id} value={portfolio.id}>
-                {portfolio.type === 'steam' ? 'Steam · ' : ''}{portfolio.name}{portfolio.itemCount != null ? ` (${portfolio.itemCount})` : ''}
-              </option>
-            ))}
+            {portfolios.map((portfolio) => {
+              const steamName = auth?.profile?.personaname;
+              const label = portfolio.type === 'steam'
+                ? `Steam · ${steamName || portfolio.name}`
+                : portfolio.name;
+              return (
+                <option key={portfolio.id} value={portfolio.id}>
+                  {label}{portfolio.itemCount != null ? ` (${portfolio.itemCount})` : ''}
+                </option>
+              );
+            })}
           </select>
           {naming ? (
             <div className="dash-control-inline-form">

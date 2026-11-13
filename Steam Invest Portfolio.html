@@ -71,10 +71,6 @@
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
-  <script src="assets/glock-ghost-protocol/glock-bundle.js"></script>
-  <script src="hero-glock-ghost-3d.js"></script>
-
   <script src="item-slugs.js"></script>
   <script type="text/babel" src="tweaks-panel.jsx"></script>
   <script type="text/babel" src="api-client.jsx"></script>
@@ -150,10 +146,10 @@
         'zh-TW': '庫存 · SkinsHead',
       },
       investors: {
-        ru: 'Топ инвесторы · SkinsHead',
-        en: 'Top investors · SkinsHead',
-        zh: '顶尖投资者 · SkinsHead',
-        'zh-TW': '頂尖投資者 · SkinsHead',
+        ru: 'Аналитика · SkinsHead',
+        en: 'Analytics · SkinsHead',
+        zh: '分析 · SkinsHead',
+        'zh-TW': '分析 · SkinsHead',
       },
       market: {
         ru: 'Маркет · SkinsHead',
@@ -166,12 +162,6 @@
         en: 'Armory Pass · SkinsHead',
         zh: 'Armory Pass · SkinsHead',
         'zh-TW': 'Armory Pass · SkinsHead',
-      },
-      glock3d: {
-        ru: '3D Glock · SkinsHead',
-        en: '3D Glock · SkinsHead',
-        zh: '3D Glock · SkinsHead',
-        'zh-TW': '3D Glock · SkinsHead',
       },
       collections: {
         ru: 'Коллекции · SkinsHead',
@@ -297,9 +287,6 @@
       if (path === '/armory') {
         return { screen: 'armory' };
       }
-      if (path === '/glock-3d' || path === '/glock3d') {
-        return { screen: 'glock3d' };
-      }
       if (path === '/dashboard' || window.location.hash === '#dashboard') {
         return { screen: 'dashboard', profile: profile || '' };
       }
@@ -333,6 +320,22 @@
           'zh-TW': 'Steam 未確認登入。請重新登入。',
         });
       }
+      if (code === 'multi_account_plan') {
+        return tt(lang, {
+          en: 'Several Steam accounts in one session are on paid plans. The free plan keeps one account.',
+          ru: 'Несколько Steam-аккаунтов в одной сессии есть на всех платных тарифах. На бесплатном остаётся один аккаунт.',
+          zh: '同一会话中的多个 Steam 账号包含在所有付费方案中。免费方案只能保留一个账号。',
+          'zh-TW': '同一工作階段中的多個 Steam 帳號包含在所有付費方案中。免費方案只能保留一個帳號。',
+        });
+      }
+      if (code === 'multi_account_limit') {
+        return tt(lang, {
+          en: 'This session already has 8 Steam accounts.',
+          ru: 'В этой сессии уже 8 Steam-аккаунтов.',
+          zh: '此会话已有 8 个 Steam 账号。',
+          'zh-TW': '此工作階段已有 8 個 Steam 帳號。',
+        });
+      }
       return tt(lang, {
         en: 'Steam sign-in failed. Please try again.',
         ru: 'Не удалось войти через Steam. Попробуйте ещё раз.',
@@ -347,7 +350,6 @@
       if (screen === 'market') return '/market';
       if (screen === 'collections') return '/collections';
       if (screen === 'armory') return '/armory';
-      if (screen === 'glock3d') return '/glock-3d';
       if (screen === 'dashboard') {
         if (profileUrl) return `/dashboard?profile=${encodeURIComponent(profileUrl)}`;
         return '/dashboard';
@@ -668,9 +670,6 @@
                 window.scrollTo({ top: 0, behavior: 'instant' });
               }}
             />
-          )}
-          {screen === 'glock3d' && (
-            <Glock3DPage lang={t.lang} />
           )}
           {screen === 'item' && (
             <ItemDetail

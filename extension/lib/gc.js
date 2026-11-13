@@ -13,6 +13,12 @@ const GCMsg = {
 const CASKET_CONTENTS_NOTIFICATION = 1012;
 const SO_TYPE_ITEM = 1;
 export const STORAGE_UNIT_DEF_INDEX = 1201;
+// GC inventory is not the Steam backpack. These are client-side rows: the
+// default loadout, a store preview, or an item the coordinator inserts while
+// answering a storage-unit read. None of them are in the economy inventory.
+const ITEM_FLAG_NON_ECONOMY = 8;
+const ORIGIN_PREVIEW = 17;
+const ORIGIN_STOCK = 22;
 const GC_CONNECT_TIMEOUT_MS = 90000;
 const CASKET_TIMEOUT_MS = 30000;
 
@@ -41,9 +47,12 @@ function parseItem(bytes) {
   }
   return {
     id: msg.big(1),
+    inventory: msg.uint(3, 0),
     defIndex: msg.uint(4),
     quantity: msg.uint(5, 1),
     quality: msg.uint(7),
+    flags: msg.uint(8, 0),
+    origin: msg.has(9) ? msg.uint(9) : null,
     rarity: msg.uint(19),
     customName: msg.str(10)
       || (customNameBytes && customNameBytes.length > 2 ? new TextDecoder().decode(customNameBytes.subarray(2)) : undefined),
@@ -170,7 +179,16 @@ export class Cs2GameCoordinator {
   }
 
   backpackItems() {
-    return [...this.#items.values()].filter((item) => item.casketId === null);
+    return [...this.#items.values()].filter((item) => this.#isBackpackItem(item));
+  }
+
+  // A real backpack row has a slot. Bit 30 of `inventory` marks an unacknowledged
+  // new item, so that value is non-zero too. Slot 0 is the default loadout and
+  // other coordinator-only rows.
+  #isBackpackItem(item) {
+    if (item.excluded || item.casketId !== null || !item.inventory) return false;
+    if ((item.flags & ITEM_FLAG_NON_ECONOMY) !== 0) return false;
+    return item.origin !== ORIGIN_PREVIEW && item.origin !== ORIGIN_STOCK;
   }
 
   storageUnits() {
@@ -179,12 +197,20 @@ export class Cs2GameCoordinator {
 
   async loadCasketContents(casket) {
     if (!casket.casketItemCount) return [];
+    const before = new Set(this.#items.keys());
     const done = this.#waitFor(GCMsg.ItemCustomizationNotification, CASKET_TIMEOUT_MS, (data) => {
       const notification = decode(data);
       return notification.uint(2) === CASKET_CONTENTS_NOTIFICATION && notification.bigs(1)[0] === casket.id;
     });
     this.#send(GCMsg.CasketItemLoadContents, new ProtoWriter().uint(1, casket.id).uint(2, casket.id));
     await done;
+    // Contents arrive as new rows. The ones that belong in the unit carry its
+    // id. A row that appears during the read without that id is not in the
+    // backpack — the coordinator inserts it as part of the reply — and must not
+    // be uploaded as an inventory item the account does not hold.
+    for (const item of this.#items.values()) {
+      if (!before.has(item.id) && item.casketId === null) item.excluded = true;
+    }
     return [...this.#items.values()].filter((item) => item.casketId === casket.id);
   }
 }

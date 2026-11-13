@@ -4,13 +4,13 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 /* ─────────── i18n ─────────── */
 const I18N = {
   en: {
-    nav: { home: 'Home', dashboard: 'Portfolio', market: 'Market', collections: 'Collections', favorites: 'Favorite profiles', investors: 'Top investors', news: 'News', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Item', currency: 'Currency' },
+    nav: { home: 'Home', dashboard: 'Portfolio', market: 'Market', collections: 'Collections', favorites: 'Favorite profiles', investors: 'Analytics', news: 'News', armory: 'Armory Pass', item: 'Item', currency: 'Currency' },
     hero: {
       eyebrow: 'SkinsHead · CS2 skin market',
       title1: 'CS2 skins',
       title2: 'as a',
       title3: 'market.',
-      sub: 'Portfolio value and P&L, live prices, whale holdings, collections, Armory ROI, and Storage Units.',
+      sub: 'Portfolio value and P&L, live prices, whale holdings, collections, Armory ROI, and Storage Units. Every paid plan can keep several Steam accounts in one session and switch the portfolio between them. The free plan stays on one account.',
       cta1: 'Value my inventory',
       ctaConnected: 'Open my portfolio',
       profileToggle: 'Check a public profile',
@@ -37,7 +37,7 @@ const I18N = {
       armorySub: 'Rank Armory rewards by star ROI on live Steam prices. See expected value, profit, and days left on the pass.',
       stats: 'What you get',
       pricing: 'What you get',
-      pricingSub: 'The whole site is open: portfolio, market, Storage Units, Armory and top investor accounts.',
+      pricingSub: 'The whole site is open: portfolio, market, Storage Units, Armory and analytics. Several Steam accounts in one session are on paid plans.',
       faq: 'FAQ',
     },
     marketBoard: {
@@ -124,13 +124,13 @@ const I18N = {
     }
   },
   ru: {
-    nav: { home: 'Главная', dashboard: 'Портфель', market: 'Маркет', collections: 'Коллекции', favorites: 'Избранные профили', investors: 'Топ инвесторы', news: 'Новости', armory: 'Armory Pass', glock3d: '3D Glock', item: 'Карточка', currency: 'Валюта' },
+    nav: { home: 'Главная', dashboard: 'Портфель', market: 'Маркет', collections: 'Коллекции', favorites: 'Избранные профили', investors: 'Аналитика', news: 'Новости', armory: 'Armory Pass', item: 'Карточка', currency: 'Валюта' },
     hero: {
       eyebrow: 'SkinsHead · рынок скинов CS2',
       title1: 'Скины CS2',
       title2: 'как',
       title3: 'рынок.',
-      sub: 'Портфель с P&L, маркет, киты, коллекции, Armory и хранилища — с live-ценами.',
+      sub: 'Портфель с P&L, маркет, киты, коллекции, Armory и хранилища — с live-ценами. На всех платных тарифах в одной сессии можно держать несколько Steam-аккаунтов и переключать портфель между ними. На бесплатном — один аккаунт.',
       cta1: 'Оценить мой инвентарь',
       ctaConnected: 'Открыть мой портфель',
       profileToggle: 'Проверить публичный профиль',
@@ -157,7 +157,7 @@ const I18N = {
       armorySub: 'Рейтинг наград Armory по ROI звёзд на live-ценах Steam. Смотри ожидаемую стоимость, профит и сколько дней осталось у пасса.',
       stats: 'Что внутри',
       pricing: 'Что внутри',
-      pricingSub: 'Весь сайт открыт: портфель, маркет, хранилища, Armory и топ-аккаунты инвесторов.',
+      pricingSub: 'Весь сайт открыт: портфель, маркет, хранилища, Armory и аналитика. Несколько Steam-аккаунтов в одной сессии — на платных тарифах.',
       faq: 'Частые вопросы',
     },
     marketBoard: {
@@ -241,13 +241,13 @@ const I18N = {
     }
   },
   zh: {
-    nav: { home: '首页', dashboard: '库存', market: '市场', collections: '收藏', favorites: '收藏的个人资料', investors: '顶尖投资者', news: '新闻', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '货币' },
+    nav: { home: '首页', dashboard: '库存', market: '市场', collections: '收藏', favorites: '收藏的个人资料', investors: '分析', news: '新闻', armory: 'Armory Pass', item: '物品', currency: '货币' },
     hero: {
       eyebrow: 'SkinsHead · CS2 皮肤市场',
       title1: '看懂整个',
       title2: 'CS2',
       title3: '市场。',
-      sub: '库存估值与盈亏、实时价格、巨鲸持仓、收藏、Armory ROI 与仓库。',
+      sub: '库存估值与盈亏、实时价格、巨鲸持仓、收藏、Armory ROI 与仓库。所有付费方案可在同一会话连接多个 Steam 账号并切换库存。免费方案只能连接一个账号。',
       cta1: '估算我的库存',
       ctaConnected: '打开我的库存',
       profileToggle: '查看公开个人资料',
@@ -274,7 +274,7 @@ const I18N = {
       armorySub: '按 Steam 实时价格对 Armory 奖励做星级 ROI 排名。查看期望价值、利润和通行证剩余天数。',
       stats: '你将获得',
       pricing: '包含内容',
-      pricingSub: '网站全部功能开放：库存、市场、仓库、Armory 和顶尖投资者账户。',
+      pricingSub: '网站全部功能开放：库存、市场、仓库、Armory 和分析。同一会话中的多个 Steam 账号属于付费方案。',
       faq: '常见问题',
     },
     marketBoard: {
@@ -361,13 +361,13 @@ const I18N = {
     }
   },
   'zh-TW': {
-    nav: { home: '首頁', dashboard: '庫存', market: '市場', collections: '收藏', favorites: '收藏的個人資料', investors: '頂尖投資者', news: '新聞', armory: 'Armory Pass', glock3d: '3D Glock', item: '物品', currency: '貨幣' },
+    nav: { home: '首頁', dashboard: '庫存', market: '市場', collections: '收藏', favorites: '收藏的個人資料', investors: '分析', news: '新聞', armory: 'Armory Pass', item: '物品', currency: '貨幣' },
     hero: {
       eyebrow: 'SkinsHead · CS2 皮膚市場',
       title1: '看懂整個',
       title2: 'CS2',
       title3: '市場。',
-      sub: '庫存估值與盈虧、即時價格、巨鯨持倉、收藏、Armory ROI 與倉庫。',
+      sub: '庫存估值與盈虧、即時價格、巨鯨持倉、收藏、Armory ROI 與倉庫。所有付費方案可在同一工作階段連接多個 Steam 帳號並切換庫存。免費方案只能連接一個帳號。',
       cta1: '估算我的庫存',
       ctaConnected: '開啟我的庫存',
       profileToggle: '查看公開個人資料',
@@ -394,7 +394,7 @@ const I18N = {
       armorySub: '依 Steam 即時價格對 Armory 獎勵做星級 ROI 排名。查看期望價值、利潤和通行證剩餘天數。',
       stats: '你將獲得',
       pricing: '包含內容',
-      pricingSub: '網站全部功能開放：庫存、市場、倉庫、Armory 和頂尖投資者帳戶。',
+      pricingSub: '網站全部功能開放：庫存、市場、倉庫、Armory 和分析。同一工作階段中的多個 Steam 帳號屬於付費方案。',
       faq: '常見問題',
     },
     marketBoard: {
@@ -658,20 +658,14 @@ function TopNav({ screen, onNav, lang, onLang, currency, onCurrency, t, auth }) 
         { k: 'dashboard', label: t.nav.dashboard, icon: '▣', desc: tt(lang, { en: 'Value and inventory', ru: 'Стоимость и предметы', zh: '价值与库存', 'zh-TW': '價值與庫存' }) },
         { k: 'market', label: t.nav.market, icon: '⌕', desc: tt(lang, { en: 'Search and market prices', ru: 'Поиск и рыночные цены', zh: '搜索与市场价格', 'zh-TW': '搜尋與市場價格' }) },
         { k: 'collections', label: t.nav.collections, icon: '▦', desc: tt(lang, { en: 'Browse skin collections', ru: 'Коллекции скинов', zh: '浏览皮肤收藏', 'zh-TW': '瀏覽皮膚收藏' }) },
-      ],
-    },
-    {
-      label: tt(lang, { en: 'Tools', ru: 'Инструменты', zh: '工具', 'zh-TW': '工具' }),
-      items: [
         { k: 'armory', label: t.nav.armory, icon: '◈', desc: tt(lang, { en: 'Reward ROI calculator', ru: 'Расчёт доходности наград', zh: '奖励 ROI 计算器', 'zh-TW': '獎勵 ROI 計算器' }) },
-        { k: 'glock3d', label: t.nav.glock3d, icon: '◇', desc: tt(lang, { en: 'Interactive item model', ru: 'Интерактивная модель', zh: '交互式模型', 'zh-TW': '互動式模型' }) },
       ],
     },
     {
-      label: tt(lang, { en: 'Community', ru: 'Сообщество', zh: '社区', 'zh-TW': '社群' }),
+      label: tt(lang, { en: 'Watch', ru: 'Наблюдение', zh: '观察', 'zh-TW': '觀察' }),
       items: [
+        { k: 'investors', label: t.nav.investors, icon: '↗', desc: tt(lang, { en: 'Whale positions and the trade feed', ru: 'Позиции китов и лента сделок', zh: '巨鲸持仓与成交动态', 'zh-TW': '巨鯨持倉與成交動態' }) },
         { k: 'favorites', label: t.nav.favorites, icon: '♡', desc: tt(lang, { en: 'Saved profiles', ru: 'Сохранённые профили', zh: '已保存的资料', 'zh-TW': '已儲存的資料' }) },
-        { k: 'investors', label: t.nav.investors, icon: '↗', desc: tt(lang, { en: 'Investor portfolios', ru: 'Портфели инвесторов', zh: '投资者库存', 'zh-TW': '投資者庫存' }) },
       ],
     },
   ];

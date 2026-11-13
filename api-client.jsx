@@ -21,7 +21,7 @@ async function apiFetch(path, options = {}) {
 
 // Page to reopen after Steam confirms the login. Home stays the portfolio.
 function authReturnPath() {
-  const allowed = new Set(['/dashboard', '/investors', '/market', '/collections', '/armory', '/favorites', '/glock-3d']);
+  const allowed = new Set(['/dashboard', '/investors', '/market', '/collections', '/armory', '/favorites']);
   try {
     const url = new URL(window.location.href);
     const path = url.pathname.replace(/\/+$/, '') || '/';
@@ -47,6 +47,8 @@ function useAuth() {
     loading: true,
     connected: false,
     profile: null,
+    accounts: [],
+    multiAccount: false,
     error: null,
     subscription: null,
     beta: null,
@@ -61,6 +63,8 @@ function useAuth() {
         loading: false,
         connected: Boolean(me.connected),
         profile: me.profile || null,
+        accounts: Array.isArray(me.accounts) ? me.accounts : [],
+        multiAccount: Boolean(me.multiAccount),
         error: null,
         steamApiKeyConfigured: me.steamApiKeyConfigured,
         subscription: me.subscription || null,
@@ -72,6 +76,8 @@ function useAuth() {
         loading: false,
         connected: false,
         profile: null,
+        accounts: [],
+        multiAccount: false,
         error,
         subscription: null,
         beta: null,
@@ -90,6 +96,7 @@ function useAuth() {
       desktopDownload: true,
       topInvestors: true,
       smartMoney: false,
+      multiAccount: false,
     },
     login: () => {
       const next = authReturnPath();
@@ -97,6 +104,21 @@ function useAuth() {
       if (next !== '/dashboard') params.set('next', next);
       const query = params.toString();
       window.location.href = query ? `/api/auth/steam?${query}` : '/api/auth/steam';
+    },
+    linkAccount: () => {
+      window.location.href = '/api/auth/steam?mode=link';
+    },
+    switchAccount: async (steamId) => {
+      await apiFetch('/api/auth/accounts/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ steamId }),
+      });
+      await refresh();
+    },
+    unlinkAccount: async (steamId) => {
+      await apiFetch(`/api/auth/accounts/${encodeURIComponent(steamId)}`, { method: 'DELETE' });
+      await refresh();
     },
     logout: async () => {
       await apiFetch('/api/auth/logout', { method: 'POST' });
@@ -479,7 +501,7 @@ function usePortfolio(auth, portfolioId = null, publicProfileUrl = '') {
       if (seq !== requestSeq.current) return;
       setState((current) => ({ loading: false, data: current.data, error }));
     }
-  }, [auth?.connected, portfolioId, publicProfileUrl]);
+  }, [auth?.connected, auth?.profile?.steamId, portfolioId, publicProfileUrl]);
 
   apiUseEffect(() => { load(false); }, [load]);
 

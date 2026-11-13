@@ -1123,11 +1123,33 @@ async function fetchFullInventory(steamId, steamSession) {
     return regularItems;
   }
 
+  const pieceCount = (list) => list.reduce((sum, item) => sum + Number(item.amount || 1), 0);
+  const reported = Number(expectedTotal);
+  const knowTotal = expectedTotal != null && Number.isFinite(reported);
+  const have = pieceCount(regularItems);
+  // The logged-in inventory endpoint is the backpack. The trade-offer view can
+  // list an extra asset Steam's own count does not include; merging it shows a
+  // marketable item the account does not hold, with no storage-unit label.
+  if (knowTotal && have >= reported) {
+    console.log(`[inventory] backpack already has ${have} of ${reported}, skipping ${tradeItems.length} trade-offer rows`);
+    return regularItems;
+  }
+
   const merged = new Map();
-  for (const item of regularItems) merged.set(item.assetid, item);
-  for (const item of tradeItems) merged.set(item.assetid, item);
+  for (const item of regularItems) merged.set(String(item.assetid), item);
+  let room = knowTotal ? reported - have : Infinity;
+  let added = 0;
+  for (const item of tradeItems) {
+    const id = String(item.assetid);
+    if (merged.has(id)) continue;
+    const amount = Number(item.amount || 1);
+    if (!(room >= amount)) continue;
+    merged.set(id, item);
+    room -= amount;
+    added += 1;
+  }
   const mergedItems = [...merged.values()];
-  console.log(`[inventory] merged total: ${mergedItems.length} items (regular ${regularItems.length} + trade ${tradeItems.length})`);
+  console.log(`[inventory] merged total: ${mergedItems.length} items (regular ${regularItems.length}, trade-offer added ${added})`);
   return mergedItems;
 }
 
