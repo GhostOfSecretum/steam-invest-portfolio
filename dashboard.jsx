@@ -141,8 +141,12 @@ function publicPortfolioShareRef({ data, auth, publicSteamId, publicProfileUrl }
   return candidates.map((value) => String(value || '').trim()).find(isShareableSteamProfile) || null;
 }
 
-function historyPointValue(point, priceMode) {
-  if (priceMode === 'steam' && Number.isFinite(point?.steamValue) && point.steamValue > 0) {
+function historyPointValue(point, priceMode, steamNetRatio = 1) {
+  if ((priceMode === 'steam' || priceMode === 'steam-net') && Number.isFinite(point?.steamValue) && point.steamValue > 0) {
+    if (priceMode === 'steam-net') {
+      const ratio = Number.isFinite(steamNetRatio) && steamNetRatio > 0 ? steamNetRatio : 1;
+      return point.steamValue * ratio;
+    }
     return point.steamValue;
   }
   return Number(point?.value);
@@ -155,11 +159,11 @@ function rangeWindowMs(range) {
   return 30 * 86400000;
 }
 
-function PortfolioChart({ history, range, lang, priceMode = 'market' }) {
+function PortfolioChart({ history, range, lang, priceMode = 'market', steamNetRatio = 1 }) {
   const sourcePoints = Array.isArray(history)
     ? history.map((value, index) => ({ date: String(index + 1), value }))
     : (Array.isArray(history?.points) ? history.points : []);
-  const safeData = filterHistoryPoints(sourcePoints, range, priceMode);
+  const safeData = filterHistoryPoints(sourcePoints, range, priceMode, steamNetRatio);
   const [hover, setHover] = useState(null);
   const ref = useRef(null);
   const w = 1000, h = 280;
@@ -252,11 +256,11 @@ function PortfolioChart({ history, range, lang, priceMode = 'market' }) {
   );
 }
 
-function filterHistoryPoints(points, range, priceMode = 'market') {
+function filterHistoryPoints(points, range, priceMode = 'market', steamNetRatio = 1) {
   const clean = (Array.isArray(points) ? points : [])
     .map((point) => ({
       date: point.date,
-      value: historyPointValue(point, priceMode),
+      value: historyPointValue(point, priceMode, steamNetRatio),
     }))
     .filter((point) => point.date && Number.isFinite(point.value) && point.value > 0)
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
@@ -698,7 +702,8 @@ function readSelectedPortfolioId() {
 
 function readPriceMode() {
   try {
-    return window.localStorage.getItem(PRICE_MODE_KEY) === 'steam' ? 'steam' : 'market';
+    const mode = window.localStorage.getItem(PRICE_MODE_KEY);
+    return mode === 'steam' || mode === 'steam-net' ? mode : 'market';
   } catch {
     return 'market';
   }
@@ -744,11 +749,12 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
   const [savingCopy, setSavingCopy] = useState(false);
   const [priceMode, setPriceModeState] = useState(readPriceMode);
   const setPriceMode = useCallback((mode) => {
-    const next = mode === 'steam' ? 'steam' : 'market';
+    const next = mode === 'steam' || mode === 'steam-net' ? mode : 'market';
     setPriceModeState(next);
     writePriceMode(next);
   }, []);
-  const isSteamPrices = priceMode === 'steam';
+  const isSteamNet = priceMode === 'steam-net';
+  const isSteamPrices = priceMode === 'steam' || isSteamNet;
   const prevConnectedRef = useRef(null);
   const data = portfolio.data;
   const items = data?.items || [];
@@ -823,9 +829,20 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
     }
   };
 
-  const displayTotal = isSteamPrices
-    ? (Number.isFinite(data.totalSteamValue) ? data.totalSteamValue : 0)
-    : data.totalValue;
+  const cashUsd = Number(data.cashUsd) || 0;
+  const steamItemsNet = items.reduce((sum, item) => {
+    const total = holdingUsd(item, 'steam-net');
+    return sum + (Number.isFinite(total) ? total : 0);
+  }, 0);
+  const steamNetTotal = steamItemsNet + cashUsd;
+  const steamNetRatio = Number.isFinite(data.totalSteamValue) && data.totalSteamValue > 0
+    ? steamNetTotal / data.totalSteamValue
+    : 1;
+  const displayTotal = isSteamNet
+    ? steamNetTotal
+    : (isSteamPrices
+      ? (Number.isFinite(data.totalSteamValue) ? data.totalSteamValue : 0)
+      : data.totalValue);
   const displayPricedCount = isSteamPrices
     ? items.reduce((sum, item) => (
       Number.isFinite(item.steamPrice) && item.steamPrice > 0
@@ -841,7 +858,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
     let steamBasis = 0;
     for (const item of items) {
       if (!item.hasBasis || !Number.isFinite(item.steamPrice) || item.steamPrice <= 0) continue;
-      displayPnl += holdingPnl(item, 'steam').pnl || 0;
+      displayPnl += holdingPnl(item, priceMode).pnl || 0;
       steamBasis += Number(item.totalBasis) || 0;
     }
     displayPnl += realizedPnl;
@@ -851,13 +868,13 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
   const pnlColor = displayPnl >= 0 ? 'var(--green)' : 'var(--red)';
   const openPnl = displayPnl - realizedPnl;
   const isManualPortfolio = data.portfolioType === 'manual' || data.portfolioType === 'public-manual';
-  const cashUsd = Number(data.cashUsd) || 0;
   const marketableQty = items.reduce((sum, item) => sum + (Number(item.marketableQty) || 0), 0);
   const marketableValue = items.reduce((sum, item) => {
     const qty = Number(item.marketableQty) || 0;
     if (qty <= 0) return sum;
     if (isSteamPrices) {
-      return sum + (Number.isFinite(item.steamPrice) && item.steamPrice > 0 ? item.steamPrice * qty : 0);
+      const unit = holdingUnitUsd(item, priceMode);
+      return sum + (Number.isFinite(unit) ? unit * qty : 0);
     }
     const unitValue = Number.isFinite(item.value) ? item.value : 0;
     return sum + unitValue * qty;
@@ -880,7 +897,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
   const shareHistoryPoints = Array.isArray(data.history)
     ? data.history.map((value) => Number(value))
     : (Array.isArray(data.history?.points)
-      ? data.history.points.map((point) => historyPointValue(point, priceMode))
+      ? data.history.points.map((point) => historyPointValue(point, priceMode, steamNetRatio))
       : []);
   const shareCard = packPnlShareCard({
     value: displayTotal,
@@ -927,8 +944,8 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
               <button
                 type="button"
                 role="radio"
-                aria-checked={isSteamPrices}
-                data-active={isSteamPrices}
+                aria-checked={priceMode === 'steam'}
+                data-active={priceMode === 'steam'}
                 onClick={() => setPriceMode('steam')}
                 title={tt(lang, {
                   en: 'Steam Market listing prices',
@@ -942,8 +959,23 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
               <button
                 type="button"
                 role="radio"
-                aria-checked={!isSteamPrices}
-                data-active={!isSteamPrices}
+                aria-checked={isSteamNet}
+                data-active={isSteamNet}
+                onClick={() => setPriceMode('steam-net')}
+                title={tt(lang, {
+                  en: 'What you receive after selling on Steam. CS2 fee is 5% Steam + 10% game.',
+                  ru: 'Сколько придёт на кошелёк после продажи на Steam. Комиссия CS2: 5% Steam + 10% игры.',
+                  zh: '在 Steam 卖出后的实际到账。CS2 手续费为 Steam 5% + 游戏 10%。',
+                  'zh-TW': '在 Steam 賣出後的實際到帳。CS2 手續費為 Steam 5% + 遊戲 10%。',
+                })}
+              >
+                {tt(lang, { en: 'Net', ru: 'На руки', zh: '到手', 'zh-TW': '到手' })}
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={priceMode === 'market'}
+                data-active={priceMode === 'market'}
                 onClick={() => setPriceMode('market')}
                 title={tt(lang, {
                   en: 'Real third-party market prices',
@@ -1155,7 +1187,14 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                   zh: `${displayPricedCount} / ${data.totalInventoryCount} 已估价`,
                   'zh-TW': `${displayPricedCount} / ${data.totalInventoryCount} 已估價`,
                 })}
-                sub={isSteamPrices
+                sub={isSteamNet
+                  ? tt(lang, {
+                    en: `Steam ${compactUsd(data.totalSteamValue)} before fees`,
+                    ru: `Steam ${compactUsd(data.totalSteamValue)} до комиссии`,
+                    zh: `Steam ${compactUsd(data.totalSteamValue)} 扣费前`,
+                    'zh-TW': `Steam ${compactUsd(data.totalSteamValue)} 扣費前`,
+                  })
+                  : isSteamPrices
                   ? tt(lang, {
                     en: `Real ${compactUsd(data.totalValue)}`,
                     ru: `Реал ${compactUsd(data.totalValue)}`,
@@ -1239,7 +1278,7 @@ function Dashboard({ lang, onItemClick, onCollectionClick, auth, publicProfileUr
                     ))}
                   </div>
                 </div>
-                <PortfolioChart history={data.history} range={range} lang={lang} priceMode={priceMode} />
+                <PortfolioChart history={data.history} range={range} lang={lang} priceMode={priceMode} steamNetRatio={steamNetRatio} />
               </div>
 
               <PortfolioLeaders leaders={data.leaders} lang={lang} onItemClick={onItemClick} />
@@ -2181,7 +2220,8 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
   const [sortKey, setSortKey] = useState('value');
   const [sortDir, setSortDir] = useState('desc');
   const isSteamPortfolio = portfolioType === 'steam';
-  const isSteamPrices = priceMode === 'steam';
+  const isSteamNet = priceMode === 'steam-net';
+  const isSteamPrices = priceMode === 'steam' || isSteamNet;
 
   const rowEditKey = (item) => item.manualItemId || item.marketHashName;
 
@@ -2487,17 +2527,31 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         <SortHeader
           label={tt(lang, { en: 'Now', ru: 'За шт.', zh: '现价', 'zh-TW': '現價' })}
           column="price"
-          title={tt(lang, {
-            en: 'Current market price per item.',
-            ru: 'Текущая цена за 1 шт.',
-            zh: '当前单件市价。',
-            'zh-TW': '目前單件市價。',
-          })}
+          title={isSteamNet
+            ? tt(lang, {
+              en: 'What you receive per item after the Steam fee.',
+              ru: 'Сколько придёт за 1 шт. после комиссии Steam.',
+              zh: '扣除 Steam 手续费后的单件到账。',
+              'zh-TW': '扣除 Steam 手續費後的單件到帳。',
+            })
+            : tt(lang, {
+              en: 'Current market price per item.',
+              ru: 'Текущая цена за 1 шт.',
+              zh: '当前单件市价。',
+              'zh-TW': '目前單件市價。',
+            })}
         />
         <SortHeader
           label={tt(lang, { en: 'Value', ru: 'Стоимость', zh: '价值', 'zh-TW': '價值' })}
           column="value"
-          title={isSteamPrices
+          title={isSteamNet
+            ? tt(lang, {
+              en: 'What you receive after the Steam Market fee. The listing price is underneath.',
+              ru: 'Сколько придёт после комиссии Steam. Ценник площадки — строкой ниже.',
+              zh: '扣除 Steam 市场手续费后的到账金额。挂牌价显示在下方。',
+              'zh-TW': '扣除 Steam 市場手續費後的到帳金額。掛牌價顯示在下方。',
+            })
+            : isSteamPrices
             ? tt(lang, {
               en: 'Steam Market listing price. Real market mark is shown underneath.',
               ru: 'Ценник Steam. Реальная оценка маркета — строкой ниже.',
@@ -2537,16 +2591,22 @@ function InventoryTable({ items, onItemClick, onCollectionClick, lang, portfolio
         const basisEditable = (portfolioType === 'manual' && h.manualItemId) || isSteamPortfolio;
         const steamSticker = formatSteamSticker(h);
         const rowPnl = holdingPnl(h, priceMode);
-        const altValue = isSteamPrices
-          ? (Number.isFinite(h.totalValue) || Number.isFinite(h.value) ? formatHoldingValue(h, { digits: 0, compact: true }) : null)
-          : steamSticker;
-        const altLabel = isSteamPrices
-          ? tt(lang, { en: 'Real', ru: 'Реал', zh: '真实', 'zh-TW': '真實' })
-          : 'Steam';
+        const altValue = isSteamNet
+          ? formatHoldingValue(h, { digits: 0, compact: true, source: 'steam' })
+          : isSteamPrices
+            ? (Number.isFinite(h.totalValue) || Number.isFinite(h.value) ? formatHoldingValue(h, { digits: 0, compact: true }) : null)
+            : steamSticker;
+        const altLabel = isSteamNet
+          ? 'Steam'
+          : isSteamPrices
+            ? tt(lang, { en: 'Real', ru: 'Реал', zh: '真实', 'zh-TW': '真實' })
+            : 'Steam';
         const unitPrice = formatHoldingUnitPrice(h, { source: priceMode });
-        const altUnitPrice = isSteamPrices
-          ? formatHoldingUnitPrice(h, { source: 'market' })
-          : formatHoldingUnitPrice(h, { source: 'steam' });
+        const altUnitPrice = isSteamNet
+          ? formatHoldingUnitPrice(h, { source: 'steam' })
+          : isSteamPrices
+            ? formatHoldingUnitPrice(h, { source: 'market' })
+            : formatHoldingUnitPrice(h, { source: 'steam' });
         const lockLabel = h.tradableQty === h.qty
           ? null
           : h.tradableQty > 0

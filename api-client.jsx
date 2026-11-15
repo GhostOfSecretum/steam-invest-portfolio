@@ -839,11 +839,37 @@ function itemQty(item) {
   return Number(item?.qty) > 0 ? Number(item.qty) : 1;
 }
 
+// Listing price is what the buyer pays. CS2 keeps 5% (Steam) + 10% (game),
+// both floored to a cent and at least one cent, calculated on what the seller receives.
+function steamSellerReceives(buyerPays) {
+  if (!Number.isFinite(buyerPays) || buyerPays <= 0) return 0;
+  const buyerMinor = Math.round(buyerPays * 100 + 1e-8);
+  if (buyerMinor < 3) return 0;
+  const buyerPaysFor = (receivedMinor) => {
+    const steamFee = Math.max(Math.floor(receivedMinor * 0.05), 1);
+    const publisherFee = Math.max(Math.floor(receivedMinor * 0.10), 1);
+    return receivedMinor + steamFee + publisherFee;
+  };
+  let received = Math.max(1, Math.floor(buyerMinor / 1.15));
+  while (received + 1 < buyerMinor && buyerPaysFor(received + 1) <= buyerMinor) received += 1;
+  while (received > 0 && buyerPaysFor(received) > buyerMinor) received -= 1;
+  return received / 100;
+}
+
+function isSteamSource(source) {
+  return source === 'steam' || source === 'steam-net';
+}
+
+function steamUnit(amount, source) {
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return source === 'steam-net' ? steamSellerReceives(amount) : amount;
+}
+
 function holdingUsd(item, source = 'market') {
   const qty = itemQty(item);
-  if (source === 'steam') {
-    if (!Number.isFinite(item?.steamPrice) || item.steamPrice <= 0) return null;
-    return item.steamPrice * qty;
+  if (isSteamSource(source)) {
+    const unit = steamUnit(item?.steamPrice, source);
+    return unit == null ? null : unit * qty;
   }
   if (Number.isFinite(item?.totalValue)) return item.totalValue;
   if (Number.isFinite(item?.value)) return item.value * qty;
@@ -851,9 +877,7 @@ function holdingUsd(item, source = 'market') {
 }
 
 function holdingUnitUsd(item, source = 'market') {
-  if (source === 'steam') {
-    return Number.isFinite(item?.steamPrice) && item.steamPrice > 0 ? item.steamPrice : null;
-  }
+  if (isSteamSource(source)) return steamUnit(item?.steamPrice, source);
   if (Number.isFinite(item?.value) && item.value > 0) return item.value;
   const qty = itemQty(item);
   if (Number.isFinite(item?.totalValue) && qty > 0) return item.totalValue / qty;
@@ -861,7 +885,7 @@ function holdingUnitUsd(item, source = 'market') {
 }
 
 function holdingPnl(item, source = 'market') {
-  if (source !== 'steam') {
+  if (!isSteamSource(source)) {
     return {
       pnl: Number.isFinite(item?.pnl) ? item.pnl : 0,
       pnlPct: Number.isFinite(item?.pnlPct) ? item.pnlPct : null,
@@ -872,11 +896,15 @@ function holdingPnl(item, source = 'market') {
   }
 
   const qty = itemQty(item);
-  const steamUsd = item.steamPrice;
-  const steamRub = item.steamPriceRub;
+  const grossUsd = item.steamPrice;
+  const grossRub = Number.isFinite(item.steamPriceRub) ? item.steamPriceRub : null;
+  const steamUsd = source === 'steam-net' ? steamSellerReceives(grossUsd) : grossUsd;
+  const steamRub = source === 'steam-net' && grossRub != null && grossRub > 0
+    ? steamSellerReceives(grossRub)
+    : grossRub;
   const basisUsd = item.basis;
   const basisOriginal = item.basisOriginal;
-  const rubAskLooksReal = steamUsd <= 0 || (Number.isFinite(steamRub) && steamRub >= steamUsd * 10);
+  const rubAskLooksReal = grossUsd <= 0 || (grossRub != null && grossRub >= grossUsd * 10);
   if (
     item.basisCurrency === 'rub'
     && Number.isFinite(steamRub)
@@ -903,12 +931,13 @@ function holdingPnl(item, source = 'market') {
 function formatHoldingValue(item, { digits = 2, compact = false, source = 'market' } = {}) {
   const qty = itemQty(item);
   const currencyKey = getActiveCurrency();
-  if (source === 'steam') {
-    if (currencyKey === 'rub' && Number.isFinite(item?.steamPriceRub)) {
-      return formatMoney(item.steamPriceRub * qty, { digits, compact, currency: 'rub' });
+  if (isSteamSource(source)) {
+    if (currencyKey === 'rub' && Number.isFinite(item?.steamPriceRub) && item.steamPriceRub > 0) {
+      return formatMoney(steamUnit(item.steamPriceRub, source) * qty, { digits, compact, currency: 'rub' });
     }
-    if (!Number.isFinite(item?.steamPrice)) return null;
-    return formatMoney(item.steamPrice * qty, { digits, compact });
+    const unit = steamUnit(item?.steamPrice, source);
+    if (unit == null) return null;
+    return formatMoney(unit * qty, { digits, compact });
   }
   if (currencyKey === 'rub' && Number.isFinite(item?.priceRub)) {
     return formatMoney(item.priceRub * qty, { digits, compact, currency: 'rub' });
@@ -921,12 +950,13 @@ function formatHoldingValue(item, { digits = 2, compact = false, source = 'marke
 
 function formatHoldingUnitPrice(item, { digits = 2, compact = false, source = 'market' } = {}) {
   const currencyKey = getActiveCurrency();
-  if (source === 'steam') {
+  if (isSteamSource(source)) {
     if (currencyKey === 'rub' && Number.isFinite(item?.steamPriceRub) && item.steamPriceRub > 0) {
-      return formatMoney(item.steamPriceRub, { digits, compact, currency: 'rub' });
+      return formatMoney(steamUnit(item.steamPriceRub, source), { digits, compact, currency: 'rub' });
     }
-    if (!Number.isFinite(item?.steamPrice) || item.steamPrice <= 0) return null;
-    return formatMoney(item.steamPrice, { digits, compact });
+    const unit = steamUnit(item?.steamPrice, source);
+    if (unit == null) return null;
+    return formatMoney(unit, { digits, compact });
   }
   if (currencyKey === 'rub' && Number.isFinite(item?.priceRub) && item.priceRub > 0) {
     return formatMoney(item.priceRub, { digits, compact, currency: 'rub' });
@@ -1147,6 +1177,7 @@ Object.assign(window, {
   holdingUsd,
   holdingUnitUsd,
   holdingPnl,
+  steamSellerReceives,
   compactUsd,
   getActiveCurrency,
   useDisplayCurrency,
