@@ -25,7 +25,7 @@
     "Лайки не фармить; взаимки с нишевых мелких — да",
     "Реплаи: 8–10 инвест, 2–3 магазины на всех, 2–4 кто отвечает / киты; витрины и 94% — ноль",
     "Магазины (lis, tradeit, cs.money, skinsmonkey): только цена/объём/просадка, текст про fill, не 🤩",
-    "С 24 окт киты: список и лента открыты, доля и сигналы по плану. Свои посты — наблюдение, не changelog, не чаще двух в неделю и не в соседние дни. Неделя с понедельника: 31 окт; 5 и 8 ноя; 10 и 12 ноя. Цены EN один раз: $2.99 / 3 days, $5 / 30 days. Пейвол и аналитику не снимать. Бэктест не заявлять. Скин как сигнал не называть. Бота хэндлом не называть",
+    "С 24 окт киты: список и лента открыты, доля и сигналы по плану. Свои посты — наблюдение, не changelog, не чаще двух в неделю и не в соседние дни. Неделя с понедельника: 31 окт; 5 и 8 ноя; 10 и 12 ноя; 18 и 21 ноя; 24 и 27 ноя. 9–15 ноя уже два, 15 ноя не обзор. Цены EN один раз: $2.99 / 3 days, $5 / 30 days — повторно не называть. Пейвол и вкладку аналитики не снимать. Бэктест не заявлять. Скин как сигнал не называть. Бота хэндлом не называть",
     "С 31 окт: плюс в публичном инвентаре — не покупка. Покупка (Steam Market или сторонний обмен, их не различить) скрыта ~10 дней. Хранилище видно сразу. Перекладка между своими — не покупка. Слово «скупка» не использовать. Сигнал — прирост, и только по подтверждённой покупке. Скрытый рост без имени скина в обычном посте не называть. Связи, скрытые покупки и разметку потоков не анонсировать",
     "С 2 ноя каждый понедельник 14:00 — второй пост, сводка бота. Цифры из Telegram после 12:00, не раньше. По-английски три строки: капитал и число аккаунтов, чистый поток за 7 дней и число движений, сигналы (приросты, выходы, новые зоны контроля). Дальше до 3 имён туда и до 3 оттуда. Бэктест и хэндл бота не переносить. С 9 ноя внизу одна ссылка: https://skinshead.pro/investors. Других ссылок нет. Нет сводки — нет поста. Картинка не обязательна; если есть, один предмет, без сайта и без скрина чата",
     "Сигнал из бота можно вторым постом: 🟢 Прирост, 🔴 Выход, 🎯 Контроль. Жёлтую покупку — только крупную и с оговоркой, что предмет был скрыт ~10 дней. Хранилище и перекладку не постить как покупку. Без имени предмета не постить. Английский, не buy, имя скина можно, картинка — сам предмет. Один такой пост в день. В понедельник слот занят сводкой: сигнал дописать в неё, третьим постом не ставить",
@@ -36,7 +36,8 @@
     "С 14 окт расширение в Chrome Web Store, установка в один клик, zip с сайта снят. В посте и в реплае можно назвать. Ссылку на карточку в тело поста не ставить. В реплае на «как увидеть Storage» ссылку можно дать один раз. Zip и «загрузить распакованное» не расписывать. Десктоп не пишем",
     "Не ядро: чистые баеры «always buying 94%» и кейс-сайты — список в блоке Реплаи",
     "Добрать ядро: CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs — список в блоке Подписки",
-    "С 25 окт по 14 ноя кадр с сайта — норма дня. Текст без картинки только если так написано в дне. Кроп одного блока, сайт на EN, без шапки браузера и без ссылки в посте. Блок «пример сигнала» на главной не снимать"
+    "С 25 окт по 28 ноя кадр с сайта — норма дня. Текст без картинки только если так написано в дне. Кроп одного блока, сайт на EN, без шапки браузера и без ссылки в посте. Блок «пример сигнала» на главной не снимать",
+    "С 15 ноя: несколько Steam-аккаунтов в одной сессии — платный план, на бесплатном один. Не писать, что весь сайт платный. Цены $2.99 / $5 повторно не называть. Переключатель аккаунтов снимать можно. Пейвол, цены и 3D Glock — нет. Предмет в открытом трейде — не вторая копия рюкзака; десктоп не писать, это не анонс. Раздел называется Analytics"
   ],
   "followsFocus": {
     "title": "Подписки · добрать",
@@ -1733,6 +1734,226 @@
         "textRu": "Неделя цен — не позиция.\n\nПозиция — это вход, размер и можешь ли ты это продать.\n\nТы собирал первый экран.\n\nКакая из этих трёх всё ещё догадка?"
       },
       "notes": "Не закреплять, только текст. Клин, не киты и не цены."
+    },
+    {
+      "date": "2026-11-15",
+      "kind": "planned",
+      "dayNum": 85,
+      "label": "день 85",
+      "post": {
+        "n": 85,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "Two Steam accounts are two inventories.\n\nSwitching which one is open does not merge them into one P&L.\n\nThe free plan keeps a single account. A paid plan can hold several in one session.\n\nThat is not the same as the site being paid.",
+        "textRu": "Два Steam-аккаунта — два инвентаря.\n\nПереключение того, который открыт, не сливает их в один P&L.\n\nНа бесплатном плане один аккаунт. На платном в одной сессии можно держать несколько.\n\nЭто не значит, что сайт целиком платный.",
+        "visual": "Портфель, сайт на EN. Кроп ряда аккаунтов: аватар, имя и кнопка Add account. Если аккаунт один — в кроп строка «Several Steam accounts in one session are on paid plans. The free plan keeps one account.» Цены, пейвол, модалку оплаты и вход Steam не снимать. Add account не нажимать."
+      },
+      "notes": "Не закреплять. Не обзор китов: неделя 9–15 уже закрыта 10 и 12 ноя. Не писать, что весь сайт платный. Цены $2.99 / $5 не повторять. 3D Glock не упоминать."
+    },
+    {
+      "date": "2026-11-16",
+      "kind": "planned",
+      "dayNum": 86,
+      "label": "неделя 13 · капитализация",
+      "post": {
+        "n": 86,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "The market cap is price times supply.\n\nIt is not your inventory. It is not cash you can take out.\n\nA green week on that number can still be a red week on the skins you hold.\n\nWhich number did you quote?",
+        "textRu": "Капитализация — это цена, умноженная на запас.\n\nЭто не твой инвентарь. Это не кэш, который можно забрать.\n\nЗелёная неделя у этой цифры может быть красной неделей у скинов, которые держишь ты.\n\nКакую цифру ты назвал?",
+        "visual": "Главная, сайт на EN. Кроп карточки Market cap: цифра, процент и строка Estimated circulating CS2 market. Муверы, шапку страницы и браузер не бери."
+      },
+      "extra": {
+        "time": "14:00",
+        "title": "сводка бота",
+        "text": "Week on the watchlist.\n\nCapital under watch: $____ across __ accounts\nNet 7d flow: ____ · ____ moves\nSignals: __ gains, __ exits, __ new control zones\n\nAdded: ____, ____, ____.\nLeft: ____, ____, ____.\n\nA same-day plus out of a storage unit is not on this list.\n\nAre you pricing their move, or your own entry?\n\nhttps://skinshead.pro/investors",
+        "textRu": "Неделя по вотчлисту.\n\nКапитал под наблюдением: $____ в __ аккаунтах\nЧистый поток 7д: ____ · ____ движений\nСигналы: __ приростов, __ выходов, __ новых зон контроля\n\nПрибавили: ____, ____, ____.\nУшло: ____, ____, ____.\n\nПлюс в тот же день из хранилища в этот список не входит.\n\nТы оцениваешь их движение или свой вход?\n\nhttps://skinshead.pro/investors",
+        "visual": "Цифры из сообщения бота 16 ноя, после 12:00 МСК. Не выдумывать. Бэктест не переносить. Внизу одна ссылка. Нет сводки — нет поста."
+      },
+      "notes": "Не закреплять. 14:00 сводка бота, цифры утром из Telegram. 19:30 капитализация, не инвентарь. В сводке не buy."
+    },
+    {
+      "date": "2026-11-17",
+      "kind": "planned",
+      "dayNum": 87,
+      "label": "день 87",
+      "post": {
+        "n": 87,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "Buff is the cash price people check.\n\nSteam is a wallet. The fee is 15%: 5% Steam, 10% CS2. You cannot withdraw it.\n\nSame skin. One number leaves. The other stays inside Steam.\n\nWhich one did you call the price?",
+        "textRu": "Buff — кэш-цена, по которой смотрят.\n\nSteam — кошелёк. Комиссия 15%: 5% Steam, 10% CS2. Вывести её нельзя.\n\nОдин скин. Одна цифра уходит. Другая остаётся внутри Steam.\n\nКакую ты назвал ценой?",
+        "visual": "Карточка предмета, сайт на EN. Кроп только двух строк Marketplace comparison: Steam Market и Buff163. Если строки Buff163 нет — кадр не снимать и не подменять другой площадкой, пост оставить текстом. Весь список площадок не бери — это пост 72. Float не снимать."
+      },
+      "notes": "Не закреплять. Buff — кэш-ориентир, Steam — кошелёк. Не писать the cut. Не утверждать, что цифра портфеля на сайте равна Buff."
+    },
+    {
+      "date": "2026-11-18",
+      "kind": "planned",
+      "dayNum": 88,
+      "label": "день 88",
+      "post": {
+        "n": 88,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A watched account can go quiet while the hidden count goes up.\n\nThe name is not public yet. That is not a buy.\n\nMoving a skin out of a storage unit shows the same day. A purchase does not.\n\nIf you named the skin off a hidden plus, you invented it.",
+        "textRu": "Отслеживаемый аккаунт может затихнуть, пока число скрытых растёт.\n\nИмени ещё нет. Это не покупка.\n\nВывод из хранилища виден в тот же день. Покупка — нет.\n\nЕсли ты назвал скин по скрытому плюсу, ты его выдумал."
+      },
+      "notes": "Не закреплять, только текст. Обзор китов, первый на неделе 16–22. Имя скина не называть. «Скупку» не говорить. Бэктест не заявлять. Аналитику и пейвол не снимать. Не называть это trade protection и не называть hold."
+    },
+    {
+      "date": "2026-11-19",
+      "kind": "planned",
+      "dayNum": 89,
+      "label": "день 89",
+      "post": {
+        "n": 89,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A skin you just received can still go back.\n\nSeven days. The other side can reverse the trade. That clock is trade protection.\n\nA purchase staying off a public inventory for about ten days is a different clock. It is not protection, and it is not a hold.\n\nIf you counted the skin as yours on day one, you counted a trade that can still be undone.",
+        "textRu": "Скин, который ты только что получил, ещё может вернуться.\n\nСемь дней. Вторая сторона может реверснуть трейд. Эти часы — trade protection.\n\nПокупка, которой около десяти дней нет в публичном инвентаре, — другие часы. Это не protection и не hold.\n\nЕсли ты посчитал скин своим в первый день, ты посчитал трейд, который ещё можно отменить."
+      },
+      "notes": "Не закреплять, только текст. Не киты. Protection — 7 дней и реверс. Задержку ~10 дней не называть protection и не называть hold. Не restricted (пост 67)."
+    },
+    {
+      "date": "2026-11-20",
+      "kind": "planned",
+      "dayNum": 90,
+      "label": "день 90",
+      "post": {
+        "n": 90,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A quicksell is a sale under the floor, because you wanted out today.\n\nIt is not the price. It is not what the listings are asking.\n\nIf the last sale you remember was a quicksell, you are using a panic as a number.\n\nWhat was the floor — and what did you actually take?",
+        "textRu": "Quicksell — продажа ниже рынка, потому что ты хотел выйти сегодня.\n\nЭто не цена. Это не то, что просят листинги.\n\nЕсли последняя продажа, которую ты помнишь, была quicksell, ты берёшь панику за цифру.\n\nКакой был рынок — и что ты реально забрал?"
+      },
+      "notes": "Не закреплять, только текст. Quicksell — не любая продажа. Не киты."
+    },
+    {
+      "date": "2026-11-21",
+      "kind": "planned",
+      "dayNum": 91,
+      "label": "день 91",
+      "post": {
+        "n": 91,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Two watched accounts can move a skin between them.\n\nIt leaves one inventory and shows up in the other the same day.\n\nThat is the same item changing rooms. It is not a buy, and it is not new supply.\n\nIf you counted both sides, you counted it twice.",
+        "textRu": "Два отслеживаемых аккаунта могут переложить скин между собой.\n\nОн уходит из одного инвентаря и в тот же день появляется в другом.\n\nЭто тот же предмет, который сменил комнату. Это не покупка и не новое предложение.\n\nЕсли ты посчитал обе стороны, ты посчитал его дважды."
+      },
+      "notes": "Не закреплять, только текст. Обзор китов, второй на неделе 16–22. Не в соседний день с 18 ноя. Имя скина не называть. «Скупку» не говорить. 21 ноя закрывает неделю и не открывает следующую."
+    },
+    {
+      "date": "2026-11-22",
+      "kind": "planned",
+      "dayNum": 92,
+      "label": "день 92",
+      "post": {
+        "n": 92,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "Factory New and Field-Tested are two listings.\n\nSame finish. Different buyer. Different price.\n\nThe wear in the name is the item. Averaging the five prices is not a price.\n\nWhich listing are you actually holding?",
+        "textRu": "Factory New и Field-Tested — два листинга.\n\nОдин финиш. Разный покупатель. Разная цена.\n\nИзнос в имени — это предмет. Среднее из пяти цен — не цена.\n\nКакой листинг ты на самом деле держишь?",
+        "visual": "Карточка предмета, сайт на EN. Кроп блока SELECT EXTERIOR: кнопки износа и цены. Полосу float, график, сравнение площадок и блок китов не бери. Переключатель StatTrak в кроп не бери."
+      },
+      "notes": "Не закреплять. Пост про бирку износа, не про float. Float не писать и не снимать."
+    },
+    {
+      "date": "2026-11-23",
+      "kind": "planned",
+      "dayNum": 93,
+      "label": "неделя 14 · профили",
+      "post": {
+        "n": 93,
+        "time": "19:30",
+        "pinned": false,
+        "shot": "still",
+        "text": "Saving a profile does not give you their entry.\n\nThe page is still public Steam. Storage is not on it.\n\nYou can watch the inventory. You still don’t know what they paid.\n\nWhose number is on that row?",
+        "textRu": "Сохранённый профиль не даёт тебе их вход.\n\nСтраница всё ещё публичный Steam. Хранилища на ней нет.\n\nИнвентарь можно смотреть. Сколько они заплатили — по-прежнему нет.\n\nЧья цифра в этой строке?",
+        "visual": "Favorite profiles, сайт на EN. Кроп заголовка и одной строки. Портфель этого профиля не открывать — чужой public Steam уже был постом 74. Если список пустой — кадр не снимать, пост оставить текстом."
+      },
+      "extra": {
+        "time": "14:00",
+        "title": "сводка бота",
+        "text": "Week on the watchlist.\n\nCapital under watch: $____ across __ accounts\nNet 7d flow: ____ · ____ moves\nSignals: __ gains, __ exits, __ new control zones\n\nAdded: ____, ____, ____.\nLeft: ____, ____, ____.\n\nA same-day plus out of a storage unit is not on this list.\n\nAre you pricing their move, or your own entry?\n\nhttps://skinshead.pro/investors",
+        "textRu": "Неделя по вотчлисту.\n\nКапитал под наблюдением: $____ в __ аккаунтах\nЧистый поток 7д: ____ · ____ движений\nСигналы: __ приростов, __ выходов, __ новых зон контроля\n\nПрибавили: ____, ____, ____.\nУшло: ____, ____, ____.\n\nПлюс в тот же день из хранилища в этот список не входит.\n\nТы оцениваешь их движение или свой вход?\n\nhttps://skinshead.pro/investors",
+        "visual": "Цифры из сообщения бота 23 ноя, после 12:00 МСК. Не выдумывать. Бэктест не переносить. Внизу одна ссылка. Нет сводки — нет поста."
+      },
+      "notes": "Не закреплять. 14:00 сводка бота. 19:30 избранный профиль — не entry. Не обзор китов."
+    },
+    {
+      "date": "2026-11-24",
+      "kind": "planned",
+      "dayNum": 94,
+      "label": "день 94",
+      "post": {
+        "n": 94,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A new control zone means watched accounts already hold a lot of what is listed.\n\nIt is not a buy. Those are the listings already there.\n\nIf they sell, the floor you liked was their inventory.\n\nAre you early, or are you the exit?",
+        "textRu": "Новая зона контроля — отслеживаемые аккаунты уже держат большую часть того, что выставлено.\n\nЭто не покупка. Это листинги, которые уже выставлены.\n\nЕсли они продадут, нижняя цена, которая тебе нравилась, была их инвентарём.\n\nТы рано — или ты выход?"
+      },
+      "notes": "Не закреплять, только текст. Обзор китов, первый на неделе 23–28. Имя скина не называть. Не buy как сигнал. Аналитику и пейвол не снимать. Бэктест не заявлять."
+    },
+    {
+      "date": "2026-11-25",
+      "kind": "planned",
+      "dayNum": 95,
+      "label": "день 95",
+      "post": {
+        "n": 95,
+        "time": "19:30",
+        "pinned": false,
+        "text": "Phase 2 and Phase 4 are not the same knife.\n\nSame family. Different buyer. Different price.\n\nIf you priced “a Doppler”, you priced a family, not the listing.\n\nWhich phase is the one you would actually sell?",
+        "textRu": "Phase 2 и Phase 4 — не один нож.\n\nОдна семья. Разный покупатель. Разная цена.\n\nЕсли ты оценил «доплер», ты оценил семью, не листинг.\n\nКакую фазу ты реально продашь?"
+      },
+      "notes": "Не закреплять, только текст. Пост про фазу. На сайте фаза в имени режется и отдельной ценой не стоит — кадр не снимать и не выдумывать две строки. Float не писать."
+    },
+    {
+      "date": "2026-11-26",
+      "kind": "planned",
+      "dayNum": 96,
+      "label": "день 96",
+      "post": {
+        "n": 96,
+        "time": "19:30",
+        "pinned": false,
+        "text": "A skin in an open trade is not a second copy in the backpack.\n\nThe inventory is what the account still holds. The offer is a skin already on the way out.\n\nAdd them together and you priced the same item twice.\n\nIs that row still yours — or already in a trade?",
+        "textRu": "Скин в открытом трейде — не вторая копия в рюкзаке.\n\nИнвентарь — это то, что аккаунт ещё держит. Оффер — скин, который уже на выходе.\n\nСложи их, и ты оценил один предмет дважды.\n\nЭта строка всё ещё твоя — или она уже в трейде?"
+      },
+      "notes": "Не закреплять, только текст. Наблюдение, не анонс правки. Десктоп не писать. Кадра нет: отдельной строки трейда на сайте нет."
+    },
+    {
+      "date": "2026-11-27",
+      "kind": "planned",
+      "dayNum": 97,
+      "label": "день 97",
+      "post": {
+        "n": 97,
+        "time": "19:30",
+        "pinned": false,
+        "text": "One account can be most of the listings.\n\nThat inventory is there to move a price. Copying the names copies the push, not an entry.\n\nIf they are the offer, you are not early. You are the exit.\n\nWhose listings are you about to buy?",
+        "textRu": "Один аккаунт может быть большей частью листингов.\n\nЭтот инвентарь стоит там, чтобы двигать цену. Копировать имена — копировать толчок, не вход.\n\nЕсли оффер — это они, ты не рано. Ты выход.\n\nЧьи листинги ты собираешься купить?"
+      },
+      "notes": "Не закреплять, только текст. Обзор китов, второй на неделе 23–28. Не в соседний день с 24 ноя. Риск бустера — наблюдение, не блок на сайте: кадр не снимать и не писать, что сайт его помечает. Имя скина не называть. Бэктест не заявлять."
+    },
+    {
+      "date": "2026-11-28",
+      "kind": "planned",
+      "dayNum": 98,
+      "label": "день 98",
+      "post": {
+        "n": 98,
+        "time": "19:30",
+        "pinned": false,
+        "text": "You can switch the account. You can open the market cap. You can read the listings.\n\nNone of that is what you paid.\n\nThe inventory got easier to see. The entry did not.\n\nWhich number is still a guess?",
+        "textRu": "Можно переключить аккаунт. Можно открыть капитализацию. Можно прочитать листинги.\n\nНичто из этого — не то, что ты заплатил.\n\nИнвентарь теперь проще увидеть. Вход — нет.\n\nКакая цифра всё ещё догадка?"
+      },
+      "notes": "Не закреплять, только текст. Клин двух недель. Не киты и не цены."
     }
   ],
   "weekTopReplies": [

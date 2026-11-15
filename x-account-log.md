@@ -54,12 +54,14 @@ https://x.com/SkinsheadPro
 - **С 11 окт:** Storage можно кадром с сайта — строка `storage`, счётчик «storage N (as of …)», карточка SELLABLE NOW, подпись `full inventory · Storage`. Попап, код, QR и десктоп не снимать. Ссылку в пост не ставить.
 - **С 14 окт:** расширение опубликовано в Chrome Web Store, установка в один клик, zip с сайта снят. В посте и в реплае можно назвать это так. Ссылку на карточку в тело поста не ставить: сайт уже в профиле. В реплае на прямой вопрос «как увидеть Storage» ссылку на карточку можно дать один раз: `https://chromewebstore.google.com/detail/ficgknangpgoaalmjmigkchifhaonadi`. Zip, «загрузить распакованное» и шаги с кодом не расписывать. Десктоп не пишем.
 - Float предмета не пишем и не снимаем. На сайте его нет, и отдельный разбор флоата не делаем: для этого есть CSFloat. Бирка износа (FN/MW) — это имя скина, не пост про float.
+- Сленг рынка, не трейдинг-деска. Писать: inventory, entry, listings, floor, cash out, overpay, SP%, craft. Не писать: mark, book, bag, fill, lift, booth, long, the cut и sticker в значении ценника. Buff — кэш-цена, по ней смотрят. Steam — кошелёк: комиссия 15% (5% Steam + 10% CS2), вывести нельзя. Buy — обычное слово; в сигнале бота по-прежнему не buy. Задержку публичного инвентаря ~10 дней не называть trade hold и не называть trade protection: protection — 7 дней после трейда, предмет можно реверснуть. Souvenir — тип скина. Quicksell — продажа ниже рынка за скорость, не любая продажа.
+- **С 15 ноя:** несколько Steam-аккаунтов в одной сессии — платный план, на бесплатном один. Не писать, что весь сайт платный. Цены $2.99 / $5 повторно не называть. Переключатель аккаунтов снимать можно. Пейвол, цены и 3D Glock — нет. Предмет в открытом трейде — не вторая копия рюкзака; десктоп не писать, это не анонс. Раздел называется Analytics.
 - Не ядро: чистые баеры «always buying 94%» и кейс-сайты. Список на столе в блоке «Реплаи»
 - Добрать ядро (подписать и отвечать): CSMarketCapCom, slykcs, VqltUK, TechsavvyCS, Rensorcs, fengyuanshi1, theSinedinCS, V1rdus, de_copium. Смотреть: CS2Status, SteamDB, skinledger, skinpock, SkinSpecter — не реплаить как коллеге.
 
 X продаёт клин: Steam — ценник, портфель — P&L. Сайт шире. С 24 окт киты в ленте как продукт: список и лента открыты, чтение позиции платное. С 20 сен — второй слой клина: два марка (Steam vs market), sellable now, капитал в стикерах, кэш как позиция. С 11 окт Storage — результат синка на сайте. С 14 окт расширение можно назвать как установку из Chrome Web Store, без ссылки в теле поста и без кадра попапа. Десктоп не пишем. Коллекции — фон.
 
-Этот ритм — пост каждый день в 19:30, плюс не больше одного дополнительного. План продлён до 14 ноя. С 1 окт реплаи 10–15. С 25 окт кадр с сайта — норма дня для поста 19:30. Текст без картинки только если в дне так написано. Обзорные посты про китов: 31 окт, 5 ноя, 8 ноя, 10 ноя, 12 ноя. Не два дня подряд. Лимит двух обзорных постов считается с понедельника: 26 окт–1 ноя один, 2–8 ноя два, 9–14 ноя два. 8 ноя закрывает свою неделю, не открывает следующую. Понедельничная сводка и разовый сигнал в этот лимит не входят, но третий пост в день всё равно не делать.
+Этот ритм — пост каждый день в 19:30, плюс не больше одного дополнительного. План продлён до 28 ноя. С 1 окт реплаи 10–15. С 25 окт кадр с сайта — норма дня для поста 19:30. Текст без картинки только если в дне так написано. Обзорные посты про китов: 31 окт, 5 ноя, 8 ноя, 10 ноя, 12 ноя, 18 ноя, 21 ноя, 24 ноя, 27 ноя. Не два дня подряд. Лимит двух обзорных постов считается с понедельника: 26 окт–1 ноя один, 2–8 ноя два, 9–15 ноя два (15 ноя не обзор: неделя уже закрыта 10 и 12), 16–22 ноя два, 23–28 ноя два. 21 ноя закрывает свою неделю и не открывает следующую. Понедельничная сводка и разовый сигнал в этот лимит не входят, но третий пост в день всё равно не делать.
 
 ---
 
@@ -1554,6 +1556,274 @@ A position is basis, size, and whether it can leave.
 You have been collecting the first screen.
 
 Which of those three is still a guess?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 15 ноя 2026 (вс) — день 85
+- 10–15 реплаев
+- 19:30 пост 85 (не закреплять, текст + кадр):
+- Кадр. Портфель, сайт на EN. Кроп ряда аккаунтов: аватар, имя и кнопка Add account. Если аккаунт один — в кроп строка «Several Steam accounts in one session are on paid plans. The free plan keeps one account.» Цены, пейвол, модалку оплаты и вход Steam не снимать. Add account не нажимать.
+- Не обзор китов: неделя 9–15 уже закрыта 10 и 12 ноя. Не писать, что весь сайт платный. Цены $2.99 / $5 не повторять. 3D Glock не упоминать.
+
+```
+Two Steam accounts are two inventories.
+
+Switching which one is open does not merge them into one P&L.
+
+The free plan keeps a single account. A paid plan can hold several in one session.
+
+That is not the same as the site being paid.
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 16 ноя 2026 (пн) — неделя 13 · капитализация
+- 10–15 реплаев
+- 14:00 доп. пост, сводка бота. Цифры из утреннего сообщения, после 12:00. Не выдумывать. Бэктест не переносить. Внизу `https://skinshead.pro/investors`. Если сводки нет — доп не публиковать. В тексте не buy.
+
+```
+Week on the watchlist.
+
+Capital under watch: $____ across __ accounts
+Net 7d flow: ____ · ____ moves
+Signals: __ gains, __ exits, __ new control zones
+
+Added: ____, ____, ____.
+Left: ____, ____, ____.
+
+A same-day plus out of a storage unit is not on this list.
+
+Are you pricing their move, or your own entry?
+
+https://skinshead.pro/investors
+```
+
+- 19:30 пост 86 (не закреплять, текст + кадр):
+- Кадр. Главная, сайт на EN. Кроп карточки Market cap: цифра, процент и строка Estimated circulating CS2 market. Муверы, шапку страницы и браузер не бери.
+
+```
+The market cap is price times supply.
+
+It is not your inventory. It is not cash you can take out.
+
+A green week on that number can still be a red week on the skins you hold.
+
+Which number did you quote?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 17 ноя 2026 (вт) — день 87
+- 10–15 реплаев
+- 19:30 пост 87 (не закреплять, текст + кадр):
+- Кадр. Карточка предмета, сайт на EN. Кроп только двух строк Marketplace comparison: Steam Market и Buff163. Если строки Buff163 нет — кадр не снимать и не подменять другой площадкой, пост оставить текстом. Весь список площадок не бери — это пост 72. Float не снимать. Не писать the cut. Не утверждать, что цифра портфеля на сайте равна Buff.
+
+```
+Buff is the cash price people check.
+
+Steam is a wallet. The fee is 15%: 5% Steam, 10% CS2. You cannot withdraw it.
+
+Same skin. One number leaves. The other stays inside Steam.
+
+Which one did you call the price?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 18 ноя 2026 (ср) — день 88
+- 10–15 реплаев
+- 19:30 пост 88 (не закреплять, только текст). Обзор китов, первый на неделе 16–22. Имя скина не называть. «Скупку» не говорить. Бэктест не заявлять. Аналитику и пейвол не снимать. Не называть это trade protection и не называть hold.
+
+```
+A watched account can go quiet while the hidden count goes up.
+
+The name is not public yet. That is not a buy.
+
+Moving a skin out of a storage unit shows the same day. A purchase does not.
+
+If you named the skin off a hidden plus, you invented it.
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 19 ноя 2026 (чт) — день 89
+- 10–15 реплаев
+- 19:30 пост 89 (не закреплять, только текст). Не киты. Protection — 7 дней и реверс. Задержку ~10 дней не называть protection и не называть hold. Не restricted (пост 67).
+
+```
+A skin you just received can still go back.
+
+Seven days. The other side can reverse the trade. That clock is trade protection.
+
+A purchase staying off a public inventory for about ten days is a different clock. It is not protection, and it is not a hold.
+
+If you counted the skin as yours on day one, you counted a trade that can still be undone.
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 20 ноя 2026 (пт) — день 90
+- 10–15 реплаев
+- 19:30 пост 90 (не закреплять, только текст). Quicksell — не любая продажа. Не киты.
+
+```
+A quicksell is a sale under the floor, because you wanted out today.
+
+It is not the price. It is not what the listings are asking.
+
+If the last sale you remember was a quicksell, you are using a panic as a number.
+
+What was the floor — and what did you actually take?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 21 ноя 2026 (сб) — день 91
+- 10–15 реплаев
+- 19:30 пост 91 (не закреплять, только текст). Обзор китов, второй на неделе 16–22. Не в соседний день с 18 ноя. Имя скина не называть. «Скупку» не говорить. 21 ноя закрывает неделю и не открывает следующую.
+
+```
+Two watched accounts can move a skin between them.
+
+It leaves one inventory and shows up in the other the same day.
+
+That is the same item changing rooms. It is not a buy, and it is not new supply.
+
+If you counted both sides, you counted it twice.
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 22 ноя 2026 (вс) — день 92
+- 10–15 реплаев
+- 19:30 пост 92 (не закреплять, текст + кадр):
+- Кадр. Карточка предмета, сайт на EN. Кроп блока SELECT EXTERIOR: кнопки износа и цены. Полосу float, график, сравнение площадок и блок китов не бери. Переключатель StatTrak в кроп не бери. Float не писать.
+
+```
+Factory New and Field-Tested are two listings.
+
+Same finish. Different buyer. Different price.
+
+The wear in the name is the item. Averaging the five prices is not a price.
+
+Which listing are you actually holding?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 23 ноя 2026 (пн) — неделя 14 · профили
+- 10–15 реплаев
+- 14:00 доп. пост, сводка бота. Цифры из утреннего сообщения, после 12:00. Не выдумывать. Бэктест не переносить. Внизу `https://skinshead.pro/investors`. Если сводки нет — доп не публиковать.
+
+```
+Week on the watchlist.
+
+Capital under watch: $____ across __ accounts
+Net 7d flow: ____ · ____ moves
+Signals: __ gains, __ exits, __ new control zones
+
+Added: ____, ____, ____.
+Left: ____, ____, ____.
+
+A same-day plus out of a storage unit is not on this list.
+
+Are you pricing their move, or your own entry?
+
+https://skinshead.pro/investors
+```
+
+- 19:30 пост 93 (не закреплять, текст + кадр):
+- Кадр. Favorite profiles, сайт на EN. Кроп заголовка и одной строки. Портфель этого профиля не открывать — чужой public Steam уже был постом 74. Если список пустой — кадр не снимать, пост оставить текстом.
+
+```
+Saving a profile does not give you their entry.
+
+The page is still public Steam. Storage is not on it.
+
+You can watch the inventory. You still don’t know what they paid.
+
+Whose number is on that row?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 24 ноя 2026 (вт) — день 94
+- 10–15 реплаев
+- 19:30 пост 94 (не закреплять, только текст). Обзор китов, первый на неделе 23–28. Имя скина не называть. Не buy как сигнал. Аналитику и пейвол не снимать. Бэктест не заявлять.
+
+```
+A new control zone means watched accounts already hold a lot of what is listed.
+
+It is not a buy. Those are the listings already there.
+
+If they sell, the floor you liked was their inventory.
+
+Are you early, or are you the exit?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 25 ноя 2026 (ср) — день 95
+- 10–15 реплаев
+- 19:30 пост 95 (не закреплять, только текст). Пост про фазу. На сайте фаза в имени режется и отдельной ценой не стоит — кадр не снимать и не выдумывать две строки. Float не писать.
+
+```
+Phase 2 and Phase 4 are not the same knife.
+
+Same family. Different buyer. Different price.
+
+If you priced “a Doppler”, you priced a family, not the listing.
+
+Which phase is the one you would actually sell?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 26 ноя 2026 (чт) — день 96
+- 10–15 реплаев
+- 19:30 пост 96 (не закреплять, только текст). Наблюдение, не анонс правки. Десктоп не писать. Кадра нет: отдельной строки трейда на сайте нет.
+
+```
+A skin in an open trade is not a second copy in the backpack.
+
+The inventory is what the account still holds. The offer is a skin already on the way out.
+
+Add them together and you priced the same item twice.
+
+Is that row still yours — or already in a trade?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 27 ноя 2026 (пт) — день 97
+- 10–15 реплаев
+- 19:30 пост 97 (не закреплять, только текст). Обзор китов, второй на неделе 23–28. Не в соседний день с 24 ноя. Риск бустера — наблюдение, не блок на сайте: кадр не снимать и не писать, что сайт его помечает. Имя скина не называть. Бэктест не заявлять.
+
+```
+One account can be most of the listings.
+
+That inventory is there to move a price. Copying the names copies the push, not an entry.
+
+If they are the offer, you are not early. You are the exit.
+
+Whose listings are you about to buy?
+```
+
+- Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
+
+### 28 ноя 2026 (сб) — день 98
+- 10–15 реплаев
+- 19:30 пост 98 (не закреплять, только текст). Клин двух недель. Не киты и не цены.
+
+```
+You can switch the account. You can open the market cap. You can read the listings.
+
+None of that is what you paid.
+
+The inventory got easier to see. The entry did not.
+
+Which number is still a guess?
 ```
 
 - Факт (заполнить вечером): реплаев __ / пост вышел __ / просмотры __ / ответы __ / новые фолловы __
