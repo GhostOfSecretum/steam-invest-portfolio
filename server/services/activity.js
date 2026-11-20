@@ -146,12 +146,20 @@ function diffSnapshots(prevSnapshot, nextSnapshot, { source, at, icons } = {}) {
 // Market buys and trades stay hidden from other viewers for ~10 days, so a gain
 // that shows up together with an equal drop in the hidden count is an old
 // acquisition becoming visible. A gain with no hidden drop came out of storage.
+// When the drop covers only part of the gain, a line larger than that drop cannot
+// be the reveal: even if every revealed item landed on it, the rest came out of
+// storage. Smaller lines stay mixed, because any of them could be the reveal.
 function tagGainOrigins(events, hiddenBefore, hiddenAfter) {
   if (!Number.isFinite(hiddenBefore) || !Number.isFinite(hiddenAfter)) return events;
   const gained = events.reduce((sum, event) => sum + Math.max(0, event.qtyDelta || 0), 0);
   const revealed = Math.max(0, hiddenBefore - hiddenAfter);
-  const origin = revealed === 0 ? 'storage' : revealed >= gained ? 'trade' : 'mixed';
-  return events.map((event) => (event.qtyDelta > 0 ? { ...event, origin } : event));
+  return events.map((event) => {
+    if (!(event.qtyDelta > 0)) return event;
+    let origin = 'storage';
+    if (revealed > 0 && revealed >= gained) origin = 'trade';
+    else if (revealed > 0) origin = event.qtyDelta > revealed ? 'storage' : 'mixed';
+    return { ...event, origin };
+  });
 }
 
 function appendHiddenLog(log, at, before, after) {
